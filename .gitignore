@@ -54,3 +54,4 @@ mycart.db
 web/*/build/
 .shared/
 docker/docker-compose_private.yml
+/graphify-out/
