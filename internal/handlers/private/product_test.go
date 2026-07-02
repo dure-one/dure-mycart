@@ -62,6 +62,11 @@ func TestAddProduct(t *testing.T) {
 			http.StatusOK,
 		},
 		{
+			"free product",
+			`{"name":"FreeProd","slug":"freeprod","amount":0,"digital":{"type":"file"}}`,
+			http.StatusOK,
+		},
+		{
 			"missing digital type",
 			`{"name":"NoDig","slug":"nodig","amount":100}`,
 			http.StatusBadRequest,

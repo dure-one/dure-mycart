@@ -24,7 +24,8 @@ func TestProduct_Validate(t *testing.T) {
 		{"baseline", func(p *Product) {}, false},
 		{"bad ID length", func(p *Product) { p.ID = "short" }, true},
 		{"missing slug", func(p *Product) { p.Slug = "" }, true},
-		{"missing amount", func(p *Product) { p.Amount = 0 }, true},
+		{"zero amount (free product)", func(p *Product) { p.Amount = 0 }, false},
+		{"negative amount", func(p *Product) { p.Amount = -1 }, true},
 		{"short name", func(p *Product) { p.Name = "x" }, true},
 		{"attribute too short", func(p *Product) { p.Attributes = []string{"a"} }, true},
 		{"metadata required", func(p *Product) {

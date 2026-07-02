@@ -36,7 +36,7 @@ func (v Product) Validate() error {
 		validation.Field(&v.Description, validation.NotNil),
 		validation.Field(&v.Images),
 		validation.Field(&v.Slug, validation.Required, validation.Length(3, 20)),
-		validation.Field(&v.Amount, validation.Required, validation.Min(0)),
+		validation.Field(&v.Amount, validation.Min(0)),
 		validation.Field(&v.Metadata),
 		validation.Field(&v.Attributes, validation.Each(validation.Length(3, 254))),
 		validation.Field(&v.Digital),
