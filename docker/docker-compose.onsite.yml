@@ -32,7 +32,7 @@ services:
   mycart:
     build:
       context: ..
-      dockerfile: Dockerfile.goreleaser
+      dockerfile: Dockerfile.build
     container_name: mycart
     restart: always
     expose:
