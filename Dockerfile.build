@@ -18,7 +18,7 @@ RUN npm ci
 RUN npx vite build
 
 # Stage 2: Build Go binary
-FROM golang:1.23-alpine AS backend-build
+FROM golang:alpine AS backend-build
 
 WORKDIR /go/src/app
 
