@@ -202,6 +202,19 @@ docker-compose run --rm mycart install \
 
 For Kubernetes, run a one-shot Job with the same `install` command and the same volume mounts as the main Deployment.
 
+**Environment Variables**:
+The docker-compose setup supports environment variables for domain and email configuration:
+
+```bash
+DOMAIN=example.com ADMIN_EMAIL=admin@example.com docker-compose -f docker/docker-compose.yml up -d
+```
+
+Alternatively, create a `.env` file in the `docker/` directory:
+```bash
+DOMAIN=example.com
+ADMIN_EMAIL=admin@example.com
+```
+
 **Stopping Services**:
 ```bash
 docker-compose down

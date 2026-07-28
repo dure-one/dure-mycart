@@ -30,7 +30,9 @@ services:
     restart: always
 
   mycart:
-    image: ghcr.io/shurco/mycart:latest
+    build:
+      context: ..
+      dockerfile: Dockerfile.build
     container_name: mycart
     restart: always
     expose:
