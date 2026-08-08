@@ -21,15 +21,15 @@ go install github.com/swaggo/swag/cmd/swag@latest
 Generate Swagger documentation files:
 
 ```bash
-swag init -g cmd/main.go --output docs --parseDependency --parseInternal
+swag init -g cmd/main.go --output docs/swagger --parseDependency --parseInternal
 ```
 
 This creates:
-- `docs/docs.go` - Generated Go code
-- `docs/swagger.json` - OpenAPI spec in JSON format
-- `docs/swagger.yaml` - OpenAPI spec in YAML format
+- `docs/swagger/docs.go` - Generated Go code
+- `docs/swagger/swagger.json` - OpenAPI spec in JSON format
+- `docs/swagger/swagger.yaml` - OpenAPI spec in YAML format
 
-**Note:** The `docs/` directory is git-ignored. Documentation is auto-generated in CI/CD.
+**Note:** Generated Swagger files (docs.go, swagger.json, swagger.yaml) are git-ignored. Documentation is auto-generated in CI/CD.
 
 ### View Swagger UI Locally
 
@@ -47,17 +47,23 @@ The Swagger UI is **only available with the `--dev` flag** and is disabled in pr
 
 ## Deployed Documentation
 
-API documentation is automatically published to GitHub Pages whenever code is pushed to the `main` branch.
+API documentation is automatically published to GitHub Pages whenever code is pushed to the `main` branch, as part of the comprehensive documentation deployment.
 
-**Live documentation:** `https://<username>.github.io/<repo>/`
+**Live documentation:** `https://<username>.github.io/<repo>/swagger/`
 
 ### How It Works
 
-1. On push to `main`, the GitHub Actions workflow `.github/workflows/deploy-swagger.yml` runs
+1. On push to `main`, the GitHub Actions workflow `.github/workflows/deploy-docs.yml` runs
 2. The workflow installs Go and the Swag CLI
-3. It generates fresh Swagger documentation
+3. It generates fresh Swagger documentation in `docs/swagger/`
 4. It downloads Swagger UI static assets
-5. It deploys everything to the `gh-pages` branch
+5. It combines Swagger docs with E2E reports and Solidebase docs
+6. It deploys everything to the `gh-pages` branch
+
+The deployed site includes:
+- **Swagger API docs** at `/swagger/`
+- **E2E test reports** at `/e2e/admin/` and `/e2e/site/`
+- **Main documentation** (Solidebase) at the root
 
 ### Enabling GitHub Pages
 

@@ -31,7 +31,7 @@ import (
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/pkg/update"
 
-	_ "github.com/shurco/mycart/docs"
+	_ "github.com/shurco/mycart/docs/swagger"
 )
 
 var (

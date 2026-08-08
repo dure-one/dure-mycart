@@ -62,7 +62,12 @@ lc_*/
 tmp/
 
 # Swagger documentation (auto-generated)
-docs/
+docs/swagger/docs.go
+docs/swagger/swagger.json
+docs/swagger/swagger.yaml
+
+# E2E test reports
+docs/e2e/
 
 # Compiled binary
 mycart
@@ -81,3 +86,4 @@ test-results/
 playwright-report/
 .vitest-attachments/
 __screenshots__/
+reference/
