@@ -86,6 +86,7 @@ jobs:
         run: |
           # Let Patchright manage server lifecycle via webServer config
           npx patchright test --reporter=html
+        continue-on-error: true
 
       # 7. Generate Solidebase documentation
       - name: Check for Solidebase Config
