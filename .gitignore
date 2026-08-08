@@ -61,6 +61,9 @@ lc_base/
 lc_*/
 tmp/
 
+# Swagger documentation (auto-generated)
+docs/
+
 # Compiled binary
 mycart
 mycart-linux
