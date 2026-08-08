@@ -1,3 +1,8 @@
+---
+title: myCart Documentation
+description: Open source shopping-cart backend API - Complete guide and reference
+---
+
 <p align="center">
     <a href="#" target="_blank" rel="noopener">
         <img src="https://github.com/shurco/mycart/blob/main/.github/media/banner.png" alt="myCart - shopping-cart in 1 file" />
