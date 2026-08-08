@@ -48,12 +48,15 @@ jobs:
           # Swag CLI
           go install github.com/swaggo/swag/cmd/swag@latest
 
+          # Root dependencies (patchright for e2e tests)
+          bun install
+
           # Frontend dependencies for e2e tests
           cd web/admin && bun install && cd ../..
           cd web/site && bun install && cd ../..
 
-          # Playwright browsers
-          bunx playwright install --with-deps chromium
+          # Patchright browsers
+          bunx patchright install --with-deps chromium
 
       # 4. Generate Swagger documentation (must run before Go build)
       - name: Generate Swagger Documentation
@@ -89,7 +92,7 @@ jobs:
           sleep 10
 
           # Run e2e tests (fail workflow on test failure)
-          bunx playwright test --reporter=html
+          bunx patchright test --reporter=html
 
           # Stop server
           kill $SERVER_PID || true
