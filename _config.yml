@@ -40,13 +40,13 @@ exclude:
   - .solidbase
   - .output
   - .vinxi
+  - AGENTS.md
 
 # Include in processing
 include:
   - index.md
   - docs
   - README.md
-  - AGENTS.md
 
 # Theme settings
 theme_upstream: 'https://github.com/nikescar/mdx-sitegen-solidbase'
