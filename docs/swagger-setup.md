@@ -39,9 +39,11 @@ Start the server in development mode:
 go run ./cmd serve --dev
 ```
 
-Then visit: **http://localhost:8080/swagger/index.html**
+Then visit: **http://localhost:8080/swagger/** or **http://localhost:8080/swagger/index.html**
 
 The Swagger UI is **only available with the `--dev` flag** and is disabled in production.
+
+**Note:** This project uses Fiber v3, which is not yet supported by fiber-swagger. The Swagger UI is served using Fiber's static middleware instead.
 
 ## Deployed Documentation
 
