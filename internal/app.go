@@ -98,7 +98,7 @@ func setupRoutes(app *fiber.App, noSite bool) {
 
 	// Swagger documentation (development mode only)
 	if DevMode {
-		app.Use("/swagger", static.New("./docs", static.Config{
+		app.Use("/swagger", static.New("./docs/swagger", static.Config{
 			Browse: true,
 		}))
 	}

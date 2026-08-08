@@ -1,0 +1,239 @@
+name: Deploy All Documentation to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Checkout code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. Setup environments
+      - name: Setup Go Environment
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.26'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # 3. Install dependencies
+      - name: Install Dependencies
+        run: |
+          # Go dependencies
+          go mod download
+
+          # Swag CLI
+          go install github.com/swaggo/swag/cmd/swag@latest
+
+          # Frontend dependencies for e2e tests
+          cd web/admin && bun install && cd ../..
+          cd web/site && bun install && cd ../..
+
+          # Playwright browsers
+          bunx playwright install --with-deps chromium
+
+      # 4. Build application for e2e tests
+      - name: Build myCart Binary
+        run: |
+          # Build frontend SPAs first
+          cd web/admin && bun run build && cd ../..
+          cd web/site && bun run build && cd ../..
+
+          # Build Go binary
+          go build -o mycart ./cmd
+          chmod +x mycart
+
+      # 5. Run E2E tests and generate reports
+      - name: Run E2E Tests
+        run: |
+          # Start server in background
+          ./mycart serve &
+          SERVER_PID=$!
+
+          # Wait for server to be ready
+          sleep 10
+
+          # Run e2e tests (continue even if tests fail)
+          bunx playwright test --reporter=html || true
+
+          # Stop server
+          kill $SERVER_PID || true
+          wait $SERVER_PID 2>/dev/null || true
+        continue-on-error: true
+
+      # 6. Generate Swagger documentation
+      - name: Generate Swagger Documentation
+        run: |
+          $(go env GOPATH)/bin/swag init \
+            -g cmd/main.go \
+            --output docs/swagger \
+            --parseDependency \
+            --parseInternal
+
+          echo "Swagger docs generated:"
+          ls -la docs/swagger/
+
+      # 7. Generate Solidebase documentation
+      - name: Check for Solidebase Config
+        id: check-solidbase
+        run: |
+          if [ -f "_config.yml" ]; then
+            echo "has_config=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_config=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Clone and Build Solidebase Theme
+        if: steps.check-solidbase.outputs.has_config == 'true'
+        run: |
+          export PATH="/opt/hostedtoolcache/node/22.x.x/x64/bin/:$PATH"
+          export theme_upstream=$(grep -m1 'theme_upstream:' _config.yml | awk '{print $2}' | sed "s/'//g")/archive/refs/heads/main.tar.gz
+
+          echo "Downloading theme from: $theme_upstream"
+          wget -q "$theme_upstream" -O main.tar.gz
+          if [ $? -ne 0 ]; then
+              echo "Failed to download theme from $theme_upstream"
+              exit 1
+          fi
+
+          mkdir -p .solidbase
+          tar -xzf main.tar.gz --strip-components=1 -C .solidbase
+
+          pushd ./.solidbase
+          bash ghworkflow.sh --no-deploy --src-path ../
+          popd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CLOUDFLARE_PAGES_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+        continue-on-error: true
+
+      # 8. Prepare unified public directory
+      - name: Prepare Public Directory
+        run: |
+          mkdir -p public
+
+          # Copy Solidebase output (main docs site) if it exists
+          if [ -d .solidbase/.output/public ]; then
+            echo "Copying Solidebase output..."
+            cp -r .solidbase/.output/public/* public/
+          else
+            echo "No Solidebase output found, creating basic index"
+            cat > public/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>myCart Documentation</title>
+              <style>
+                  body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+                  h1 { color: #333; }
+                  ul { line-height: 1.8; }
+                  a { color: #0066cc; text-decoration: none; }
+                  a:hover { text-decoration: underline; }
+              </style>
+          </head>
+          <body>
+              <h1>🛒 myCart Documentation</h1>
+              <p>Open source shopping-cart backend API documentation</p>
+              <h2>Available Documentation:</h2>
+              <ul>
+                  <li><a href="/swagger/">API Documentation (Swagger UI)</a></li>
+                  <li><a href="/e2e/">E2E Test Reports</a></li>
+              </ul>
+          </body>
+          </html>
+          EOF
+          fi
+
+          # Copy Swagger docs
+          echo "Copying Swagger documentation..."
+          mkdir -p public/swagger
+          cp -r docs/swagger/* public/swagger/
+
+          # Download and configure Swagger UI
+          SWAGGER_UI_VERSION=5.11.0
+          echo "Downloading Swagger UI v${SWAGGER_UI_VERSION}..."
+          curl -sL https://github.com/swagger-api/swagger-ui/archive/refs/tags/v${SWAGGER_UI_VERSION}.tar.gz | tar -xz
+          cp -r swagger-ui-${SWAGGER_UI_VERSION}/dist/* public/swagger/
+          sed -i 's|https://petstore.swagger.io/v2/swagger.json|./swagger.json|g' public/swagger/swagger-initializer.js
+
+          # Copy E2E reports
+          echo "Copying E2E test reports..."
+          mkdir -p public/e2e
+
+          if [ -d playwright-report ]; then
+            cp -r playwright-report public/e2e/combined
+          fi
+
+          if [ -d docs/e2e/admin ] && [ "$(ls -A docs/e2e/admin 2>/dev/null)" ]; then
+            cp -r docs/e2e/admin public/e2e/admin
+          fi
+
+          if [ -d docs/e2e/site ] && [ "$(ls -A docs/e2e/site 2>/dev/null)" ]; then
+            cp -r docs/e2e/site public/e2e/site
+          fi
+
+          # Create index page for e2e reports
+          cat > public/e2e/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>E2E Test Reports</title>
+              <style>
+                  body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+                  h1 { color: #333; }
+                  ul { line-height: 1.8; }
+                  a { color: #0066cc; text-decoration: none; }
+                  a:hover { text-decoration: underline; }
+              </style>
+          </head>
+          <body>
+              <h1>E2E Test Reports</h1>
+              <p>Playwright end-to-end test results for myCart</p>
+              <ul>
+                  <li><a href="combined/">Combined Test Report</a></li>
+                  <li><a href="admin/">Admin Panel Tests</a></li>
+                  <li><a href="site/">Storefront Tests</a></li>
+              </ul>
+              <p><a href="/">← Back to Documentation Home</a></p>
+          </body>
+          </html>
+          EOF
+
+          echo "Public directory structure:"
+          find public -type f | head -20
+
+      # 9. Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          publish_branch: gh-pages
+          commit_message: 'docs: update documentation (swagger + e2e + solidebase)'
