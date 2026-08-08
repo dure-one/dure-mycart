@@ -1,4 +1,4 @@
-import { defineConfig, devices } from 'patchright/test'
+import { defineConfig, devices } from 'patchright'
 
 /**
  * Playwright E2E Configuration
