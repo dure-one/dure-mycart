@@ -16,7 +16,6 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/static"
-	fiberSwagger "github.com/swaggo/fiber-swagger"
 
 	"github.com/shurco/mycart/internal/middleware"
 	"github.com/shurco/mycart/internal/queries"
@@ -97,9 +96,11 @@ func setupRoutes(app *fiber.App, noSite bool) {
 	app.Use("/uploads", static.New("./lc_uploads"))
 	app.Use("/secrets", static.New("./lc_digitals"))
 
-	// Swagger UI (development mode only)
+	// Swagger documentation (development mode only)
 	if DevMode {
-		app.Get("/swagger/*", fiberSwagger.WrapHandler)
+		app.Use("/swagger", static.New("./docs", static.Config{
+			Browse: true,
+		}))
 	}
 
 	// Register API routes before InstallCheck so /api/install is reachable on first boot.
