@@ -84,19 +84,8 @@ jobs:
       # 6. Run E2E tests and generate reports
       - name: Run E2E Tests
         run: |
-          # Start server in background
-          ./mycart serve &
-          SERVER_PID=$!
-
-          # Wait for server to be ready
-          sleep 10
-
-          # Run e2e tests (fail workflow on test failure)
-          bunx patchright test --reporter=html
-
-          # Stop server
-          kill $SERVER_PID || true
-          wait $SERVER_PID 2>/dev/null || true
+          # Let Patchright manage server lifecycle via webServer config
+          npx patchright test --reporter=html
 
       # 7. Generate Solidebase documentation
       - name: Check for Solidebase Config

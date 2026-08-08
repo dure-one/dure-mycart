@@ -40,5 +40,10 @@ export default defineConfig({
     timeout: 30000, // 30 seconds for server start
     stdout: 'pipe',
     stderr: 'pipe',
+    // Graceful shutdown instead of force-kill
+    gracefulShutdown: {
+      signal: 'SIGTERM',
+      timeout: 1000, // Time in ms to wait before escalation
+    },
   },
 })
