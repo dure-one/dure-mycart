@@ -55,18 +55,30 @@ jobs:
           # Playwright browsers
           bunx playwright install --with-deps chromium
 
-      # 4. Build application for e2e tests
+      # 4. Generate Swagger documentation (must run before Go build)
+      - name: Generate Swagger Documentation
+        run: |
+          $(go env GOPATH)/bin/swag init \
+            -g cmd/main.go \
+            --output docs/swagger \
+            --parseDependency \
+            --parseInternal
+
+          echo "Swagger docs generated:"
+          ls -la docs/swagger/
+
+      # 5. Build application for e2e tests
       - name: Build myCart Binary
         run: |
           # Build frontend SPAs first
           cd web/admin && bun run build && cd ../..
           cd web/site && bun run build && cd ../..
 
-          # Build Go binary
+          # Build Go binary (now docs/swagger package exists)
           go build -o mycart ./cmd
           chmod +x mycart
 
-      # 5. Run E2E tests and generate reports
+      # 6. Run E2E tests and generate reports
       - name: Run E2E Tests
         run: |
           # Start server in background
@@ -83,18 +95,6 @@ jobs:
           kill $SERVER_PID || true
           wait $SERVER_PID 2>/dev/null || true
         continue-on-error: true
-
-      # 6. Generate Swagger documentation
-      - name: Generate Swagger Documentation
-        run: |
-          $(go env GOPATH)/bin/swag init \
-            -g cmd/main.go \
-            --output docs/swagger \
-            --parseDependency \
-            --parseInternal
-
-          echo "Swagger docs generated:"
-          ls -la docs/swagger/
 
       # 7. Generate Solidebase documentation
       - name: Check for Solidebase Config
