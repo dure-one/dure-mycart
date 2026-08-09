@@ -3,7 +3,6 @@ import { withMermaid } from 'vitepress-plugin-mermaid'
 import { tabsMarkdownPlugin } from 'vitepress-plugin-tabs'
 import { configureDiagramsPlugin } from 'vitepress-plugin-diagrams'
 import llmstxt, { copyOrDownloadAsMarkdownButtons } from 'vitepress-plugin-llms'
-import { withI18n } from 'vitepress-i18n'
 import { plantumlMarkdownPlugin, plantumlVitePlugin } from 'vitepress-plugin-plantuml'
 import { videoMarkdownPlugin } from 'vitepress-plugin-video'
 import { pdfMarkdownPlugin } from 'vitepress-plugin-pdf'
@@ -11,9 +10,10 @@ import { qrcodeMarkdownPlugin } from 'vitepress-plugin-qrcode'
 import { stepsMarkdownPlugin } from 'vitepress-plugin-steps'
 import { collapseMarkdownPlugin } from 'vitepress-plugin-collapse'
 import { markdownPlugin as markMarkdownPlugin } from 'vitepress-plugin-mark'
+import { copyReadmePlugin } from './plugins/copy-readme'
 
 // https://vitepress.dev/reference/site-config
-const vitePressConfig = withMermaid(defineConfig({
+export default withMermaid(defineConfig({
   title: 'myCart',
   description: 'Open source shopping-cart backend API - a single-binary e-commerce solution',
   base: '/mycart/',
@@ -30,9 +30,84 @@ const vitePressConfig = withMermaid(defineConfig({
     ['link', { rel: 'icon', href: '/mycart/favicon.ico' }]
   ],
 
+  // Internationalization
+  locales: {
+    root: {
+      label: 'English',
+      lang: 'en',
+      themeConfig: {
+        nav: [
+          { text: 'Docs', link: '/' },
+          { text: 'API', link: '/swagger/', target: '_blank', rel: 'noopener noreferrer' },
+          { text: 'E2E', link: '/e2e/', target: '_blank', rel: 'noopener noreferrer' },
+          { text: 'GitHub', link: 'https://github.com/shurco/mycart' }
+        ],
+        sidebar: [
+          {
+            text: 'Guide',
+            items: [
+              { text: 'Introduction', link: '/' },
+              { text: 'Getting Started', link: '/readme' },
+              { text: 'API Reference', link: '/api' },
+              { text: 'API Product Variants', link: '/api-product-variants' },
+              { text: 'Customization', link: '/customization' },
+              { text: 'Payment Customization', link: '/payment-customization' },
+              { text: 'Migration from LiteCart', link: '/migration-from-litecart' },
+              { text: 'Development on BSD', link: '/development-on-bsd' }
+            ]
+          }
+        ],
+        editLink: {
+          pattern: 'https://github.com/shurco/mycart/edit/main/docs/:path',
+          text: 'Edit this page on GitHub'
+        },
+        footer: {
+          message: 'Released under the MIT License.',
+          copyright: 'Copyright © 2024-present shurco'
+        }
+      }
+    },
+    ko: {
+      label: '한국어',
+      lang: 'ko',
+      link: '/ko/',
+      themeConfig: {
+        nav: [
+          { text: '문서', link: '/ko/' },
+          { text: 'API', link: '/swagger/', target: '_blank', rel: 'noopener noreferrer' },
+          { text: 'E2E', link: '/e2e/', target: '_blank', rel: 'noopener noreferrer' },
+          { text: 'GitHub', link: 'https://github.com/shurco/mycart' }
+        ],
+        sidebar: [
+          {
+            text: '가이드',
+            items: [
+              { text: '소개', link: '/ko/' },
+              { text: '시작하기', link: '/ko/readme' },
+              { text: 'API 레퍼런스', link: '/ko/api' },
+              { text: 'API 제품 변형', link: '/ko/api-product-variants' },
+              { text: '커스터마이제이션', link: '/ko/customization' },
+              { text: '결제 커스터마이제이션', link: '/ko/payment-customization' },
+              { text: 'LiteCart에서 마이그레이션', link: '/ko/migration-from-litecart' },
+              { text: 'BSD 개발', link: '/ko/development-on-bsd' }
+            ]
+          }
+        ],
+        editLink: {
+          pattern: 'https://github.com/shurco/mycart/edit/main/docs/:path',
+          text: 'GitHub에서 이 페이지 편집'
+        },
+        footer: {
+          message: 'MIT 라이선스로 배포됩니다.',
+          copyright: 'Copyright © 2024-present shurco'
+        }
+      }
+    }
+  },
+
   // Vite plugins configuration
   vite: {
-    plugins: [llmstxt(), plantumlVitePlugin()]
+    plugins: [llmstxt(), plantumlVitePlugin(), copyReadmePlugin()]
   },
 
   // Markdown plugins configuration
@@ -64,55 +139,13 @@ const vitePressConfig = withMermaid(defineConfig({
     theme: 'default'
   },
 
+  // Shared theme config (applies to all locales)
   themeConfig: {
-    // https://vitepress.dev/reference/default-theme-config
-    nav: [
-      { text: 'Docs', link: '/' },
-      { text: 'API', link: '/swagger/', target: '_blank', rel: 'noopener noreferrer' },
-      { text: 'E2E', link: '/e2e/', target: '_blank', rel: 'noopener noreferrer' },
-      { text: 'GitHub', link: 'https://github.com/shurco/mycart' }
-    ],
-
-    sidebar: [
-      {
-        text: 'Guide',
-        items: [
-          { text: 'Introduction', link: '/' },
-          { text: 'Getting Started', link: '/readme' },
-          { text: 'API Reference', link: '/api' },
-          { text: 'API Product Variants', link: '/api-product-variants' },
-          { text: 'Customization', link: '/customization' },
-          { text: 'Payment Customization', link: '/payment-customization' },
-          { text: 'Migration from LiteCart', link: '/migration-from-litecart' },
-          { text: 'Development on BSD', link: '/development-on-bsd' }
-        ]
-      }
-    ],
-
     socialLinks: [
       { icon: 'github', link: 'https://github.com/shurco/mycart' }
     ],
-
-    editLink: {
-      pattern: 'https://github.com/shurco/mycart/edit/main/docs/:path',
-      text: 'Edit this page on GitHub'
-    },
-
-    footer: {
-      message: 'Released under the MIT License.',
-      copyright: 'Copyright © 2024-present shurco'
-    },
-
     search: {
       provider: 'local'
     }
   }
 }))
-
-// i18n configuration
-const i18nOptions = {
-  locales: ['en'],
-  rootLocale: 'en'
-}
-
-export default withI18n(vitePressConfig, i18nOptions)
