@@ -45,7 +45,7 @@
   }
 </script>
 
-<div class="flex items-center gap-4 border-4 border-black bg-white p-4" class:highlighted={highlighted} class:needs-deletion={needsDeletion}>
+<div data-testid="cart-item" class="flex items-center gap-4 border-4 border-black bg-white p-4" class:highlighted={highlighted} class:needs-deletion={needsDeletion}>
   <!-- Product Image -->
   <div class="h-20 w-20 flex-shrink-0 border-4 border-black bg-gray-100">
     {#if item.image}
@@ -65,7 +65,7 @@
 
   <!-- Product Info -->
   <div class="flex-1">
-    <h3 class="mb-1 text-lg font-black uppercase text-black">
+    <h3 data-testid="item-name" class="mb-1 text-lg font-black uppercase text-black">
       {item.name}
     </h3>
     {#if item.variant_name}
