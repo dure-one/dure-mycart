@@ -110,7 +110,17 @@ export default withMermaid(defineConfig({
 
   // Vite plugins configuration
   vite: {
-    plugins: [llmstxt(), plantumlVitePlugin(), copyReadmePlugin()]
+    plugins: [llmstxt(), plantumlVitePlugin(), copyReadmePlugin()],
+    ssr: {
+      // The vitepress-plugin-* client packages (and their shared
+      // vitepress-plugin-toolkit dependency) rely on Vite-only globals
+      // (import.meta.env) and import "vitepress/client" in their SSR
+      // entries. VitePress's own ssr.noExternal only covers the
+      // "vitepress" package itself, so left externalized these packages
+      // run as raw, unbundled Node modules during SSR and fail. Bundling
+      // the whole family here avoids that.
+      noExternal: [/^vitepress-plugin-/]
+    }
   },
 
   // Markdown plugins configuration
