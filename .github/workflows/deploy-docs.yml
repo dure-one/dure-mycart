@@ -88,78 +88,29 @@ jobs:
           npx patchright test --reporter=html
         continue-on-error: true
 
-      # 7. Generate Solidebase documentation
-      - name: Check for Solidebase Config
-        id: check-solidbase
+      # 7. Build VitePress documentation
+      - name: Build VitePress Docs
         run: |
-          if [ -f "_config.yml" ]; then
-            echo "has_config=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_config=false" >> $GITHUB_OUTPUT
+          echo "Building VitePress documentation..."
+          bun run docs:build
+
+          echo "VitePress build complete. Checking output..."
+          if [ ! -d "docs/.vitepress/dist" ]; then
+            echo "ERROR: VitePress build failed - no output directory found"
+            exit 1
           fi
 
-      - name: Clone and Build Solidebase Theme
-        if: steps.check-solidbase.outputs.has_config == 'true'
-        run: |
-          export PATH="/opt/hostedtoolcache/node/22.x.x/x64/bin/:$PATH"
-          export theme_upstream=$(grep -m1 'theme_upstream:' _config.yml | awk '{print $2}' | sed "s/'//g")/archive/refs/heads/main.tar.gz
-
-          echo "Downloading theme from: $theme_upstream"
-          wget -q "$theme_upstream" -O main.tar.gz
-          if [ $? -ne 0 ]; then
-              echo "Failed to download theme from $theme_upstream"
-              exit 1
-          fi
-
-          mkdir -p .solidbase
-          tar -xzf main.tar.gz --strip-components=1 -C .solidbase
-
-          pushd ./.solidbase
-          bash ghworkflow.sh --no-deploy --src-path ../
-          popd
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CLOUDFLARE_PAGES_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
-          NPM_CONFIG_LEGACY_PEER_DEPS: true
+          echo "VitePress output files:"
+          ls -la docs/.vitepress/dist/
 
       # 8. Prepare unified public directory
       - name: Prepare Public Directory
         run: |
           mkdir -p public
 
-          # Copy Solidebase output (main docs site) if it exists
-          if [ -d .solidbase/.output/public ]; then
-            echo "Copying Solidebase output..."
-            cp -r .solidbase/.output/public/* public/
-          else
-            echo "No Solidebase output found, creating basic index"
-            cat > public/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>myCart Documentation</title>
-              <style>
-                  body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
-                  h1 { color: #333; }
-                  ul { line-height: 1.8; }
-                  a { color: #0066cc; text-decoration: none; }
-                  a:hover { text-decoration: underline; }
-              </style>
-          </head>
-          <body>
-              <h1>🛒 myCart Documentation</h1>
-              <p>Open source shopping-cart backend API documentation</p>
-              <h2>Available Documentation:</h2>
-              <ul>
-                  <li><a href="/swagger/">API Documentation (Swagger UI)</a></li>
-                  <li><a href="/e2e/">E2E Test Reports</a></li>
-              </ul>
-          </body>
-          </html>
-          EOF
-          fi
+          # Copy VitePress output (main docs site)
+          echo "Copying VitePress output..."
+          cp -r docs/.vitepress/dist/* public/
 
           # Copy Swagger docs
           echo "Copying Swagger documentation..."
@@ -178,19 +129,11 @@ jobs:
           mkdir -p public/e2e
 
           if [ -d playwright-report ]; then
-            cp -r playwright-report public/e2e/combined
-          fi
-
-          if [ -d docs/e2e/admin ] && [ "$(ls -A docs/e2e/admin 2>/dev/null)" ]; then
-            cp -r docs/e2e/admin public/e2e/admin
-          fi
-
-          if [ -d docs/e2e/site ] && [ "$(ls -A docs/e2e/site 2>/dev/null)" ]; then
-            cp -r docs/e2e/site public/e2e/site
-          fi
-
-          # Create index page for e2e reports
-          cat > public/e2e/index.html << 'EOF'
+            echo "Copying combined Playwright report to public/e2e/..."
+            cp -r playwright-report/* public/e2e/
+          else
+            echo "No Playwright report found, creating placeholder..."
+            cat > public/e2e/index.html << 'EOF'
           <!DOCTYPE html>
           <html lang="en">
           <head>
@@ -200,23 +143,19 @@ jobs:
               <style>
                   body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
                   h1 { color: #333; }
-                  ul { line-height: 1.8; }
+                  p { line-height: 1.6; }
                   a { color: #0066cc; text-decoration: none; }
                   a:hover { text-decoration: underline; }
               </style>
           </head>
           <body>
               <h1>E2E Test Reports</h1>
-              <p>Playwright end-to-end test results for myCart</p>
-              <ul>
-                  <li><a href="combined/">Combined Test Report</a></li>
-                  <li><a href="admin/">Admin Panel Tests</a></li>
-                  <li><a href="site/">Storefront Tests</a></li>
-              </ul>
+              <p>Playwright end-to-end test results will appear here after tests run successfully.</p>
               <p><a href="/">← Back to Documentation Home</a></p>
           </body>
           </html>
           EOF
+          fi
 
           echo "Public directory structure:"
           find public -type f | head -20
@@ -228,4 +167,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
           publish_branch: gh-pages
-          commit_message: 'docs: update documentation (swagger + e2e + solidebase)'
+          commit_message: 'docs: update documentation (vitepress + swagger + e2e)'
