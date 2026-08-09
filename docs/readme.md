@@ -1,6 +1,6 @@
 <p align="center">
     <a href="#" target="_blank" rel="noopener">
-        <img src="https://github.com/shurco/mycart/blob/main/.github/media/banner.png" alt="myCart - shopping-cart in 1 file" />
+        <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/banner.png" alt="myCart - shopping-cart in 1 file" />
     </a>
 </p>
 
@@ -33,15 +33,15 @@ Formerly known as **litecart** (legacy project name kept here for discoverabilit
 > Current major version is zero (`v0.x.x`) to accommodate rapid development and fast iteration while getting early feedback from users. Please keep in mind that myCart is still under active development and therefore full backward compatibility is not guaranteed before reaching v1.0.0.
 
 ### Video Example
-![Example](https://github.com/shurco/mycart/blob/main/.github/media/demo.gif)
+![Example](https://raw.githubusercontent.com/shurco/mycart/main/.github/media/demo.gif)
 
 ### Admin Panel Screenshots
 <p align="center">
-  <img src="https://github.com/shurco/mycart/blob/main/.github/media/screenshots/products.png" width="270">
-  <img src="https://github.com/shurco/mycart/blob/main/.github/media/screenshots/product-edit.png" width="270">
-  <img src="https://github.com/shurco/mycart/blob/main/.github/media/screenshots/carts.png" width="270">
-  <img src="https://github.com/shurco/mycart/blob/main/.github/media/screenshots/pages.png" width="270">
-  <img src="https://github.com/shurco/mycart/blob/main/.github/media/screenshots/settings.png" width="270">
+  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/products.png" width="270">
+  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/product-edit.png" width="270">
+  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/carts.png" width="270">
+  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/pages.png" width="270">
+  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/settings.png" width="270">
 </p>
 
 
