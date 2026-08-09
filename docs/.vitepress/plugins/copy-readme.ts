@@ -19,6 +19,13 @@ export function copyReadmePlugin(): Plugin {
           'https://raw.githubusercontent.com/shurco/mycart/main/.github/media/'
         )
 
+        // Fix internal doc links for docs context - strip the redundant
+        // "docs/" prefix since this file already lives inside docs/
+        content = content.replace(
+          /\]\(\.\/docs\//g,
+          '](./'
+        )
+
         fs.writeFileSync(docsReadme, content)
         console.log('[copy-readme] Copied README.md to docs/readme.md')
       } else {

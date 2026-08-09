@@ -74,7 +74,7 @@ myCart는 임베디드 데이터베이스(SQLite) 1개 파일, 편리한 대시�
 
 `mycart`는 터미널에서 단일 명령만 필요한 쉬운 설치 및 작동을 위해 설계되었습니다. 기존 설치 방법 외에도 `mycart`는 HomeBrew, Docker 또는 Docker Compose, Docker Swarm, Rancher 또는 Kubernetes와 같은 기타 컨테이너 오케스트레이션 도구를 통해 설정 및 작동할 수 있습니다.
 
-#### <img width="20" src="/.github/media/platforms/apple.svg">&nbsp;macOS에 설치
+#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/apple.svg">&nbsp;macOS에 설치
 macOS에 `mycart`를 설치하는 가장 빠른 방법은 Homebrew를 사용하는 것입니다. 이렇게 하면 명령줄 도구와 `mycart` 서버가 결합된 실행 파일로 설치됩니다. Homebrew를 사용하지 않는 경우 아래 Linux 지침에 따라 `mycart`를 설치하세요.
 ```shell
 brew install shurco/tap/mycart
@@ -87,14 +87,14 @@ $ brew install mycart
 ```
 
 
-#### <img width="20" src="/.github/media/platforms/linux.svg">&nbsp;Linux에 설치 
+#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/linux.svg">&nbsp;Linux에 설치 
 Unix 운영 체제에서 `mycart` 사용을 시작하는 가장 간단하고 권장되는 방법은 `mycart` 명령줄 도구를 설치하고 사용하는 것입니다. 터미널에서 다음 명령을 실행하고 화면에 표시된 지침을 따르세요.
 
 ```bash
 curl -L https://raw.githubusercontent.com/shurco/mycart/main/scripts/install | sh
 ```
 
-#### <img width="20" src="/.github/media/platforms/windows.svg">&nbsp;Windows에 설치
+#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/windows.svg">&nbsp;Windows에 설치
 Windows에서 `mycart` 사용을 시작하는 가장 간단하고 권장되는 방법은 `mycart` 명령줄 도구를 설치하고 사용하는 것입니다. 터미널에서 다음 명령을 실행하고 화면에 표시된 지침을 따르세요.
 ```bash
 curl -L https://raw.githubusercontent.com/shurco/mycart/main/scripts/install | sh
@@ -102,7 +102,7 @@ curl -L https://raw.githubusercontent.com/shurco/mycart/main/scripts/install | s
 또는 Windows용 [최신 버전](https://github.com/shurco/mycart/releases/latest)을 다운로드하여 압축을 풉니다.
 
 
-#### <img width="20" src="/.github/media/platforms/docker.svg">&nbsp;Docker를 사용하여 실행
+#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/docker.svg">&nbsp;Docker를 사용하여 실행
 Docker를 사용하면 명령줄 도구를 설치할 필요 없이 `mycart` 인스턴스를 관리하고 작동할 수 있습니다. `mycart` Docker 컨테이너에는 필요한 모든 명령줄 도구 또는 서버 실행이 포함되어 있습니다.
 
 [Docker Hub](https://hub.docker.com/r/shurco/mycart)의 경우:
@@ -145,7 +145,7 @@ docker run \
   ghcr.io/shurco/mycart:latest
 ```
 
-#### <img width="20" src="/.github/media/platforms/docker.svg">&nbsp;Docker Compose를 사용하여 실행
+#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/docker.svg">&nbsp;Docker Compose를 사용하여 실행
 Docker Compose는 여러 컨테이너와 서비스를 관리하는 편리한 방법을 제공합니다. 프로젝트에는 다양한 사용 사례를 위한 여러 Docker Compose 구성이 포함되어 있습니다.
 
 **프로덕션 설정** (`docker/docker-compose.yml`):
@@ -220,13 +220,13 @@ ADMIN_EMAIL=admin@example.com
 docker-compose down
 ```
 
-#### <img width="20" src="/.github/media/platforms/k8s.svg">&nbsp;Kubernetes를 사용하여 실행
+#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/k8s.svg">&nbsp;Kubernetes를 사용하여 실행
 Kubernetes에서 실행하기 위한 예제 매니페스트는 `/k8s/` 폴더에서 찾을 수 있습니다(<a href="https://github.com/vuisme" target="_blank">@vuisme</a>님 감사합니다)
 
 
 ## 🔄&nbsp;&nbsp;litecart에서 마이그레이션
 
-이전 이름 **litecart**로 게시된 버전에서 업그레이드하는 경우 바이너리, Docker, Docker Compose, Kubernetes, Homebrew 및 Go 모듈 업데이트를 다루는 단계별 지침은 **[마이그레이션 가이드](./migration-from-litecart.md)**를 참조하세요. 데이터와 데이터베이스는 완전히 호환됩니다. 스키마 마이그레이션이 필요하지 않습니다.
+이전 이름 **litecart**로 게시된 버전에서 업그레이드하는 경우 바이너리, Docker, Docker Compose, Kubernetes, Homebrew 및 Go 모듈 업데이트를 다루는 단계별 지침은 **[마이그레이션 가이드](/migration-from-litecart)**를 참조하세요. 데이터와 데이터베이스는 완전히 호환됩니다. 스키마 마이그레이션이 필요하지 않습니다.
 
 ## ⬇️&nbsp;&nbsp;업데이트
 > [!WARNING]
@@ -245,7 +245,7 @@ Kubernetes에서 실행하기 위한 예제 매니페스트는 `/k8s/` 폴더에
 ```
 
 
-#### <img width="20" src="/.github/media/platforms/docker.svg">&nbsp; Docker를 사용하여 업데이트
+#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/docker.svg">&nbsp; Docker를 사용하여 업데이트
 우리의 만트라는 업데이트를 원활한 경험으로 만드는 것입니다. 새 이미지를 다운로드하고 평소처럼 컨테이너를 시작하기만 하면 됩니다. 예를 들어 [Docker Hub](https://hub.docker.com/r/shurco/mycart)를 사용하는 경우:
 
 ```bash
@@ -271,7 +271,7 @@ docker run \
 --rm shurco/mycart migrate
 ```
 
-#### <img width="20" src="/.github/media/platforms/k8s.svg">&nbsp;Kubernetes를 사용하여 실행
+#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/k8s.svg">&nbsp;Kubernetes를 사용하여 실행
 Kubernetes에서 실행하기 위한 예제 매니페스트는 `/k8s/` 폴더에서 찾을 수 있습니다(<a href="https://github.com/vuisme" target="_blank">@vuisme</a>님 감사합니다)
 
 ## 🚀&nbsp;&nbsp;시작하기
@@ -473,7 +473,7 @@ myCart는 무료 제품을 지원하므로 고객에게 무료로 디지털 콘�
 모든 코드는 `./web/site` 폴더에 있습니다. `cd ./web/site && bun run dev` 명령은 Vite 개발 서버를 시작합니다. `cd ./web/site && bun run build`를 실행하여 Go 바이너리가 `//go:embed`를 통해 임베드하는 프로덕션 번들을 생성합니다.
 
 #### 사용자 정의 및 배포
-사이트 디자인을 사용자 정의하고 Nginx를 사용하여 별도의 서버에 배포하는 방법에 대한 자세한 내용은 [사용자 정의 및 배포 가이드](./customization.md)를 참조하세요.
+사이트 디자인을 사용자 정의하고 Nginx를 사용하여 별도의 서버에 배포하는 방법에 대한 자세한 내용은 [사용자 정의 및 배포 가이드](/customization)를 참조하세요.
 
 ## 🗺️&nbsp;&nbsp;할 일 목록
 `mycart`에는 [로드맵](https://github.com/users/shurco/projects/2)이 있으며 특정 순서로 문제를 처리하려고 노력하며 이러한 PR은 종종 예상치 못한 곳에서 들어와 지루한 왕복 커뮤니케이션으로 모든 초기 계획을 왜곡합니다.
