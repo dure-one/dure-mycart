@@ -22,8 +22,8 @@ export default defineConfig({
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: 'Docs', link: '/' },
-      { text: 'API', link: '/swagger/' },
-      { text: 'E2E', link: '/e2e/' },
+      { text: 'API', link: '/swagger/', target: '_blank', rel: 'noopener noreferrer' },
+      { text: 'E2E', link: '/e2e/', target: '_blank', rel: 'noopener noreferrer' },
       { text: 'GitHub', link: 'https://github.com/shurco/mycart' }
     ],
 
