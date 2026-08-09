@@ -1,7 +1,19 @@
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
+import { tabsMarkdownPlugin } from 'vitepress-plugin-tabs'
+import { configureDiagramsPlugin } from 'vitepress-plugin-diagrams'
+import llmstxt, { copyOrDownloadAsMarkdownButtons } from 'vitepress-plugin-llms'
+import { withI18n } from 'vitepress-i18n'
+import { plantumlMarkdownPlugin, plantumlVitePlugin } from 'vitepress-plugin-plantuml'
+import { videoMarkdownPlugin } from 'vitepress-plugin-video'
+import { pdfMarkdownPlugin } from 'vitepress-plugin-pdf'
+import { qrcodeMarkdownPlugin } from 'vitepress-plugin-qrcode'
+import { stepsMarkdownPlugin } from 'vitepress-plugin-steps'
+import { collapseMarkdownPlugin } from 'vitepress-plugin-collapse'
+import { markdownPlugin as markMarkdownPlugin } from 'vitepress-plugin-mark'
 
 // https://vitepress.dev/reference/site-config
-export default defineConfig({
+const vitePressConfig = withMermaid(defineConfig({
   title: 'myCart',
   description: 'Open source shopping-cart backend API - a single-binary e-commerce solution',
   base: '/mycart/',
@@ -17,6 +29,40 @@ export default defineConfig({
   head: [
     ['link', { rel: 'icon', href: '/mycart/favicon.ico' }]
   ],
+
+  // Vite plugins configuration
+  vite: {
+    plugins: [llmstxt(), plantumlVitePlugin()]
+  },
+
+  // Markdown plugins configuration
+  markdown: {
+    config(md) {
+      md.use(tabsMarkdownPlugin)
+      md.use(configureDiagramsPlugin, {
+        krokilUrl: 'https://kroki.io'
+      })
+      md.use(copyOrDownloadAsMarkdownButtons)
+      md.use(plantumlMarkdownPlugin)
+      md.use(videoMarkdownPlugin, {
+        artplayer: true,
+        youtube: true,
+        bilibili: true,
+        acfun: true
+      })
+      md.use(pdfMarkdownPlugin)
+      md.use(qrcodeMarkdownPlugin)
+      md.use(stepsMarkdownPlugin)
+      md.use(collapseMarkdownPlugin)
+      md.use(markMarkdownPlugin)
+    },
+    languageAlias: { plantuml: 'txt' }
+  },
+
+  // Mermaid configuration
+  mermaid: {
+    theme: 'default'
+  },
 
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
@@ -61,4 +107,12 @@ export default defineConfig({
       provider: 'local'
     }
   }
-})
+}))
+
+// i18n configuration
+const i18nOptions = {
+  locales: ['en'],
+  rootLocale: 'en'
+}
+
+export default withI18n(vitePressConfig, i18nOptions)
