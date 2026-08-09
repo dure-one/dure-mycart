@@ -15,7 +15,7 @@ export function copyReadmePlugin(): Plugin {
 
         // Fix image URLs for docs context - use raw GitHub URLs
         content = content.replace(
-          /\.github\/media\//g,
+          /\/?\.github\/media\//g,
           'https://raw.githubusercontent.com/shurco/mycart/main/.github/media/'
         )
 
