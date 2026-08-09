@@ -15,6 +15,8 @@ hero:
     - theme: alt
       text: API Documentation
       link: /swagger/
+      target: _blank
+      rel: noopener noreferrer
 
 features:
   - icon: 📦
@@ -67,7 +69,7 @@ All components are embedded into a single binary using `go:embed`.
 ## Documentation
 
 - **[Getting Started](/readme)** - Installation and setup guide
-- **[API Documentation](/swagger/)** - Complete Swagger/OpenAPI documentation
+- **<a href="/mycart/swagger/" target="_blank" rel="noopener noreferrer">API Documentation</a>** - Complete Swagger/OpenAPI documentation
 - **[E2E Test Reports](/e2e/)** - Playwright test results
 - **[Customization](/customization)** - Customize your store
 - **[GitHub Repository](https://github.com/shurco/mycart)** - Source code and issues
