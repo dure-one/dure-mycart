@@ -22,7 +22,6 @@
     "markdown-it-mark": "^4.0.0",
     "mermaid": "^11.16.1",
     "vitepress": "^2.0.0-alpha.19",
-    "vitepress-i18n": "^1.3.5",
     "vitepress-plugin-collapse": "^0.12.0",
     "vitepress-plugin-diagrams": "^1.3.1",
     "vitepress-plugin-llms": "^1.13.4",

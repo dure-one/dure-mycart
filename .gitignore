@@ -87,3 +87,9 @@ playwright-report/
 .vitest-attachments/
 __screenshots__/
 reference/
+
+# VitePress cache
+docs/.vitepress/cache/
+
+# Generated from root README.md
+docs/readme.md
