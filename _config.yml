@@ -12,6 +12,10 @@ site_author: shurco
 repo_url: 'https://github.com/shurco/mycart'
 site_url: 'https://shurco.github.io/mycart/'
 
+# 404 page redirection rules - for github site repo, ex. {id}.github.io
+404_subsite_urls:
+  - /mycart/
+
 # Excluded items
 exclude:
   - .github
@@ -54,22 +58,22 @@ theme_config:
     gitHub: 'https://github.com/shurco/mycart'
   nav:
     Docs: /docs
-    API: /swagger
-    E2E: /e2e
-    GitHub: https://github.com/shurco/mycart
+    # API: /swagger
+    # E2E: /e2e
+    # GitHub: https://github.com/shurco/mycart
   sidebar:
     - Docs:
       - Guide:
           Home: /
-          "API Documentation": /swagger
-          "E2E Test Reports": /e2e
-    - API:
-      - API:
-          "Swagger UI": /swagger
-    - E2E:
-      - "Test Reports":
-          Admin: /e2e/admin
-          Site: /e2e/site
+          #"API Documentation": /swagger
+          #"E2E Test Reports": /e2e
+    # - API:
+    #   - API:
+    #       "Swagger UI": /swagger
+    # - E2E:
+    #   - "Test Reports":
+    #       Admin: /e2e/admin
+    #       Site: /e2e/site
 
 # GitHub Pages deployment
 # The workflow handles deployment, so we use --no-deploy flag
