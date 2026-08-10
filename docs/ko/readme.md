@@ -1,6 +1,6 @@
 <p align="center">
     <a href="#" target="_blank" rel="noopener">
-        <img src="https://github.com/shurco/mycart/blob/main/.github/media/banner.png" alt="myCart - 하나의 파일로 된 쇼핑카트" />
+        <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/banner.png" alt="myCart - 하나의 파일로 된 쇼핑카트" />
     </a>
 </p>
 
@@ -33,15 +33,15 @@ myCart는 임베디드 데이터베이스(SQLite) 1개 파일, 편리한 대시�
 > 현재 메이저 버전은 0(`v0.x.x`)이며, 사용자로부터 조기 피드백을 받는 동안 빠른 개발과 반복을 수용합니다. myCart는 여전히 활발히 개발 중이므로 v1.0.0에 도달하기 전까지는 완전한 하위 호환성이 보장되지 않습니다.
 
 ### 비디오 예제
-![예제](https://github.com/shurco/mycart/blob/main/.github/media/demo.gif)
+![예제](https://raw.githubusercontent.com/shurco/mycart/main/.github/media/demo.gif)
 
 ### 관리자 패널 스크린샷
 <p align="center">
-  <img src="https://github.com/shurco/mycart/blob/main/.github/media/screenshots/products.png" width="270">
-  <img src="https://github.com/shurco/mycart/blob/main/.github/media/screenshots/product-edit.png" width="270">
-  <img src="https://github.com/shurco/mycart/blob/main/.github/media/screenshots/carts.png" width="270">
-  <img src="https://github.com/shurco/mycart/blob/main/.github/media/screenshots/pages.png" width="270">
-  <img src="https://github.com/shurco/mycart/blob/main/.github/media/screenshots/settings.png" width="270">
+  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/products.png" width="270">
+  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/product-edit.png" width="270">
+  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/carts.png" width="270">
+  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/pages.png" width="270">
+  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/settings.png" width="270">
 </p>
 
 
@@ -226,7 +226,7 @@ Kubernetes에서 실행하기 위한 예제 매니페스트는 `/k8s/` 폴더에
 
 ## 🔄&nbsp;&nbsp;litecart에서 마이그레이션
 
-이전 이름 **litecart**로 게시된 버전에서 업그레이드하는 경우 바이너리, Docker, Docker Compose, Kubernetes, Homebrew 및 Go 모듈 업데이트를 다루는 단계별 지침은 **[마이그레이션 가이드](/migration-from-litecart)**를 참조하세요. 데이터와 데이터베이스는 완전히 호환됩니다. 스키마 마이그레이션이 필요하지 않습니다.
+이전 이름 **litecart**로 게시된 버전에서 업그레이드하는 경우 바이너리, Docker, Docker Compose, Kubernetes, Homebrew 및 Go 모듈 업데이트를 다루는 단계별 지침은 **[마이그레이션 가이드](/ko/migration-from-litecart)**를 참조하세요. 데이터와 데이터베이스는 완전히 호환됩니다. 스키마 마이그레이션이 필요하지 않습니다.
 
 ## ⬇️&nbsp;&nbsp;업데이트
 > [!WARNING]
@@ -473,7 +473,7 @@ myCart는 무료 제품을 지원하므로 고객에게 무료로 디지털 콘�
 모든 코드는 `./web/site` 폴더에 있습니다. `cd ./web/site && bun run dev` 명령은 Vite 개발 서버를 시작합니다. `cd ./web/site && bun run build`를 실행하여 Go 바이너리가 `//go:embed`를 통해 임베드하는 프로덕션 번들을 생성합니다.
 
 #### 사용자 정의 및 배포
-사이트 디자인을 사용자 정의하고 Nginx를 사용하여 별도의 서버에 배포하는 방법에 대한 자세한 내용은 [사용자 정의 및 배포 가이드](/customization)를 참조하세요.
+사이트 디자인을 사용자 정의하고 Nginx를 사용하여 별도의 서버에 배포하는 방법에 대한 자세한 내용은 [사용자 정의 및 배포 가이드](/ko/customization)를 참조하세요.
 
 ## 🗺️&nbsp;&nbsp;할 일 목록
 `mycart`에는 [로드맵](https://github.com/users/shurco/projects/2)이 있으며 특정 순서로 문제를 처리하려고 노력하며 이러한 PR은 종종 예상치 못한 곳에서 들어와 지루한 왕복 커뮤니케이션으로 모든 초기 계획을 왜곡합니다.
