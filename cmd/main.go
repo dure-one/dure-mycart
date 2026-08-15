@@ -1,3 +1,23 @@
+// @title           myCart API
+// @version         1.0
+// @description     Open source shopping-cart backend API - a single-binary e-commerce solution
+// @termsOfService  https://github.com/shurco/mycart
+
+// @contact.name   API Support
+// @contact.url    https://github.com/shurco/mycart/issues
+// @contact.email  support@mycart.com
+
+// @license.name  MIT
+// @license.url   https://opensource.org/licenses/MIT
+
+// @host      localhost:8080
+// @BasePath  /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
+
 package main
 
 import (
@@ -10,6 +30,8 @@ import (
 	app "github.com/shurco/mycart/internal"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/pkg/update"
+
+	_ "github.com/shurco/mycart/docs/swagger"
 )
 
 var (

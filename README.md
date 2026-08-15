@@ -1,6 +1,6 @@
 <p align="center">
     <a href="#" target="_blank" rel="noopener">
-        <img src="https://github.com/shurco/mycart/blob/main/.github/media/banner.png" alt="myCart - shopping-cart in 1 file" />
+        <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/banner.png" alt="myCart - shopping-cart in 1 file" />
     </a>
 </p>
 
@@ -33,15 +33,15 @@ Formerly known as **litecart** (legacy project name kept here for discoverabilit
 > Current major version is zero (`v0.x.x`) to accommodate rapid development and fast iteration while getting early feedback from users. Please keep in mind that myCart is still under active development and therefore full backward compatibility is not guaranteed before reaching v1.0.0.
 
 ### Video Example
-![Example](https://github.com/shurco/mycart/blob/main/.github/media/demo.gif)
+![Example](https://raw.githubusercontent.com/shurco/mycart/main/.github/media/demo.gif)
 
 ### Admin Panel Screenshots
 <p align="center">
-  <img src="https://github.com/shurco/mycart/blob/main/.github/media/screenshots/products.png" width="270">
-  <img src="https://github.com/shurco/mycart/blob/main/.github/media/screenshots/product-edit.png" width="270">
-  <img src="https://github.com/shurco/mycart/blob/main/.github/media/screenshots/carts.png" width="270">
-  <img src="https://github.com/shurco/mycart/blob/main/.github/media/screenshots/pages.png" width="270">
-  <img src="https://github.com/shurco/mycart/blob/main/.github/media/screenshots/settings.png" width="270">
+  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/products.png" width="270">
+  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/product-edit.png" width="270">
+  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/carts.png" width="270">
+  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/pages.png" width="270">
+  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/settings.png" width="270">
 </p>
 
 
@@ -74,7 +74,7 @@ Formerly known as **litecart** (legacy project name kept here for discoverabilit
 
 `mycart` is engineered for easy installation and operation, requiring just a single command from your terminal. Besides the conventional installation method, `mycart` can also be set up and operated via HomeBrew, Docker, or any other container orchestration tools like Docker Compose, Docker Swarm, Rancher, or Kubernetes.
 
-#### <img width="20" src="/.github/media/platforms/apple.svg">&nbsp;Install on macOS
+#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/apple.svg">&nbsp;Install on macOS
 The fastest method to install `mycart` on macOS involves using Homebrew. This will install the command-line tools and the `mycart` server as a combined executable. If you don't utilize Homebrew, adhere to the Linux instructions below for `mycart` installation.
 ```shell
 brew install shurco/tap/mycart
@@ -87,14 +87,14 @@ $ brew install mycart
 ```
 
 
-#### <img width="20" src="/.github/media/platforms/linux.svg">&nbsp;Install on Linux 
+#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/linux.svg">&nbsp;Install on Linux 
 The most straightforward and recommended method to start using `mycart` on Unix operating systems involves installing and utilizing the `mycart` command-line tool. Execute the given command in your terminal and adhere to the instructions displayed on the screen.
 
 ```bash
 curl -L https://raw.githubusercontent.com/shurco/mycart/main/scripts/install | sh
 ```
 
-#### <img width="20" src="/.github/media/platforms/windows.svg">&nbsp;Install on Windows
+#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/windows.svg">&nbsp;Install on Windows
 The simplest and most recommended method to start using `mycart` on Windows is by installing and utilizing the `mycart` command-line tool. Execute the given command in your terminal and adhere to the instructions displayed on the screen.
 ```bash
 curl -L https://raw.githubusercontent.com/shurco/mycart/main/scripts/install | sh
@@ -102,7 +102,7 @@ curl -L https://raw.githubusercontent.com/shurco/mycart/main/scripts/install | s
 or download and unzip the [latest version](https://github.com/shurco/mycart/releases/latest) for Windows.
 
 
-#### <img width="20" src="/.github/media/platforms/docker.svg">&nbsp;Run using Docker
+#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/docker.svg">&nbsp;Run using Docker
 Docker enables the management and operation of a `mycart` instance without requiring the installation of any command-line tools. The `mycart` Docker container includes all necessary command-line tools  or even for server execution.
 
 For [Docker Hub](https://hub.docker.com/r/shurco/mycart):
@@ -145,7 +145,7 @@ docker run \
   ghcr.io/shurco/mycart:latest
 ```
 
-#### <img width="20" src="/.github/media/platforms/docker.svg">&nbsp;Run using Docker Compose
+#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/docker.svg">&nbsp;Run using Docker Compose
 Docker Compose provides a convenient way to manage multiple containers and services. The project includes several Docker Compose configurations for different use cases.
 
 **Production Setup** (`docker/docker-compose.yml`):
@@ -220,7 +220,7 @@ ADMIN_EMAIL=admin@example.com
 docker-compose down
 ```
 
-#### <img width="20" src="/.github/media/platforms/k8s.svg">&nbsp;Run using Kubernetes
+#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/k8s.svg">&nbsp;Run using Kubernetes
 An example manifest for running on Kubernetes can be found in the `/k8s/` folder (thanks <a href="https://github.com/vuisme" target="_blank">@vuisme</a>)
 
 
@@ -245,7 +245,7 @@ If there were changes in the database structure during the update, it is necessa
 ```
 
 
-#### <img width="20" src="/.github/media/platforms/docker.svg">&nbsp; Update using Docker
+#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/docker.svg">&nbsp; Update using Docker
 Our mantra is to make updating a seamless experience. Simply download the new image and launch the container as you normally would. For example, if use [Docker Hub](https://hub.docker.com/r/shurco/mycart):
 
 ```bash
@@ -271,7 +271,7 @@ docker run \
 --rm shurco/mycart migrate
 ```
 
-#### <img width="20" src="/.github/media/platforms/k8s.svg">&nbsp;Run using Kubernetes
+#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/k8s.svg">&nbsp;Run using Kubernetes
 An example manifest for running on Kubernetes can be found in the `/k8s/` folder (thanks <a href="https://github.com/vuisme" target="_blank">@vuisme</a>)
 
 ## 🚀&nbsp;&nbsp;Getting started

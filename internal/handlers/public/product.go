@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/gofiber/fiber/v3"
 
+	_ "github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/queries"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/webutil"

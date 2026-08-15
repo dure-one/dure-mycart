@@ -16,8 +16,8 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:8080',
     trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure', // Available options: 'off' | 'on' | 'retain-on-failure' | 'on-first-retry'
+    screenshot: 'on', // Capture a screenshot after every single test execution
+    video: 'on', // Record a video for every single test execution
     actionTimeout: 10000,
   },
 
@@ -40,5 +40,10 @@ export default defineConfig({
     timeout: 30000, // 30 seconds for server start
     stdout: 'pipe',
     stderr: 'pipe',
+    // Graceful shutdown instead of force-kill
+    gracefulShutdown: {
+      signal: 'SIGTERM',
+      timeout: 1000, // Time in ms to wait before escalation
+    },
   },
 })

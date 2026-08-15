@@ -96,6 +96,13 @@ func setupRoutes(app *fiber.App, noSite bool) {
 	app.Use("/uploads", static.New("./lc_uploads"))
 	app.Use("/secrets", static.New("./lc_digitals"))
 
+	// Swagger documentation (development mode only)
+	if DevMode {
+		app.Use("/swagger", static.New("./docs/swagger", static.Config{
+			Browse: true,
+		}))
+	}
+
 	// Register API routes before InstallCheck so /api/install is reachable on first boot.
 	routes.ApiPrivateRoutes(app)
 	if !noSite {
@@ -121,7 +128,12 @@ func printStartupInfo(schema, mainAddr string, noSite bool) {
 	if !noSite {
 		fmt.Printf("├─ Cart UI: %s://%s/\n", schema, mainAddr)
 	}
-	fmt.Printf("└─ Admin UI: %s://%s/_/\n", schema, mainAddr)
+	fmt.Printf("├─ Admin UI: %s://%s/_/\n", schema, mainAddr)
+	if DevMode {
+		fmt.Printf("└─ API Docs: %s://%s/swagger/index.html\n", schema, mainAddr)
+	} else {
+		fmt.Print("└─ Swagger UI: disabled (use --dev flag to enable)\n")
+	}
 }
 
 // startHTTPS starts the server with HTTPS support and automatic TLS.

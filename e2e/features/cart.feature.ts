@@ -34,8 +34,17 @@ export class CartFeature {
   }
 
   async verifyCartHasItems(count: number) {
-    // Wait a moment for cart to load from localStorage
-    await this.page.waitForTimeout(1000)
+    if (count === 0) {
+      // For empty cart, wait for empty message
+      await this.verifyCartIsEmpty()
+      return
+    }
+
+    // Wait for cart items to appear in the DOM (up to 10 seconds)
+    // This ensures the cart has loaded from localStorage and rendered
+    await expect(this.page.locator('[data-testid="cart-item"]').first()).toBeVisible({ timeout: 10000 })
+
+    // Now count the items
     const items = await this.getCartItemCount()
     expect(items).toBe(count)
   }
