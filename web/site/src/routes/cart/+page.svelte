@@ -273,6 +273,9 @@
   }
 
   onMount(async () => {
+    // Always reload cart from localStorage on mount to ensure fresh data
+    cartStore.reload()
+
     email = getLocalStorage('email')
 
     // If cart is not free, load payment methods
