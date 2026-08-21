@@ -80,8 +80,7 @@
 
     try {
       cartStore.set(updatedCart)
-    } catch (err) {
-      console.error('Failed to update cart store:', err)
+    } catch {
       error = 'Failed to update cart. Please clear your cart and try again.'
       showOverlay = true
     }
@@ -123,12 +122,10 @@
 
   // Verify payment with backend
   async function verifyPayment(paymentId: string, cartId: string): Promise<boolean> {
-    console.log('Verifying payment with backend...')
     const verifyRes = await apiPost('/api/payment/portone/complete', {
       payment_id: paymentId,
       cart_id: cartId
     })
-    console.log('Backend verification response:', verifyRes)
 
     if (!verifyRes.success) {
       throw new Error('Payment verification failed: ' + (verifyRes.message || 'Unknown error'))
@@ -165,33 +162,35 @@
     const cartId = await createCartRecord(email, cart)
     debugLog('Cart created with ID:', cartId)
 
-    // Prepare and execute payment request
-    const paymentRequest = {
+    // Prepare and execute payment request.
+    // Currency comes from store settings (backend gates PortOne by
+    // SupportedCurrencies); payMethod is only meaningful for KRW channels —
+    // otherwise the PortOne payment window lets the buyer choose.
+    const paymentRequest: Record<string, unknown> = {
       storeId: portoneStoreId,
       channelKey: portoneChannelKey,
       paymentId: paymentId,
       orderName: `Order ${cart.length} items`,
       totalAmount: cartTotal,
-      currency: "KRW",
-      payMethod: "EASY_PAY",
+      currency: currency.toUpperCase(),
       customData: { cart_id: cartId }
     }
-    console.log('Payment request object:', paymentRequest)
+    if (currency.toUpperCase() === 'KRW') {
+      paymentRequest.payMethod = 'EASY_PAY'
+    }
+    debugLog('Payment request object:', paymentRequest)
 
     // Call PortOne SDK
-    console.log('Calling PortOne.requestPayment...')
     const response = await PortOne.requestPayment(paymentRequest)
-    console.log('PortOne payment response received:', response)
+    debugLog('PortOne payment response received:', response)
 
     // Check for payment errors
     if (response.code != null) {
-      console.error('PortOne returned error code:', response.code, 'message:', response.message)
       throw new Error(response.message)
     }
 
     // Verify payment with backend
     await verifyPayment(response.paymentId, cartId)
-    console.log('Payment verified successfully!')
 
     // Clear cart and redirect to success
     cartStore.set([])
@@ -317,13 +316,7 @@
     try {
       await handlePortonePayment(email, cart, cartTotal, currency)
     } catch (err) {
-      console.error('PortOne payment error (caught exception):', err)
-      console.error('Error type:', typeof err)
-      console.error('Error details:', err)
-      if (err instanceof Error) {
-        console.error('Error message:', err.message)
-        console.error('Error stack:', err.stack)
-      }
+      debugLog('PortOne payment error:', err)
 
       // Don't show error overlay if validation modal is already showing
       if (err instanceof Error && err.message === 'Cart validation failed') {
@@ -378,7 +371,6 @@
     const finalProvider = isFree ? 'dummy' : provider
 
     if (!isFree && !finalProvider) {
-      console.error('No payment provider selected')
       error = t('cart.selectPaymentError')
       showOverlay = true
       return

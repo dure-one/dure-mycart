@@ -29,6 +29,9 @@
   let currentSlide = $state(0)
   let selectedVariant = $state<ProductVariant | null>(null)
   let selectedQuantity = $state(1)
+  // Guards against a stale response from a previous slug overwriting the
+  // currently displayed product.
+  let latestSlugRequest = ''
 
   let currency = $derived($settingsStore?.main.currency || '')
   let truncationSettings = $derived($settingsStore?.payment?.truncation)
@@ -53,7 +56,7 @@
     cart.filter((item) => item.id === product.id)
   )
 
-  let displayPrice = $derived(() => {
+  let displayPrice = $derived.by(() => {
     if (!product) return 0
     if (product.has_variants && selectedVariant) {
       return product.amount + selectedVariant.price_surcharge
@@ -61,7 +64,7 @@
     return product.amount
   })
 
-  let canAddToCart = $derived(() => {
+  let canAddToCart = $derived.by(() => {
     if (!product) return false
     if (product.has_variants) {
       return selectedVariant !== null && selectedVariant.quantity > 0
@@ -78,12 +81,18 @@
       notFound = false
       currentSlide = 0
       selectedVariant = null
+      loading = true
+      latestSlugRequest = slug
       loadProduct(slug)
     }
   })
 
   async function loadProduct(slug: string) {
     const res = await apiGet<Product>(`/api/products/${slug}`)
+
+    // A newer navigation happened while this request was in flight.
+    if (latestSlugRequest !== slug) return
+
     loading = false
 
     if (res.success && res.result) {
@@ -293,7 +302,7 @@
 
             <button
               onclick={handleToggleCart}
-              disabled={!canAddToCart()}
+              disabled={!canAddToCart}
               class="w-full cursor-pointer border-4 border-black px-8 py-4 text-lg font-black tracking-wider uppercase transition-all duration-200 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] disabled:cursor-not-allowed disabled:opacity-50 {inCart
                 ? 'bg-red-500 text-white'
                 : 'bg-green-500 text-white'}"

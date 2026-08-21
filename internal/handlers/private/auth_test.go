@@ -29,9 +29,11 @@ func TestSignIn(t *testing.T) {
 			http.StatusBadRequest,
 		},
 		{
+			// Unknown email must be indistinguishable from a wrong password
+			// (same status and generic message) to prevent user enumeration.
 			"wrong email",
 			`{"email":"nobody@example.com","password":"Pass123"}`,
-			http.StatusInternalServerError,
+			http.StatusBadRequest,
 		},
 		{
 			"invalid email format",

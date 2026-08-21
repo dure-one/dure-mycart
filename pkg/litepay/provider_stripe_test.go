@@ -30,6 +30,7 @@ func TestStripe_Pay_HappyPath(t *testing.T) {
 			return
 		}
 		_, _ = w.Write([]byte(`{
+			"id": "cs_test_42",
 			"amount_total": 3000,
 			"currency": "usd",
 			"payment_status": "unpaid",
@@ -54,6 +55,9 @@ func TestStripe_Pay_HappyPath(t *testing.T) {
 	}
 	if p.URL != "https://checkout.stripe/s/abc" {
 		t.Errorf("url = %s", p.URL)
+	}
+	if p.MerchantID != "cs_test_42" {
+		t.Errorf("merchant id = %q, want cs_test_42", p.MerchantID)
 	}
 }
 

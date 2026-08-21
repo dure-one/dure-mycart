@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: Go vet / test / build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: true
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # Swagger docs (docs/swagger) and the admin/site SPA builds (web/*/build)
+      # are git-ignored artifacts; generate them so `go vet`/`go build` compile.
+      - name: Generate Swagger docs
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@v1.16.6
+          $(go env GOPATH)/bin/swag init \
+            -g cmd/main.go \
+            --output docs/swagger \
+            --parseDependency \
+            --parseInternal
+
+      - name: Build frontends (embedded via go:embed)
+        run: |
+          for app in admin site; do
+            (cd web/$app && bun install --frozen-lockfile && bun run build)
+          done
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./... -count=1 -race
+
+      - name: Build
+        run: go build ./...
+
+  frontend:
+    name: Frontend build (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [admin, site]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        working-directory: web/${{ matrix.app }}
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        working-directory: web/${{ matrix.app }}
+        run: bun run build
+
+      # Non-blocking for now: the apps have ~50 pre-existing type findings.
+      # Flip continue-on-error to false once `bun run check` is clean.
+      - name: Type check (svelte-check)
+        working-directory: web/${{ matrix.app }}
+        run: bun run check
+        continue-on-error: true

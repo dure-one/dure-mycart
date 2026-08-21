@@ -81,6 +81,15 @@ func determineSchemaAndAddr(httpAddr, httpsAddr string) (schema, mainAddr string
 func setupFiberApp(noSite bool) (*fiber.App, error) {
 	config := fiber.Config{
 		BodyLimit: DefaultBodyLimit,
+		// Trust loopback/private proxies so c.Scheme() (and therefore the
+		// Secure cookie flag and generated payment URLs) honors
+		// X-Forwarded-Proto from a TLS-terminating reverse proxy, while
+		// spoofed headers from direct clients are ignored.
+		TrustProxy: true,
+		TrustProxyConfig: fiber.TrustProxyConfig{
+			Loopback: true,
+			Private:  true,
+		},
 	}
 
 	// Site is now a SPA, no need for HTML templates
@@ -93,8 +102,11 @@ func setupFiberApp(noSite bool) (*fiber.App, error) {
 
 // setupRoutes configures application routes.
 func setupRoutes(app *fiber.App, noSite bool) {
+	// Public image uploads only. Digital products (lc_digitals) are
+	// intentionally NOT served statically: purchased files are delivered by
+	// email and admins download them via an authenticated endpoint
+	// (/api/_/products/:id/digital/:file_id/download).
 	app.Use("/uploads", static.New("./lc_uploads"))
-	app.Use("/secrets", static.New("./lc_digitals"))
 
 	// Swagger documentation (development mode only)
 	if DevMode {

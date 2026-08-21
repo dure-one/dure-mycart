@@ -60,8 +60,8 @@ func (c *stripe) Pay(cart Cart) (*Payment, error) {
 		}
 		params.Add("line_items["+iString+"][quantity]", strconv.Itoa(s.Quantity))
 	}
-	params.Add("success_url", fmt.Sprintf("%s/?payment_system=%s&cart_id=%s&session={CHECKOUT_SESSION_ID}", c.successURL, c.paymentSystem, cart.ID))
-	params.Add("cancel_url", fmt.Sprintf("%s/?payment_system=%s&cart_id=%s", c.cancelURL, c.paymentSystem, cart.ID))
+	params.Add("success_url", joinURL(c.successURL, fmt.Sprintf("payment_system=%s&cart_id=%s&session={CHECKOUT_SESSION_ID}", c.paymentSystem, cart.ID)))
+	params.Add("cancel_url", joinURL(c.cancelURL, fmt.Sprintf("payment_system=%s&cart_id=%s", c.paymentSystem, cart.ID)))
 	params.Add("mode", `payment`)
 	body := strings.NewReader(params.Encode())
 
@@ -92,6 +92,7 @@ func (c *stripe) Pay(cart Cart) (*Payment, error) {
 	}
 
 	checkout := &Payment{
+		MerchantID:    data["id"].(string),
 		AmountTotal:   int(data["amount_total"].(float64)),
 		Currency:      strings.ToUpper(data["currency"].(string)),
 		Status:        StatusPayment(STRIPE, data["payment_status"].(string)),

@@ -120,6 +120,7 @@ func (c *paypal) Pay(cart Cart) (*Payment, error) {
 	}
 
 	checkout := &Payment{
+		MerchantID:    data.ID,
 		AmountTotal:   int(totalAmount * 100),
 		Currency:      currency,
 		Status:        StatusPayment(PAYPAL, data.Status),

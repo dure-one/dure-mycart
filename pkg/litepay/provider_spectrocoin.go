@@ -2,6 +2,12 @@ package litepay
 
 import (
 	"bytes"
+	"crypto"
+	"crypto/rsa"
+	"crypto/sha1"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"net/http"
@@ -95,9 +101,9 @@ func (c *spectrocoin) Pay(cart Cart) (*Payment, error) {
 		"&payerName=" +
 		"&payerSurname=" +
 		"&culture=" +
-		"&callbackUrl=" + url.QueryEscape(fmt.Sprintf("%s/?payment_system=%s&cart_id=%s", c.callbackURL, c.paymentSystem, cart.ID)) +
-		"&successUrl=" + url.QueryEscape(fmt.Sprintf("%s/?payment_system=%s&cart_id=%s", c.successURL, c.paymentSystem, cart.ID)) +
-		"&failureUrl=" + url.QueryEscape(fmt.Sprintf("%s/?payment_system=%s&cart_id=%s", c.cancelURL, c.paymentSystem, cart.ID))
+		"&callbackUrl=" + url.QueryEscape(joinURL(c.callbackURL, fmt.Sprintf("payment_system=%s&cart_id=%s", c.paymentSystem, cart.ID))) +
+		"&successUrl=" + url.QueryEscape(joinURL(c.successURL, fmt.Sprintf("payment_system=%s&cart_id=%s", c.paymentSystem, cart.ID))) +
+		"&failureUrl=" + url.QueryEscape(joinURL(c.cancelURL, fmt.Sprintf("payment_system=%s&cart_id=%s", c.paymentSystem, cart.ID)))
 
 	signature, err := signMessage(body, c.privateKey)
 	if err != nil {
@@ -135,4 +141,80 @@ func (c *spectrocoin) Pay(cart Cart) (*Payment, error) {
 
 func (c *spectrocoin) Checkout(payment *Payment, session string) (*Payment, error) {
 	return nil, nil
+}
+
+// spectroCoinPublicKey is the official SpectroCoin Merchant API public key
+// (https://spectrocoin.com/files/merchant.public.pem). SpectroCoin signs every
+// order callback with its private counterpart, so callback payloads must be
+// verified against this key before any field (status, amount, order id) is
+// trusted.
+const spectroCoinPublicKey = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA/Z5qppUzgJ/QvTgmo/UO
+qb+lxPMF6xdOE6MwwGGJFP9HZX8nESPS/WPD4DRIx8htNjvwrE5mAsU7Y16WRKfR
+Huraepi98zJizDWQLDpzYTz4auRdE5RdYnb0ojR+tUJSSt0q4goIIDwCLtgC5JSY
+VPMs2rjzXYRjepF8+NNzpTvKZXqhJCb3dw9nyJNy0vYan7maOLLBWHQNoJbLifqt
+2A0Q1zphMXiufaoxqUJ3+0ysLp2G/qvv/j9Lg+OHTao0vIhz/dMqhjtk+MDguoCb
+aOzFW43seYdxPWpCbv0JwTwDvXf9jP7jYb4f6yGHLVCOBt40rKLZENI29qDZii0p
+JwIDAQAB
+-----END PUBLIC KEY-----`
+
+// VerifySpectrocoinCallback validates the RSA-SHA1 signature of a SpectroCoin
+// order callback as specified by the Merchant API: the signed data is the
+// UTF-8 URL-encoded concatenation of callback parameters (in documented
+// order, numbers formatted with the "0.0#######" pattern) and the base64
+// decoded `sign` field must verify against the embedded SpectroCoin public key.
+func VerifySpectrocoinCallback(cb *CallbackSpectrocoin) error {
+	return verifySpectrocoinCallback(spectroCoinPublicKey, cb)
+}
+
+func verifySpectrocoinCallback(publicKeyPEM string, cb *CallbackSpectrocoin) error {
+	if cb == nil || cb.Sign == "" {
+		return errors.New("empty callback signature")
+	}
+
+	block, _ := pem.Decode([]byte(publicKeyPEM))
+	if block == nil {
+		return errors.New("invalid SpectroCoin public key")
+	}
+	parsed, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("parse SpectroCoin public key: %w", err)
+	}
+	publicKey, ok := parsed.(*rsa.PublicKey)
+	if !ok {
+		return errors.New("SpectroCoin key is not RSA")
+	}
+
+	signature, err := base64.StdEncoding.DecodeString(cb.Sign)
+	if err != nil {
+		return fmt.Errorf("invalid signature encoding: %w", err)
+	}
+
+	hash := sha1.Sum([]byte(callbackSignString(cb)))
+	return rsa.VerifyPKCS1v15(publicKey, crypto.SHA1, hash[:], signature)
+}
+
+// callbackSignString builds the exact string that SpectroCoin signs for an
+// order callback. Field set and order follow the Merchant API specification.
+func callbackSignString(cb *CallbackSpectrocoin) string {
+	return "merchantId=" + strconv.Itoa(cb.MerchantID) +
+		"&apiId=" + strconv.Itoa(cb.ApiID) +
+		"&orderId=" + url.QueryEscape(cb.OrderID) +
+		"&payCurrency=" + url.QueryEscape(cb.PayCurrency) +
+		"&payAmount=" + spectrocoinAmount(cb.PayAmount) +
+		"&receiveCurrency=" + url.QueryEscape(cb.ReceiveCurrency) +
+		"&receiveAmount=" + spectrocoinAmount(cb.ReceiveAmount) +
+		"&description=" + url.QueryEscape(cb.Description) +
+		"&orderRequestId=" + strconv.Itoa(cb.OrderRequestID) +
+		"&status=" + strconv.Itoa(cb.Status)
+}
+
+// spectrocoinAmount formats a number using the "0.0#######" pattern required
+// by the signing specification: at least one fractional digit, no trailing zeros.
+func spectrocoinAmount(v float64) string {
+	s := strconv.FormatFloat(v, 'f', -1, 64)
+	if !strings.Contains(s, ".") {
+		s += ".0"
+	}
+	return s
 }

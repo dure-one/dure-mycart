@@ -64,6 +64,21 @@ func customKeyFunc() jwt.Keyfunc {
 			return nil, fmt.Errorf("JWT secret is empty or not configured")
 		}
 
+		// Revocation check: a signed token is only accepted while its session
+		// row still exists (sign-out deletes the row), so leaked tokens can be
+		// invalidated before their TTL expires.
+		claims, ok := t.Claims.(jwt.MapClaims)
+		if !ok {
+			return nil, fmt.Errorf("invalid token claims")
+		}
+		sessionID, ok := claims["id"].(string)
+		if !ok || sessionID == "" {
+			return nil, fmt.Errorf("token has no session id")
+		}
+		if _, err := db.GetSession(ctx, sessionID); err != nil {
+			return nil, fmt.Errorf("session not found or expired")
+		}
+
 		return []byte(settingJWT.Secret), nil
 	}
 }
