@@ -18,6 +18,7 @@
   import { translate } from '$lib/i18n'
   import { CURRENCIES } from '$lib/config/currencies'
   import { DRAWER_CLOSE_DELAY_MS } from '$lib/constants/ui'
+  import { createDelayedReset } from '$lib/utils/delayedReset'
   import type { PaymentSettings, TruncationSettings as TruncationSettingsType, CurrencyTruncationSettings, SymbolDisplaySettings } from '$lib/types/models'
 
   // Settings version key for cache invalidation (localStorage is shared across tabs)
@@ -195,11 +196,13 @@
     drawerOpen = true
   }
 
+  const resetDrawer = createDelayedReset(DRAWER_CLOSE_DELAY_MS)
+
   function closeDrawer() {
     drawerOpen = false
-    setTimeout(() => {
+    resetDrawer(() => {
       drawerMode = null
-    }, DRAWER_CLOSE_DELAY_MS)
+    })
   }
 </script>
 

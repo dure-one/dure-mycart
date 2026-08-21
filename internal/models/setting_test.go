@@ -5,20 +5,22 @@ import (
 	"testing"
 )
 
-// Main.Validate applies validation.Min to SiteName, which is a string and
-// therefore always errors with "cannot convert string to int64". That is
-// clearly a pre-existing bug (Length/Required were likely intended) but
-// fixing it silently would change API semantics for existing installs, so
-// this test locks the current behaviour so any refactor is intentional.
-func TestMain_Validate_CurrentQuirk(t *testing.T) {
+// Main.Validate requires a non-empty site name (1..100 chars) and valid
+// domain/email. The historical `validation.Min(6)` on the string SiteName
+// always errored ("cannot convert string to int64"); it was replaced with an
+// explicit Length rule so group validation can run on every settings update.
+func TestMain_Validate(t *testing.T) {
 	t.Parallel()
-	err := (Main{SiteName: "MyShop1", Domain: "example.com", Email: "admin@example.com"}).Validate()
-	if err == nil {
-		t.Fatal("Main.Validate stopped returning the Min-on-string quirk: please update this test")
+	if err := (Main{SiteName: "MyShop1", Domain: "example.com", Email: "admin@example.com"}).Validate(); err != nil {
+		t.Fatalf("valid main rejected: %v", err)
+	}
+
+	if err := (Main{SiteName: "", Domain: "example.com", Email: "admin@example.com"}).Validate(); err == nil {
+		t.Error("empty site name must fail")
 	}
 
 	// Other validators (email/domain) still gate separately.
-	err = (Main{SiteName: "MyShop1", Domain: "not a host", Email: "admin@example.com"}).Validate()
+	err := (Main{SiteName: "MyShop1", Domain: "not a host", Email: "admin@example.com"}).Validate()
 	if err == nil {
 		t.Error("bad domain must fail")
 	}

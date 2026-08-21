@@ -12,10 +12,22 @@ import (
 	"errors"
 	"io"
 	"slices"
+	"strings"
 )
 
 func supportsCurrency(supported []string, currency string) bool {
 	return slices.Contains(supported, currency)
+}
+
+// joinURL appends a raw query string to a base URL using the correct
+// separator, so callers may pass base URLs that already contain query
+// parameters (e.g. a cancel URL carrying a capability token).
+func joinURL(base, query string) string {
+	sep := "?"
+	if strings.Contains(base, "?") {
+		sep = "&"
+	}
+	return base + sep + query
 }
 
 func signMessage(message, privKey string) (string, error) {

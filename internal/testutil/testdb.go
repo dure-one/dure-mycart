@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"net/http/httptest"
@@ -73,7 +74,8 @@ func SetupTestDB(t *testing.T) func() {
 }
 
 // SetupTestApp creates in-memory DB with fixtures, Fiber app, and JWT cookie.
-// Fixtures already contain installed state + JWT secret.
+// Fixtures already contain installed state + JWT secret. A matching session
+// row is created so the token passes the middleware revocation check.
 func SetupTestApp(t *testing.T) (app *fiber.App, cookie string, cleanup func()) {
 	t.Helper()
 
@@ -84,6 +86,10 @@ func SetupTestApp(t *testing.T) (app *fiber.App, cookie string, cleanup func()) 
 	tok, err := jwtutil.GenerateNewToken(FixtureJWTSecret, "test-user-id", exp, nil)
 	if err != nil {
 		t.Fatalf("generate jwt: %v", err)
+	}
+
+	if err := queries.DB().AddSession(context.Background(), "test-user-id", "admin", exp); err != nil {
+		t.Fatalf("add session: %v", err)
 	}
 
 	return app, "token=" + tok, func() {
@@ -135,4 +141,13 @@ func AssertStatus(t *testing.T, resp *http.Response, want ...int) {
 		}
 	}
 	t.Errorf("status = %d, want one of %v", resp.StatusCode, want)
+}
+
+// AssertStatusCode checks a status code that was read before the body was
+// consumed (e.g. via io.ReadAll).
+func AssertStatusCode(t *testing.T, got, want int) {
+	t.Helper()
+	if got != want {
+		t.Errorf("status = %d, want %d", got, want)
+	}
 }

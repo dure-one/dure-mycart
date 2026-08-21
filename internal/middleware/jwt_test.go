@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
+	"github.com/shurco/mycart/internal/queries"
 	"github.com/shurco/mycart/internal/testutil"
 	"github.com/shurco/mycart/pkg/jwtutil"
 )
@@ -21,8 +22,15 @@ func TestJWTProtected(t *testing.T) {
 	app.Use(JWTProtected())
 	app.Get("/api/test", func(c fiber.Ctx) error { return c.SendStatus(http.StatusOK) })
 
-	validTok := mustGenerateToken(t, testutil.FixtureJWTSecret)
-	wrongTok := mustGenerateToken(t, "wrongsecret")
+	validID := uuid.NewString()
+	exp := time.Now().Add(time.Hour).Unix()
+	if err := queries.DB().AddSession(t.Context(), validID, "admin", exp); err != nil {
+		t.Fatalf("add session: %v", err)
+	}
+
+	validTok := mustGenerateToken(t, testutil.FixtureJWTSecret, validID)
+	wrongTok := mustGenerateToken(t, "wrongsecret", uuid.NewString())
+	revokedTok := mustGenerateToken(t, testutil.FixtureJWTSecret, uuid.NewString()) // signed ok, no session row
 
 	tests := []struct {
 		name        string
@@ -30,9 +38,10 @@ func TestJWTProtected(t *testing.T) {
 		wantStatus  []int
 	}{
 		{"no token", "", []int{http.StatusUnauthorized, http.StatusBadRequest}},
-		{"valid token", "Bearer " + validTok, []int{http.StatusOK}},
+		{"valid token with session", "Bearer " + validTok, []int{http.StatusOK}},
 		{"invalid token", "Bearer badtoken", []int{http.StatusUnauthorized, http.StatusBadRequest}},
 		{"wrong secret", "Bearer " + wrongTok, []int{http.StatusUnauthorized, http.StatusBadRequest}},
+		{"revoked session", "Bearer " + revokedTok, []int{http.StatusUnauthorized}},
 	}
 
 	for _, tt := range tests {
@@ -50,9 +59,9 @@ func TestJWTProtected(t *testing.T) {
 	}
 }
 
-func mustGenerateToken(t *testing.T, secret string) string {
+func mustGenerateToken(t *testing.T, secret, id string) string {
 	t.Helper()
-	tok, err := jwtutil.GenerateNewToken(secret, uuid.NewString(), time.Now().Add(time.Hour).Unix(), nil)
+	tok, err := jwtutil.GenerateNewToken(secret, id, time.Now().Add(time.Hour).Unix(), nil)
 	if err != nil {
 		t.Fatalf("generate token: %v", err)
 	}

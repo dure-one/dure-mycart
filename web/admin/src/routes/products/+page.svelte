@@ -24,6 +24,7 @@
   import { CENTS_PER_UNIT, DEFAULT_AMOUNT } from '$lib/constants/pricing'
   import { DEFAULT_PAGE_SIZE } from '$lib/constants/pagination'
   import { DRAWER_CLOSE_DELAY_MS } from '$lib/constants/ui'
+  import { createDelayedReset } from '$lib/utils/delayedReset'
   import type { Product, ProductOption, ProductVariant } from '$lib/types/models'
   import { paymentSettingsStore } from '$lib/stores/payment'
   import { translate, locale } from '$lib/i18n'
@@ -338,13 +339,15 @@
     closeDrawer()
   }
 
+  const resetDrawer = createDelayedReset(DRAWER_CLOSE_DELAY_MS)
+
   function closeDrawer() {
     if (drawerOpen) {
       drawerOpen = false
-      setTimeout(() => {
+      resetDrawer(() => {
         drawerProduct = null
         drawerMode = 'view'
-      }, DRAWER_CLOSE_DELAY_MS)
+      })
     }
   }
 

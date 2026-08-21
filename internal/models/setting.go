@@ -15,7 +15,7 @@ type Main struct {
 // Validate is ...
 func (v Main) Validate() error {
 	return validation.ValidateStruct(&v,
-		validation.Field(&v.SiteName, validation.Min(6)),
+		validation.Field(&v.SiteName, validation.Required, validation.Length(1, 100)),
 		validation.Field(&v.Domain, is.Domain),
 		validation.Field(&v.Email, is.Email),
 	)

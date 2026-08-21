@@ -122,12 +122,15 @@
   }
 
   import { DRAWER_CLOSE_DELAY_MS } from '$lib/constants/ui'
+  import { createDelayedReset } from '$lib/utils/delayedReset'
+
+  const resetDrawer = createDelayedReset(DRAWER_CLOSE_DELAY_MS)
 
   function closeDrawer() {
     drawerOpen = false
-    setTimeout(() => {
+    resetDrawer(() => {
       drawerMode = null
-    }, DRAWER_CLOSE_DELAY_MS)
+    })
   }
 </script>
 

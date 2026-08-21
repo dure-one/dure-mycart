@@ -2,6 +2,7 @@ package queries
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/shurco/mycart/internal/models"
@@ -107,8 +108,7 @@ func TestCartLetterPurchase_CartNotFound(t *testing.T) {
 	}
 }
 
-func TestCartLetterPurchase_HappyPath_DataType(t *testing.T) {
-	db, ctx := bootstrap(t)
+func TestCartLetterPurchase_HappyPath_DataType(t *testing.T) {	db, ctx := bootstrap(t)
 
 	p, err := db.AddProduct(ctx, validProductInput())
 	if err != nil {
@@ -157,6 +157,68 @@ func TestCartLetterPurchase_HappyPath_DataType(t *testing.T) {
 	}
 	if mail.Data["Purchases"] == "" {
 		t.Errorf("Purchases empty: %+v", mail.Data)
+	}
+}
+
+func TestCartLetterPurchase_HappyPath_FileType(t *testing.T) {
+	db, ctx := bootstrap(t)
+
+	p, err := db.AddProduct(ctx, func() *models.Product {
+		in := validProductInput()
+		in.Digital = models.Digital{Type: "file"}
+		return in
+	}())
+	if err != nil {
+		t.Fatalf("AddProduct: %v", err)
+	}
+	file1, err := db.AddDigitalFile(ctx, p.ID, "uuid-1", "pdf", "manual.pdf")
+	if err != nil {
+		t.Fatalf("AddDigitalFile: %v", err)
+	}
+	if _, err := db.AddDigitalFile(ctx, p.ID, "uuid-2", "zip", "assets.zip"); err != nil {
+		t.Fatalf("AddDigitalFile: %v", err)
+	}
+
+	cart := &models.Cart{
+		Core:          models.Core{ID: "cart-f1"},
+		Email:         "buyer@example.com",
+		Currency:      "USD",
+		AmountTotal:   1000,
+		PaymentStatus: litepay.PAID,
+		PaymentSystem: "dummy",
+		Cart:          []models.CartProduct{{ProductID: p.ID, Quantity: 1}},
+	}
+	if err := db.AddCart(ctx, cart); err != nil {
+		t.Fatalf("AddCart: %v", err)
+	}
+
+	tpl, _ := json.Marshal(models.Letter{Subject: "Your order", Text: "{Purchases}"})
+	if err := db.UpdateSettingByKey(ctx, &models.SettingName{
+		Key:   "mail_letter_purchase",
+		Value: string(tpl),
+	}); err != nil {
+		t.Fatalf("seed template: %v", err)
+	}
+	if err := db.UpdateSettingByKey(ctx, &models.SettingName{
+		Key:   "email",
+		Value: "admin@example.com",
+	}); err != nil {
+		t.Fatalf("seed email: %v", err)
+	}
+
+	mail, err := db.CartLetterPurchase(ctx, "cart-f1")
+	if err != nil {
+		t.Fatalf("CartLetterPurchase: %v", err)
+	}
+
+	if len(mail.Files) != 2 {
+		t.Fatalf("expected 2 attached files, got %d", len(mail.Files))
+	}
+	if mail.Files[0].ID != file1.ID || mail.Files[0].OrigName != "manual.pdf" {
+		t.Errorf("unexpected first file: %+v", mail.Files[0])
+	}
+	if !strings.Contains(mail.Data["Purchases"], "manual.pdf") {
+		t.Errorf("Purchases should list file names, got: %q", mail.Data["Purchases"])
 	}
 }
 

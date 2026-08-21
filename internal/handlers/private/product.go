@@ -1,7 +1,11 @@
 package handlers
 
 import (
+	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/disintegration/imaging"
@@ -211,6 +215,9 @@ func DeleteProduct(c fiber.Ctx) error {
 	log := logging.New()
 
 	if err := db.DeleteProduct(c.Context(), productID); err != nil {
+		if errors.Is(err, errors.ErrProductSold) {
+			return webutil.StatusBadRequest(c, errors.MsgProductSold)
+		}
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
@@ -292,9 +299,17 @@ func AddProductImage(c fiber.Ctx) error {
 		return webutil.StatusBadRequest(c, err.Error())
 	}
 
-	mimeType := file.Header["Content-Type"][0]
+	// Trust the file bytes, not the client-declared Content-Type header.
+	mimeType, err := sniffMIMEType(file)
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusBadRequest(c, "cannot read uploaded file")
+	}
 	if !validateImageMIME(mimeType) {
 		return webutil.StatusBadRequest(c, "file format not supported")
+	}
+	if !slices.Contains(validImageExtensions, normalizeExt(file.Filename)) {
+		return webutil.StatusBadRequest(c, "file extension not supported")
 	}
 
 	fileUUID, fileExt, fileName := generateFileName(file.Filename)
@@ -306,10 +321,13 @@ func AddProductImage(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
+	// Validate that the payload really is a decodable image; otherwise remove
+	// the stored file so invalid content never persists on disk.
 	fileSource, err := imaging.Open(filePath)
 	if err != nil {
 		log.ErrorStack(err)
-		return webutil.StatusInternalServerError(c)
+		_ = os.Remove(filePath)
+		return webutil.StatusBadRequest(c, "file is not a valid image")
 	}
 
 	sizes := []struct {
@@ -325,6 +343,8 @@ func AddProductImage(c fiber.Ctx) error {
 		resizedPath := fmt.Sprintf("%s/%s_%s.%s", dirUploads, fileUUID, s.size, fileExt)
 		if err := imaging.Save(resizedImage, resizedPath); err != nil {
 			log.ErrorStack(err)
+			_ = os.Remove(filePath)
+			_ = os.Remove(fmt.Sprintf("%s/%s_sm.%s", dirUploads, fileUUID, fileExt))
 			return webutil.StatusInternalServerError(c)
 		}
 	}
@@ -413,6 +433,13 @@ func AddProductDigital(c fiber.Ctx) error {
 
 	fileTmp, _ := c.FormFile("document")
 	if fileTmp != nil {
+		// Defense in depth: never accept active-content file types as
+		// digital products (they are delivered by email and downloadable
+		// by admins).
+		if slices.Contains(blockedDigitalExtensions, normalizeExt(fileTmp.Filename)) {
+			return webutil.StatusBadRequest(c, "file type not allowed")
+		}
+
 		fileUUID, fileExt, fileName := generateFileName(fileTmp.Filename)
 		filePath := fmt.Sprintf("%s/%s", dirDigitals, fileName)
 		fileOrigName := fileTmp.Filename
@@ -438,6 +465,49 @@ func AddProductDigital(c fiber.Ctx) error {
 	}
 
 	return webutil.Response(c, fiber.StatusOK, "Digital added", data)
+}
+
+// DownloadProductDigital streams a digital file to an authenticated admin.
+// Replaces the former public /secrets static mount.
+//
+// @Summary      Download digital file
+// @Description  Stream a product digital file as an attachment
+// @Tags         Products
+// @Security     BearerAuth
+// @Param        product_id  path string true "Product ID"
+// @Param        digital_id  path string true "Digital file ID"
+// @Success      200 {file} file "File content"
+// @Failure      404 {object} webutil.HTTPResponse "File not found"
+// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
+// @Router       /api/_/products/{product_id}/digital/{digital_id}/download [get]
+func DownloadProductDigital(c fiber.Ctx) error {
+	productID := c.Params("product_id")
+	fileID := c.Params("digital_id")
+	db := queries.DB()
+	log := logging.New()
+
+	file, err := db.DigitalFile(c.Context(), productID, fileID)
+	if err != nil {
+		if errors.Is(err, errors.ErrProductNotFound) {
+			return webutil.StatusNotFound(c)
+		}
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	filePath := filepath.Join(dirDigitals, file.Name+"."+file.Ext)
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusNotFound(c)
+	}
+
+	c.Set(fiber.HeaderContentType, "application/octet-stream")
+	c.Set(fiber.HeaderContentDisposition,
+		fmt.Sprintf(`attachment; filename="%s"`, file.OrigName))
+	c.Set(fiber.HeaderXContentTypeOptions, "nosniff")
+
+	return c.SendStream(bytes.NewReader(content))
 }
 
 // UpdateProductDigital updates digital content for a product.

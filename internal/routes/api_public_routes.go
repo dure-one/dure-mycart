@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	handlers "github.com/shurco/mycart/internal/handlers/public"
+	"github.com/shurco/mycart/internal/middleware"
 )
 
 // ApiPublicRoutes sets up public API routes accessible without authentication.
@@ -18,8 +19,8 @@ func ApiPublicRoutes(c *fiber.App) {
 	product.Get("/:product_id", handlers.Product)
 
 	cart := c.Group("/cart")
-	cart.Post("/payment", handlers.Payment)
-	cart.Post("/payment/callback", handlers.PaymentCallback)
+	cart.Post("/payment", middleware.AuthLimiter(), handlers.Payment)
+	cart.Post("/payment/callback", middleware.AuthLimiter(), handlers.PaymentCallback)
 
 	c.Get("/api/cart/payment", handlers.PaymentList)
 	c.Post("/api/cart/create", handlers.CreateCart)

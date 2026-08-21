@@ -90,7 +90,6 @@ jobs:
         run: |
           # Let Patchright manage server lifecycle via webServer config
           npx patchright test --reporter=html
-        continue-on-error: true
 
       # 7. Build VitePress documentation
       - name: Build VitePress Docs

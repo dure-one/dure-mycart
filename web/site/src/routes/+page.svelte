@@ -17,18 +17,27 @@
 
   let products = $state<Product[]>([])
   let load = $state(false)
+  let loadError = $state(false)
   let currentPage = $state(1)
   let limit = $state(20)
   let total = $state(0)
+  // Guards against stale responses overwriting fresh state when the user
+  // clicks through pagination faster than requests resolve.
+  let latestRequest = 0
 
   async function loadProducts(page = currentPage) {
+    const requestId = ++latestRequest
     load = false
+    loadError = false
     currentPage = page
     const res = await apiGet<ProductsResponse>(`/api/products?page=${page}&limit=${limit}`)
+    if (requestId !== latestRequest) return
     if (res.success && res.result) {
       products = res.result.products || []
       total = res.result.total || 0
       load = true
+    } else {
+      loadError = true
     }
   }
 
@@ -64,6 +73,12 @@
       <div class="py-20 text-center">
         <div class="inline-block border-4 border-black bg-white px-8 py-6">
           <p class="text-2xl font-black tracking-wider text-black uppercase">{t('home.noProductsFound')}</p>
+        </div>
+      </div>
+    {:else if loadError}
+      <div class="py-20 text-center">
+        <div class="inline-block border-4 border-black bg-red-100 px-8 py-6">
+          <p class="text-xl font-black tracking-wider text-black uppercase">{t('common.error') || 'Failed to load products'}</p>
         </div>
       </div>
     {:else}
