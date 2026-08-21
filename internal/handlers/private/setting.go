@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"slices"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -149,10 +150,34 @@ func GetSetting(c fiber.Ctx) error {
 // @Failure      400 {object} webutil.HTTPResponse "Validation error"
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/_/settings/{setting_key} [patch]
+// protectedSettingKeys are raw setting keys that must never be writable via
+// the generic key/value PATCH fallback: flipping them would let an attacker
+// re-open the unauthenticated install endpoint (installed), or rotate the
+// token-signing secret (jwt_secret) for a persistent backdoor.
+var protectedSettingKeys = []string{"installed", "jwt_secret"}
+
+// UpdateSetting updates a setting value by key.
+//
+// @Summary      Update setting
+// @Description  Update a setting group or individual setting by key
+// @Tags         Settings
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        setting_key path string true "Setting key"
+// @Param        request     body object true "Setting value (structure depends on key)"
+// @Success      200 {object} webutil.HTTPResponse "Setting updated"
+// @Failure      400 {object} webutil.HTTPResponse "Validation error"
+// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
+// @Router       /api/_/settings/{setting_key} [patch]
 func UpdateSetting(c fiber.Ctx) error {
 	db := queries.DB()
 	log := logging.New()
 	settingKey := c.Params("setting_key")
+
+	if slices.Contains(protectedSettingKeys, settingKey) {
+		return webutil.StatusBadRequest(c, "setting key is protected")
+	}
 
 	var request any
 	switch {
@@ -172,6 +197,20 @@ func UpdateSetting(c fiber.Ctx) error {
 		return webutil.StatusBadRequest(c, err.Error())
 	}
 
+	// Raw key/value writes get their key from the URL path before validation.
+	if settingName, ok := request.(*models.SettingName); ok {
+		settingName.Key = settingKey
+	}
+
+	// Run model validation when the bound struct defines it, so stored
+	// settings always satisfy their declared constraints.
+	if v, ok := request.(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			log.ErrorStack(err)
+			return webutil.StatusBadRequest(c, err.Error())
+		}
+	}
+
 	// Handle the password update separately if that's the case
 	if settingKey == "password" {
 		password := request.(*models.Password)
@@ -183,7 +222,6 @@ func UpdateSetting(c fiber.Ctx) error {
 	}
 
 	if settingName, ok := request.(*models.SettingName); ok {
-		settingName.Key = settingKey
 		if err := db.UpdateSettingByKey(c.Context(), settingName); err != nil {
 			log.ErrorStack(err)
 			return webutil.StatusInternalServerError(c)

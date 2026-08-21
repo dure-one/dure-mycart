@@ -36,15 +36,22 @@ COPY . .
 COPY --from=frontend-build /app/web/admin/build ./web/admin/build
 COPY --from=frontend-build /app/web/site/build ./web/site/build
 
-# Build the binary
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /go/bin/mycart ./cmd/main.go
+# Build the binary for the target platform requested by the builder
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags="-w -s" -o /go/bin/mycart ./cmd/main.go
 
-# Stage 3: Final runtime image
-FROM gcr.io/distroless/static-debian12
+# Stage 3: Final runtime image (non-root)
+# The binary and its workdir are owned by nonroot so the app can create its
+# runtime-writable directories (lc_base, lc_uploads, lc_digitals, lc_certs).
+FROM gcr.io/distroless/static-debian12:nonroot
 
-COPY --from=backend-build /go/bin/mycart /mycart
+COPY --from=backend-build --chown=nonroot:nonroot /go/bin/mycart /app/
+
+WORKDIR /app
 
 EXPOSE 8080
 
-ENTRYPOINT ["/mycart"]
+USER nonroot:nonroot
+
+ENTRYPOINT ["/app/mycart"]
 CMD ["serve"]

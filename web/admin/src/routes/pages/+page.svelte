@@ -28,6 +28,7 @@
 
   import { DEFAULT_PAGE_SIZE } from '$lib/constants/pagination'
   import { DRAWER_CLOSE_DELAY_MS } from '$lib/constants/ui'
+  import { createDelayedReset } from '$lib/utils/delayedReset'
 
   let pages = $state<Page[]>([])
   let loading = $state(true)
@@ -105,13 +106,15 @@
     drawerOpen = true
   }
 
+  const resetDrawer = createDelayedReset(DRAWER_CLOSE_DELAY_MS)
+
   function closeDrawer() {
     if (drawerOpen) {
       drawerOpen = false
-      setTimeout(() => {
+      resetDrawer(() => {
         drawerPage = null
         drawerMode = 'add'
-      }, DRAWER_CLOSE_DELAY_MS)
+      })
     }
   }
 

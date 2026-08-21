@@ -585,8 +585,8 @@ func (q *CartQueries) AddCart(ctx context.Context, cart *models.Cart) error {
 		return err
 	}
 
-	query := `INSERT INTO cart (id, email, cart, amount_total, currency, payment_status, payment_system) VALUES (?, ?, ?, ?, ?, ?, ?)`
-	_, err = q.DB.ExecContext(ctx, query, cart.ID, cart.Email, string(byteCart), cart.AmountTotal, cart.Currency, cart.PaymentStatus, cart.PaymentSystem)
+	query := `INSERT INTO cart (id, email, cart, amount_total, currency, payment_id, payment_status, payment_system) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+	_, err = q.DB.ExecContext(ctx, query, cart.ID, cart.Email, string(byteCart), cart.AmountTotal, cart.Currency, cart.PaymentID, cart.PaymentStatus, cart.PaymentSystem)
 	return err
 }
 
@@ -692,7 +692,7 @@ func (q *CartQueries) CartLetterPurchase(ctx context.Context, cartID string) (*m
 			files = append(files, productFiles...)
 		case "data":
 			key := models.Data{}
-			err := tx.QueryRowContext(ctx, `SELECT id, content FROM digital_data WHERE cart_id = ?`, cartID).Scan(&key.ID, &key.Content)
+			err := tx.QueryRowContext(ctx, `SELECT id, content FROM digital_data WHERE cart_id = ? AND product_id = ?`, cartID, cart.ProductID).Scan(&key.ID, &key.Content)
 			if err != nil {
 				if stderrors.Is(err, sql.ErrNoRows) {
 					err = tx.QueryRowContext(ctx, `SELECT id, content FROM digital_data WHERE cart_id IS NULL AND product_id = ? LIMIT 1`, cart.ProductID).Scan(&key.ID, &key.Content)

@@ -58,7 +58,7 @@ func TestUpdateSetting(t *testing.T) {
 		wantStatus int
 	}{
 		{"update main", "main", `{"site_name":"Updated","domain":"u.com"}`, http.StatusOK},
-		{"update social", "social", `{"facebook":"fb","github":"gh"}`, http.StatusOK},
+		{"update social", "social", `{"facebook":"fbuser","github":"ghuser"}`, http.StatusOK},
 		{"update webhook", "webhook", `{"url":"https://example.com/wh"}`, http.StatusOK},
 		{"update payment currency", "payment", `{"currency":"EUR"}`, http.StatusOK},
 		{"update password", "password", `{"old":"Pass123","new":"NewPass456"}`, http.StatusOK},

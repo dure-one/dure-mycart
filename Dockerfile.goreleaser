@@ -4,6 +4,10 @@ RUN apk add --no-cache ca-certificates && update-ca-certificates 2>/dev/null || 
 FROM scratch
 ARG TARGETPLATFORM
 COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY ${TARGETPLATFORM}/mycart /
-ENTRYPOINT ["/mycart"]
+# /app is created owned by the runtime user so the app can create its
+# runtime-writable directories (lc_base, lc_uploads, lc_digitals, lc_certs).
+COPY --chown=65532:65532 ${TARGETPLATFORM}/mycart /app/
+WORKDIR /app
+USER 65532:65532
+ENTRYPOINT ["/app/mycart"]
 CMD ["serve"]

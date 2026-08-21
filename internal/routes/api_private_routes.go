@@ -10,12 +10,12 @@ import (
 // ApiPrivateRoutes sets up private API routes that require authentication.
 func ApiPrivateRoutes(c *fiber.App) {
 	c.Get("/api/install/status", handlers.InstallStatus)
-	c.Post("/api/install", handlers.Install)
+	c.Post("/api/install", middleware.AuthLimiter(), handlers.Install)
 
 	c.Get("/api/_/version", middleware.JWTProtected(), handlers.Version)
 
 	sign := c.Group("/api/sign")
-	sign.Post("/in", handlers.SignIn)
+	sign.Post("/in", middleware.AuthLimiter(), handlers.SignIn)
 	sign.Post("/out", middleware.JWTProtected(), handlers.SignOut)
 
 	settings := c.Group("/api/_/settings", middleware.JWTProtected())
@@ -48,6 +48,7 @@ func ApiPrivateRoutes(c *fiber.App) {
 
 	product.Get("/:product_id<len(15)>/digital", handlers.ProductDigital)
 	product.Post("/:product_id<len(15)>/digital", handlers.AddProductDigital)
+	product.Get("/:product_id<len(15)>/digital/:digital_id<len(15)>/download", handlers.DownloadProductDigital)
 	product.Patch("/:product_id<len(15)>/digital/:digital_id<len(15)>", handlers.UpdateProductDigital)
 	product.Delete("/:product_id<len(15)>/digital/:digital_id<len(15)>", handlers.DeleteProductDigital)
 

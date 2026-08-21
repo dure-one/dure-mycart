@@ -40,9 +40,6 @@ archives:
 checksum:
   name_template: 'checksums.txt'
 
-upx:
-  - enabled: false
-
 changelog:
   sort: asc
   filters:
@@ -97,10 +94,10 @@ dockers_v2:
       - linux/amd64
       - linux/arm64
     dockerfile: Dockerfile.goreleaser
-    sbom: false
+    sbom: true
     flags:
       - '--pull'
-      - '--provenance=false'
+      - '--provenance'
     labels:
       'io.artifacthub.package.readme-url': 'https://raw.githubusercontent.com/shurco/mycart/main/README.md'
       'io.artifacthub.package.maintainers': '[{"name":"Dmitry Shurco"}]'

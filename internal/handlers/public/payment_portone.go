@@ -14,6 +14,7 @@ import (
 
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/pkg/httpclient"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/webutil"
 )
@@ -63,7 +64,7 @@ func callPortoneAPI(endpoint string, apiSecret string) (*http.Response, error) {
 	req.Header.Set("Authorization", "PortOne "+apiSecret)
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := httpclient.NewWithTimeout(10 * time.Second)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call portone api: %w", err)

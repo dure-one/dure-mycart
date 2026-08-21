@@ -2,7 +2,6 @@ package mailer
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -159,41 +158,47 @@ func TestSendTestLetter_RejectsMissingSMTP(t *testing.T) {
 	}
 }
 
+// seedSMTP fills the mail settings group with a minimal usable SMTP config,
+// so letter functions proceed past the graceful "SMTP not configured" skip.
+func seedSMTP(t *testing.T, db *queries.Base) {
+	t.Helper()
+
+	setting, err := queries.GetSettingByGroup[models.Mail](context.Background(), db)
+	if err != nil {
+		t.Fatalf("load mail settings: %v", err)
+	}
+	setting.SMTP.Host = "127.0.0.1"
+	setting.SMTP.Port = 25
+	setting.SMTP.Username = "u"
+	setting.SMTP.Password = "p"
+	if err := db.UpdateSettingByGroup(context.Background(), setting); err != nil {
+		t.Fatalf("seed smtp: %v", err)
+	}
+}
+
 func TestSendPrepaymentLetter_MissingTemplate(t *testing.T) {
-	bootstrapDB(t)
-	// No template seeded — CartLetterPayment will fail to unmarshal an empty string.
+	db := bootstrapDB(t)
+	seedSMTP(t, db)
+	// With SMTP configured the call reaches CartLetterPayment, which fails
+	// to unmarshal the missing payment template.
 	if err := SendPrepaymentLetter("x@y.com", "1 USD", "http://pay"); err == nil {
 		t.Error("expected error for missing payment template")
 	}
 }
 
-func TestSendPrepaymentLetter_MissingSMTP(t *testing.T) {
-	db := bootstrapDB(t)
-	ctx := context.Background()
-
-	tpl, _ := json.Marshal(models.Letter{Subject: "S", Text: "{{.Payment_URL}}"})
-	if err := db.UpdateSettingByKey(ctx, &models.SettingName{
-		Key:   "mail_letter_payment",
-		Value: string(tpl),
-	}); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-	if err := db.UpdateSettingByKey(ctx, &models.SettingName{
-		Key:   "site_name",
-		Value: "Litecart",
-	}); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-
-	// With the template in place the call reaches SendMail which fails on
-	// the (intentionally missing) SMTP configuration.
-	if err := SendPrepaymentLetter("x@y.com", "1 USD", "http://pay"); err == nil {
-		t.Error("expected SMTP validation error")
+func TestSendPrepaymentLetter_SkipsWhenSMTPUnconfigured(t *testing.T) {
+	bootstrapDB(t)
+	// No template seeded and no SMTP configured: the letter must be skipped
+	// gracefully instead of returning an error (dev/test environments).
+	if err := SendPrepaymentLetter("x@y.com", "1 USD", "http://pay"); err != nil {
+		t.Errorf("expected nil error when SMTP is unconfigured, got %v", err)
 	}
 }
 
 func TestSendCartLetter_CartNotFound(t *testing.T) {
-	bootstrapDB(t)
+	db := bootstrapDB(t)
+	seedSMTP(t, db)
+
 	if err := SendCartLetter("missing-cart"); err == nil {
 		t.Error("expected error for missing cart")
 	}

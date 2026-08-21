@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"os"
 	"strings"
@@ -83,6 +84,11 @@ func (q *ProductQueries) ListProducts(ctx context.Context, private bool, limit, 
 	}
 
 	query += queryPublic
+	query += queryAddon
+
+	// Deterministic ordering is required before LIMIT/OFFSET so paginated
+	// results stay stable across requests.
+	query += " ORDER BY product.created DESC, product.id"
 
 	// Add pagination
 	if limit > 0 {
@@ -94,7 +100,7 @@ func (q *ProductQueries) ListProducts(ctx context.Context, private bool, limit, 
 		}
 	}
 
-	rows, err := q.DB.QueryContext(ctx, query+queryAddon, params...)
+	rows, err := q.DB.QueryContext(ctx, query, params...)
 	if err != nil {
 		return nil, err
 	}
@@ -323,6 +329,10 @@ func (q *ProductQueries) Product(ctx context.Context, private bool, id string) (
 			optionMap[option.ID] = &option
 			product.Options = append(product.Options, option)
 		}
+		if err := optionRows.Err(); err != nil {
+			optionRows.Close()
+			return nil, err
+		}
 		optionRows.Close()
 
 		// Load all option values
@@ -352,6 +362,10 @@ func (q *ProductQueries) Product(ctx context.Context, private bool, id string) (
 						break
 					}
 				}
+			}
+			if err := valuesRows.Err(); err != nil {
+				valuesRows.Close()
+				return nil, err
 			}
 			valuesRows.Close()
 		}
@@ -387,6 +401,10 @@ func (q *ProductQueries) Product(ctx context.Context, private bool, id string) (
 			}
 
 			product.Variants = append(product.Variants, variant)
+		}
+		if err := variantRows.Err(); err != nil {
+			variantRows.Close()
+			return nil, err
 		}
 		variantRows.Close()
 	}
@@ -614,7 +632,21 @@ func (q *ProductQueries) syncProductVariants(ctx context.Context, tx *sql.Tx, pr
 
 // DeleteProduct removes a product from the database based on its ID.
 func (q *ProductQueries) DeleteProduct(ctx context.Context, id string) error {
-	_, err := q.DB.ExecContext(ctx, `DELETE FROM product WHERE id = ?`, id)
+	// Guard: a hard delete cascades into digital_file/digital_data, which
+	// would revoke downloads already purchased by customers (rows assigned
+	// to a paid cart). Refuse such deletes; admins should deactivate the
+	// product instead.
+	var sold int
+	err := q.DB.QueryRowContext(ctx,
+		`SELECT COUNT(1) FROM digital_data WHERE product_id = ? AND cart_id IS NOT NULL`, id).Scan(&sold)
+	if err != nil {
+		return err
+	}
+	if sold > 0 {
+		return errors.ErrProductSold
+	}
+
+	_, err = q.DB.ExecContext(ctx, `DELETE FROM product WHERE id = ?`, id)
 	return err
 }
 
@@ -863,6 +895,22 @@ func (q *ProductQueries) ProductDigital(ctx context.Context, productID string) (
 	}
 
 	return digital, nil
+}
+
+// DigitalFile returns a single digital file record for a product.
+// Used by the authenticated admin download endpoint.
+func (q *ProductQueries) DigitalFile(ctx context.Context, productID, fileID string) (*models.File, error) {
+	file := &models.File{}
+	query := `SELECT id, name, ext, orig_name FROM digital_file WHERE id = ? AND product_id = ?`
+	err := q.DB.QueryRowContext(ctx, query, fileID, productID).
+		Scan(&file.ID, &file.Name, &file.Ext, &file.OrigName)
+	if err != nil {
+		if stderrors.Is(err, sql.ErrNoRows) {
+			return nil, errors.ErrProductNotFound
+		}
+		return nil, err
+	}
+	return file, nil
 }
 
 // AddDigitalFile associates a digital file with a product in the database.
@@ -1117,6 +1165,7 @@ func (q *ProductQueries) GetProductWithVariants(ctx context.Context, productID s
 
 	var metadata, attributes string
 	var digitalType sql.NullString
+	var sku sql.NullString
 
 	err := q.DB.QueryRowContext(ctx, query, productID).Scan(
 		&product.ID,
@@ -1126,7 +1175,7 @@ func (q *ProductQueries) GetProductWithVariants(ctx context.Context, productID s
 		&product.Slug,
 		&product.Amount,
 		&product.Quantity,
-		&product.SKU,
+		&sku,
 		&product.HasVariants,
 		&metadata,
 		&attributes,
@@ -1135,6 +1184,9 @@ func (q *ProductQueries) GetProductWithVariants(ctx context.Context, productID s
 	)
 	if err != nil {
 		return nil, fmt.Errorf("query product: %w", err)
+	}
+	if sku.Valid {
+		product.SKU = sku.String
 	}
 
 	// Parse JSON fields
@@ -1167,6 +1219,9 @@ func (q *ProductQueries) GetProductWithVariants(ctx context.Context, productID s
 		}
 		product.Images = append(product.Images, img)
 	}
+	if err := imageRows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate product images: %w", err)
+	}
 
 	// Skip options/variants if product doesn't have variants
 	if !product.HasVariants {
@@ -1197,6 +1252,9 @@ func (q *ProductQueries) loadProductOptions(ctx context.Context, product *models
 			return nil, fmt.Errorf("scan option: %w", err)
 		}
 		product.Options = append(product.Options, option)
+	}
+	if err := optionRows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate options: %w", err)
 	}
 
 	// Load option values
@@ -1234,6 +1292,10 @@ func (q *ProductQueries) loadOptionValues(ctx context.Context, options *[]models
 				return fmt.Errorf("scan option value: %w", err)
 			}
 			(*options)[i].Values = append((*options)[i].Values, value)
+		}
+		if err := valueRows.Err(); err != nil {
+			valueRows.Close()
+			return fmt.Errorf("iterate option values: %w", err)
 		}
 		valueRows.Close()
 	}
@@ -1288,6 +1350,10 @@ func (q *ProductQueries) loadProductVariants(ctx context.Context, productID stri
 			}
 			variant.OptionValues[optionName] = optionValue
 		}
+		if err := optValueRows.Err(); err != nil {
+			optValueRows.Close()
+			return nil, fmt.Errorf("iterate variant option values: %w", err)
+		}
 		optValueRows.Close()
 
 		// Get variant images
@@ -1309,9 +1375,16 @@ func (q *ProductQueries) loadProductVariants(ctx context.Context, productID stri
 			}
 			variant.Images = append(variant.Images, img)
 		}
+		if err := imgRows.Err(); err != nil {
+			imgRows.Close()
+			return nil, fmt.Errorf("iterate variant images: %w", err)
+		}
 		imgRows.Close()
 
 		variants = append(variants, variant)
+	}
+	if err := variantRows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate variants: %w", err)
 	}
 
 	return variants, nil

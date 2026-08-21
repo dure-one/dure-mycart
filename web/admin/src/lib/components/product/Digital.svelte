@@ -168,8 +168,8 @@
             {#each digital.files as file, index (file.id)}
               <div class="relative mt-4 flex first:mt-0">
                 <a
-                  href="/secrets/{file.name}.{file.ext}"
-                  target="_blank"
+                  href={`/api/_/products/${drawer.product.id}/digital/${file.id}/download`}
+                  download={file.orig_name || `${file.name}.${file.ext}`}
                   class="rounded-lg bg-gray-200 px-3 py-3"
                   rel="noopener noreferrer"
                 >

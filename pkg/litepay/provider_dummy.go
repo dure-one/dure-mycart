@@ -50,7 +50,7 @@ func (c *dummy) Pay(cart Cart) (*Payment, error) {
 		AmountTotal:   amountTotal,
 		Currency:      strings.ToUpper(cart.Currency),
 		Status:        PAID,
-		URL:           fmt.Sprintf("%s/?payment_system=%s&cart_id=%s", c.successURL, c.paymentSystem, cart.ID),
+		URL:           joinURL(c.successURL, fmt.Sprintf("payment_system=%s&cart_id=%s", c.paymentSystem, cart.ID)),
 		PaymentSystem: c.paymentSystem,
 	}
 

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
   import { base } from '$app/paths'
-  import { onMount } from 'svelte'
+  import { onDestroy, onMount } from 'svelte'
   import { browser } from '$app/environment'
   import Blank from '$lib/layouts/Blank.svelte'
   import FormInput from '$lib/components/form/Input.svelte'
@@ -19,6 +19,11 @@
   let emailError = $state('')
   let passwordError = $state('')
   let domainError = $state('')
+
+  let redirectTimer: ReturnType<typeof setTimeout> | undefined
+  onDestroy(() => {
+    if (redirectTimer !== undefined) clearTimeout(redirectTimer)
+  })
 
   function validateEmail(value: string) {
     if (!value) {
@@ -71,7 +76,7 @@
       if (res?.success) {
         showMessage(t('install.installedSuccessfully'), 'connextSuccess')
         // Redirect to signin page after successful installation
-        setTimeout(() => {
+        redirectTimer = setTimeout(() => {
           goto(`${base}/signin`)
         }, 1000)
       } else {
