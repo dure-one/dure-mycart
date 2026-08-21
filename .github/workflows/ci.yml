@@ -14,7 +14,7 @@ jobs:
     name: Go vet / test / build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         with:
@@ -59,7 +59,7 @@ jobs:
       matrix:
         app: [admin, site]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
