@@ -21,6 +21,27 @@ jobs:
           go-version: stable
           cache: true
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # Swagger docs (docs/swagger) and the admin/site SPA builds (web/*/build)
+      # are git-ignored artifacts; generate them so `go vet`/`go build` compile.
+      - name: Generate Swagger docs
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@v1.16.6
+          $(go env GOPATH)/bin/swag init \
+            -g cmd/main.go \
+            --output docs/swagger \
+            --parseDependency \
+            --parseInternal
+
+      - name: Build frontends (embedded via go:embed)
+        run: |
+          for app in admin site; do
+            (cd web/$app && bun install --frozen-lockfile && bun run build)
+          done
+
       - name: Vet
         run: go vet ./...
 
