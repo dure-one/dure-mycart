@@ -20,7 +20,15 @@ func (q *SettingQueries) GetSession(ctx context.Context, key string) (string, er
 // AddSession upserts a session record by key. Using INSERT OR REPLACE makes callers
 // idempotent: they can write to the same key repeatedly (e.g. to refresh a TTL-cached
 // value) without first deleting the previous row.
+//
+// Expired rows are swept opportunistically on every write so the table does
+// not grow without bound.
 func (q *SettingQueries) AddSession(ctx context.Context, key, value string, expires int64) error {
+	if _, err := q.DB.ExecContext(ctx,
+		`DELETE FROM session WHERE expires < strftime('%s','now') AND key != ?`, key); err != nil {
+		return err
+	}
+
 	_, err := q.DB.ExecContext(ctx, `INSERT OR REPLACE INTO session (key, value, expires) VALUES (?, ?, ?)`, key, value, expires)
 	return err
 }

@@ -13,9 +13,10 @@
     // Check if user has already given consent
     if (!hasCookieConsent()) {
       // Small delay for better UX
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         showBanner = true
       }, 500)
+      return () => clearTimeout(timer)
     }
   })
 
@@ -46,14 +47,7 @@
           <p id="cookie-consent-description" class="text-sm font-bold text-black">
             {t('cookies.description')}
             {#if t('cookies.privacyLink') !== 'cookies.privacyLink'}
-              <a
-                href="/privacy"
-                class="underline hover:no-underline"
-                onclick={(e) => {
-                  e.preventDefault()
-                  window.location.href = '/privacy'
-                }}
-              >
+              <a href="/privacy" class="underline hover:no-underline">
                 {t('cookies.privacyLink')}
               </a>
             {/if}

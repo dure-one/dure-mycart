@@ -36,6 +36,10 @@ func (q *PageQueries) ListPages(ctx context.Context, private bool, limit, offset
 		query = query + ` WHERE active = 1`
 	}
 
+	// Deterministic ordering is required before LIMIT/OFFSET so paginated
+	// results stay stable across requests.
+	query += ` ORDER BY page.position, page.id`
+
 	// Add pagination
 	var params []any
 	if limit > 0 {

@@ -13,6 +13,7 @@ const (
 	MsgUserEmailNotFound    = "user with the given email is not found"
 
 	MsgProductNotFound = "product not found"
+	MsgProductSold     = "product has purchased digital items and cannot be deleted; deactivate it instead"
 	MsgPageNotFound    = "page not found"
 	MsgSettingNotFound = "setting not found"
 )
@@ -26,6 +27,7 @@ var (
 	ErrUserEmailNotFound    = errors.New(MsgUserEmailNotFound)
 
 	ErrProductNotFound = errors.New(MsgProductNotFound)
+	ErrProductSold     = errors.New(MsgProductSold)
 	ErrPageNotFound    = errors.New(MsgPageNotFound)
 	ErrSettingNotFound = errors.New(MsgSettingNotFound)
 )
