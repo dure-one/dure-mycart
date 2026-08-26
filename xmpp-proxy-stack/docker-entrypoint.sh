@@ -1,0 +1,40 @@
+#!/bin/busybox sh
+set -e
+
+echo "=== xmpp-proxy-stack initialization (mycart edition) ==="
+
+# Check required environment variables
+if [ -z "${XMPP_DOMAIN:-}" ]; then
+    echo "ERROR: XMPP_DOMAIN not set" >&2
+    exit 1
+fi
+
+if [ -z "${MYCART_DOMAIN:-}" ]; then
+    echo "ERROR: MYCART_DOMAIN not set" >&2
+    exit 1
+fi
+
+# Ensure XMPP_DOMAIN and MYCART_DOMAIN match (shared SSL cert)
+if [ "${XMPP_DOMAIN}" != "${MYCART_DOMAIN}" ]; then
+    echo "ERROR: XMPP_DOMAIN and MYCART_DOMAIN must match for shared SSL cert" >&2
+    exit 1
+fi
+
+# Check volume permissions
+echo "Checking volume permissions..."
+for dir in /certs /logs /var/lib/fail2ban-rs /app/lc_base /app/lc_uploads /app/lc_digitals; do
+    if ! touch "${dir}/.write-test" 2>/dev/null; then
+        echo "ERROR: No write permission to ${dir}" >&2
+        echo "Fix: sudo chown -R root:root /srv/data/{certs,logs,fail2ban,mycart}" >&2
+        exit 1
+    fi
+    rm -f "${dir}/.write-test"
+done
+
+echo "✓ Volume permissions OK"
+
+# mycart's autocert will handle SSL certificates automatically
+# No need to generate self-signed certs or run acme.sh
+
+echo "Starting services via Horust..."
+exec /usr/local/bin/horust --services-path /etc/horust/services
