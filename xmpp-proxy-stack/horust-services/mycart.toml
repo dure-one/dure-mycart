@@ -1,0 +1,16 @@
+[mycart]
+command = "/app/mycart"
+args = ["serve", "--http", "0.0.0.0:80", "--https", "0.0.0.0:443"]
+working_directory = "/app"
+start_delay = "2s"
+start_after = []
+restart_strategy = "always"
+restart_backoff = "10s"
+restart_attempts = 5
+
+[mycart.environment]
+MYCART_DOMAIN = "${MYCART_DOMAIN}"
+GIN_MODE = "release"
+
+[mycart.healthiness]
+http_endpoint = "http://127.0.0.1:80/health"
