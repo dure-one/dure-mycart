@@ -14,7 +14,7 @@ set -eu
 
 repo_root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 template="$repo_root/xmpp-proxy-stack/templates/prosody-proxy.cfg.lua.template"
-out_dir="$repo_root/xmpp-proxy-stack/generated"
+out_dir="$repo_root/generated"
 out_file="$out_dir/proxy.cfg.lua"
 
 mkdir -p "$out_dir"
