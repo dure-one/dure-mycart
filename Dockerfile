@@ -13,10 +13,10 @@ COPY web/site/package*.json ./web/site/
 
 # Install dependencies
 WORKDIR /app/web/admin
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 WORKDIR /app/web/site
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Copy source and build
 WORKDIR /app
