@@ -1,6 +1,6 @@
-# mycart + XMPP Docker Compose
-# Merged stack: mycart + xmpp-proxy + fail2ban-rs in single container
-# prosody runs separately on bridge network
+# mycart + XMPP Docker Compose (Development)
+# Builds images locally instead of pulling from GHCR
+# Usage: docker-compose -f docker-compose.dev.yml up --build
 
 services:
   # Init service to set up Prosody community modules
@@ -79,9 +79,11 @@ services:
       prosody-config-init:
         condition: service_completed_successfully
 
-  # Merged stack: mycart + xmpp-proxy + fail2ban-rs
+  # Merged stack: mycart + xmpp-proxy + fail2ban-rs (LOCAL BUILD)
   xmpp-proxy-stack:
-    image: ghcr.io/dure-one/xmpp-proxy-stack:latest
+    build:
+      context: .
+      dockerfile: xmpp-proxy-stack/Dockerfile
     container_name: xmpp-proxy-stack
     restart: unless-stopped
     network_mode: host
