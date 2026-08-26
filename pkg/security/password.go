@@ -34,12 +34,14 @@ func ComparePasswords(hashedPwd, inputPwd string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPwd), []byte(inputPwd)) == nil
 }
 
-// NewToken returns an unpredictable token derived from the input. It is used
-// to materialize non-password secrets (e.g. JWT signing keys bootstrapped
-// during install).
+// NewToken returns an unpredictable 64-character hex token. It is used to
+// materialize one-time non-password secrets (e.g. JWT signing keys
+// bootstrapped during install).
 //
-// Construction: PBKDF2-HMAC-SHA512(input, random salt, 4096, 32 bytes), then
-// encode as hex(salt):hex(key) so the result is self-contained.
+// Construction: PBKDF2-HMAC-SHA512(input, random salt, 4096, 32 bytes),
+// returned as hex(key). Each call produces a different value even for the
+// same input; the salt is not included in the output because the token is
+// not intended for re-derivation.
 func NewToken(text string) (string, error) {
 	salt := make([]byte, 16)
 	if _, err := rand.Read(salt); err != nil {
