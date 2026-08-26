@@ -93,3 +93,12 @@ docs/.vitepress/cache/
 
 # Generated from root README.md
 docs/readme.md
+
+# Environment variables
+.env
+
+# Generated prosody config
+generated/
+
+# Cloned prosody modules
+prosody-modules/
