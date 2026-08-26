@@ -1,0 +1,14 @@
+[fail2ban-rs]
+command = "/usr/local/bin/fail2ban-rs"
+args = ["--config", "/etc/fail2ban-rs/config.toml"]
+working_directory = "/var/lib/fail2ban-rs"
+start_delay = "3s"
+start_after = []
+restart_strategy = "always"
+restart_backoff = "10s"
+restart_attempts = 5
+
+[fail2ban-rs.environment]
+FAIL2BAN_MAX_RETRY = "${FAIL2BAN_MAX_RETRY:-5}"
+FAIL2BAN_FIND_TIME = "${FAIL2BAN_FIND_TIME:-600}"
+FAIL2BAN_BAN_TIME = "${FAIL2BAN_BAN_TIME:-3600}"

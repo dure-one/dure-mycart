@@ -1,0 +1,13 @@
+[xmpp-proxy]
+command = "/usr/local/bin/xmpp-proxy"
+args = ["--c2s", "127.0.0.1:15222", "--s2s", "127.0.0.1:15269", "--cert", "/certs/fullchain.pem", "--key", "/certs/privkey.pem"]
+working_directory = "/etc/xmpp-proxy"
+start_delay = "5s"
+start_after = ["mycart"]
+restart_strategy = "always"
+restart_backoff = "10s"
+restart_attempts = 5
+
+[xmpp-proxy.environment]
+XMPP_DOMAIN = "${XMPP_DOMAIN}"
+RUST_LOG = "info"
