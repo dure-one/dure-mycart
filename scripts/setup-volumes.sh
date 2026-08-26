@@ -8,8 +8,10 @@ sudo mkdir -p /srv/data/{certs,logs/prosody,fail2ban,mycart/{lc_base,lc_uploads,
 
 # Set ownership
 echo "Setting ownership..."
-sudo chown -R root:root /srv/data/{certs,logs,fail2ban,mycart}
-sudo chown -R 999:999 /srv/data/prosody  # prosody user UID
+sudo chown -R root:root /srv/data/{certs,fail2ban,mycart}
+sudo chown -R root:root /srv/data/logs
+sudo chown -R 999:102 /srv/data/logs/prosody  # prosody user UID:GID
+sudo chown -R 999:102 /srv/data/prosody  # prosody data directory
 
 echo "✓ Volume structure created:"
 tree -L 3 /srv/data/ || ls -la /srv/data/
