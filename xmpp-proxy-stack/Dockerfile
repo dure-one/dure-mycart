@@ -53,6 +53,7 @@ COPY internal ./internal
 COPY pkg ./pkg
 COPY docs ./docs
 COPY migrations ./migrations
+COPY web/embed.go ./web/embed.go
 
 # Copy built frontend from previous stage
 COPY --from=frontend-builder /app/web/admin/build ./web/admin/build
