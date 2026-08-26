@@ -9,6 +9,7 @@ on:
       - '**.md'
   schedule:
     - cron: '34 10 * * 2'
+  workflow_dispatch:
 
 jobs:
   cancel-previous-runs:
