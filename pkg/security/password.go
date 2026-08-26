@@ -51,5 +51,5 @@ func NewToken(text string) (string, error) {
 		return "", fmt.Errorf("pbkdf2 derive: %w", err)
 	}
 
-	return hex.EncodeToString(salt) + ":" + hex.EncodeToString(key), nil
+	return hex.EncodeToString(key), nil
 }
