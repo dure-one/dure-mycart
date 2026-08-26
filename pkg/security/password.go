@@ -1,7 +1,9 @@
 package security
 
 import (
-	"crypto/sha256"
+	"crypto/pbkdf2"
+	"crypto/rand"
+	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
 
@@ -32,20 +34,22 @@ func ComparePasswords(hashedPwd, inputPwd string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPwd), []byte(inputPwd)) == nil
 }
 
-// NewToken returns a deterministic-looking but unpredictable token derived from
-// the input. It is used to materialize non-password secrets (e.g. JWT signing
-// keys bootstrapped during install).
+// NewToken returns an unpredictable token derived from the input. It is used
+// to materialize non-password secrets (e.g. JWT signing keys bootstrapped
+// during install).
 //
-// Construction: bcrypt(input, DefaultCost) -> SHA-256 hex.
-// bcrypt supplies a random salt (64 bits), SHA-256 then compacts the output to
-// a fixed-length hex string suitable for use as a secret. We intentionally
-// avoid MD5 here: MD5 is collision-broken and should never be used for any
-// new security-relevant derivation.
+// Construction: PBKDF2-HMAC-SHA512(input, random salt, 4096, 32 bytes), then
+// encode as hex(salt):hex(key) so the result is self-contained.
 func NewToken(text string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(text), bcryptCost)
-	if err != nil {
-		return "", fmt.Errorf("bcrypt hash: %w", err)
+	salt := make([]byte, 16)
+	if _, err := rand.Read(salt); err != nil {
+		return "", fmt.Errorf("salt generation: %w", err)
 	}
-	sum := sha256.Sum256(hash)
-	return hex.EncodeToString(sum[:]), nil
+
+	key, err := pbkdf2.Key(sha512.New, text, salt, 4096, 32)
+	if err != nil {
+		return "", fmt.Errorf("pbkdf2 derive: %w", err)
+	}
+
+	return hex.EncodeToString(salt) + ":" + hex.EncodeToString(key), nil
 }
