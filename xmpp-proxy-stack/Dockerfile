@@ -169,8 +169,8 @@ RUN apt-get update && \
 WORKDIR /build
 
 # Copy our scripts and configs
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-COPY horust-services/ /etc/horust/services/
+COPY xmpp-proxy-stack/docker-entrypoint.sh /docker-entrypoint.sh
+COPY xmpp-proxy-stack/horust-services/ /etc/horust/services/
 
 RUN chmod +x /docker-entrypoint.sh && \
     cp /bin/busybox /bin/busybox-static
