@@ -1,6 +1,6 @@
 -- Prosody PROXY protocol configuration
 -- Rendered by the prosody-config-init service (substitutes ${XMPP_DOMAIN})
--- into xmpp-proxy-stack/generated/proxy.cfg.lua, which is what actually
+-- into generated/proxy.cfg.lua, which is what actually
 -- gets mounted at /etc/prosody/conf.d/proxy.cfg.lua. Edit this template,
 -- not the generated file directly.
 -- IMPORTANT: Settings in this file are loaded AFTER VirtualHost, so some settings
