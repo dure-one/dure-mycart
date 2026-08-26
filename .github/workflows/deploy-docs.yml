@@ -2,9 +2,8 @@ name: Deploy All Documentation to GitHub Pages
 
 on:
   push:
-    branches:
-      - main
-      - features/goswag
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:

@@ -2,13 +2,11 @@ name: "analyze"
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - test
+    tags:
+      - 'v*'
   pull_request:
-    branches: [ "main" ]
-    paths-ignore:
-      - '**.md'
-  schedule:
-    - cron: '34 10 * * 2'
   workflow_dispatch:
 
 jobs:
