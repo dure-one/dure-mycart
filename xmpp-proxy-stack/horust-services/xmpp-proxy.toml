@@ -1,13 +1,19 @@
-[xmpp-proxy]
-command = "/usr/local/bin/xmpp-proxy"
-args = ["--c2s", "127.0.0.1:15222", "--s2s", "127.0.0.1:15269", "--cert", "/certs/fullchain.pem", "--key", "/certs/privkey.pem"]
-working_directory = "/etc/xmpp-proxy"
-start_delay = "5s"
-start_after = ["mycart"]
-restart_strategy = "always"
-restart_backoff = "10s"
-restart_attempts = 5
+command = "/usr/local/bin/xmpp-proxy --c2s 127.0.0.1:15222 --s2s 127.0.0.1:15269 --cert /certs/fullchain.pem --key /certs/privkey.pem"
+start-delay = "5s"
+start-after = ["mycart.toml"]
+working-directory = "/etc/xmpp-proxy"
+stdout = "/logs/xmpp-proxy-stdout.log"
+stderr = "/logs/xmpp-proxy-stderr.log"
 
-[xmpp-proxy.environment]
+[restart]
+strategy = "always"
+backoff = "10s"
+attempts = 0
+
+[environment]
 XMPP_DOMAIN = "${XMPP_DOMAIN}"
 RUST_LOG = "info"
+
+[termination]
+signal = "TERM"
+wait = "15s"
