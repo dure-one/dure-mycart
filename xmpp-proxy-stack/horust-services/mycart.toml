@@ -1,16 +1,22 @@
-[mycart]
-command = "/app/mycart"
-args = ["serve", "--http", "0.0.0.0:80", "--https", "0.0.0.0:443"]
-working_directory = "/app"
-start_delay = "2s"
-start_after = []
-restart_strategy = "always"
-restart_backoff = "10s"
-restart_attempts = 5
+command = "/app/mycart serve --http 0.0.0.0:80 --https 0.0.0.0:443"
+start-delay = "2s"
+start-after = []
+working-directory = "/app"
+stdout = "/logs/mycart-stdout.log"
+stderr = "/logs/mycart-stderr.log"
 
-[mycart.environment]
+[restart]
+strategy = "always"
+backoff = "10s"
+attempts = 0
+
+[environment]
 MYCART_DOMAIN = "${MYCART_DOMAIN}"
 GIN_MODE = "release"
 
-[mycart.healthiness]
-http_endpoint = "http://127.0.0.1:80/health"
+[healthiness]
+http-endpoint = "http://127.0.0.1:80/health"
+
+[termination]
+signal = "TERM"
+wait = "10s"
