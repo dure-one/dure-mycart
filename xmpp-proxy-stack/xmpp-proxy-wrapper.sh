@@ -11,7 +11,7 @@ while [ $ELAPSED -lt $TIMEOUT ]; do
     if [ -f /certs/fullchain.pem ] && [ -f /certs/privkey.pem ]; then
         echo "✓ SSL certificates found"
         echo "Starting xmpp-proxy..."
-        exec /usr/local/bin/xmpp-proxy --c2s 127.0.0.1:15222 --s2s 127.0.0.1:15269 --cert /certs/fullchain.pem --key /certs/privkey.pem
+        exec /usr/local/bin/xmpp-proxy -c /etc/xmpp-proxy/config.toml
     fi
 
     echo "Waiting for certificates... (${ELAPSED}s/${TIMEOUT}s)"

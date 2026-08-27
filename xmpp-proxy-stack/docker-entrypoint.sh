@@ -50,7 +50,7 @@ fi
 
 # Process horust service configs and wrapper scripts with envsubst
 echo "Processing service configs and wrappers..."
-for file in /etc/horust/services/*.toml /usr/local/bin/mycart-wrapper.sh; do
+for file in /etc/horust/services/*.toml /usr/local/bin/mycart-wrapper.sh /etc/xmpp-proxy/config.toml; do
     if [ -f "$file" ]; then
         envsubst < "$file" > "$file.tmp" && mv "$file.tmp" "$file"
         chmod +x "$file" 2>/dev/null || true

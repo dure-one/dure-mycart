@@ -187,6 +187,7 @@ RUN mkdir -p /etc/fail2ban-rs && \
     cp /bin/busybox /bin/busybox-static
 
 COPY xmpp-proxy-stack/fail2ban-rs-config.toml /etc/fail2ban-rs/config.toml
+COPY xmpp-proxy-stack/xmpp-proxy-config.toml /etc/xmpp-proxy/config.toml
 
 ##
 ## Final Stage: distroless

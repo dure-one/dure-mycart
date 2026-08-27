@@ -1,0 +1,24 @@
+# xmpp-proxy configuration
+# Proxies XMPP connections from public internet to local Prosody server
+
+[c2s]
+# Client-to-Server connections (public-facing)
+bind = "0.0.0.0:5222"  # StartTLS port
+bind_tls = "0.0.0.0:5223"  # Direct TLS port
+backend = "${XMPP_PROXY_PROSODY_C2S}"
+
+[s2s]
+# Server-to-Server connections
+bind = "0.0.0.0:5269"
+backend = "${XMPP_PROXY_PROSODY_S2S}"
+
+[tls]
+cert = "/certs/fullchain.pem"
+key = "/certs/privkey.pem"
+
+[proxy_protocol]
+# Enable PROXY protocol for backend to see real client IPs
+enabled = true
+
+[logging]
+level = "${RUST_LOG:-info}"
