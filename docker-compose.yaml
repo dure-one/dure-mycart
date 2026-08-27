@@ -62,11 +62,9 @@ services:
       - ./generated/proxy.cfg.lua:/etc/prosody/conf.d/proxy.cfg.lua:ro
       - ./prosody-modules:/usr/lib/prosody/community:ro
     ports:
-      - "127.0.0.1:15222:5222"  # C2S
-      - "127.0.0.1:15269:5269"  # S2S
-      - "127.0.0.1:15280:5280"  # HTTP (internal only for xmpp-proxy)
-      # Expose WebSocket port publicly for WebSocket clients
-      - "0.0.0.0:5280:5280"     # HTTP/WebSocket (public)
+      - "127.0.0.1:15222:5222"  # C2S (localhost only)
+      - "127.0.0.1:15269:5269"  # S2S (localhost only)
+      - "127.0.0.1:15280:5280"  # HTTP/WebSocket (localhost only, proxied via mycart)
     networks:
       - xmpp-internal
     healthcheck:

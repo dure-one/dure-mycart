@@ -12,7 +12,11 @@ name = "xmpp-auth"
 enabled = true
 filter = "xmpp-auth"
 logpath = ["/logs/xmpp-proxy-stdout.log", "/logs/xmpp-proxy-stderr.log"]
-ban_action = "nftables"
+backend = "ipset"
+
+[jails.xmpp-auth.backend.ipset]
+chain = "DOCKER-USER"  # Required for host networking mode
+maxelem = 65536
 
 # Monitor mycart authentication failures
 [[jails]]
@@ -20,7 +24,11 @@ name = "mycart-auth"
 enabled = true
 filter = "http-auth"
 logpath = ["/logs/mycart-stdout.log", "/logs/mycart-stderr.log"]
-ban_action = "nftables"
+backend = "ipset"
+
+[jails.mycart-auth.backend.ipset]
+chain = "DOCKER-USER"  # Required for host networking mode
+maxelem = 65536
 
 # Filter definitions
 [filters.xmpp-auth]
