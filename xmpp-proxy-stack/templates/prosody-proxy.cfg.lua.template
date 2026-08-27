@@ -51,16 +51,24 @@ proxy_port_mappings = {
     [5269] = "s2s"   -- Server-to-server connections
 }
 
--- Disable regular c2s/s2s ports (mod_net_proxy will handle them)
+-- Mark incoming connections from proxy as secure (xmpp-proxy guarantees this)
+proxy_secure_in = true
+
+-- Disable regular c2s ports (mod_net_proxy will handle incoming c2s)
 c2s_ports = {}
-s2s_ports = {}
 
--- Don't require encryption (xmpp-proxy already handled TLS termination)
+-- MUST have at least one s2s_port for outgoing S2S to work
+-- Prosody will make outgoing S2S connections from this port (with TLS)
+s2s_ports = {15268}
+
+-- Don't require encryption for INCOMING connections (xmpp-proxy handled TLS)
 c2s_require_encryption = false
-s2s_require_encryption = false
-s2s_secure_auth = false
 
--- Allow plaintext auth since connection is already secure (TLS at xmpp-proxy)
+-- For OUTGOING S2S: Keep encryption enabled (prosody makes direct TLS connections)
+-- Remove s2s_require_encryption = false and s2s_secure_auth = false
+-- Prosody needs to do TLS for outgoing server-to-server connections!
+
+-- Allow plaintext auth for incoming C2S (TLS already handled by xmpp-proxy)
 allow_unencrypted_plain_auth = true
 
 ---------- MODULE CONFIGURATION ----------
