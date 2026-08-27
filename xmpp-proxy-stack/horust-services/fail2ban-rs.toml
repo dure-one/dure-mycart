@@ -12,8 +12,9 @@ backoff = "10s"
 attempts = 0
 
 [environment]
-# FAIL2BAN_* vars inherited from Docker container environment
-# Defaults set in fail2ban-rs-config.toml
+FAIL2BAN_MAX_RETRY = "${FAIL2BAN_MAX_RETRY}"
+FAIL2BAN_FIND_TIME = "${FAIL2BAN_FIND_TIME}"
+FAIL2BAN_BAN_TIME = "${FAIL2BAN_BAN_TIME}"
 
 [termination]
 signal = "TERM"

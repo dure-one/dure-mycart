@@ -48,5 +48,14 @@ fi
 # mycart's autocert will handle SSL certificates automatically
 # No need to generate self-signed certs or run acme.sh
 
+# Process horust service configs with envsubst to substitute environment variables
+echo "Processing horust service configs..."
+for file in /etc/horust/services/*.toml; do
+    if [ -f "$file" ]; then
+        envsubst < "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+    fi
+done
+echo "✓ Service configs processed"
+
 echo "Starting services via Horust..."
 exec /usr/local/bin/horust --services-path /etc/horust/services
