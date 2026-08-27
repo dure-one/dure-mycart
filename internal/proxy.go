@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
@@ -14,6 +15,33 @@ func init() {
 	proxy.WithSecurityPolicy(proxy.SecurityPolicy{
 		AllowPrivateIPs: true,
 	})
+}
+
+// getMimeType returns the MIME type for a file extension
+func getMimeType(path string) string {
+	ext := strings.ToLower(filepath.Ext(path))
+	mimeTypes := map[string]string{
+		".css":  "text/css",
+		".js":   "application/javascript",
+		".json": "application/json",
+		".xml":  "application/xml",
+		".html": "text/html",
+		".htm":  "text/html",
+		".png":  "image/png",
+		".jpg":  "image/jpeg",
+		".jpeg": "image/jpeg",
+		".gif":  "image/gif",
+		".svg":  "image/svg+xml",
+		".ico":  "image/x-icon",
+		".woff": "font/woff",
+		".woff2": "font/woff2",
+		".ttf":  "font/ttf",
+		".eot":  "application/vnd.ms-fontobject",
+	}
+	if mime, ok := mimeTypes[ext]; ok {
+		return mime
+	}
+	return ""
 }
 
 // ProxyBinding represents a reverse proxy configuration
@@ -103,7 +131,19 @@ func SetupProxyRoutes(app *fiber.App) error {
 			}
 
 			// Proxy to internal services (AllowPrivateIPs is enabled in init())
-			return proxy.Do(c, proxyURL)
+			if err := proxy.Do(c, proxyURL); err != nil {
+				return err
+			}
+
+			// Fix Content-Type for static assets when upstream doesn't provide it
+			contentType := string(c.Response().Header.ContentType())
+			if contentType == "" || contentType == "text/plain" || strings.HasPrefix(contentType, "text/plain;") {
+				if mime := getMimeType(c.Path()); mime != "" {
+					c.Response().Header.SetContentType(mime)
+				}
+			}
+
+			return nil
 		})
 	}
 
