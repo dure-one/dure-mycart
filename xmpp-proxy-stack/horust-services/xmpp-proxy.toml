@@ -4,6 +4,7 @@ start-after = ["mycart.toml"]
 working-directory = "/etc/xmpp-proxy"
 stdout = "/logs/xmpp-proxy-stdout.log"
 stderr = "/logs/xmpp-proxy-stderr.log"
+pass-environment = ["XMPP_DOMAIN", "XMPP_PROXY_PROSODY_C2S", "XMPP_PROXY_PROSODY_S2S"]
 
 [restart]
 strategy = "always"
@@ -12,7 +13,6 @@ attempts = 0
 
 [environment]
 RUST_LOG = "info"
-# XMPP_DOMAIN inherited from Docker container environment
 
 [termination]
 signal = "TERM"
