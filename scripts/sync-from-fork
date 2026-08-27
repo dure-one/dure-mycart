@@ -1,0 +1,46 @@
+#!/bin/sh
+# Sync changes from nikescar/mycart:main_dure to dure-one/dure-mycart:main
+
+set -e
+
+FORK_REMOTE="fork"
+FORK_BRANCH="main_dure"
+ORIGIN_REMOTE="origin"
+ORIGIN_BRANCH="main"
+
+echo "🔄 Syncing from ${FORK_REMOTE}/${FORK_BRANCH} to ${ORIGIN_REMOTE}/${ORIGIN_BRANCH}..."
+echo ""
+
+# Ensure we're on the main branch
+CURRENT_BRANCH=$(git branch --show-current)
+if [ "$CURRENT_BRANCH" != "$ORIGIN_BRANCH" ]; then
+    echo "⚠️  Currently on branch '$CURRENT_BRANCH'. Switching to '$ORIGIN_BRANCH'..."
+    git checkout "$ORIGIN_BRANCH"
+fi
+
+# Fetch latest from fork
+echo "📥 Fetching from ${FORK_REMOTE}..."
+git fetch "$FORK_REMOTE"
+
+# Check if there are changes to sync
+if git merge-base --is-ancestor "${FORK_REMOTE}/${FORK_BRANCH}" HEAD; then
+    echo "✅ Already up to date. No changes to sync."
+    exit 0
+fi
+
+# Show commits that will be merged
+echo ""
+echo "📋 Commits to be synced:"
+git log --oneline HEAD.."${FORK_REMOTE}/${FORK_BRANCH}" | head -10
+echo ""
+
+# Merge fork/main_dure into local main
+echo "🔀 Merging ${FORK_REMOTE}/${FORK_BRANCH}..."
+git merge "${FORK_REMOTE}/${FORK_BRANCH}" --no-edit
+
+# Push to origin/main
+echo "📤 Pushing to ${ORIGIN_REMOTE}/${ORIGIN_BRANCH}..."
+git push "$ORIGIN_REMOTE" "$ORIGIN_BRANCH"
+
+echo ""
+echo "✅ Sync complete!"
