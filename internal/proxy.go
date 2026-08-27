@@ -95,7 +95,16 @@ func SetupProxyRoutes(app *fiber.App) error {
 				proxyURL += "?" + string(c.Request().URI().QueryString())
 			}
 
-			return proxy.Do(c, proxyURL)
+			// Use DoWithConfig to allow localhost/127.0.0.1 for internal services
+			return proxy.DoWithConfig(c, proxyURL, proxy.Config{
+				// Allow proxying to localhost and private IPs (trusted internal services)
+				AllowedIPRanges: []string{
+					"127.0.0.0/8",    // localhost
+					"10.0.0.0/8",     // private network
+					"172.16.0.0/12",  // private network
+					"192.168.0.0/16", // private network
+				},
+			})
 		})
 	}
 
