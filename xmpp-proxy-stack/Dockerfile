@@ -181,6 +181,8 @@ RUN chmod +x /docker-entrypoint.sh && \
 ##
 FROM gcr.io/distroless/base-debian13:latest
 
+ARG TARGETARCH
+
 # Copy mycart binary
 COPY --from=backend-builder /go/bin/mycart /app/mycart
 
@@ -202,8 +204,9 @@ COPY --from=tools-builder /usr/bin/curl /usr/bin/curl
 COPY --from=tools-builder /usr/bin/envsubst /usr/bin/envsubst
 COPY --from=tools-builder /usr/sbin/nft /usr/sbin/nft
 
-# Copy libraries (full glob safe - tools-builder is same Debian release as this base)
-COPY --from=tools-builder /usr/lib/x86_64-linux-gnu/*.so* /usr/lib/x86_64-linux-gnu/
+# Copy libraries - use architecture-specific paths
+# amd64 -> x86_64-linux-gnu, arm64 -> aarch64-linux-gnu
+COPY --from=tools-builder /usr/lib/*-linux-gnu /usr/lib/
 COPY --from=tools-builder /etc/ssl/openssl.cnf /etc/ssl/openssl.cnf
 COPY --from=tools-builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=tools-builder /usr/lib/ssl /usr/lib/ssl
