@@ -1,7 +1,6 @@
-command = "/usr/local/bin/xmpp-proxy-wrapper.sh"
-start-delay = "5s"
+command = "/usr/local/bin/xmpp-proxy /etc/xmpp-proxy/config.toml"
+start-delay = "10s"
 start-after = ["mycart.toml"]
-working-directory = "/etc/xmpp-proxy"
 stdout = "/logs/xmpp-proxy-stdout.log"
 stderr = "/logs/xmpp-proxy-stderr.log"
 
@@ -12,9 +11,6 @@ attempts = 0
 
 [environment]
 RUST_LOG = "info"
-XMPP_DOMAIN = "${XMPP_DOMAIN}"
-XMPP_PROXY_PROSODY_C2S = "${XMPP_PROXY_PROSODY_C2S}"
-XMPP_PROXY_PROSODY_S2S = "${XMPP_PROXY_PROSODY_S2S}"
 
 [termination]
 signal = "TERM"
