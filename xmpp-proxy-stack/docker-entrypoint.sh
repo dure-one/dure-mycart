@@ -59,4 +59,14 @@ done
 echo "✓ Service configs and wrappers processed"
 
 echo "Starting services via Horust..."
-exec /usr/local/bin/horust --services-path /etc/horust/services
+/usr/local/bin/horust --services-path /etc/horust/services &
+HORUST_PID=$!
+
+# Workaround: Horust isn't starting xmpp-proxy, so start it manually after delay
+sleep 15
+if [ -f /certs/fullchain.pem ] && [ -f /certs/privkey.pem ]; then
+    /usr/local/bin/xmpp-proxy /etc/xmpp-proxy/config.toml &
+fi
+
+# Wait for Horust to complete
+wait $HORUST_PID
