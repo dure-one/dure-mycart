@@ -11,8 +11,8 @@ backoff = "10s"
 attempts = 0
 
 [environment]
-MYCART_DOMAIN = "${MYCART_DOMAIN}"
 GIN_MODE = "release"
+# MYCART_DOMAIN inherited from Docker container environment
 
 [healthiness]
 http-endpoint = "http://127.0.0.1:80/health"
