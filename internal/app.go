@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -62,6 +63,11 @@ func NewApp(httpAddr, httpsAddr string, noSite, appDev bool) error {
 	setupRoutes(app, noSite)
 	printStartupInfo(schema, mainAddr, noSite)
 
+	// Start both HTTP and HTTPS servers when both are provided
+	if httpsAddr != "" && httpAddr != "" {
+		return startBothServers(app, httpAddr, httpsAddr)
+	}
+
 	if schema == "https" {
 		return startHTTPS(app, mainAddr, httpsAddr)
 	}
@@ -115,6 +121,11 @@ func setupRoutes(app *fiber.App, noSite bool) {
 		}))
 	}
 
+	// Setup reverse proxy routes from environment configuration
+	if err := SetupProxyRoutes(app); err != nil {
+		log.Err(err).Msg("Failed to setup reverse proxy routes")
+	}
+
 	// Register API routes before InstallCheck so /api/install is reachable on first boot.
 	routes.ApiPrivateRoutes(app)
 	if !noSite {
@@ -150,12 +161,20 @@ func printStartupInfo(schema, mainAddr string, noSite bool) {
 
 // startHTTPS starts the server with HTTPS support and automatic TLS.
 func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {
-	hostOnly := extractHostOnly(mainAddr)
+	// Get domain from environment variable for autocert
+	domain := os.Getenv("MYCART_DOMAIN")
+	if domain == "" {
+		domain = extractHostOnly(mainAddr)
+	}
+
 	manager := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(hostOnly),
+		HostPolicy: autocert.HostWhitelist(domain),
 		Cache:      autocert.DirCache("./lc_certs"),
 	}
+
+	// Export certificates to PEM format for xmpp-proxy
+	exportCertificatesToPEM(manager, domain)
 
 	cfgTLS := &tls.Config{
 		GetCertificate: manager.GetCertificate,
@@ -179,6 +198,62 @@ func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {
 	}
 
 	return nil
+}
+
+// startBothServers starts both HTTP and HTTPS servers concurrently.
+// HTTP server handles autocert HTTP-01 challenges, HTTPS serves the application.
+func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
+	// Get domain from environment variable for autocert
+	domain := os.Getenv("MYCART_DOMAIN")
+	if domain == "" {
+		domain = extractHostOnly(httpsAddr)
+	}
+
+	manager := &autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist(domain),
+		Cache:      autocert.DirCache("./lc_certs"),
+	}
+
+	// Export certificates to PEM format for xmpp-proxy
+	exportCertificatesToPEM(manager, domain)
+
+	errCh := make(chan error, 2)
+
+	// Start HTTP server for autocert HTTP-01 challenge
+	go func() {
+		log.Info().Msgf("Starting HTTP server on %s for ACME challenges", httpAddr)
+		// Use standard net/http for the HTTP server to handle ACME challenges
+		httpSrv := &http.Server{
+			Addr:    httpAddr,
+			Handler: manager.HTTPHandler(nil), // nil = redirect to HTTPS after challenge
+		}
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errCh <- fmt.Errorf("HTTP server error: %w", err)
+		}
+	}()
+
+	// Start HTTPS server
+	go func() {
+		log.Info().Msgf("Starting HTTPS server on %s", httpsAddr)
+		cfgTLS := &tls.Config{
+			GetCertificate: manager.GetCertificate,
+			NextProtos:     []string{"http/1.1", "acme-tls/1"},
+		}
+
+		ln, err := tls.Listen("tcp", httpsAddr, cfgTLS)
+		if err != nil {
+			errCh <- fmt.Errorf("failed to start HTTPS server: %w", err)
+			return
+		}
+
+		if err := app.Listener(ln, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
+			errCh <- fmt.Errorf("HTTPS server error: %w", err)
+		}
+	}()
+
+	// Wait for either server to error
+	return <-errCh
 }
 
 // extractHostOnly extracts only the host from the address, removing the port.

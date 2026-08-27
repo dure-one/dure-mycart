@@ -1,0 +1,25 @@
+command = "/usr/local/bin/mycart-wrapper.sh"
+start-delay = "2s"
+start-after = []
+working-directory = "/app"
+stdout = "/logs/mycart-stdout.log"
+stderr = "/logs/mycart-stderr.log"
+
+[restart]
+strategy = "always"
+backoff = "10s"
+attempts = 0
+
+[environment]
+MYCART_DEV_MODE = "${MYCART_DEV_MODE}"
+MYCART_DOMAIN = "${MYCART_DOMAIN}"
+MYCART_HTTP_ADDR = "${MYCART_HTTP_ADDR}"
+MYCART_HTTPS_ADDR = "${MYCART_HTTPS_ADDR}"
+REVERSE_PROXY_BINDINGS = "${REVERSE_PROXY_BINDINGS}"
+
+[healthiness]
+http-endpoint = "http://127.0.0.1:80/health"
+
+[termination]
+signal = "TERM"
+wait = "10s"

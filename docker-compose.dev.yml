@@ -1,0 +1,106 @@
+# mycart + XMPP Docker Compose (Development)
+# Builds images locally instead of pulling from GHCR
+# Usage: docker-compose -f docker-compose.dev.yml up --build
+
+services:
+  # Init service to set up Prosody community modules
+  prosody-modules-init:
+    image: alpine:latest
+    container_name: prosody-modules-init
+    restart: "no"
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+    command: >
+      sh -c '
+        echo "=== Prosody Modules Initialization ===" &&
+        if [ -f prosody-modules/mod_admin_web2/admin_web2/mod_admin_web2.lua ] && [ -f prosody-modules/mod_admin_web2/admin_web2/www_files/js/strophe.min.js ]; then
+          echo "✓ prosody-modules already initialized" &&
+          exit 0
+        fi &&
+        echo "Installing mercurial..." &&
+        apk add --no-cache mercurial &&
+        echo "Cloning prosody-modules repository..." &&
+        rm -rf prosody-modules &&
+        hg clone https://hg.prosody.im/prosody-modules prosody-modules &&
+        echo "✓ Modules cloned successfully" &&
+        echo "Fetching admin_web2 vendored JS/CSS dependencies..." &&
+        (cd prosody-modules/mod_admin_web2/admin_web2 && sh get_deps.sh) &&
+        echo "✓ admin_web2 dependencies fetched" &&
+        ls -la prosody-modules/ | head -20
+      '
+
+  # Renders prosody config template with XMPP_DOMAIN substitution
+  prosody-config-init:
+    image: alpine:latest
+    container_name: prosody-config-init
+    restart: "no"
+    working_dir: /workspace
+    env_file: .env
+    volumes:
+      - ./:/workspace
+    command: sh xmpp-proxy-stack/render-prosody-config.sh
+
+  # Prosody XMPP server
+  prosody:
+    image: prosodyim/prosody:13.0
+    container_name: prosody
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PROSODY_ADMINS: ${XMPP_ADMIN:-admin@${XMPP_DOMAIN}}
+      PROSODY_VIRTUAL_HOSTS: ${XMPP_DOMAIN}
+      PROSODY_LOGLEVEL: ${PROSODY_LOGLEVEL:-info}
+      PROSODY_STORAGE: internal
+      PROSODY_ENABLE_MODULES: mam,carbons,csi_simple,ping,admin_adhoc,admin_shell,http,admin_web2,bosh,websocket
+      PROSODY_CERTIFICATES: /certs
+      PROSODY_RETENTION_DAYS: ${PROSODY_RETENTION_DAYS:-90}
+    volumes:
+      - /srv/data/prosody:/var/lib/prosody
+      - /srv/data/certs:/certs:ro
+      - /srv/data/logs/prosody:/var/log/prosody
+      - ./generated/proxy.cfg.lua:/etc/prosody/conf.d/proxy.cfg.lua:ro
+      - ./prosody-modules:/usr/lib/prosody/community:ro
+    ports:
+      - "127.0.0.1:15222:5222"  # C2S (localhost only)
+      - "127.0.0.1:15269:5269"  # S2S (localhost only)
+      - "0.0.0.0:5280:5280"     # HTTP/WebSocket (public)
+    networks:
+      - xmpp-internal
+    healthcheck:
+      test: ["CMD", "prosodyctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      prosody-modules-init:
+        condition: service_completed_successfully
+      prosody-config-init:
+        condition: service_completed_successfully
+
+  # Merged stack: mycart + xmpp-proxy + fail2ban-rs (LOCAL BUILD)
+  xmpp-proxy-stack:
+    build:
+      context: .
+      dockerfile: xmpp-proxy-stack/Dockerfile
+    container_name: xmpp-proxy-stack
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    env_file: .env
+    volumes:
+      - /srv/data/certs:/certs
+      - /srv/data/logs:/logs
+      - /srv/data/fail2ban:/var/lib/fail2ban-rs
+      - /srv/data/mycart/lc_base:/app/lc_base
+      - /srv/data/mycart/lc_uploads:/app/lc_uploads
+      - /srv/data/mycart/lc_digitals:/app/lc_digitals
+    depends_on:
+      prosody:
+        condition: service_healthy
+
+networks:
+  xmpp-internal:
+    driver: bridge

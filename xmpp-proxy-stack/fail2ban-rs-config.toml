@@ -1,0 +1,43 @@
+# fail2ban-rs minimal configuration
+# Monitors logs and bans IPs that exceed failure thresholds
+
+[general]
+ban_time = 3600
+find_time = 600
+max_retry = 5
+
+# Monitor XMPP authentication failures
+[[jails]]
+name = "xmpp-auth"
+enabled = true
+filter = "xmpp-auth"
+logpath = ["/logs/xmpp-proxy-stdout.log", "/logs/xmpp-proxy-stderr.log"]
+backend = "ipset"
+
+[jails.xmpp-auth.backend.ipset]
+chain = "DOCKER-USER"  # Required for host networking mode
+maxelem = 65536
+
+# Monitor mycart authentication failures
+[[jails]]
+name = "mycart-auth"
+enabled = true
+filter = "http-auth"
+logpath = ["/logs/mycart-stdout.log", "/logs/mycart-stderr.log"]
+backend = "ipset"
+
+[jails.mycart-auth.backend.ipset]
+chain = "DOCKER-USER"  # Required for host networking mode
+maxelem = 65536
+
+# Filter definitions
+[filters.xmpp-auth]
+regex = 'authentication failed.*from ([0-9.]+)'
+
+[filters.http-auth]
+regex = 'authentication failed.*ip[=:]([0-9.]+)'
+
+# Ban action using nftables
+[actions.nftables]
+ban = "nft add element inet filter fail2ban { %IP% }"
+unban = "nft delete element inet filter fail2ban { %IP% }"
