@@ -2,12 +2,15 @@ package app
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
+	fiberws "github.com/gofiber/contrib/v3/websocket"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/proxy"
+	"github.com/gorilla/websocket"
 )
 
 func init() {
@@ -93,6 +96,68 @@ func ParseProxyBindings() ([]ProxyBinding, error) {
 	return bindings, nil
 }
 
+// proxyWebSocketHandler creates a WebSocket proxy handler for the given target URL
+func proxyWebSocketHandler(targetURL string) fiber.Handler {
+	// Convert http:// to ws:// or https:// to wss://
+	wsURL := strings.Replace(targetURL, "http://", "ws://", 1)
+	wsURL = strings.Replace(wsURL, "https://", "wss://", 1)
+
+	return fiberws.New(func(clientConn *fiberws.Conn) {
+		// Get subprotocol from client request (e.g., "xmpp" for Prosody)
+		requestHeader := http.Header{}
+		if subprotocol := clientConn.Subprotocol(); subprotocol != "" {
+			requestHeader.Set("Sec-WebSocket-Protocol", subprotocol)
+		}
+
+		// Dial backend WebSocket
+		backendConn, _, err := websocket.DefaultDialer.Dial(wsURL, requestHeader)
+		if err != nil {
+			log.Error().Err(err).Str("target", wsURL).Msg("Failed to dial backend WebSocket")
+			return
+		}
+		defer backendConn.Close()
+
+		// Bidirectional proxy
+		errChan := make(chan error, 2)
+
+		// Backend -> Client
+		go func() {
+			for {
+				msgType, msg, err := backendConn.ReadMessage()
+				if err != nil {
+					errChan <- err
+					return
+				}
+				if err := clientConn.WriteMessage(msgType, msg); err != nil {
+					errChan <- err
+					return
+				}
+			}
+		}()
+
+		// Client -> Backend
+		go func() {
+			for {
+				msgType, msg, err := clientConn.ReadMessage()
+				if err != nil {
+					errChan <- err
+					return
+				}
+				if err := backendConn.WriteMessage(msgType, msg); err != nil {
+					errChan <- err
+					return
+				}
+			}
+		}()
+
+		// Wait for error from either direction
+		<-errChan
+	}, fiberws.Config{
+		// Accept common WebSocket subprotocols (xmpp for Prosody, etc.)
+		Subprotocols: []string{"xmpp"},
+	})
+}
+
 // SetupProxyRoutes registers reverse proxy routes based on environment configuration
 func SetupProxyRoutes(app *fiber.App) error {
 	bindings, err := ParseProxyBindings()
@@ -109,18 +174,26 @@ func SetupProxyRoutes(app *fiber.App) error {
 		target := binding.Target
 		path := binding.Path
 
-		// Add /* suffix for wildcard matching if not present
+		log.Info().
+			Str("path", path).
+			Str("target", target).
+			Msg("Registering reverse proxy")
+
+		// Register WebSocket proxy route (only handles WebSocket upgrades)
+		app.Get(path, proxyWebSocketHandler(target))
+
+		// Register HTTP proxy for non-WebSocket requests
 		routePath := path
 		if !strings.HasSuffix(routePath, "*") {
 			routePath = strings.TrimSuffix(routePath, "/") + "/*"
 		}
 
-		log.Info().
-			Str("path", routePath).
-			Str("target", target).
-			Msg("Registering reverse proxy")
-
 		app.All(routePath, func(c fiber.Ctx) error {
+			// Skip if WebSocket (already handled by WebSocket route)
+			if fiberws.IsWebSocketUpgrade(c) {
+				return c.Next()
+			}
+
 			// Get the path after the proxy prefix
 			remainingPath := strings.TrimPrefix(c.Path(), strings.TrimSuffix(path, "*"))
 			proxyURL := target + remainingPath
