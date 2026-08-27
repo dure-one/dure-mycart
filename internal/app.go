@@ -156,10 +156,15 @@ func printStartupInfo(schema, mainAddr string, noSite bool) {
 
 // startHTTPS starts the server with HTTPS support and automatic TLS.
 func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {
-	hostOnly := extractHostOnly(mainAddr)
+	// Get domain from environment variable for autocert
+	domain := os.Getenv("MYCART_DOMAIN")
+	if domain == "" {
+		domain = extractHostOnly(mainAddr)
+	}
+
 	manager := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(hostOnly),
+		HostPolicy: autocert.HostWhitelist(domain),
 		Cache:      autocert.DirCache("./lc_certs"),
 	}
 
@@ -190,10 +195,15 @@ func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {
 // startBothServers starts both HTTP and HTTPS servers concurrently.
 // HTTP server handles autocert HTTP-01 challenges, HTTPS serves the application.
 func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
-	hostOnly := extractHostOnly(httpsAddr)
+	// Get domain from environment variable for autocert
+	domain := os.Getenv("MYCART_DOMAIN")
+	if domain == "" {
+		domain = extractHostOnly(httpsAddr)
+	}
+
 	manager := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(hostOnly),
+		HostPolicy: autocert.HostWhitelist(domain),
 		Cache:      autocert.DirCache("./lc_certs"),
 	}
 

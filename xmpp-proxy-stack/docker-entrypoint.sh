@@ -35,6 +35,11 @@ echo "✓ Volume permissions OK"
 
 # Create symlink for mycart's autocert cache
 # mycart writes to ./lc_certs (relative to /app), but we want it in /certs
+# Remove any incorrect symlink first
+if [ -L /app/certs ]; then
+    rm /app/certs
+fi
+
 if [ ! -e /app/lc_certs ]; then
     ln -s /certs /app/lc_certs
     echo "✓ Created symlink: /app/lc_certs -> /certs"
