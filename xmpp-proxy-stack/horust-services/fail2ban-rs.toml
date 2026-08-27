@@ -5,12 +5,15 @@ working-directory = "/var/lib/fail2ban-rs"
 stdout = "/logs/fail2ban-rs-stdout.log"
 stderr = "/logs/fail2ban-rs-stderr.log"
 user = "root"
-pass-environment = ["FAIL2BAN_MAX_RETRY", "FAIL2BAN_FIND_TIME", "FAIL2BAN_BAN_TIME"]
 
 [restart]
 strategy = "always"
 backoff = "10s"
 attempts = 0
+
+[environment]
+# FAIL2BAN_* vars inherited from Docker container environment
+# Defaults set in fail2ban-rs-config.toml
 
 [termination]
 signal = "TERM"
