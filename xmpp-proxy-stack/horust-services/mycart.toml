@@ -4,7 +4,6 @@ start-after = []
 working-directory = "/app"
 stdout = "/logs/mycart-stdout.log"
 stderr = "/logs/mycart-stderr.log"
-pass-environment = ["MYCART_DOMAIN"]
 
 [restart]
 strategy = "always"
@@ -13,6 +12,7 @@ attempts = 0
 
 [environment]
 GIN_MODE = "release"
+# MYCART_DOMAIN inherited from Docker container environment
 
 [healthiness]
 http-endpoint = "http://127.0.0.1:80/health"
