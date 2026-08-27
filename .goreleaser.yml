@@ -82,33 +82,6 @@ changelog:
     - title: Other work
       order: 9999
 
-dockers_v2:
-  - id: release
-    images:
-      - 'shurco/mycart'
-      - 'ghcr.io/shurco/mycart'
-    tags:
-      - 'v{{ .Version }}'
-      - 'latest'
-    platforms:
-      - linux/amd64
-      - linux/arm64
-    dockerfile: Dockerfile.goreleaser
-    sbom: true
-    flags:
-      - '--pull'
-      - '--provenance'
-    labels:
-      'io.artifacthub.package.readme-url': 'https://raw.githubusercontent.com/shurco/mycart/main/README.md'
-      'io.artifacthub.package.maintainers': '[{"name":"Dmitry Shurco"}]'
-      'io.artifacthub.package.license': 'MIT'
-      'org.opencontainers.image.description': '🛒 myCart - shopping-cart in 1 file'
-      'org.opencontainers.image.created': '{{.Date}}'
-      'org.opencontainers.image.name': '{{.ProjectName}}'
-      'org.opencontainers.image.revision': '{{.FullCommit}}'
-      'org.opencontainers.image.version': '{{.Version}}'
-      'org.opencontainers.image.source': '{{.GitURL}}'
-
 release:
   name_template: "v{{ .Version }}"
   header: |
