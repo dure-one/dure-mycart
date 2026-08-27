@@ -116,12 +116,6 @@ release:
 
   footer: |
     **Full Changelog**: https://github.com/shurco/mycart/compare/{{ .PreviousTag }}...{{ .Tag }}
-    
+
     > [!WARNING]
     > If you are updating, it is essential to do the following - back up the **./site** folder if you have made changes to it (you can rename it). A new folder with updated files will be created.
-
-announce:
-  mastodon:
-    enabled: true
-    message_template: "#mycart {{ .Tag }} is out! Check it out: https://github.com/shurco/mycart/releases/tag/{{ .Tag }}"
-    server: https://mastodon.social
