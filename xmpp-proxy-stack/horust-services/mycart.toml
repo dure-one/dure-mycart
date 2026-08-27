@@ -11,6 +11,11 @@ backoff = "10s"
 attempts = 0
 
 [environment]
+MYCART_DEV_MODE = "${MYCART_DEV_MODE}"
+MYCART_DOMAIN = "${MYCART_DOMAIN}"
+MYCART_HTTP_ADDR = "${MYCART_HTTP_ADDR}"
+MYCART_HTTPS_ADDR = "${MYCART_HTTPS_ADDR}"
+REVERSE_PROXY_BINDINGS = "${REVERSE_PROXY_BINDINGS}"
 
 [healthiness]
 http-endpoint = "http://127.0.0.1:80/health"
