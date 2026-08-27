@@ -55,8 +55,6 @@ services:
       PROSODY_ENABLE_MODULES: mam,carbons,csi_simple,ping,admin_adhoc,admin_shell,http,admin_web2,bosh,websocket
       PROSODY_CERTIFICATES: /certs
       PROSODY_RETENTION_DAYS: ${PROSODY_RETENTION_DAYS:-90}
-      LOCAL_UID: 0
-      LOCAL_GID: 0
     volumes:
       - /srv/data/prosody:/var/lib/prosody
       - /srv/data/certs:/certs:ro
