@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -79,6 +80,11 @@ func NewApp(dbCfg database.Config, httpAddr, httpsAddr string, noSite, appDev bo
 
 	setupRoutes(app, noSite)
 	printStartupInfo(os.Stdout, schema, mainAddr, noSite, dbCfg)
+
+	// Start both HTTP and HTTPS servers when both are provided
+	if httpsAddr != "" && httpAddr != "" {
+		return startBothServers(app, httpAddr, httpsAddr)
+	}
 
 	if schema == "https" {
 		return startHTTPS(app, mainAddr, httpsAddr)
@@ -202,6 +208,54 @@ func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {
 	}
 
 	return nil
+}
+
+// startBothServers starts both HTTP and HTTPS servers concurrently.
+// HTTP server handles autocert HTTP-01 challenges, HTTPS serves the application.
+func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
+	hostOnly := extractHostOnly(httpsAddr)
+	manager := &autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist(hostOnly),
+		Cache:      autocert.DirCache("./lc_certs"),
+	}
+
+	errCh := make(chan error, 2)
+
+	// Start HTTP server for autocert HTTP-01 challenge
+	go func() {
+		log.Info().Msgf("Starting HTTP server on %s for ACME challenges", httpAddr)
+		// Use standard net/http for the HTTP server to handle ACME challenges
+		httpSrv := &http.Server{
+			Addr:    httpAddr,
+			Handler: manager.HTTPHandler(nil), // nil = redirect to HTTPS after challenge
+		}
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errCh <- fmt.Errorf("HTTP server error: %w", err)
+		}
+	}()
+
+	// Start HTTPS server
+	go func() {
+		log.Info().Msgf("Starting HTTPS server on %s", httpsAddr)
+		cfgTLS := &tls.Config{
+			GetCertificate: manager.GetCertificate,
+			NextProtos:     []string{"http/1.1", "acme-tls/1"},
+		}
+
+		ln, err := tls.Listen("tcp", httpsAddr, cfgTLS)
+		if err != nil {
+			errCh <- fmt.Errorf("failed to start HTTPS server: %w", err)
+			return
+		}
+
+		if err := app.Listener(ln, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
+			errCh <- fmt.Errorf("HTTPS server error: %w", err)
+		}
+	}()
+
+	// Wait for either server to error
+	return <-errCh
 }
 
 // extractHostOnly extracts only the host from the address, removing the port.
