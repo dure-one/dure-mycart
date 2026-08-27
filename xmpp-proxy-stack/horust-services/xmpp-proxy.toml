@@ -12,7 +12,9 @@ attempts = 0
 
 [environment]
 RUST_LOG = "info"
-# XMPP_DOMAIN inherited from Docker container environment
+XMPP_DOMAIN = "${XMPP_DOMAIN}"
+XMPP_PROXY_PROSODY_C2S = "${XMPP_PROXY_PROSODY_C2S}"
+XMPP_PROXY_PROSODY_S2S = "${XMPP_PROXY_PROSODY_S2S}"
 
 [termination]
 signal = "TERM"
