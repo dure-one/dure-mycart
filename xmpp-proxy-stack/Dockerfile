@@ -120,9 +120,16 @@ RUN ARCH=$(uname -m) && \
     echo "Downloading fail2ban-rs from ${DOWNLOAD_URL}..." && \
     curl -fsSL "$DOWNLOAD_URL" -o /tmp/fail2ban-rs.tar.gz && \
     tar -xzf /tmp/fail2ban-rs.tar.gz -C /tmp && \
-    find /tmp -type f -name fail2ban-rs -exec mv {} /usr/local/bin/fail2ban-rs \; && \
+    find /tmp -type f -name "fail2ban-rs" -exec mv {} /usr/local/bin/fail2ban-rs \; && \
+    if [ ! -f /usr/local/bin/fail2ban-rs ]; then \
+        echo "ERROR: fail2ban-rs binary not found after extraction" >&2; \
+        echo "Contents of /tmp:" >&2; \
+        ls -la /tmp/ >&2; \
+        exit 1; \
+    fi && \
+    chmod +x /usr/local/bin/fail2ban-rs && \
     rm -rf /tmp/fail2ban-rs.tar.gz /tmp/fail2ban-rs-*-linux-* && \
-    chmod +x /usr/local/bin/fail2ban-rs
+    /usr/local/bin/fail2ban-rs --version
 
 ##
 ## Stage 4: horust-builder (Alpine)
@@ -171,10 +178,14 @@ WORKDIR /build
 
 # Copy our scripts and configs
 COPY xmpp-proxy-stack/docker-entrypoint.sh /docker-entrypoint.sh
+COPY xmpp-proxy-stack/xmpp-proxy-wrapper.sh /usr/local/bin/xmpp-proxy-wrapper.sh
 COPY xmpp-proxy-stack/horust-services/ /etc/horust/services/
 
-RUN chmod +x /docker-entrypoint.sh && \
+RUN mkdir -p /etc/fail2ban-rs && \
+    chmod +x /docker-entrypoint.sh /usr/local/bin/xmpp-proxy-wrapper.sh && \
     cp /bin/busybox /bin/busybox-static
+
+COPY xmpp-proxy-stack/fail2ban-rs-config.toml /etc/fail2ban-rs/config.toml
 
 ##
 ## Final Stage: distroless

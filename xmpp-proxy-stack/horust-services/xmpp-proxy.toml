@@ -1,4 +1,4 @@
-command = "/usr/local/bin/xmpp-proxy --c2s 127.0.0.1:15222 --s2s 127.0.0.1:15269 --cert /certs/fullchain.pem --key /certs/privkey.pem"
+command = "/usr/local/bin/xmpp-proxy-wrapper.sh"
 start-delay = "5s"
 start-after = ["mycart.toml"]
 working-directory = "/etc/xmpp-proxy"
