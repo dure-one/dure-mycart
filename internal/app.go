@@ -121,6 +121,11 @@ func setupRoutes(app *fiber.App, noSite bool) {
 		}))
 	}
 
+	// Setup reverse proxy routes from environment configuration
+	if err := SetupProxyRoutes(app); err != nil {
+		log.Err(err).Msg("Failed to setup reverse proxy routes")
+	}
+
 	// Register API routes before InstallCheck so /api/install is reachable on first boot.
 	routes.ApiPrivateRoutes(app)
 	if !noSite {
