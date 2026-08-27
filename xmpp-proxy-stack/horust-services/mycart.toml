@@ -1,4 +1,4 @@
-command = "/app/mycart serve --http 0.0.0.0:80 --https 0.0.0.0:443"
+command = "/usr/local/bin/mycart-wrapper.sh"
 start-delay = "2s"
 start-after = []
 working-directory = "/app"
@@ -11,8 +11,6 @@ backoff = "10s"
 attempts = 0
 
 [environment]
-GIN_MODE = "release"
-MYCART_DOMAIN = "${MYCART_DOMAIN}"
 
 [healthiness]
 http-endpoint = "http://127.0.0.1:80/health"

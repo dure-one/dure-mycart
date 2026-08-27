@@ -179,10 +179,11 @@ WORKDIR /build
 # Copy our scripts and configs
 COPY xmpp-proxy-stack/docker-entrypoint.sh /docker-entrypoint.sh
 COPY xmpp-proxy-stack/xmpp-proxy-wrapper.sh /usr/local/bin/xmpp-proxy-wrapper.sh
+COPY xmpp-proxy-stack/mycart-wrapper.sh /usr/local/bin/mycart-wrapper.sh
 COPY xmpp-proxy-stack/horust-services/ /etc/horust/services/
 
 RUN mkdir -p /etc/fail2ban-rs && \
-    chmod +x /docker-entrypoint.sh /usr/local/bin/xmpp-proxy-wrapper.sh && \
+    chmod +x /docker-entrypoint.sh /usr/local/bin/xmpp-proxy-wrapper.sh /usr/local/bin/mycart-wrapper.sh && \
     cp /bin/busybox /bin/busybox-static
 
 COPY xmpp-proxy-stack/fail2ban-rs-config.toml /etc/fail2ban-rs/config.toml
@@ -206,6 +207,8 @@ COPY --from=horust-builder /usr/local/bin/horust /usr/local/bin/horust
 
 # Copy our tools and configs
 COPY --from=tools-builder /docker-entrypoint.sh /docker-entrypoint.sh
+COPY --from=tools-builder /usr/local/bin/xmpp-proxy-wrapper.sh /usr/local/bin/xmpp-proxy-wrapper.sh
+COPY --from=tools-builder /usr/local/bin/mycart-wrapper.sh /usr/local/bin/mycart-wrapper.sh
 COPY --from=tools-builder /etc/horust/services /etc/horust/services
 COPY --from=tools-builder /bin/busybox-static /bin/busybox
 
