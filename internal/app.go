@@ -173,6 +173,9 @@ func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {
 		Cache:      autocert.DirCache("./lc_certs"),
 	}
 
+	// Export certificates to PEM format for xmpp-proxy
+	exportCertificatesToPEM(manager, domain)
+
 	cfgTLS := &tls.Config{
 		GetCertificate: manager.GetCertificate,
 		NextProtos:     []string{"http/1.1", "acme-tls/1"},
@@ -211,6 +214,9 @@ func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
 		HostPolicy: autocert.HostWhitelist(domain),
 		Cache:      autocert.DirCache("./lc_certs"),
 	}
+
+	// Export certificates to PEM format for xmpp-proxy
+	exportCertificatesToPEM(manager, domain)
 
 	errCh := make(chan error, 2)
 
