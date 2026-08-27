@@ -33,6 +33,13 @@ done
 
 echo "✓ Volume permissions OK"
 
+# Create symlink for mycart's autocert cache
+# mycart writes to ./lc_certs (relative to /app), but we want it in /certs
+if [ ! -e /app/lc_certs ]; then
+    ln -s /certs /app/lc_certs
+    echo "✓ Created symlink: /app/lc_certs -> /certs"
+fi
+
 # mycart's autocert will handle SSL certificates automatically
 # No need to generate self-signed certs or run acme.sh
 
