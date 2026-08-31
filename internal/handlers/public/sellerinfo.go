@@ -3,11 +3,10 @@ package handlers
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"image"
-	"image/color"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/wenlng/go-captcha-assets/resources/imagesv2"
 	"github.com/wenlng/go-captcha/v2/rotate"
 
 	"github.com/shurco/mycart/internal/models"
@@ -32,31 +31,6 @@ type verifiedToken struct {
 // verifiedStore holds verified tokens that grant access to seller info
 var verifiedStore = make(map[string]verifiedToken)
 
-// generateSampleImages creates simple colored images for captcha
-func generateSampleImages() []image.Image {
-	images := make([]image.Image, 6)
-	colors := []color.RGBA{
-		{R: 255, G: 100, B: 100, A: 255}, // Red
-		{R: 100, G: 255, B: 100, A: 255}, // Green
-		{R: 100, G: 100, B: 255, A: 255}, // Blue
-		{R: 255, G: 255, B: 100, A: 255}, // Yellow
-		{R: 255, G: 100, B: 255, A: 255}, // Magenta
-		{R: 100, G: 255, B: 255, A: 255}, // Cyan
-	}
-
-	for i := 0; i < 6; i++ {
-		img := image.NewRGBA(image.Rect(0, 0, 300, 300))
-		// Fill with solid color
-		for y := 0; y < 300; y++ {
-			for x := 0; x < 300; x++ {
-				img.Set(x, y, colors[i])
-			}
-		}
-		images[i] = img
-	}
-	return images
-}
-
 // GenerateCaptcha generates a rotate captcha image.
 //
 // @Summary      Generate captcha
@@ -69,13 +43,20 @@ func generateSampleImages() []image.Image {
 func GenerateCaptcha(c fiber.Ctx) error {
 	log := logging.New()
 
+	// Load background images from go-captcha-assets
+	imgs, err := imagesv2.GetImages()
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
 	// Create rotate captcha builder with image resources
 	builder := rotate.NewBuilder(
 		rotate.WithImageSquareSize(300),
 	)
 
 	builder.SetResources(
-		rotate.WithImages(generateSampleImages()),
+		rotate.WithImages(imgs),
 	)
 
 	captcha := builder.Make()
