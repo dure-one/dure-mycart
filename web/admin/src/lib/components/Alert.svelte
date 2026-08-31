@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { toast } from 'svelte-french-toast'
+  import { toast } from 'svelte-sonner'
   import SvgIcon from './SvgIcon.svelte'
 
   const NOTIFICATION_DURATION = 4000
@@ -9,17 +9,22 @@
     const callback = (e) => {
       const message = e.detail
       const options = {
-        duration: NOTIFICATION_DURATION,
-        style:
-          notificationType === 'error'
-            ? 'background: #ef4444; color: white;'
-            : notificationType === 'warning'
-              ? 'background: #eab308; color: white;'
-              : notificationType === 'info'
-                ? 'background: #3b82f6; color: white;'
-                : 'background: #22c55e; color: white;'
+        duration: NOTIFICATION_DURATION
       }
-      toast(message, options)
+
+      switch (notificationType) {
+        case 'error':
+          toast.error(message, options)
+          break
+        case 'warning':
+          toast.warning(message, options)
+          break
+        case 'info':
+          toast.info(message, options)
+          break
+        default:
+          toast.success(message, options)
+      }
     }
 
     addEventListener(eventName, callback)
