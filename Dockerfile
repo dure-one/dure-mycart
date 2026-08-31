@@ -10,11 +10,11 @@ WORKDIR /app
 # Copy package files and postinstall script for better caching
 COPY web/admin/package*.json ./web/admin/
 COPY web/site/package*.json ./web/site/
-COPY scripts ./scripts
+COPY scripts/ ./scripts/
 
 # Debug: verify scripts directory was copied
-RUN ls -la /app/scripts/ || echo "ERROR: /app/scripts not found"
-RUN test -f /app/scripts/postinstall-openbsd-natives.js && echo "✓ postinstall script found" || echo "ERROR: postinstall script NOT found"
+RUN ls -laR /app/ || true
+RUN echo "=== Checking for postinstall script ===" && test -f /app/scripts/postinstall-openbsd-natives.js && echo "✓ FOUND" || echo "✗ NOT FOUND"
 
 # Install dependencies
 WORKDIR /app/web/admin
