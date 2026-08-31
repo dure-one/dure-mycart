@@ -102,6 +102,17 @@ func (q *SettingQueries) GroupFieldMap(settings any) map[string]any {
 			"smtp_password":     &s.SMTP.Password,
 			"smtp_encryption":   &s.SMTP.Encryption,
 		}
+	case *models.Dureone:
+		return map[string]any{
+			"dureone_enabled":             &s.Enabled,
+			"dureone_business_name":       &s.BusinessName,
+			"dureone_representative":      &s.Representative,
+			"dureone_customer_service":    &s.CustomerService,
+			"dureone_business_reg_number": &s.BusinessRegNumber,
+			"dureone_business_address":    &s.BusinessAddress,
+			"dureone_ecommerce_license":   &s.EcommerceLicense,
+			"dureone_email":               &s.Email,
+		}
 	default:
 		return nil
 	}

@@ -52,6 +52,12 @@ func Settings(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
+	settingDureone, err := queries.GetSettingByGroup[models.Dureone](c.Context(), db)
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
 	pages, _, err := db.ListPages(c.Context(), false, 0, 0)
 	if err != nil {
 		log.ErrorStack(err)
@@ -67,5 +73,6 @@ func Settings(c fiber.Ctx) error {
 		"socials": settingSocial,
 		"pages":   pages,
 		"payment": settingPayment,
+		"dureone": settingDureone,
 	})
 }

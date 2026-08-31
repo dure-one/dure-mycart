@@ -36,7 +36,7 @@
   const rotateConfig = {
     width: 300,
     height: 300,
-    showTheme: false,
+    showTheme: true,
     title: '회전하여 이미지를 맞춰주세요'
   }
 
@@ -184,12 +184,25 @@
         <div class="space-y-6">
           <div class="text-center">
             {#if captchaData}
+              <!-- Debug: Verify data is present -->
+              <div class="mb-4 rounded border-2 border-yellow-300 bg-yellow-300 bg-opacity-20 p-2 text-xs text-yellow-300">
+                <div>DEBUG: captchaData present</div>
+                <div>thumbSize: {captchaData.thumbSize}px</div>
+                <div>image length: {captchaData.image.length} chars</div>
+                <div>thumb length: {captchaData.thumb.length} chars</div>
+                <div>image starts: {captchaData.image.substring(0, 30)}...</div>
+              </div>
+
               <Rotate
                 bind:this={rotateRef}
                 config={rotateConfig}
                 data={captchaData}
                 events={rotateEvents}
               />
+            {:else}
+              <div class="rounded border-2 border-red-500 bg-red-500 bg-opacity-20 p-4 text-red-300">
+                DEBUG: No captchaData - check API response
+              </div>
             {/if}
           </div>
         </div>

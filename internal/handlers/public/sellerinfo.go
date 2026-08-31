@@ -130,6 +130,16 @@ func GenerateCaptcha(c fiber.Ctx) error {
 	// Clean up expired tokens
 	go cleanupExpiredCaptchas()
 
+	// Debug logging
+	log.Info().
+		Str("token", token[:10]+"...").
+		Int("masterLen", len(masterBase64)).
+		Int("thumbLen", len(thumbBase64)).
+		Int("thumbSize", block.Width).
+		Int("angle", block.Angle).
+		Str("masterPrefix", masterBase64[:50]).
+		Msg("Captcha generated")
+
 	return webutil.Response(c, fiber.StatusOK, "Captcha generated", map[string]any{
 		"token":        token,
 		"master_image": masterBase64,
