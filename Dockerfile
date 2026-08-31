@@ -12,6 +12,10 @@ COPY web/admin/package*.json ./web/admin/
 COPY web/site/package*.json ./web/site/
 COPY scripts ./scripts
 
+# Debug: verify scripts directory was copied
+RUN ls -la /app/scripts/ || echo "ERROR: /app/scripts not found"
+RUN test -f /app/scripts/postinstall-openbsd-natives.js && echo "✓ postinstall script found" || echo "ERROR: postinstall script NOT found"
+
 # Install dependencies
 WORKDIR /app/web/admin
 RUN npm ci --legacy-peer-deps
