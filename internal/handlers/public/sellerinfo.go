@@ -115,7 +115,7 @@ func GenerateCaptcha(c fiber.Ctx) error {
 		"token":        token,
 		"master_image": masterBase64,
 		"thumb_image":  thumbBase64,
-		"thumb_size":   block.Size,
+		"thumb_size":   block.Width,
 	})
 }
 
