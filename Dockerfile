@@ -7,13 +7,13 @@ FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app
 
-# Copy package files and postinstall scripts for better caching
+# Copy package files for better caching
 COPY web/admin/package*.json ./web/admin/
 COPY web/site/package*.json ./web/site/
-COPY scripts/postinstall-openbsd-natives.js ./scripts/
-COPY scripts/postinstall-stub.js ./scripts/
 
 # Install dependencies
+# Note: postinstall scripts will fail silently (|| true) - this is OK
+# because they only patch native modules on OpenBSD/FreeBSD, not Alpine
 WORKDIR /app/web/admin
 RUN npm ci --legacy-peer-deps
 
