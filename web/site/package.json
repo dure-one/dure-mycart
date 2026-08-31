@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "postinstall": "node ../../scripts/postinstall-openbsd-natives.js",
+    "postinstall": "node ../../scripts/postinstall-openbsd-natives.js || node ../../scripts/postinstall-stub.js",
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
