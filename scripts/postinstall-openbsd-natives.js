@@ -24,7 +24,19 @@ if (platform !== 'openbsd' && platform !== 'freebsd') {
 console.log(`🔧 Patching native modules for ${platform}...`);
 
 const NATIVE_LIBS_DIR = path.join(os.homedir(), '.local/lib/node-native-openbsd');
-const WEB_DIRS = ['web/admin', 'web/site'];
+
+// Determine web directories based on current working directory
+let WEB_DIRS;
+const cwd = process.cwd();
+const cwdName = path.basename(cwd);
+
+if (cwdName === 'admin' || cwdName === 'site') {
+  // Running from within web/admin or web/site (postinstall hook)
+  WEB_DIRS = ['.'];
+} else {
+  // Running from project root
+  WEB_DIRS = ['web/admin', 'web/site'];
+}
 
 let patchCount = 0;
 
