@@ -71,6 +71,14 @@ func GenerateCaptcha(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
+	// Add data URI scheme prefix if not already present
+	if len(masterBase64) > 0 && masterBase64[:5] != "data:" {
+		masterBase64 = "data:image/png;base64," + masterBase64
+	}
+	if len(thumbBase64) > 0 && thumbBase64[:5] != "data:" {
+		thumbBase64 = "data:image/png;base64," + thumbBase64
+	}
+
 	// Generate random token
 	tokenBytes := make([]byte, 32)
 	if _, err := rand.Read(tokenBytes); err != nil {
@@ -92,6 +100,7 @@ func GenerateCaptcha(c fiber.Ctx) error {
 		"token":        token,
 		"master_image": masterBase64,
 		"thumb_image":  thumbBase64,
+		"thumb_size":   block.Size,
 	})
 }
 

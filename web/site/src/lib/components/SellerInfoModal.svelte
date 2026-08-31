@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import { Rotate } from 'go-captcha-svelte'
 
   interface Props {
     open?: boolean
@@ -17,15 +18,39 @@
     email: string
   }
 
+  interface RotateData {
+    image: string
+    thumb: string
+    thumbSize: number
+  }
+
   let captchaVerified = $state(false)
   let sellerInfo = $state<SellerInfo | null>(null)
   let loading = $state(false)
   let error = $state('')
   let captchaToken = $state('')
-  let masterImage = $state('')
-  let thumbImage = $state('')
-  let currentAngle = $state(0)
+  let captchaData = $state<RotateData | null>(null)
   let accessToken = $state('')
+  let rotateRef: any
+
+  const rotateConfig = {
+    width: 300,
+    height: 300,
+    showTheme: false,
+    title: '회전하여 이미지를 맞춰주세요'
+  }
+
+  const rotateEvents = {
+    confirm: (angle: number, clear: (fn: Function) => void) => {
+      verifyCaptcha(angle, clear)
+    },
+    refresh: () => {
+      loadCaptcha()
+    },
+    close: () => {
+      closeModal()
+    }
+  }
 
   async function loadCaptcha() {
     loading = true
@@ -34,9 +59,13 @@
       const response = await fetch('/api/sellerinfo/captcha')
       if (!response.ok) throw new Error('Failed to load captcha')
       const data = await response.json()
-      masterImage = data.master_image
-      thumbImage = data.thumb_image
-      captchaToken = data.token
+
+      captchaData = {
+        image: data.result.master_image,
+        thumb: data.result.thumb_image,
+        thumbSize: data.result.thumb_size
+      }
+      captchaToken = data.result.token
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to load captcha'
     } finally {
@@ -44,7 +73,7 @@
     }
   }
 
-  async function verifyCaptcha() {
+  async function verifyCaptcha(angle: number, clear: (fn: Function) => void) {
     loading = true
     error = ''
     try {
@@ -53,20 +82,29 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           token: captchaToken,
-          angle: currentAngle
+          angle: Math.round(angle)
         })
       })
+
       if (!response.ok) {
         const data = await response.json()
         throw new Error(data.message || 'Verification failed')
       }
+
       const data = await response.json()
-      accessToken = data.access_token
+
+      if (!data.result.verified) {
+        throw new Error('Verification failed')
+      }
+
+      accessToken = data.result.access_token
       captchaVerified = true
       await loadSellerInfo()
     } catch (err) {
       error = err instanceof Error ? err.message : 'Verification failed'
-      await loadCaptcha() // Reload captcha on failure
+      clear(() => {
+        loadCaptcha()
+      })
     } finally {
       loading = false
     }
@@ -81,7 +119,7 @@
       })
       if (!response.ok) throw new Error('Failed to load seller info')
       const data = await response.json()
-      sellerInfo = data.seller_info
+      sellerInfo = data.result
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to load seller info'
     } finally {
@@ -95,20 +133,18 @@
     sellerInfo = null
     error = ''
     captchaToken = ''
-    masterImage = ''
-    thumbImage = ''
-    currentAngle = 0
+    captchaData = null
     accessToken = ''
   }
 
   onMount(() => {
-    if (open && !masterImage) {
+    if (open && !captchaData) {
       loadCaptcha()
     }
   })
 
   $effect(() => {
-    if (open && !masterImage && !loading) {
+    if (open && !captchaData && !loading) {
       loadCaptcha()
     }
   })
@@ -147,35 +183,13 @@
       {:else if !captchaVerified}
         <div class="space-y-6">
           <div class="text-center">
-            <p class="mb-4 text-sm font-black uppercase text-white">회전하여 이미지를 맞춰주세요</p>
-            {#if masterImage && thumbImage}
-              <div class="relative mx-auto mb-4 inline-block">
-                <img src={masterImage} alt="Captcha" class="border-4 border-white" />
-                <div
-                  class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-                  style="transform: translate(-50%, -50%) rotate({currentAngle}deg)"
-                >
-                  <img src={thumbImage} alt="Thumb" class="border-2 border-yellow-300" />
-                </div>
-              </div>
-              <div class="mb-4">
-                <label class="mb-2 block text-xs font-black uppercase text-yellow-300">
-                  각도: {currentAngle}°
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="360"
-                  bind:value={currentAngle}
-                  class="w-full"
-                />
-              </div>
-              <button
-                onclick={verifyCaptcha}
-                class="w-full border-4 border-yellow-300 bg-yellow-300 px-6 py-3 text-lg font-black uppercase text-black transition-all duration-200 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)]"
-              >
-                확인
-              </button>
+            {#if captchaData}
+              <Rotate
+                bind:this={rotateRef}
+                config={rotateConfig}
+                data={captchaData}
+                events={rotateEvents}
+              />
             {/if}
           </div>
         </div>
