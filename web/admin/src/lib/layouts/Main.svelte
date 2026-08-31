@@ -73,6 +73,7 @@
     if (currentRoute?.includes('/settings')) {
       return [
         { name: 'settingsMain', path: `${base}/settings/main`, meta: { ico: 'home', title: () => t('settings.main') } },
+        { name: 'settingsDureone', path: `${base}/settings/dureone`, meta: { ico: 'building-storefront', title: () => t('settings.dureone') } },
         { name: 'settingsAuth', path: `${base}/settings/auth`, meta: { ico: 'finger-print', title: () => t('settings.auth') } },
         { name: 'settingsPayment', path: `${base}/settings/payment`, meta: { ico: 'money', title: () => t('settings.payment') } },
         {

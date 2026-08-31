@@ -14,7 +14,8 @@
   "footer": {
     "follow": "Follow:",
     "allRightsReserved": "All Rights Reserved",
-    "poweredBy": "Powered by myCart"
+    "poweredBy": "Powered by myCart",
+    "sellerInfo": "Seller Info"
   },
   "home": {
     "products": "PRODUCTS",
