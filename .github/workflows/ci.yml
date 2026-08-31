@@ -42,7 +42,7 @@ jobs:
       - name: Build frontends (embedded via go:embed)
         run: |
           for app in admin site; do
-            (cd web/$app && bun install --frozen-lockfile && bun run build)
+            (cd web/$app && bun install && bun run build)
           done
 
       - name: Vet
@@ -70,7 +70,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: web/${{ matrix.app }}
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Build
         working-directory: web/${{ matrix.app }}

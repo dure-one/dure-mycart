@@ -7,9 +7,10 @@ FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app
 
-# Copy package files for better caching
+# Copy package files and postinstall script for better caching
 COPY web/admin/package*.json ./web/admin/
 COPY web/site/package*.json ./web/site/
+COPY scripts ./scripts
 
 # Install dependencies
 WORKDIR /app/web/admin
