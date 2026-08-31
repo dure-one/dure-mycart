@@ -4,9 +4,11 @@
   import { handleNavigation } from '$lib/utils/navigation'
   import { page } from '$app/state'
   import { translate } from '$lib/i18n'
+  import SellerInfoModal from './SellerInfoModal.svelte'
 
   // Reactive translation function
   let t = $derived($translate)
+  let showSellerModal = $state(false)
 
   const SOCIALS_SVG_PATH = '/assets/img/socials.svg#'
 
@@ -74,15 +76,29 @@
         <p class="text-xs font-black tracking-widest text-yellow-300 uppercase">
           © {new Date().getFullYear()} {t('footer.allRightsReserved')}
         </p>
-        <a
-          target="_blank"
-          rel="noopener noreferrer"
-          href="https://github.com/shurco/mycart"
-          class="cursor-pointer text-xs font-black tracking-wider text-yellow-300 uppercase transition-colors duration-200 hover:text-white"
-        >
-          {t('footer.poweredBy')}
-        </a>
+        <div class="flex gap-4">
+          {#if settings?.dureone?.enabled}
+            <button
+              onclick={() => showSellerModal = true}
+              class="cursor-pointer text-xs font-black tracking-wider text-yellow-300 uppercase transition-colors duration-200 hover:text-white"
+            >
+              {t('footer.sellerInfo')}
+            </button>
+          {/if}
+          <a
+            target="_blank"
+            rel="noopener noreferrer"
+            href="https://github.com/shurco/mycart"
+            class="cursor-pointer text-xs font-black tracking-wider text-yellow-300 uppercase transition-colors duration-200 hover:text-white"
+          >
+            {t('footer.poweredBy')}
+          </a>
+        </div>
       </div>
     </div>
   </div>
 </footer>
+
+{#if showSellerModal}
+  <SellerInfoModal bind:open={showSellerModal} />
+{/if}

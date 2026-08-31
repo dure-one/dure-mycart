@@ -26,6 +26,10 @@ export const validators = {
     validator: (value: string) => !value || value.length >= min,
     message: message || `Must be at least ${min} characters`
   }),
+  maxLength: (max: number, message?: string) => ({
+    validator: (value: string) => !value || value.length <= max,
+    message: message || `Must be at most ${max} characters`
+  }),
   email: (message = 'Invalid email format') => ({
     validator: (value: string) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
     message

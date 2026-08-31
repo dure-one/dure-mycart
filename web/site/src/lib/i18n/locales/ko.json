@@ -15,7 +15,8 @@
   "footer": {
     "follow": "팔로우:",
     "allRightsReserved": "모든 권리 보유",
-    "poweredBy": "myCart 제공"
+    "poweredBy": "myCart 제공",
+    "sellerInfo": "판매자 정보"
   },
   "home": {
     "products": "상품",

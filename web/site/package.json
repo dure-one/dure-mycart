@@ -4,10 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --bunx vite dev",
-    "build": "bun --bunx vite build",
-    "preview": "bun --bunx vite preview",
-    "check": "bun --bunx svelte-kit sync && bun --bunx svelte-check --tsconfig ./tsconfig.json",
+    "postinstall": "node ../../scripts/postinstall-openbsd-natives.js",
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "format": "prettier --write .",
     "update": "bun update",
     "test": "vitest",
@@ -19,6 +20,7 @@
   },
   "dependencies": {
     "@portone/browser-sdk": "^0.1.9",
+    "go-captcha-svelte": "^1.0.6",
     "isomorphic-dompurify": "^3.22.0"
   },
   "devDependencies": {
@@ -44,7 +46,7 @@
     "svelte-check": "^4.7.6",
     "tailwindcss": "4.3.3",
     "typescript": "~6",
-    "vite": "^8.2.2",
+    "vite": "^7.3.6",
     "vitest": "^4.1.11",
     "webdriverio": "^9.31.2"
   }

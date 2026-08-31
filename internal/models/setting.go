@@ -390,3 +390,28 @@ func (v MessageMail) Validate() error {
 		validation.Field(&v.To, is.Email),
 	)
 }
+
+// Dureone is Korean seller information settings
+type Dureone struct {
+	Enabled           bool   `json:"enabled"`
+	BusinessName      string `json:"business_name"`
+	Representative    string `json:"representative"`
+	CustomerService   string `json:"customer_service"`
+	BusinessRegNumber string `json:"business_reg_number"`
+	BusinessAddress   string `json:"business_address"`
+	EcommerceLicense  string `json:"ecommerce_license"`
+	Email             string `json:"email"`
+}
+
+// Validate is ...
+func (v Dureone) Validate() error {
+	return validation.ValidateStruct(&v,
+		validation.Field(&v.Email, is.Email),
+		validation.Field(&v.BusinessName, validation.Length(0, 100)),
+		validation.Field(&v.Representative, validation.Length(0, 50)),
+		validation.Field(&v.CustomerService, validation.Length(0, 50)),
+		validation.Field(&v.BusinessRegNumber, validation.Length(0, 50)),
+		validation.Field(&v.BusinessAddress, validation.Length(0, 200)),
+		validation.Field(&v.EcommerceLicense, validation.Length(0, 50)),
+	)
+}
