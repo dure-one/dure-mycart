@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -104,19 +105,34 @@ func setupPostgresTest(t *testing.T) context.Context {
 func cleanupTestData(t *testing.T, sqlDB *sql.DB) {
 	t.Helper()
 
-	tables := []string{
-		"carts", "cart_items", "digital_files", "digital_data",
-		"product_images", "products", "pages", "sessions",
-		"settings", "subdomains",
+	// Tables with 'id' column (singular names from init_db.sql)
+	tablesWithID := []string{
+		"cart_items", "new_carts", "cart", "digital_file", "digital_data",
+		"product_image", "product", "page", "setting", "subdomain",
 	}
 
 	ctx := context.Background()
-	for _, table := range tables {
+	for _, table := range tablesWithID {
 		_, err := sqlDB.ExecContext(ctx,
 			fmt.Sprintf("DELETE FROM %s WHERE id LIKE 'test_%%'", table))
 		if err != nil {
-			t.Logf("cleanup warning for %s: %v", table, err)
+			// Ignore "relation does not exist" errors - table may not be created yet
+			if !strings.Contains(err.Error(), "does not exist") {
+				t.Logf("cleanup warning for %s: %v", table, err)
+			}
 		}
+	}
+
+	// session table uses 'key' instead of 'id'
+	_, err := sqlDB.ExecContext(ctx, "DELETE FROM session WHERE key LIKE 'test_%'")
+	if err != nil && !strings.Contains(err.Error(), "does not exist") {
+		t.Logf("cleanup warning for session: %v", err)
+	}
+
+	// users table cleanup (from our new migration)
+	_, err = sqlDB.ExecContext(ctx, "DELETE FROM users WHERE id LIKE 'test_%'")
+	if err != nil && !strings.Contains(err.Error(), "does not exist") {
+		t.Logf("cleanup warning for users: %v", err)
 	}
 }
 
