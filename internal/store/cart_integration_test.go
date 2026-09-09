@@ -144,10 +144,25 @@ func TestUpdateNewCart(t *testing.T) {
 func TestCreateCartItem(t *testing.T) {
 	ctx := setupTestDB(t)
 
-	// Arrange - Create cart first (cart_items has FK to new_carts)
+	// Arrange - Create product first (cart_items has FK to product)
+	productID := NewTestID()
+	_, err := db.CreateProductFunc(ctx, db.CreateProductParams{
+		ID:        productID,
+		Name:      "Test Product",
+		Desc:      "Test Description",
+		Slug:      "test-product-" + productID,
+		Amount:    "50.00",
+		Metadata:  []byte("{}"),
+		Attribute: []byte("{}"),
+		Digital:   sql.NullString{Valid: false},
+		Active:    true,
+	})
+	require.NoError(t, err)
+
+	// Create cart
 	cartID := NewTestID()
 	sessionID := NewTestID()
-	err := db.CreateNewCartFunc(ctx, db.CreateCartParams{
+	err = db.CreateNewCartFunc(ctx, db.CreateCartParams{
 		ID:        cartID,
 		SessionID: sessionID,
 		Status:    "active",
@@ -159,7 +174,6 @@ func TestCreateCartItem(t *testing.T) {
 
 	// Act - Create cart item
 	itemID := NewTestID()
-	productID := NewTestID()
 	err = db.CreateCartItemFunc(ctx, db.CreateCartItemParams{
 		ID:        itemID,
 		CartID:    cartID,
@@ -176,10 +190,39 @@ func TestCreateCartItem(t *testing.T) {
 func TestListCartItems(t *testing.T) {
 	ctx := setupTestDB(t)
 
-	// Arrange - Create cart and items
+	// Arrange - Create products
+	product1ID := NewTestID()
+	_, err := db.CreateProductFunc(ctx, db.CreateProductParams{
+		ID:        product1ID,
+		Name:      "Product 1",
+		Desc:      "Description 1",
+		Slug:      "product-1-" + product1ID,
+		Amount:    "25.00",
+		Metadata:  []byte("{}"),
+		Attribute: []byte("{}"),
+		Digital:   sql.NullString{Valid: false},
+		Active:    true,
+	})
+	require.NoError(t, err)
+
+	product2ID := NewTestID()
+	_, err = db.CreateProductFunc(ctx, db.CreateProductParams{
+		ID:        product2ID,
+		Name:      "Product 2",
+		Desc:      "Description 2",
+		Slug:      "product-2-" + product2ID,
+		Amount:    "15.00",
+		Metadata:  []byte("{}"),
+		Attribute: []byte("{}"),
+		Digital:   sql.NullString{Valid: false},
+		Active:    true,
+	})
+	require.NoError(t, err)
+
+	// Create cart
 	cartID := NewTestID()
 	sessionID := NewTestID()
-	err := db.CreateNewCartFunc(ctx, db.CreateCartParams{
+	err = db.CreateNewCartFunc(ctx, db.CreateCartParams{
 		ID:        cartID,
 		SessionID: sessionID,
 		Status:    "active",
@@ -191,7 +234,6 @@ func TestListCartItems(t *testing.T) {
 
 	// Create multiple items
 	item1ID := NewTestID()
-	product1ID := NewTestID()
 	err = db.CreateCartItemFunc(ctx, db.CreateCartItemParams{
 		ID:        item1ID,
 		CartID:    cartID,
@@ -203,7 +245,6 @@ func TestListCartItems(t *testing.T) {
 	require.NoError(t, err)
 
 	item2ID := NewTestID()
-	product2ID := NewTestID()
 	err = db.CreateCartItemFunc(ctx, db.CreateCartItemParams{
 		ID:        item2ID,
 		CartID:    cartID,
@@ -227,10 +268,25 @@ func TestListCartItems(t *testing.T) {
 func TestUpdateCartItem(t *testing.T) {
 	ctx := setupTestDB(t)
 
-	// Arrange - Create cart and item
+	// Arrange - Create product
+	productID := NewTestID()
+	_, err := db.CreateProductFunc(ctx, db.CreateProductParams{
+		ID:        productID,
+		Name:      "Test Product",
+		Desc:      "Test Description",
+		Slug:      "test-product-" + productID,
+		Amount:    "50.00",
+		Metadata:  []byte("{}"),
+		Attribute: []byte("{}"),
+		Digital:   sql.NullString{Valid: false},
+		Active:    true,
+	})
+	require.NoError(t, err)
+
+	// Create cart
 	cartID := NewTestID()
 	sessionID := NewTestID()
-	err := db.CreateNewCartFunc(ctx, db.CreateCartParams{
+	err = db.CreateNewCartFunc(ctx, db.CreateCartParams{
 		ID:        cartID,
 		SessionID: sessionID,
 		Status:    "active",
@@ -240,8 +296,8 @@ func TestUpdateCartItem(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	// Create cart item
 	itemID := NewTestID()
-	productID := NewTestID()
 	err = db.CreateCartItemFunc(ctx, db.CreateCartItemParams{
 		ID:        itemID,
 		CartID:    cartID,
@@ -270,10 +326,25 @@ func TestUpdateCartItem(t *testing.T) {
 func TestDeleteCartItem(t *testing.T) {
 	ctx := setupTestDB(t)
 
-	// Arrange - Create cart and item
+	// Arrange - Create product
+	productID := NewTestID()
+	_, err := db.CreateProductFunc(ctx, db.CreateProductParams{
+		ID:        productID,
+		Name:      "Test Product",
+		Desc:      "Test Description",
+		Slug:      "test-product-" + productID,
+		Amount:    "50.00",
+		Metadata:  []byte("{}"),
+		Attribute: []byte("{}"),
+		Digital:   sql.NullString{Valid: false},
+		Active:    true,
+	})
+	require.NoError(t, err)
+
+	// Create cart
 	cartID := NewTestID()
 	sessionID := NewTestID()
-	err := db.CreateNewCartFunc(ctx, db.CreateCartParams{
+	err = db.CreateNewCartFunc(ctx, db.CreateCartParams{
 		ID:        cartID,
 		SessionID: sessionID,
 		Status:    "active",
@@ -283,8 +354,8 @@ func TestDeleteCartItem(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	// Create cart item
 	itemID := NewTestID()
-	productID := NewTestID()
 	err = db.CreateCartItemFunc(ctx, db.CreateCartItemParams{
 		ID:        itemID,
 		CartID:    cartID,
