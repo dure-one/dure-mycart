@@ -39,11 +39,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.createCartStmt, err = db.PrepareContext(ctx, createCart); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateCart: %w", err)
 	}
+	if q.createCartItemStmt, err = db.PrepareContext(ctx, createCartItem); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateCartItem: %w", err)
+	}
 	if q.createDigitalDataStmt, err = db.PrepareContext(ctx, createDigitalData); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateDigitalData: %w", err)
 	}
 	if q.createDigitalFileStmt, err = db.PrepareContext(ctx, createDigitalFile); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateDigitalFile: %w", err)
+	}
+	if q.createNewCartStmt, err = db.PrepareContext(ctx, createNewCart); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateNewCart: %w", err)
 	}
 	if q.createPageStmt, err = db.PrepareContext(ctx, createPage); err != nil {
 		return nil, fmt.Errorf("error preparing query CreatePage: %w", err)
@@ -75,6 +81,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteCartStmt, err = db.PrepareContext(ctx, deleteCart); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteCart: %w", err)
 	}
+	if q.deleteCartItemStmt, err = db.PrepareContext(ctx, deleteCartItem); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteCartItem: %w", err)
+	}
+	if q.deleteCartItemsByCartIDStmt, err = db.PrepareContext(ctx, deleteCartItemsByCartID); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteCartItemsByCartID: %w", err)
+	}
 	if q.deleteDigitalDataStmt, err = db.PrepareContext(ctx, deleteDigitalData); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteDigitalData: %w", err)
 	}
@@ -89,6 +101,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.deleteExpiredSessionsStmt, err = db.PrepareContext(ctx, deleteExpiredSessions); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteExpiredSessions: %w", err)
+	}
+	if q.deleteNewCartStmt, err = db.PrepareContext(ctx, deleteNewCart); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteNewCart: %w", err)
 	}
 	if q.deletePageStmt, err = db.PrepareContext(ctx, deletePage); err != nil {
 		return nil, fmt.Errorf("error preparing query DeletePage: %w", err)
@@ -120,6 +135,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getCartStmt, err = db.PrepareContext(ctx, getCart); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCart: %w", err)
 	}
+	if q.getCartItemStmt, err = db.PrepareContext(ctx, getCartItem); err != nil {
+		return nil, fmt.Errorf("error preparing query GetCartItem: %w", err)
+	}
 	if q.getDigitalDataStmt, err = db.PrepareContext(ctx, getDigitalData); err != nil {
 		return nil, fmt.Errorf("error preparing query GetDigitalData: %w", err)
 	}
@@ -128,6 +146,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getDigitalFileStmt, err = db.PrepareContext(ctx, getDigitalFile); err != nil {
 		return nil, fmt.Errorf("error preparing query GetDigitalFile: %w", err)
+	}
+	if q.getNewCartByIDStmt, err = db.PrepareContext(ctx, getNewCartByID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetNewCartByID: %w", err)
+	}
+	if q.getNewCartBySessionIDStmt, err = db.PrepareContext(ctx, getNewCartBySessionID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetNewCartBySessionID: %w", err)
 	}
 	if q.getPageByIDStmt, err = db.PrepareContext(ctx, getPageByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetPageByID: %w", err)
@@ -198,6 +222,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.listAllSubdomainsStmt, err = db.PrepareContext(ctx, listAllSubdomains); err != nil {
 		return nil, fmt.Errorf("error preparing query ListAllSubdomains: %w", err)
 	}
+	if q.listCartItemsStmt, err = db.PrepareContext(ctx, listCartItems); err != nil {
+		return nil, fmt.Errorf("error preparing query ListCartItems: %w", err)
+	}
 	if q.listCartsStmt, err = db.PrepareContext(ctx, listCarts); err != nil {
 		return nil, fmt.Errorf("error preparing query ListCarts: %w", err)
 	}
@@ -243,11 +270,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.updateCartStmt, err = db.PrepareContext(ctx, updateCart); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateCart: %w", err)
 	}
+	if q.updateCartItemStmt, err = db.PrepareContext(ctx, updateCartItem); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateCartItem: %w", err)
+	}
 	if q.updateCartPaymentStatusStmt, err = db.PrepareContext(ctx, updateCartPaymentStatus); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateCartPaymentStatus: %w", err)
 	}
 	if q.updateDigitalDataStmt, err = db.PrepareContext(ctx, updateDigitalData); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateDigitalData: %w", err)
+	}
+	if q.updateNewCartStmt, err = db.PrepareContext(ctx, updateNewCart); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateNewCart: %w", err)
 	}
 	if q.updatePageStmt, err = db.PrepareContext(ctx, updatePage); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdatePage: %w", err)
@@ -309,6 +342,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing createCartStmt: %w", cerr)
 		}
 	}
+	if q.createCartItemStmt != nil {
+		if cerr := q.createCartItemStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createCartItemStmt: %w", cerr)
+		}
+	}
 	if q.createDigitalDataStmt != nil {
 		if cerr := q.createDigitalDataStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing createDigitalDataStmt: %w", cerr)
@@ -317,6 +355,11 @@ func (q *Queries) Close() error {
 	if q.createDigitalFileStmt != nil {
 		if cerr := q.createDigitalFileStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing createDigitalFileStmt: %w", cerr)
+		}
+	}
+	if q.createNewCartStmt != nil {
+		if cerr := q.createNewCartStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createNewCartStmt: %w", cerr)
 		}
 	}
 	if q.createPageStmt != nil {
@@ -369,6 +412,16 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing deleteCartStmt: %w", cerr)
 		}
 	}
+	if q.deleteCartItemStmt != nil {
+		if cerr := q.deleteCartItemStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteCartItemStmt: %w", cerr)
+		}
+	}
+	if q.deleteCartItemsByCartIDStmt != nil {
+		if cerr := q.deleteCartItemsByCartIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteCartItemsByCartIDStmt: %w", cerr)
+		}
+	}
 	if q.deleteDigitalDataStmt != nil {
 		if cerr := q.deleteDigitalDataStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteDigitalDataStmt: %w", cerr)
@@ -392,6 +445,11 @@ func (q *Queries) Close() error {
 	if q.deleteExpiredSessionsStmt != nil {
 		if cerr := q.deleteExpiredSessionsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteExpiredSessionsStmt: %w", cerr)
+		}
+	}
+	if q.deleteNewCartStmt != nil {
+		if cerr := q.deleteNewCartStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteNewCartStmt: %w", cerr)
 		}
 	}
 	if q.deletePageStmt != nil {
@@ -444,6 +502,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getCartStmt: %w", cerr)
 		}
 	}
+	if q.getCartItemStmt != nil {
+		if cerr := q.getCartItemStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getCartItemStmt: %w", cerr)
+		}
+	}
 	if q.getDigitalDataStmt != nil {
 		if cerr := q.getDigitalDataStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getDigitalDataStmt: %w", cerr)
@@ -457,6 +520,16 @@ func (q *Queries) Close() error {
 	if q.getDigitalFileStmt != nil {
 		if cerr := q.getDigitalFileStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getDigitalFileStmt: %w", cerr)
+		}
+	}
+	if q.getNewCartByIDStmt != nil {
+		if cerr := q.getNewCartByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getNewCartByIDStmt: %w", cerr)
+		}
+	}
+	if q.getNewCartBySessionIDStmt != nil {
+		if cerr := q.getNewCartBySessionIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getNewCartBySessionIDStmt: %w", cerr)
 		}
 	}
 	if q.getPageByIDStmt != nil {
@@ -574,6 +647,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing listAllSubdomainsStmt: %w", cerr)
 		}
 	}
+	if q.listCartItemsStmt != nil {
+		if cerr := q.listCartItemsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listCartItemsStmt: %w", cerr)
+		}
+	}
 	if q.listCartsStmt != nil {
 		if cerr := q.listCartsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing listCartsStmt: %w", cerr)
@@ -649,6 +727,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing updateCartStmt: %w", cerr)
 		}
 	}
+	if q.updateCartItemStmt != nil {
+		if cerr := q.updateCartItemStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateCartItemStmt: %w", cerr)
+		}
+	}
 	if q.updateCartPaymentStatusStmt != nil {
 		if cerr := q.updateCartPaymentStatusStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateCartPaymentStatusStmt: %w", cerr)
@@ -657,6 +740,11 @@ func (q *Queries) Close() error {
 	if q.updateDigitalDataStmt != nil {
 		if cerr := q.updateDigitalDataStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateDigitalDataStmt: %w", cerr)
+		}
+	}
+	if q.updateNewCartStmt != nil {
+		if cerr := q.updateNewCartStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateNewCartStmt: %w", cerr)
 		}
 	}
 	if q.updatePageStmt != nil {
@@ -753,8 +841,10 @@ type Queries struct {
 	countPagesStmt                   *sql.Stmt
 	countProductsStmt                *sql.Stmt
 	createCartStmt                   *sql.Stmt
+	createCartItemStmt               *sql.Stmt
 	createDigitalDataStmt            *sql.Stmt
 	createDigitalFileStmt            *sql.Stmt
+	createNewCartStmt                *sql.Stmt
 	createPageStmt                   *sql.Stmt
 	createProductStmt                *sql.Stmt
 	createProductImageStmt           *sql.Stmt
@@ -765,11 +855,14 @@ type Queries struct {
 	createSubdomainStmt              *sql.Stmt
 	createUserStmt                   *sql.Stmt
 	deleteCartStmt                   *sql.Stmt
+	deleteCartItemStmt               *sql.Stmt
+	deleteCartItemsByCartIDStmt      *sql.Stmt
 	deleteDigitalDataStmt            *sql.Stmt
 	deleteDigitalDataByProductStmt   *sql.Stmt
 	deleteDigitalFileStmt            *sql.Stmt
 	deleteDigitalFilesStmt           *sql.Stmt
 	deleteExpiredSessionsStmt        *sql.Stmt
+	deleteNewCartStmt                *sql.Stmt
 	deletePageStmt                   *sql.Stmt
 	deleteProductStmt                *sql.Stmt
 	deleteProductImageStmt           *sql.Stmt
@@ -780,9 +873,12 @@ type Queries struct {
 	deleteSettingStmt                *sql.Stmt
 	deleteSubdomainStmt              *sql.Stmt
 	getCartStmt                      *sql.Stmt
+	getCartItemStmt                  *sql.Stmt
 	getDigitalDataStmt               *sql.Stmt
 	getDigitalDataByProductStmt      *sql.Stmt
 	getDigitalFileStmt               *sql.Stmt
+	getNewCartByIDStmt               *sql.Stmt
+	getNewCartBySessionIDStmt        *sql.Stmt
 	getPageByIDStmt                  *sql.Stmt
 	getPageBySlugStmt                *sql.Stmt
 	getPasswordByEmailStmt           *sql.Stmt
@@ -806,6 +902,7 @@ type Queries struct {
 	listAllProductsStmt              *sql.Stmt
 	listAllSessionsStmt              *sql.Stmt
 	listAllSubdomainsStmt            *sql.Stmt
+	listCartItemsStmt                *sql.Stmt
 	listCartsStmt                    *sql.Stmt
 	listDigitalDataByCartStmt        *sql.Stmt
 	listDigitalFilesStmt             *sql.Stmt
@@ -821,8 +918,10 @@ type Queries struct {
 	softDeleteProductStmt            *sql.Stmt
 	subdomainExistsStmt              *sql.Stmt
 	updateCartStmt                   *sql.Stmt
+	updateCartItemStmt               *sql.Stmt
 	updateCartPaymentStatusStmt      *sql.Stmt
 	updateDigitalDataStmt            *sql.Stmt
+	updateNewCartStmt                *sql.Stmt
 	updatePageStmt                   *sql.Stmt
 	updatePageActiveStmt             *sql.Stmt
 	updatePageContentStmt            *sql.Stmt
@@ -844,8 +943,10 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		countPagesStmt:                   q.countPagesStmt,
 		countProductsStmt:                q.countProductsStmt,
 		createCartStmt:                   q.createCartStmt,
+		createCartItemStmt:               q.createCartItemStmt,
 		createDigitalDataStmt:            q.createDigitalDataStmt,
 		createDigitalFileStmt:            q.createDigitalFileStmt,
+		createNewCartStmt:                q.createNewCartStmt,
 		createPageStmt:                   q.createPageStmt,
 		createProductStmt:                q.createProductStmt,
 		createProductImageStmt:           q.createProductImageStmt,
@@ -856,11 +957,14 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		createSubdomainStmt:              q.createSubdomainStmt,
 		createUserStmt:                   q.createUserStmt,
 		deleteCartStmt:                   q.deleteCartStmt,
+		deleteCartItemStmt:               q.deleteCartItemStmt,
+		deleteCartItemsByCartIDStmt:      q.deleteCartItemsByCartIDStmt,
 		deleteDigitalDataStmt:            q.deleteDigitalDataStmt,
 		deleteDigitalDataByProductStmt:   q.deleteDigitalDataByProductStmt,
 		deleteDigitalFileStmt:            q.deleteDigitalFileStmt,
 		deleteDigitalFilesStmt:           q.deleteDigitalFilesStmt,
 		deleteExpiredSessionsStmt:        q.deleteExpiredSessionsStmt,
+		deleteNewCartStmt:                q.deleteNewCartStmt,
 		deletePageStmt:                   q.deletePageStmt,
 		deleteProductStmt:                q.deleteProductStmt,
 		deleteProductImageStmt:           q.deleteProductImageStmt,
@@ -871,9 +975,12 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		deleteSettingStmt:                q.deleteSettingStmt,
 		deleteSubdomainStmt:              q.deleteSubdomainStmt,
 		getCartStmt:                      q.getCartStmt,
+		getCartItemStmt:                  q.getCartItemStmt,
 		getDigitalDataStmt:               q.getDigitalDataStmt,
 		getDigitalDataByProductStmt:      q.getDigitalDataByProductStmt,
 		getDigitalFileStmt:               q.getDigitalFileStmt,
+		getNewCartByIDStmt:               q.getNewCartByIDStmt,
+		getNewCartBySessionIDStmt:        q.getNewCartBySessionIDStmt,
 		getPageByIDStmt:                  q.getPageByIDStmt,
 		getPageBySlugStmt:                q.getPageBySlugStmt,
 		getPasswordByEmailStmt:           q.getPasswordByEmailStmt,
@@ -897,6 +1004,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		listAllProductsStmt:              q.listAllProductsStmt,
 		listAllSessionsStmt:              q.listAllSessionsStmt,
 		listAllSubdomainsStmt:            q.listAllSubdomainsStmt,
+		listCartItemsStmt:                q.listCartItemsStmt,
 		listCartsStmt:                    q.listCartsStmt,
 		listDigitalDataByCartStmt:        q.listDigitalDataByCartStmt,
 		listDigitalFilesStmt:             q.listDigitalFilesStmt,
@@ -912,8 +1020,10 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		softDeleteProductStmt:            q.softDeleteProductStmt,
 		subdomainExistsStmt:              q.subdomainExistsStmt,
 		updateCartStmt:                   q.updateCartStmt,
+		updateCartItemStmt:               q.updateCartItemStmt,
 		updateCartPaymentStatusStmt:      q.updateCartPaymentStatusStmt,
 		updateDigitalDataStmt:            q.updateDigitalDataStmt,
+		updateNewCartStmt:                q.updateNewCartStmt,
 		updatePageStmt:                   q.updatePageStmt,
 		updatePageActiveStmt:             q.updatePageActiveStmt,
 		updatePageContentStmt:            q.updatePageContentStmt,

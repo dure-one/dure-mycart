@@ -22,6 +22,15 @@ type Cart struct {
 	PaymentSystem string          `json:"payment_system"`
 }
 
+type CartItem struct {
+	ID        string       `json:"id"`
+	CartID    string       `json:"cart_id"`
+	ProductID string       `json:"product_id"`
+	Quantity  int32        `json:"quantity"`
+	Price     string       `json:"price"`
+	CreatedAt sql.NullTime `json:"created_at"`
+}
+
 type DigitalDatum struct {
 	ID        string         `json:"id"`
 	ProductID string         `json:"product_id"`
@@ -35,6 +44,15 @@ type DigitalFile struct {
 	Name      string `json:"name"`
 	Ext       string `json:"ext"`
 	OrigName  string `json:"orig_name"`
+}
+
+type NewCart struct {
+	ID        string       `json:"id"`
+	SessionID string       `json:"session_id"`
+	Status    string       `json:"status"`
+	Total     string       `json:"total"`
+	CreatedAt sql.NullTime `json:"created_at"`
+	UpdatedAt sql.NullTime `json:"updated_at"`
 }
 
 type Page struct {
