@@ -39,7 +39,13 @@ help:
 
 dev:
 	@echo "Starting development server..."
-	go run ./cmd serve --dev
+	@if [ -f .env ]; then \
+		echo "Loading .env file..."; \
+		export $$(grep -v '^#' .env | xargs) && go run ./cmd serve --dev; \
+	else \
+		echo "Warning: .env file not found, using default configuration"; \
+		go run ./cmd serve --dev; \
+	fi
 
 test:
 	@echo "Running tests with SQLite..."
@@ -55,14 +61,22 @@ test-integration:
 
 test-postgres:
 	@echo "Running integration tests with PostgreSQL..."
-	TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1
+	@if [ -f .env ]; then \
+		export $$(grep -v '^#' .env | xargs) && TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1; \
+	else \
+		TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1; \
+	fi
 
 test-all:
 	@echo "Running tests against SQLite..."
 	TEST_DB_TYPE=sqlite go test ./internal/store/... -v -count=1
 	@echo ""
 	@echo "Running tests against PostgreSQL..."
-	TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1
+	@if [ -f .env ]; then \
+		export $$(grep -v '^#' .env | xargs) && TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1; \
+	else \
+		TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1; \
+	fi
 
 e2e-admin:
 	@echo "Running admin panel e2e tests..."
