@@ -38,6 +38,19 @@ var (
 	GetUserByEmailFunc     func(ctx context.Context, email string) (User, error)
 	CreateUserFunc         func(ctx context.Context, arg CreateUserParams) error
 	UpdateUserPasswordFunc func(ctx context.Context, arg UpdateUserPasswordParams) error
+
+	// Cart operations
+	CreateNewCartFunc           func(ctx context.Context, arg CreateCartParams) error
+	GetNewCartByIDFunc          func(ctx context.Context, id string) (Cart, error)
+	GetNewCartBySessionIDFunc   func(ctx context.Context, sessionID string) (Cart, error)
+	UpdateNewCartFunc           func(ctx context.Context, arg UpdateCartParams) error
+	DeleteNewCartFunc           func(ctx context.Context, id string) error
+	CreateCartItemFunc          func(ctx context.Context, arg CreateCartItemParams) error
+	GetCartItemFunc             func(ctx context.Context, id string) (CartItem, error)
+	ListCartItemsFunc           func(ctx context.Context, cartID string) ([]CartItem, error)
+	UpdateCartItemFunc          func(ctx context.Context, arg UpdateCartItemParams) error
+	DeleteCartItemFunc          func(ctx context.Context, id string) error
+	DeleteCartItemsByCartIDFunc func(ctx context.Context, cartID string) error
 )
 
 // Additional function pointers can be added here as needed during migration

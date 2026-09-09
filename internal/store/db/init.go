@@ -248,6 +248,94 @@ func initPostgres(sqlDB *sql.DB) {
 			Email:     arg.Email,
 		})
 	}
+
+	// Cart operations
+	CreateNewCartFunc = func(ctx context.Context, arg CreateCartParams) error {
+		return q.CreateNewCart(ctx, postgres.CreateNewCartParams{
+			ID:        arg.ID,
+			SessionID: arg.SessionID,
+			Status:    arg.Status,
+			Total:     arg.Total,
+			CreatedAt: arg.CreatedAt,
+			UpdatedAt: arg.UpdatedAt,
+		})
+	}
+
+	GetNewCartByIDFunc = func(ctx context.Context, id string) (Cart, error) {
+		pgCart, err := q.GetNewCartByID(ctx, id)
+		if err != nil {
+			return Cart{}, err
+		}
+		return FromPostgresNewCart(pgCart), nil
+	}
+
+	GetNewCartBySessionIDFunc = func(ctx context.Context, sessionID string) (Cart, error) {
+		pgCart, err := q.GetNewCartBySessionID(ctx, sessionID)
+		if err != nil {
+			return Cart{}, err
+		}
+		return FromPostgresNewCart(pgCart), nil
+	}
+
+	UpdateNewCartFunc = func(ctx context.Context, arg UpdateCartParams) error {
+		return q.UpdateNewCart(ctx, postgres.UpdateNewCartParams{
+			Status:    arg.Status,
+			Total:     arg.Total,
+			UpdatedAt: arg.UpdatedAt,
+			ID:        arg.ID,
+		})
+	}
+
+	DeleteNewCartFunc = func(ctx context.Context, id string) error {
+		return q.DeleteNewCart(ctx, id)
+	}
+
+	CreateCartItemFunc = func(ctx context.Context, arg CreateCartItemParams) error {
+		return q.CreateCartItem(ctx, postgres.CreateCartItemParams{
+			ID:        arg.ID,
+			CartID:    arg.CartID,
+			ProductID: arg.ProductID,
+			Quantity:  int32(arg.Quantity), // Convert int64 to int32
+			Price:     arg.Price,
+			CreatedAt: arg.CreatedAt,
+		})
+	}
+
+	GetCartItemFunc = func(ctx context.Context, id string) (CartItem, error) {
+		pgItem, err := q.GetCartItem(ctx, id)
+		if err != nil {
+			return CartItem{}, err
+		}
+		return FromPostgresCartItem(pgItem), nil
+	}
+
+	ListCartItemsFunc = func(ctx context.Context, cartID string) ([]CartItem, error) {
+		pgItems, err := q.ListCartItems(ctx, cartID)
+		if err != nil {
+			return nil, err
+		}
+		items := make([]CartItem, len(pgItems))
+		for i, item := range pgItems {
+			items[i] = FromPostgresCartItem(item)
+		}
+		return items, nil
+	}
+
+	UpdateCartItemFunc = func(ctx context.Context, arg UpdateCartItemParams) error {
+		return q.UpdateCartItem(ctx, postgres.UpdateCartItemParams{
+			Quantity: int32(arg.Quantity), // Convert int64 to int32
+			Price:    arg.Price,
+			ID:       arg.ID,
+		})
+	}
+
+	DeleteCartItemFunc = func(ctx context.Context, id string) error {
+		return q.DeleteCartItem(ctx, id)
+	}
+
+	DeleteCartItemsByCartIDFunc = func(ctx context.Context, cartID string) error {
+		return q.DeleteCartItemsByCartID(ctx, cartID)
+	}
 }
 
 // initSQLite assigns SQLite sqlc implementations to function pointers
@@ -463,5 +551,93 @@ func initSQLite(sqlDB *sql.DB) {
 			UpdatedAt: arg.UpdatedAt,
 			Email:     arg.Email,
 		})
+	}
+
+	// Cart operations
+	CreateNewCartFunc = func(ctx context.Context, arg CreateCartParams) error {
+		return q.CreateNewCart(ctx, sqlite.CreateNewCartParams{
+			ID:        arg.ID,
+			SessionID: arg.SessionID,
+			Status:    arg.Status,
+			Total:     arg.Total,
+			CreatedAt: arg.CreatedAt,
+			UpdatedAt: arg.UpdatedAt,
+		})
+	}
+
+	GetNewCartByIDFunc = func(ctx context.Context, id string) (Cart, error) {
+		sqliteCart, err := q.GetNewCartByID(ctx, id)
+		if err != nil {
+			return Cart{}, err
+		}
+		return FromSQLiteNewCart(sqliteCart), nil
+	}
+
+	GetNewCartBySessionIDFunc = func(ctx context.Context, sessionID string) (Cart, error) {
+		sqliteCart, err := q.GetNewCartBySessionID(ctx, sessionID)
+		if err != nil {
+			return Cart{}, err
+		}
+		return FromSQLiteNewCart(sqliteCart), nil
+	}
+
+	UpdateNewCartFunc = func(ctx context.Context, arg UpdateCartParams) error {
+		return q.UpdateNewCart(ctx, sqlite.UpdateNewCartParams{
+			Status:    arg.Status,
+			Total:     arg.Total,
+			UpdatedAt: arg.UpdatedAt,
+			ID:        arg.ID,
+		})
+	}
+
+	DeleteNewCartFunc = func(ctx context.Context, id string) error {
+		return q.DeleteNewCart(ctx, id)
+	}
+
+	CreateCartItemFunc = func(ctx context.Context, arg CreateCartItemParams) error {
+		return q.CreateCartItem(ctx, sqlite.CreateCartItemParams{
+			ID:        arg.ID,
+			CartID:    arg.CartID,
+			ProductID: arg.ProductID,
+			Quantity:  arg.Quantity, // int64 matches SQLite
+			Price:     arg.Price,
+			CreatedAt: arg.CreatedAt,
+		})
+	}
+
+	GetCartItemFunc = func(ctx context.Context, id string) (CartItem, error) {
+		sqliteItem, err := q.GetCartItem(ctx, id)
+		if err != nil {
+			return CartItem{}, err
+		}
+		return FromSQLiteCartItem(sqliteItem), nil
+	}
+
+	ListCartItemsFunc = func(ctx context.Context, cartID string) ([]CartItem, error) {
+		sqliteItems, err := q.ListCartItems(ctx, cartID)
+		if err != nil {
+			return nil, err
+		}
+		items := make([]CartItem, len(sqliteItems))
+		for i, item := range sqliteItems {
+			items[i] = FromSQLiteCartItem(item)
+		}
+		return items, nil
+	}
+
+	UpdateCartItemFunc = func(ctx context.Context, arg UpdateCartItemParams) error {
+		return q.UpdateCartItem(ctx, sqlite.UpdateCartItemParams{
+			Quantity: arg.Quantity, // int64 matches SQLite
+			Price:    arg.Price,
+			ID:       arg.ID,
+		})
+	}
+
+	DeleteCartItemFunc = func(ctx context.Context, id string) error {
+		return q.DeleteCartItem(ctx, id)
+	}
+
+	DeleteCartItemsByCartIDFunc = func(ctx context.Context, cartID string) error {
+		return q.DeleteCartItemsByCartID(ctx, cartID)
 	}
 }

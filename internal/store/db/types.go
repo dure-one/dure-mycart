@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/shurco/mycart/internal/store/db/postgres"
 	"github.com/shurco/mycart/internal/store/db/sqlite"
@@ -447,7 +446,7 @@ type Cart struct {
 	SessionID string
 	Status    string
 	Total     string
-	CreatedAt time.Time
+	CreatedAt sql.NullTime
 	UpdatedAt sql.NullTime
 }
 
@@ -457,35 +456,41 @@ type CreateCartParams struct {
 	SessionID string
 	Status    string
 	Total     string
-	CreatedAt time.Time
+	CreatedAt sql.NullTime
 	UpdatedAt sql.NullTime
 }
 
-// FromPostgresCart converts postgres.Cart to unified Cart
-// TODO: Uncomment in Task 7 after creating cart tables/queries
-// func FromPostgresCart(c postgres.Cart) Cart {
-// 	return Cart{
-// 		ID:        c.ID,
-// 		SessionID: c.SessionID,
-// 		Status:    c.Status,
-// 		Total:     c.Total,
-// 		CreatedAt: c.CreatedAt,
-// 		UpdatedAt: c.UpdatedAt,
-// 	}
-// }
+// UpdateCartParams for UpdateCart operation
+type UpdateCartParams struct {
+	Status    string
+	Total     string
+	UpdatedAt sql.NullTime
+	ID        string
+}
 
-// FromSQLiteCart converts sqlite.Cart to unified Cart
-// TODO: Uncomment in Task 7 after creating cart tables/queries
-// func FromSQLiteCart(c sqlite.Cart) Cart {
-// 	return Cart{
-// 		ID:        c.ID,
-// 		SessionID: c.SessionID,
-// 		Status:    c.Status,
-// 		Total:     convertAmount(c.Total),
-// 		CreatedAt: c.CreatedAt,
-// 		UpdatedAt: c.UpdatedAt,
-// 	}
-// }
+// FromPostgresNewCart converts postgres.NewCart to unified Cart
+func FromPostgresNewCart(c postgres.NewCart) Cart {
+	return Cart{
+		ID:        c.ID,
+		SessionID: c.SessionID,
+		Status:    c.Status,
+		Total:     c.Total,
+		CreatedAt: c.CreatedAt,
+		UpdatedAt: c.UpdatedAt,
+	}
+}
+
+// FromSQLiteNewCart converts sqlite.NewCart to unified Cart
+func FromSQLiteNewCart(c sqlite.NewCart) Cart {
+	return Cart{
+		ID:        c.ID,
+		SessionID: c.SessionID,
+		Status:    c.Status,
+		Total:     c.Total,
+		CreatedAt: c.CreatedAt,
+		UpdatedAt: c.UpdatedAt,
+	}
+}
 
 // CartItem is the unified type for cart line items
 type CartItem struct {
@@ -494,7 +499,7 @@ type CartItem struct {
 	ProductID string
 	Quantity  int64
 	Price     string
-	CreatedAt time.Time
+	CreatedAt sql.NullTime
 }
 
 // CreateCartItemParams for CreateCartItem operation
@@ -504,7 +509,7 @@ type CreateCartItemParams struct {
 	ProductID string
 	Quantity  int64
 	Price     string
-	CreatedAt time.Time
+	CreatedAt sql.NullTime
 }
 
 // UpdateCartItemParams for UpdateCartItem operation
@@ -515,27 +520,25 @@ type UpdateCartItemParams struct {
 }
 
 // FromPostgresCartItem converts postgres.CartItem to unified CartItem
-// TODO: Uncomment in Task 7 after creating cart_items table/queries
-// func FromPostgresCartItem(ci postgres.CartItem) CartItem {
-// 	return CartItem{
-// 		ID:        ci.ID,
-// 		CartID:    ci.CartID,
-// 		ProductID: ci.ProductID,
-// 		Quantity:  ci.Quantity,
-// 		Price:     ci.Price,
-// 		CreatedAt: ci.CreatedAt,
-// 	}
-// }
+func FromPostgresCartItem(ci postgres.CartItem) CartItem {
+	return CartItem{
+		ID:        ci.ID,
+		CartID:    ci.CartID,
+		ProductID: ci.ProductID,
+		Quantity:  int64(ci.Quantity), // Convert int32 to int64
+		Price:     ci.Price,
+		CreatedAt: ci.CreatedAt,
+	}
+}
 
 // FromSQLiteCartItem converts sqlite.CartItem to unified CartItem
-// TODO: Uncomment in Task 7 after creating cart_items table/queries
-// func FromSQLiteCartItem(ci sqlite.CartItem) CartItem {
-// 	return CartItem{
-// 		ID:        ci.ID,
-// 		CartID:    ci.CartID,
-// 		ProductID: ci.ProductID,
-// 		Quantity:  ci.Quantity,
-// 		Price:     convertAmount(ci.Price),
-// 		CreatedAt: ci.CreatedAt,
-// 	}
-// }
+func FromSQLiteCartItem(ci sqlite.CartItem) CartItem {
+	return CartItem{
+		ID:        ci.ID,
+		CartID:    ci.CartID,
+		ProductID: ci.ProductID,
+		Quantity:  ci.Quantity,
+		Price:     ci.Price,
+		CreatedAt: ci.CreatedAt,
+	}
+}
