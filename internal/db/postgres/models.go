@@ -137,3 +137,11 @@ type Subdomain struct {
 	Name string         `json:"name"`
 	Desc sql.NullString `json:"desc"`
 }
+
+type User struct {
+	ID        string       `json:"id"`
+	Email     string       `json:"email"`
+	Password  string       `json:"password"`
+	CreatedAt sql.NullTime `json:"created_at"`
+	UpdatedAt sql.NullTime `json:"updated_at"`
+}

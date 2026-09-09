@@ -69,6 +69,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.createSubdomainStmt, err = db.PrepareContext(ctx, createSubdomain); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateSubdomain: %w", err)
 	}
+	if q.createUserStmt, err = db.PrepareContext(ctx, createUser); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateUser: %w", err)
+	}
 	if q.deleteCartStmt, err = db.PrepareContext(ctx, deleteCart); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteCart: %w", err)
 	}
@@ -164,6 +167,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getSubdomainByNameStmt, err = db.PrepareContext(ctx, getSubdomainByName); err != nil {
 		return nil, fmt.Errorf("error preparing query GetSubdomainByName: %w", err)
+	}
+	if q.getUserByEmailStmt, err = db.PrepareContext(ctx, getUserByEmail); err != nil {
+		return nil, fmt.Errorf("error preparing query GetUserByEmail: %w", err)
 	}
 	if q.listActiveProductsStmt, err = db.PrepareContext(ctx, listActiveProducts); err != nil {
 		return nil, fmt.Errorf("error preparing query ListActiveProducts: %w", err)
@@ -270,6 +276,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.updateSubdomainStmt, err = db.PrepareContext(ctx, updateSubdomain); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateSubdomain: %w", err)
 	}
+	if q.updateUserPasswordStmt, err = db.PrepareContext(ctx, updateUserPassword); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateUserPassword: %w", err)
+	}
 	return &q, nil
 }
 
@@ -348,6 +357,11 @@ func (q *Queries) Close() error {
 	if q.createSubdomainStmt != nil {
 		if cerr := q.createSubdomainStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing createSubdomainStmt: %w", cerr)
+		}
+	}
+	if q.createUserStmt != nil {
+		if cerr := q.createUserStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createUserStmt: %w", cerr)
 		}
 	}
 	if q.deleteCartStmt != nil {
@@ -508,6 +522,11 @@ func (q *Queries) Close() error {
 	if q.getSubdomainByNameStmt != nil {
 		if cerr := q.getSubdomainByNameStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getSubdomainByNameStmt: %w", cerr)
+		}
+	}
+	if q.getUserByEmailStmt != nil {
+		if cerr := q.getUserByEmailStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getUserByEmailStmt: %w", cerr)
 		}
 	}
 	if q.listActiveProductsStmt != nil {
@@ -685,6 +704,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing updateSubdomainStmt: %w", cerr)
 		}
 	}
+	if q.updateUserPasswordStmt != nil {
+		if cerr := q.updateUserPasswordStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateUserPasswordStmt: %w", cerr)
+		}
+	}
 	return err
 }
 
@@ -739,6 +763,7 @@ type Queries struct {
 	createSessionStmt                *sql.Stmt
 	createSettingStmt                *sql.Stmt
 	createSubdomainStmt              *sql.Stmt
+	createUserStmt                   *sql.Stmt
 	deleteCartStmt                   *sql.Stmt
 	deleteDigitalDataStmt            *sql.Stmt
 	deleteDigitalDataByProductStmt   *sql.Stmt
@@ -771,6 +796,7 @@ type Queries struct {
 	getSettingByKeyStmt              *sql.Stmt
 	getSubdomainStmt                 *sql.Stmt
 	getSubdomainByNameStmt           *sql.Stmt
+	getUserByEmailStmt               *sql.Stmt
 	listActiveProductsStmt           *sql.Stmt
 	listAllCartsStmt                 *sql.Stmt
 	listAllDigitalDataStmt           *sql.Stmt
@@ -806,6 +832,7 @@ type Queries struct {
 	updateSessionStmt                *sql.Stmt
 	updateSettingStmt                *sql.Stmt
 	updateSubdomainStmt              *sql.Stmt
+	updateUserPasswordStmt           *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
@@ -827,6 +854,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		createSessionStmt:                q.createSessionStmt,
 		createSettingStmt:                q.createSettingStmt,
 		createSubdomainStmt:              q.createSubdomainStmt,
+		createUserStmt:                   q.createUserStmt,
 		deleteCartStmt:                   q.deleteCartStmt,
 		deleteDigitalDataStmt:            q.deleteDigitalDataStmt,
 		deleteDigitalDataByProductStmt:   q.deleteDigitalDataByProductStmt,
@@ -859,6 +887,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getSettingByKeyStmt:              q.getSettingByKeyStmt,
 		getSubdomainStmt:                 q.getSubdomainStmt,
 		getSubdomainByNameStmt:           q.getSubdomainByNameStmt,
+		getUserByEmailStmt:               q.getUserByEmailStmt,
 		listActiveProductsStmt:           q.listActiveProductsStmt,
 		listAllCartsStmt:                 q.listAllCartsStmt,
 		listAllDigitalDataStmt:           q.listAllDigitalDataStmt,
@@ -894,5 +923,6 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		updateSessionStmt:                q.updateSessionStmt,
 		updateSettingStmt:                q.updateSettingStmt,
 		updateSubdomainStmt:              q.updateSubdomainStmt,
+		updateUserPasswordStmt:           q.updateUserPasswordStmt,
 	}
 }
