@@ -15,3 +15,7 @@ DELETE FROM session WHERE expires < ?;
 
 -- name: ListAllSessions :many
 SELECT key, value, expires FROM session;
+
+-- name: UpsertSession :exec
+INSERT OR REPLACE INTO session (key, value, expires)
+VALUES (?, ?, ?);

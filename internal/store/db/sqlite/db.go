@@ -159,14 +159,29 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getPageBySlugStmt, err = db.PrepareContext(ctx, getPageBySlug); err != nil {
 		return nil, fmt.Errorf("error preparing query GetPageBySlug: %w", err)
 	}
+	if q.getPageSeoStmt, err = db.PrepareContext(ctx, getPageSeo); err != nil {
+		return nil, fmt.Errorf("error preparing query GetPageSeo: %w", err)
+	}
 	if q.getPasswordByEmailStmt, err = db.PrepareContext(ctx, getPasswordByEmail); err != nil {
 		return nil, fmt.Errorf("error preparing query GetPasswordByEmail: %w", err)
+	}
+	if q.getPaymentSettingsStmt, err = db.PrepareContext(ctx, getPaymentSettings); err != nil {
+		return nil, fmt.Errorf("error preparing query GetPaymentSettings: %w", err)
 	}
 	if q.getProductByIDStmt, err = db.PrepareContext(ctx, getProductByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetProductByID: %w", err)
 	}
 	if q.getProductBySlugStmt, err = db.PrepareContext(ctx, getProductBySlug); err != nil {
 		return nil, fmt.Errorf("error preparing query GetProductBySlug: %w", err)
+	}
+	if q.getProductDetailByIDStmt, err = db.PrepareContext(ctx, getProductDetailByID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetProductDetailByID: %w", err)
+	}
+	if q.getProductDetailBySlugStmt, err = db.PrepareContext(ctx, getProductDetailBySlug); err != nil {
+		return nil, fmt.Errorf("error preparing query GetProductDetailBySlug: %w", err)
+	}
+	if q.getProductDigitalContentStmt, err = db.PrepareContext(ctx, getProductDigitalContent); err != nil {
+		return nil, fmt.Errorf("error preparing query GetProductDigitalContent: %w", err)
 	}
 	if q.getProductImageStmt, err = db.PrepareContext(ctx, getProductImage); err != nil {
 		return nil, fmt.Errorf("error preparing query GetProductImage: %w", err)
@@ -249,6 +264,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.listProductsStmt, err = db.PrepareContext(ctx, listProducts); err != nil {
 		return nil, fmt.Errorf("error preparing query ListProducts: %w", err)
 	}
+	if q.listProductsPrivateStmt, err = db.PrepareContext(ctx, listProductsPrivate); err != nil {
+		return nil, fmt.Errorf("error preparing query ListProductsPrivate: %w", err)
+	}
+	if q.listProductsPublicStmt, err = db.PrepareContext(ctx, listProductsPublic); err != nil {
+		return nil, fmt.Errorf("error preparing query ListProductsPublic: %w", err)
+	}
 	if q.listSettingsStmt, err = db.PrepareContext(ctx, listSettings); err != nil {
 		return nil, fmt.Errorf("error preparing query ListSettings: %w", err)
 	}
@@ -297,6 +318,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.updateProductActiveStmt, err = db.PrepareContext(ctx, updateProductActive); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateProductActive: %w", err)
 	}
+	if q.updateProductFullStmt, err = db.PrepareContext(ctx, updateProductFull); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateProductFull: %w", err)
+	}
 	if q.updateProductVariantStmt, err = db.PrepareContext(ctx, updateProductVariant); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateProductVariant: %w", err)
 	}
@@ -311,6 +335,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.updateUserPasswordStmt, err = db.PrepareContext(ctx, updateUserPassword); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateUserPassword: %w", err)
+	}
+	if q.upsertSessionStmt, err = db.PrepareContext(ctx, upsertSession); err != nil {
+		return nil, fmt.Errorf("error preparing query UpsertSession: %w", err)
+	}
+	if q.upsertSettingStmt, err = db.PrepareContext(ctx, upsertSetting); err != nil {
+		return nil, fmt.Errorf("error preparing query UpsertSetting: %w", err)
 	}
 	return &q, nil
 }
@@ -542,9 +572,19 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getPageBySlugStmt: %w", cerr)
 		}
 	}
+	if q.getPageSeoStmt != nil {
+		if cerr := q.getPageSeoStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getPageSeoStmt: %w", cerr)
+		}
+	}
 	if q.getPasswordByEmailStmt != nil {
 		if cerr := q.getPasswordByEmailStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getPasswordByEmailStmt: %w", cerr)
+		}
+	}
+	if q.getPaymentSettingsStmt != nil {
+		if cerr := q.getPaymentSettingsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getPaymentSettingsStmt: %w", cerr)
 		}
 	}
 	if q.getProductByIDStmt != nil {
@@ -555,6 +595,21 @@ func (q *Queries) Close() error {
 	if q.getProductBySlugStmt != nil {
 		if cerr := q.getProductBySlugStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getProductBySlugStmt: %w", cerr)
+		}
+	}
+	if q.getProductDetailByIDStmt != nil {
+		if cerr := q.getProductDetailByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getProductDetailByIDStmt: %w", cerr)
+		}
+	}
+	if q.getProductDetailBySlugStmt != nil {
+		if cerr := q.getProductDetailBySlugStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getProductDetailBySlugStmt: %w", cerr)
+		}
+	}
+	if q.getProductDigitalContentStmt != nil {
+		if cerr := q.getProductDigitalContentStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getProductDigitalContentStmt: %w", cerr)
 		}
 	}
 	if q.getProductImageStmt != nil {
@@ -692,6 +747,16 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing listProductsStmt: %w", cerr)
 		}
 	}
+	if q.listProductsPrivateStmt != nil {
+		if cerr := q.listProductsPrivateStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listProductsPrivateStmt: %w", cerr)
+		}
+	}
+	if q.listProductsPublicStmt != nil {
+		if cerr := q.listProductsPublicStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listProductsPublicStmt: %w", cerr)
+		}
+	}
 	if q.listSettingsStmt != nil {
 		if cerr := q.listSettingsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing listSettingsStmt: %w", cerr)
@@ -772,6 +837,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing updateProductActiveStmt: %w", cerr)
 		}
 	}
+	if q.updateProductFullStmt != nil {
+		if cerr := q.updateProductFullStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateProductFullStmt: %w", cerr)
+		}
+	}
 	if q.updateProductVariantStmt != nil {
 		if cerr := q.updateProductVariantStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateProductVariantStmt: %w", cerr)
@@ -795,6 +865,16 @@ func (q *Queries) Close() error {
 	if q.updateUserPasswordStmt != nil {
 		if cerr := q.updateUserPasswordStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateUserPasswordStmt: %w", cerr)
+		}
+	}
+	if q.upsertSessionStmt != nil {
+		if cerr := q.upsertSessionStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing upsertSessionStmt: %w", cerr)
+		}
+	}
+	if q.upsertSettingStmt != nil {
+		if cerr := q.upsertSettingStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing upsertSettingStmt: %w", cerr)
 		}
 	}
 	return err
@@ -881,9 +961,14 @@ type Queries struct {
 	getNewCartBySessionIDStmt        *sql.Stmt
 	getPageByIDStmt                  *sql.Stmt
 	getPageBySlugStmt                *sql.Stmt
+	getPageSeoStmt                   *sql.Stmt
 	getPasswordByEmailStmt           *sql.Stmt
+	getPaymentSettingsStmt           *sql.Stmt
 	getProductByIDStmt               *sql.Stmt
 	getProductBySlugStmt             *sql.Stmt
+	getProductDetailByIDStmt         *sql.Stmt
+	getProductDetailBySlugStmt       *sql.Stmt
+	getProductDigitalContentStmt     *sql.Stmt
 	getProductImageStmt              *sql.Stmt
 	getProductOptionStmt             *sql.Stmt
 	getProductWithVariantsStmt       *sql.Stmt
@@ -911,6 +996,8 @@ type Queries struct {
 	listProductImagesStmt            *sql.Stmt
 	listProductVariantsByProductStmt *sql.Stmt
 	listProductsStmt                 *sql.Stmt
+	listProductsPrivateStmt          *sql.Stmt
+	listProductsPublicStmt           *sql.Stmt
 	listSettingsStmt                 *sql.Stmt
 	listSubdomainsStmt               *sql.Stmt
 	pageExistsStmt                   *sql.Stmt
@@ -927,11 +1014,14 @@ type Queries struct {
 	updatePageContentStmt            *sql.Stmt
 	updateProductStmt                *sql.Stmt
 	updateProductActiveStmt          *sql.Stmt
+	updateProductFullStmt            *sql.Stmt
 	updateProductVariantStmt         *sql.Stmt
 	updateSessionStmt                *sql.Stmt
 	updateSettingStmt                *sql.Stmt
 	updateSubdomainStmt              *sql.Stmt
 	updateUserPasswordStmt           *sql.Stmt
+	upsertSessionStmt                *sql.Stmt
+	upsertSettingStmt                *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
@@ -983,9 +1073,14 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getNewCartBySessionIDStmt:        q.getNewCartBySessionIDStmt,
 		getPageByIDStmt:                  q.getPageByIDStmt,
 		getPageBySlugStmt:                q.getPageBySlugStmt,
+		getPageSeoStmt:                   q.getPageSeoStmt,
 		getPasswordByEmailStmt:           q.getPasswordByEmailStmt,
+		getPaymentSettingsStmt:           q.getPaymentSettingsStmt,
 		getProductByIDStmt:               q.getProductByIDStmt,
 		getProductBySlugStmt:             q.getProductBySlugStmt,
+		getProductDetailByIDStmt:         q.getProductDetailByIDStmt,
+		getProductDetailBySlugStmt:       q.getProductDetailBySlugStmt,
+		getProductDigitalContentStmt:     q.getProductDigitalContentStmt,
 		getProductImageStmt:              q.getProductImageStmt,
 		getProductOptionStmt:             q.getProductOptionStmt,
 		getProductWithVariantsStmt:       q.getProductWithVariantsStmt,
@@ -1013,6 +1108,8 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		listProductImagesStmt:            q.listProductImagesStmt,
 		listProductVariantsByProductStmt: q.listProductVariantsByProductStmt,
 		listProductsStmt:                 q.listProductsStmt,
+		listProductsPrivateStmt:          q.listProductsPrivateStmt,
+		listProductsPublicStmt:           q.listProductsPublicStmt,
 		listSettingsStmt:                 q.listSettingsStmt,
 		listSubdomainsStmt:               q.listSubdomainsStmt,
 		pageExistsStmt:                   q.pageExistsStmt,
@@ -1029,10 +1126,13 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		updatePageContentStmt:            q.updatePageContentStmt,
 		updateProductStmt:                q.updateProductStmt,
 		updateProductActiveStmt:          q.updateProductActiveStmt,
+		updateProductFullStmt:            q.updateProductFullStmt,
 		updateProductVariantStmt:         q.updateProductVariantStmt,
 		updateSessionStmt:                q.updateSessionStmt,
 		updateSettingStmt:                q.updateSettingStmt,
 		updateSubdomainStmt:              q.updateSubdomainStmt,
 		updateUserPasswordStmt:           q.updateUserPasswordStmt,
+		upsertSessionStmt:                q.upsertSessionStmt,
+		upsertSettingStmt:                q.upsertSettingStmt,
 	}
 }

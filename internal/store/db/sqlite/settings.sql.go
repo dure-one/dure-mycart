@@ -38,6 +38,39 @@ func (q *Queries) DeleteSetting(ctx context.Context, key string) error {
 	return err
 }
 
+const getPaymentSettings = `-- name: GetPaymentSettings :many
+SELECT key, value FROM setting
+WHERE key IN ('stripe_active', 'paypal_active', 'spectrocoin_active', 'coinbase_active', 'portone_active')
+`
+
+type GetPaymentSettingsRow struct {
+	Key   string         `json:"key"`
+	Value sql.NullString `json:"value"`
+}
+
+func (q *Queries) GetPaymentSettings(ctx context.Context) ([]GetPaymentSettingsRow, error) {
+	rows, err := q.query(ctx, q.getPaymentSettingsStmt, getPaymentSettings)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetPaymentSettingsRow{}
+	for rows.Next() {
+		var i GetPaymentSettingsRow
+		if err := rows.Scan(&i.Key, &i.Value); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSettingByKey = `-- name: GetSettingByKey :one
 SELECT id, key, value
 FROM setting
@@ -93,5 +126,22 @@ type UpdateSettingParams struct {
 
 func (q *Queries) UpdateSetting(ctx context.Context, arg UpdateSettingParams) error {
 	_, err := q.exec(ctx, q.updateSettingStmt, updateSetting, arg.Value, arg.Key)
+	return err
+}
+
+const upsertSetting = `-- name: UpsertSetting :exec
+INSERT INTO setting (id, key, value)
+VALUES (?, ?, ?)
+ON CONFLICT(key) DO UPDATE SET value = excluded.value
+`
+
+type UpsertSettingParams struct {
+	ID    string         `json:"id"`
+	Key   string         `json:"key"`
+	Value sql.NullString `json:"value"`
+}
+
+func (q *Queries) UpsertSetting(ctx context.Context, arg UpsertSettingParams) error {
+	_, err := q.exec(ctx, q.upsertSettingStmt, upsertSetting, arg.ID, arg.Key, arg.Value)
 	return err
 }

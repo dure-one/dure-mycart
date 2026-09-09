@@ -22,38 +22,46 @@ type CartQueries struct {
 	*sql.DB
 }
 
-// PaymentList retrieves the status of different payment methods from the database.
+// PaymentList retrieves the status of different payment methods from the database using sqlc-generated GetPaymentSettings.
 func (q *CartQueries) PaymentList(ctx context.Context) (map[string]bool, error) {
 	payments := map[string]bool{}
-	keys := []any{
-		"stripe_active", "paypal_active", "spectrocoin_active", "coinbase_active", "portone_active",
+	queries := getSQLCQueries()
+
+	var results interface{}
+	var err error
+
+	if DBType() == "postgres" {
+		pgQueries := queries.(*postgres.Queries)
+		results, err = pgQueries.GetPaymentSettings(ctx)
+	} else {
+		sqliteQueries := queries.(*sqlite.Queries)
+		results, err = sqliteQueries.GetPaymentSettings(ctx)
 	}
 
-	placeholders := buildPlaceholders(len(keys))
-	query := fmt.Sprintf("SELECT key, value FROM setting WHERE key IN (%s)", placeholders)
-	rows, err := q.DB.QueryContext(ctx, query, keys...)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
 
-	for rows.Next() {
-		var key, value string
-		err := rows.Scan(&key, &value)
-		if err != nil {
-			return nil, err
+	// Process results based on database type
+	switch rows := results.(type) {
+	case []sqlite.GetPaymentSettingsRow:
+		for _, row := range rows {
+			vBool, err := strconv.ParseBool(row.Value.String)
+			if err != nil {
+				return nil, err
+			}
+			name := strings.ReplaceAll(row.Key, "_active", "")
+			payments[name] = vBool
 		}
-
-		vBool, err := strconv.ParseBool(value)
-		if err != nil {
-			return nil, err
+	case []postgres.GetPaymentSettingsRow:
+		for _, row := range rows {
+			vBool, err := strconv.ParseBool(row.Value.String)
+			if err != nil {
+				return nil, err
+			}
+			name := strings.ReplaceAll(row.Key, "_active", "")
+			payments[name] = vBool
 		}
-		name := strings.ReplaceAll(key, "_active", "")
-		payments[name] = vBool
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 
 	// Dummy provider is always active (no database check needed)

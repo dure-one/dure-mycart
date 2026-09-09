@@ -26,7 +26,7 @@
 
 ## 🛒&nbsp;&nbsp;What is myCart?
 
-myCart is an open source shopping-cart in 1 file of embedded database (SQLite), convenient dashboard UI and simple site.
+myCart is an open source shopping-cart with embedded database (SQLite) or PostgreSQL support, convenient dashboard UI and simple site.
 Formerly known as **litecart** (legacy project name kept here for discoverability in search).
 
 > [!WARNING]
@@ -53,7 +53,7 @@ Formerly known as **litecart** (legacy project name kept here for discoverabilit
 
 🔑 **Sell Files and License Keys**: Whether you're selling digital files or license keys, myCart has you covered, providing flexibility in the types of products you can offer.  
 
-⚙️ **Lightweight and Efficient**: myCart utilizes SQLite as its embedded database, eliminating the need for heavy databases like MySQL, PostgreSQL, or MongoDB. This results in a lightweight website that performs exceptionally well.  
+⚙️ **Flexible Database Options**: myCart supports both SQLite (embedded, zero-config) and PostgreSQL (scalable, production-grade). Choose SQLite for simplicity or PostgreSQL for advanced features and horizontal scaling.  
 
 ☁️ **Easily Customizable**: Modify and customize your myCart website effortlessly to match your branding and unique requirements, making it truly your own.  
 

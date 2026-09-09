@@ -14,7 +14,7 @@ sql:
         emit_empty_slices: true
 
   - engine: "sqlite"
-    schema: "db/migrations/sqlite"
+    schema: "db/schema_sqlite.sql"
     queries: "db/queries/sqlite"
     gen:
       go:

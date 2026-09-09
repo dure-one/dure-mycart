@@ -15,3 +15,8 @@ DELETE FROM session WHERE expires < $1;
 
 -- name: ListAllSessions :many
 SELECT key, value, expires FROM session;
+
+-- name: UpsertSession :exec
+INSERT INTO session (key, value, expires)
+VALUES ($1, $2, $3)
+ON CONFLICT (key) DO UPDATE SET value = $2, expires = $3;

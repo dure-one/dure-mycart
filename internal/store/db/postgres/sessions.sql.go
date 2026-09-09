@@ -95,3 +95,20 @@ func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) er
 	_, err := q.exec(ctx, q.updateSessionStmt, updateSession, arg.Value, arg.Expires, arg.Key)
 	return err
 }
+
+const upsertSession = `-- name: UpsertSession :exec
+INSERT INTO session (key, value, expires)
+VALUES ($1, $2, $3)
+ON CONFLICT (key) DO UPDATE SET value = $2, expires = $3
+`
+
+type UpsertSessionParams struct {
+	Key     string         `json:"key"`
+	Value   sql.NullString `json:"value"`
+	Expires sql.NullInt32  `json:"expires"`
+}
+
+func (q *Queries) UpsertSession(ctx context.Context, arg UpsertSessionParams) error {
+	_, err := q.exec(ctx, q.upsertSessionStmt, upsertSession, arg.Key, arg.Value, arg.Expires)
+	return err
+}

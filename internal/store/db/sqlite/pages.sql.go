@@ -8,6 +8,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 )
 
 const countPages = `-- name: CountPages :one
@@ -141,6 +142,17 @@ func (q *Queries) GetPageBySlug(ctx context.Context, slug string) (GetPageBySlug
 		&i.Updated,
 	)
 	return i, err
+}
+
+const getPageSeo = `-- name: GetPageSeo :one
+SELECT seo FROM page WHERE id = ?
+`
+
+func (q *Queries) GetPageSeo(ctx context.Context, id string) (json.RawMessage, error) {
+	row := q.queryRow(ctx, q.getPageSeoStmt, getPageSeo, id)
+	var seo json.RawMessage
+	err := row.Scan(&seo)
+	return seo, err
 }
 
 const listAllPages = `-- name: ListAllPages :many

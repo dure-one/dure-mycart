@@ -114,22 +114,28 @@ func toModelPage(p interface{}) *models.Page {
 	return &page
 }
 
-// loadPageSeo loads the seo field for a page from the database
+// loadPageSeo loads the seo field for a page from the database using sqlc-generated GetPageSeo
 func (q *PageQueries) loadPageSeo(ctx context.Context, page *models.Page) error {
-	var seo sql.NullString
-	var query string
-	if DBType() == "postgres" || DBType() == "postgresql" {
-		query = `SELECT seo FROM page WHERE id = $1`
+	queries := getSQLCQueries()
+
+	var seo json.RawMessage
+	var err error
+
+	if DBType() == "postgres" {
+		pgQueries := queries.(*postgres.Queries)
+		seo, err = pgQueries.GetPageSeo(ctx, page.ID)
 	} else {
-		query = `SELECT seo FROM page WHERE id = ?`
+		sqliteQueries := queries.(*sqlite.Queries)
+		seo, err = sqliteQueries.GetPageSeo(ctx, page.ID)
 	}
-	if err := q.DB.QueryRowContext(ctx, query, page.ID).Scan(&seo); err != nil {
+
+	if err != nil {
 		return err
 	}
 
-	if seo.Valid && seo.String != "" {
+	if len(seo) > 0 && string(seo) != "" && string(seo) != "{}" {
 		var seoData models.Seo
-		if err := json.Unmarshal([]byte(seo.String), &seoData); err != nil {
+		if err := json.Unmarshal(seo, &seoData); err != nil {
 			return err
 		}
 		page.Seo = &seoData

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/shurco/mycart/internal/store/db/postgres"
@@ -23,7 +24,7 @@ type ProductQueries struct {
 	*sql.DB
 }
 
-// ListProducts retrieves a list of products from the database.
+// ListProducts retrieves a list of products from the database using sqlc where possible.
 // If cartID is provided, it will also include digital products that were purchased in that cart.
 func (q *ProductQueries) ListProducts(ctx context.Context, private bool, limit, offset int, cartID string, idList ...models.CartProduct) (*models.Products, error) {
 	currency, err := db.GetSettingByKey(ctx, "currency")
@@ -35,9 +36,105 @@ func (q *ProductQueries) ListProducts(ctx context.Context, private bool, limit, 
 		Currency: currency["currency"].Value.(string),
 	}
 
+	// For simple cases (no cartID, no idList), use sqlc queries
+	if cartID == "" && len(idList) == 0 {
+		return q.listProductsSimple(ctx, products, private, int64(limit), int64(offset))
+	}
+
+	// For complex cases (with cartID or idList), use hand-written SQL with dynamic filtering
+	return q.listProductsComplex(ctx, products, private, limit, offset, cartID, idList...)
+}
+
+// listProductsSimple handles simple product listing using sqlc queries
+func (q *ProductQueries) listProductsSimple(ctx context.Context, products *models.Products, private bool, limit, offset int64) (*models.Products, error) {
+	queries := getSQLCQueries()
+
+	if private {
+		var rows interface{}
+		var err error
+
+		if DBType() == "postgres" {
+			pgQueries := queries.(*postgres.Queries)
+			params := postgres.ListProductsPrivateParams{
+				Limit:  int32(limit),
+				Offset: int32(offset),
+			}
+			rows, err = pgQueries.ListProductsPrivate(ctx, params)
+		} else {
+			sqliteQueries := queries.(*sqlite.Queries)
+			params := sqlite.ListProductsPrivateParams{
+				Limit:  limit,
+				Offset: offset,
+			}
+			rows, err = sqliteQueries.ListProductsPrivate(ctx, params)
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		if err := q.mapProductListRows(rows, products, private); err != nil {
+			return nil, err
+		}
+
+		// Get total count
+		if DBType() == "postgres" {
+			pgQueries := queries.(*postgres.Queries)
+			count, err := pgQueries.CountProducts(ctx)
+			if err != nil {
+				return nil, err
+			}
+			products.Total = int(count)
+		} else {
+			sqliteQueries := queries.(*sqlite.Queries)
+			count, err := sqliteQueries.CountProducts(ctx)
+			if err != nil {
+				return nil, err
+			}
+			products.Total = int(count)
+		}
+	} else {
+		var rows interface{}
+		var err error
+
+		if DBType() == "postgres" {
+			pgQueries := queries.(*postgres.Queries)
+			params := postgres.ListProductsPublicParams{
+				Limit:  int32(limit),
+				Offset: int32(offset),
+			}
+			rows, err = pgQueries.ListProductsPublic(ctx, params)
+		} else {
+			sqliteQueries := queries.(*sqlite.Queries)
+			params := sqlite.ListProductsPublicParams{
+				Limit:  limit,
+				Offset: offset,
+			}
+			rows, err = sqliteQueries.ListProductsPublic(ctx, params)
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		if err := q.mapProductListRows(rows, products, private); err != nil {
+			return nil, err
+		}
+
+		// Get total count (only active, non-deleted products for public)
+		countQuery := `SELECT COUNT(*) FROM product WHERE deleted = 0 AND active = 1`
+		err = q.DB.QueryRowContext(ctx, countQuery).Scan(&products.Total)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+	}
+
+	return products, nil
+}
+
+// listProductsComplex handles complex product listing with cartID or idList filtering (hand-written SQL)
+func (q *ProductQueries) listProductsComplex(ctx context.Context, products *models.Products, private bool, limit, offset int, cartID string, idList ...models.CartProduct) (*models.Products, error) {
 	// Build variants subquery based on private mode
-	// For private mode (e.g., validation), include all variants
-	// For public mode (e.g., storefront), only show active variants
 	variantsFilter := ""
 	if !private {
 		variantsFilter = " AND active = 1"
@@ -70,7 +167,6 @@ func (q *ProductQueries) ListProducts(ctx context.Context, private bool, limit, 
 		queryPublic, params = publicProductFilter(cartID)
 		countParams = append(countParams, params...)
 	} else {
-		// For private mode, add basic WHERE clause to filter deleted products
 		queryPublic = " WHERE product.deleted = 0 "
 	}
 
@@ -170,138 +266,473 @@ func (q *ProductQueries) ListProducts(ctx context.Context, private bool, limit, 
 	return products, nil
 }
 
-// Product retrieves a product by its ID, with the option to fetch private or public data.
+// mapProductListRows maps sqlc list query results to products
+func (q *ProductQueries) mapProductListRows(rows interface{}, products *models.Products, private bool) error {
+	switch v := rows.(type) {
+	case []postgres.ListProductsPrivateRow:
+		for _, row := range v {
+			product := models.Product{}
+			product.ID = row.ID
+			product.Name = row.Name
+			product.Brief = row.Brief
+			product.Slug = row.Slug
+			product.Active = row.Active
+
+			if amount, err := strconv.Atoi(row.Amount); err == nil {
+				product.Amount = amount
+			}
+			if row.Quantity.Valid {
+				product.Quantity = int(row.Quantity.Int32)
+			}
+			if row.HasVariants.Valid {
+				product.HasVariants = row.HasVariants.Bool
+			}
+			if row.Digital.Valid {
+				product.Digital.Type = row.Digital.String
+			}
+			if row.DigitalFilled.Valid {
+				product.Digital.Filled = row.DigitalFilled.Bool
+			}
+
+			// Parse image JSON
+			imageStr := string(row.Image)
+			if imageStr != "" && imageStr != `[{"id":null,"name":null,"ext":null}]` {
+				if err := json.Unmarshal(row.Image, &product.Images); err != nil {
+					return err
+				}
+			}
+
+			// Parse variants JSON
+			variantsStr := string(row.Variants)
+			if variantsStr != "" && variantsStr != `[{"id":null}]` && variantsStr != "[]" {
+				if err := json.Unmarshal(row.Variants, &product.Variants); err != nil {
+					return err
+				}
+			}
+
+			product.Created = row.Created
+
+			products.Products = append(products.Products, product)
+		}
+
+	case []sqlite.ListProductsPrivateRow:
+		for _, row := range v {
+			product := models.Product{}
+			product.ID = row.ID
+			product.Name = row.Name
+			product.Brief = row.Brief
+			product.Slug = row.Slug
+			product.Active = row.Active
+
+			if amount, ok := row.Amount.(int64); ok {
+				product.Amount = int(amount)
+			} else if amount, ok := row.Amount.(float64); ok {
+				product.Amount = int(amount)
+			}
+			if row.Quantity.Valid {
+				product.Quantity = int(row.Quantity.Int64)
+			}
+			if row.HasVariants.Valid {
+				product.HasVariants = row.HasVariants.Bool
+			}
+			if row.Digital.Valid {
+				product.Digital.Type = row.Digital.String
+			}
+			if row.DigitalFilled.Valid {
+				product.Digital.Filled = row.DigitalFilled.Bool
+			}
+
+			// Parse image JSON (interface{} in sqlite)
+			if imageStr, ok := row.Image.(string); ok {
+				if imageStr != "" && imageStr != `[{"id":null,"name":null,"ext":null}]` {
+					if err := json.Unmarshal([]byte(imageStr), &product.Images); err != nil {
+						return err
+					}
+				}
+			}
+
+			// Parse variants JSON (interface{} in sqlite)
+			if variantsStr, ok := row.Variants.(string); ok {
+				if variantsStr != "" && variantsStr != `[{"id":null}]` && variantsStr != "[]" {
+					if err := json.Unmarshal([]byte(variantsStr), &product.Variants); err != nil {
+						return err
+					}
+				}
+			}
+
+			if created, ok := row.Created.(int64); ok {
+				product.Created = created
+			}
+
+			products.Products = append(products.Products, product)
+		}
+
+	case []postgres.ListProductsPublicRow:
+		for _, row := range v {
+			product := models.Product{}
+			product.ID = row.ID
+			product.Name = row.Name
+			product.Brief = row.Brief
+			product.Slug = row.Slug
+			product.Active = row.Active
+
+			if amount, err := strconv.Atoi(row.Amount); err == nil {
+				product.Amount = amount
+			}
+			if row.Quantity.Valid {
+				product.Quantity = int(row.Quantity.Int32)
+			}
+			if row.HasVariants.Valid {
+				product.HasVariants = row.HasVariants.Bool
+			}
+			if row.Digital.Valid {
+				product.Digital.Type = row.Digital.String
+			}
+			if row.DigitalFilled.Valid {
+				product.Digital.Filled = row.DigitalFilled.Bool
+			}
+
+			imageStr := string(row.Image)
+			if imageStr != "" && imageStr != `[{"id":null,"name":null,"ext":null}]` {
+				if err := json.Unmarshal(row.Image, &product.Images); err != nil {
+					return err
+				}
+			}
+
+			variantsStr := string(row.Variants)
+			if variantsStr != "" && variantsStr != `[{"id":null}]` && variantsStr != "[]" {
+				if err := json.Unmarshal(row.Variants, &product.Variants); err != nil {
+					return err
+				}
+			}
+
+			product.Created = row.Created
+
+			products.Products = append(products.Products, product)
+		}
+
+	case []sqlite.ListProductsPublicRow:
+		for _, row := range v {
+			product := models.Product{}
+			product.ID = row.ID
+			product.Name = row.Name
+			product.Brief = row.Brief
+			product.Slug = row.Slug
+			product.Active = row.Active
+
+			if amount, ok := row.Amount.(int64); ok {
+				product.Amount = int(amount)
+			} else if amount, ok := row.Amount.(float64); ok {
+				product.Amount = int(amount)
+			}
+			if row.Quantity.Valid {
+				product.Quantity = int(row.Quantity.Int64)
+			}
+			if row.HasVariants.Valid {
+				product.HasVariants = row.HasVariants.Bool
+			}
+			if row.Digital.Valid {
+				product.Digital.Type = row.Digital.String
+			}
+			if row.DigitalFilled.Valid {
+				product.Digital.Filled = row.DigitalFilled.Bool
+			}
+
+			if imageStr, ok := row.Image.(string); ok {
+				if imageStr != "" && imageStr != `[{"id":null,"name":null,"ext":null}]` {
+					if err := json.Unmarshal([]byte(imageStr), &product.Images); err != nil {
+						return err
+					}
+				}
+			}
+
+			if variantsStr, ok := row.Variants.(string); ok {
+				if variantsStr != "" && variantsStr != `[{"id":null}]` && variantsStr != "[]" {
+					if err := json.Unmarshal([]byte(variantsStr), &product.Variants); err != nil {
+						return err
+					}
+				}
+			}
+
+			if created, ok := row.Created.(int64); ok {
+				product.Created = created
+			}
+
+			products.Products = append(products.Products, product)
+		}
+	}
+
+	return nil
+}
+
+// Product retrieves a product by its ID, with the option to fetch private or public data using sqlc.
 func (q *ProductQueries) Product(ctx context.Context, private bool, id string) (*models.Product, error) {
+	queries := getSQLCQueries()
 	product := &models.Product{}
 
-	query := `
-			SELECT DISTINCT
-				product.id,
-				product.name,
-				product.brief,
-				product."desc",
-				product.slug,
-				product.amount,
-				product.quantity,
-				product.sku,
-				product.has_variants,
-				product.active,
-				product.metadata,
-				product.attribute,
-				product.digital,
-				product.seo,
-				json_group_array(json_object('id', pi.id, 'name', pi.name, 'ext', pi.ext)) as images,
-				strftime('%s', product.created),
-				strftime('%s', product.updated)
-	`
-
-	// Добавляем вычисление digital_filled для приватных запросов
-	placeholder := BuildPlaceholder(1)
+	// Use sqlc query for base product data
 	if private {
-		query += `, EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = product.id AND digital_data.cart_id IS NULL) OR
-				EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = product.id) AS digital_filled
-			FROM product
-			LEFT JOIN product_image pi ON product.id = pi.product_id
-			WHERE product.id = ` + placeholder + `
-			GROUP BY product.id`
-	} else {
-		query += `
-			FROM product
-			LEFT JOIN product_image pi ON product.id = pi.product_id
-			WHERE product.slug = ` + placeholder + ` AND product.deleted = 0 AND product.active = 1
-			GROUP BY product.id`
-	}
+		// Private mode: fetch by ID
+		var row interface{}
+		var err error
 
-	var images, metadata, attributes, digitalType, seo, sku sql.NullString
-	var updated sql.NullInt64
-	var digitalFilled, hasVariants sql.NullBool
-	var quantity sql.NullInt64
-
-	scanArgs := []any{
-		&product.ID,
-		&product.Name,
-		&product.Brief,
-		&product.Description,
-		&product.Slug,
-		&product.Amount,
-		&quantity,
-		&sku,
-		&hasVariants,
-		&product.Active,
-		&metadata,
-		&attributes,
-		&digitalType,
-		&seo,
-		&images,
-		&product.Created,
-		&updated,
-	}
-
-	// Добавляем digital_filled в scanArgs для приватных запросов
-	if private {
-		scanArgs = append(scanArgs, &digitalFilled)
-	}
-
-	err := q.DB.QueryRowContext(ctx, query, id).Scan(scanArgs...)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.ErrProductNotFound
-		}
-		return nil, err
-	}
-
-	if updated.Valid {
-		product.Updated = updated.Int64
-	}
-
-	if images.Valid && images.String != `[{"id":null,"name":null,"ext":null}]` {
-		if err := json.Unmarshal([]byte(images.String), &product.Images); err != nil {
-			return nil, err
-		}
-	}
-
-	if attributes.Valid {
-		if err := json.Unmarshal([]byte(attributes.String), &product.Attributes); err != nil {
-			return nil, err
-		}
-	}
-
-	if metadata.Valid {
-		if err := json.Unmarshal([]byte(metadata.String), &product.Metadata); err != nil {
-			return nil, err
-		}
-	}
-
-	product.Digital.Type = digitalType.String
-
-	// Устанавливаем digital.filled для приватных запросов
-	if private && digitalType.Valid {
-		if digitalFilled.Valid {
-			product.Digital.Filled = digitalFilled.Bool
+		if DBType() == "postgres" {
+			pgQueries := queries.(*postgres.Queries)
+			row, err = pgQueries.GetProductDetailByID(ctx, id)
 		} else {
-			product.Digital.Filled = false
+			sqliteQueries := queries.(*sqlite.Queries)
+			row, err = sqliteQueries.GetProductDetailByID(ctx, id)
 		}
-	}
 
-	if seo.Valid {
-		if err := json.Unmarshal([]byte(seo.String), &product.Seo); err != nil {
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, errors.ErrProductNotFound
+			}
+			return nil, err
+		}
+
+		// Map sqlc result to product model
+		if err := q.mapProductDetail(row, product, private); err != nil {
+			return nil, err
+		}
+	} else {
+		// Public mode: fetch by slug
+		var row interface{}
+		var err error
+
+		if DBType() == "postgres" {
+			pgQueries := queries.(*postgres.Queries)
+			row, err = pgQueries.GetProductDetailBySlug(ctx, id)
+		} else {
+			sqliteQueries := queries.(*sqlite.Queries)
+			row, err = sqliteQueries.GetProductDetailBySlug(ctx, id)
+		}
+
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, errors.ErrProductNotFound
+			}
+			return nil, err
+		}
+
+		// Map sqlc result to product model
+		if err := q.mapProductDetail(row, product, private); err != nil {
 			return nil, err
 		}
 	}
 
-	if quantity.Valid {
-		product.Quantity = int(quantity.Int64)
+	// Load options and variants if product has variants (keep existing logic)
+	return q.loadProductOptionsAndVariants(ctx, product)
+}
+
+// mapProductDetail maps sqlc query result to models.Product
+func (q *ProductQueries) mapProductDetail(row interface{}, product *models.Product, private bool) error {
+	switch v := row.(type) {
+	case postgres.GetProductDetailByIDRow:
+		product.ID = v.ID
+		product.Name = v.Name
+		product.Brief = v.Brief
+		product.Description = v.Desc
+		product.Slug = v.Slug
+		// Amount is string in postgres (numeric type)
+		if amount, err := strconv.Atoi(v.Amount); err == nil {
+			product.Amount = amount
+		}
+		if v.Quantity.Valid {
+			product.Quantity = int(v.Quantity.Int32)
+		}
+		if v.Sku.Valid {
+			product.SKU = v.Sku.String
+		}
+		if v.HasVariants.Valid {
+			product.HasVariants = v.HasVariants.Bool
+		}
+		product.Active = v.Active
+
+		if err := json.Unmarshal(v.Metadata, &product.Metadata); err != nil {
+			return err
+		}
+		if err := json.Unmarshal(v.Attribute, &product.Attributes); err != nil {
+			return err
+		}
+		if v.Digital.Valid {
+			product.Digital.Type = v.Digital.String
+		}
+		if err := json.Unmarshal(v.Seo, &product.Seo); err != nil {
+			return err
+		}
+		// Images is json.RawMessage in postgres
+		imagesStr := string(v.Images)
+		if imagesStr != "" && imagesStr != `[{"id":null,"name":null,"ext":null}]` {
+			if err := json.Unmarshal(v.Images, &product.Images); err != nil {
+				return err
+			}
+		}
+		if private && v.DigitalFilled.Valid {
+			product.Digital.Filled = v.DigitalFilled.Bool
+		}
+		product.Created = v.Created
+		product.Updated = v.Updated
+
+	case sqlite.GetProductDetailByIDRow:
+		product.ID = v.ID
+		product.Name = v.Name
+		product.Brief = v.Brief
+		product.Description = v.Desc
+		product.Slug = v.Slug
+		// Amount is interface{} in sqlite
+		if amount, ok := v.Amount.(int64); ok {
+			product.Amount = int(amount)
+		} else if amount, ok := v.Amount.(float64); ok {
+			product.Amount = int(amount)
+		}
+		if v.Quantity.Valid {
+			product.Quantity = int(v.Quantity.Int64)
+		}
+		if v.Sku.Valid {
+			product.SKU = v.Sku.String
+		}
+		if v.HasVariants.Valid {
+			product.HasVariants = v.HasVariants.Bool
+		}
+		product.Active = v.Active
+
+		if err := json.Unmarshal(v.Metadata, &product.Metadata); err != nil {
+			return err
+		}
+		if err := json.Unmarshal(v.Attribute, &product.Attributes); err != nil {
+			return err
+		}
+		if v.Digital.Valid {
+			product.Digital.Type = v.Digital.String
+		}
+		if err := json.Unmarshal(v.Seo, &product.Seo); err != nil {
+			return err
+		}
+		// Images is interface{} in sqlite
+		if imagesStr, ok := v.Images.(string); ok {
+			if imagesStr != "" && imagesStr != `[{"id":null,"name":null,"ext":null}]` {
+				if err := json.Unmarshal([]byte(imagesStr), &product.Images); err != nil {
+					return err
+				}
+			}
+		}
+		if private && v.DigitalFilled.Valid {
+			product.Digital.Filled = v.DigitalFilled.Bool
+		}
+		// Created and Updated are interface{} in sqlite
+		if created, ok := v.Created.(int64); ok {
+			product.Created = created
+		}
+		if updated, ok := v.Updated.(int64); ok {
+			product.Updated = updated
+		}
+
+	case postgres.GetProductDetailBySlugRow:
+		product.ID = v.ID
+		product.Name = v.Name
+		product.Brief = v.Brief
+		product.Description = v.Desc
+		product.Slug = v.Slug
+		// Amount is string in postgres
+		if amount, err := strconv.Atoi(v.Amount); err == nil {
+			product.Amount = amount
+		}
+		if v.Quantity.Valid {
+			product.Quantity = int(v.Quantity.Int32)
+		}
+		if v.Sku.Valid {
+			product.SKU = v.Sku.String
+		}
+		if v.HasVariants.Valid {
+			product.HasVariants = v.HasVariants.Bool
+		}
+		product.Active = v.Active
+
+		if err := json.Unmarshal(v.Metadata, &product.Metadata); err != nil {
+			return err
+		}
+		if err := json.Unmarshal(v.Attribute, &product.Attributes); err != nil {
+			return err
+		}
+		if v.Digital.Valid {
+			product.Digital.Type = v.Digital.String
+		}
+		if err := json.Unmarshal(v.Seo, &product.Seo); err != nil {
+			return err
+		}
+		// Images is json.RawMessage in postgres
+		imagesStr := string(v.Images)
+		if imagesStr != "" && imagesStr != `[{"id":null,"name":null,"ext":null}]` {
+			if err := json.Unmarshal(v.Images, &product.Images); err != nil {
+				return err
+			}
+		}
+		product.Created = v.Created
+		product.Updated = v.Updated
+
+	case sqlite.GetProductDetailBySlugRow:
+		product.ID = v.ID
+		product.Name = v.Name
+		product.Brief = v.Brief
+		product.Description = v.Desc
+		product.Slug = v.Slug
+		// Amount is interface{} in sqlite
+		if amount, ok := v.Amount.(int64); ok {
+			product.Amount = int(amount)
+		} else if amount, ok := v.Amount.(float64); ok {
+			product.Amount = int(amount)
+		}
+		if v.Quantity.Valid {
+			product.Quantity = int(v.Quantity.Int64)
+		}
+		if v.Sku.Valid {
+			product.SKU = v.Sku.String
+		}
+		if v.HasVariants.Valid {
+			product.HasVariants = v.HasVariants.Bool
+		}
+		product.Active = v.Active
+
+		if err := json.Unmarshal(v.Metadata, &product.Metadata); err != nil {
+			return err
+		}
+		if err := json.Unmarshal(v.Attribute, &product.Attributes); err != nil {
+			return err
+		}
+		if v.Digital.Valid {
+			product.Digital.Type = v.Digital.String
+		}
+		if err := json.Unmarshal(v.Seo, &product.Seo); err != nil {
+			return err
+		}
+		// Images is interface{} in sqlite
+		if imagesStr, ok := v.Images.(string); ok {
+			if imagesStr != "" && imagesStr != `[{"id":null,"name":null,"ext":null}]` {
+				if err := json.Unmarshal([]byte(imagesStr), &product.Images); err != nil {
+					return err
+				}
+			}
+		}
+		// Created and Updated are interface{} in sqlite
+		if created, ok := v.Created.(int64); ok {
+			product.Created = created
+		}
+		if updated, ok := v.Updated.(int64); ok {
+			product.Updated = updated
+		}
 	}
 
-	if sku.Valid {
-		product.SKU = sku.String
+	return nil
+}
+
+// loadProductOptionsAndVariants loads options and variants for a product
+func (q *ProductQueries) loadProductOptionsAndVariants(ctx context.Context, product *models.Product) (*models.Product, error) {
+	if !product.HasVariants {
+		return product, nil
 	}
 
-	if hasVariants.Valid {
-		product.HasVariants = hasVariants.Bool
-	}
-
-	// Load options and variants if product has variants
+	// Load all options first
 	if product.HasVariants {
 		// Load all options first
 		optionsQuery := `
@@ -399,8 +830,9 @@ func (q *ProductQueries) Product(ctx context.Context, private bool, id string) (
 	return product, nil
 }
 
-// AddProduct inserts a new product into the database and returns the product with the created timestamp.
+// AddProduct inserts a new product into the database and returns the product with the created timestamp using sqlc.
 func (q *ProductQueries) AddProduct(ctx context.Context, product *models.Product) (*models.Product, error) {
+	queries := getSQLCQueries()
 	product.ID = security.RandomString()
 
 	metadata, err := json.Marshal(product.Metadata)
@@ -413,34 +845,53 @@ func (q *ProductQueries) AddProduct(ctx context.Context, product *models.Product
 		return nil, err
 	}
 
-	var query string
-	if DBType() == "postgres" {
-		query = `
-			INSERT INTO product (
-					id, name, amount, slug, metadata, attribute, brief, "desc", digital, active
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE)
-			RETURNING EXTRACT(EPOCH FROM created)::bigint
-		`
-	} else {
-		query = `
-			INSERT INTO product (
-					id, name, amount, slug, metadata, attribute, brief, "desc", digital, active
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE)
-			RETURNING strftime('%s', created)
-		`
+	var digitalType sql.NullString
+	if product.Digital.Type != "" {
+		digitalType = sql.NullString{String: product.Digital.Type, Valid: true}
 	}
-	stmt, err := q.DB.PrepareContext(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = stmt.Close() }()
 
-	err = stmt.QueryRowContext(ctx,
-		product.ID, product.Name, product.Amount, product.Slug,
-		metadata, attributes, product.Brief, product.Description, product.Digital.Type,
-	).Scan(&product.Created)
-	if err != nil {
-		return nil, err
+	if DBType() == "postgres" {
+		pgQueries := queries.(*postgres.Queries)
+		params := postgres.CreateProductParams{
+			ID:        product.ID,
+			Name:      product.Name,
+			Brief:     product.Brief,
+			Desc:      product.Description,
+			Slug:      product.Slug,
+			Amount:    strconv.Itoa(product.Amount),
+			Metadata:  metadata,
+			Attribute: attributes,
+			Digital:   digitalType,
+			Active:    false,
+		}
+		result, err := pgQueries.CreateProduct(ctx, params)
+		if err != nil {
+			return nil, err
+		}
+		if result.Created.Valid {
+			product.Created = result.Created.Time.Unix()
+		}
+	} else {
+		sqliteQueries := queries.(*sqlite.Queries)
+		params := sqlite.CreateProductParams{
+			ID:        product.ID,
+			Name:      product.Name,
+			Brief:     product.Brief,
+			Desc:      product.Description,
+			Slug:      product.Slug,
+			Amount:    product.Amount,
+			Metadata:  metadata,
+			Attribute: attributes,
+			Digital:   digitalType,
+			Active:    false,
+		}
+		result, err := sqliteQueries.CreateProduct(ctx, params)
+		if err != nil {
+			return nil, err
+		}
+		if result.Created.Valid {
+			product.Created = result.Created.Time.Unix()
+		}
 	}
 
 	return product, nil
@@ -498,75 +949,69 @@ func (q *ProductQueries) marshalProductJSON(product *models.Product) (metadata, 
 	return metadata, attributes, seo, nil
 }
 
-// updateProductMainFields executes the UPDATE statement for main product fields
+// updateProductMainFields executes the UPDATE statement for main product fields using sqlc
 func (q *ProductQueries) updateProductMainFields(ctx context.Context, tx *sql.Tx, product *models.Product, metadata, attributes, seo []byte) error {
-	var query string
-	if DBType() == "postgres" {
-		query = `
-			UPDATE product SET
-				name = $1,
-				brief = $2,
-				"desc" = $3,
-				slug = $4,
-				amount = $5,
-				quantity = $6,
-				sku = $7,
-				has_variants = $8,
-				metadata = $9,
-				attribute = $10,
-				seo = $11,
-				updated = NOW()
-			WHERE id = $12
-		`
-	} else {
-		query = `
-			UPDATE product SET
-				name = ?,
-				brief = ?,
-				"desc" = ?,
-				slug = ?,
-				amount = ?,
-				quantity = ?,
-				sku = ?,
-				has_variants = ?,
-				metadata = ?,
-				attribute = ?,
-				seo = ?,
-				updated = datetime('now')
-			WHERE id = ?
-		`
-	}
-	stmt, err := tx.PrepareContext(ctx, query)
-	if err != nil {
-		return fmt.Errorf("prepare update statement: %w", err)
-	}
-	defer func() { _ = stmt.Close() }()
-
 	// Handle empty SKU as NULL
 	var productSKU sql.NullString
 	if product.SKU != "" {
 		productSKU = sql.NullString{String: product.SKU, Valid: true}
 	}
 
-	_, err = stmt.ExecContext(ctx,
-		product.Name,
-		product.Brief,
-		product.Description,
-		product.Slug,
-		product.Amount,
-		product.Quantity,
-		productSKU,
-		product.HasVariants,
-		metadata,
-		attributes,
-		seo,
-		product.ID,
-	)
-	if err != nil {
-		return fmt.Errorf("execute update: %w", err)
+	// Handle has_variants as NULL if false
+	var hasVariants sql.NullBool
+	if product.HasVariants {
+		hasVariants = sql.NullBool{Bool: product.HasVariants, Valid: true}
 	}
 
-	return nil
+	if DBType() == "postgres" {
+		txQueries := postgres.New(tx)
+
+		// Postgres uses NullInt32 for quantity
+		var quantityInt32 sql.NullInt32
+		if product.Quantity > 0 {
+			quantityInt32 = sql.NullInt32{Int32: int32(product.Quantity), Valid: true}
+		}
+
+		params := postgres.UpdateProductFullParams{
+			Name:        product.Name,
+			Brief:       product.Brief,
+			Desc:        product.Description,
+			Slug:        product.Slug,
+			Amount:      strconv.Itoa(product.Amount),
+			Quantity:    quantityInt32,
+			Sku:         productSKU,
+			HasVariants: hasVariants,
+			Metadata:    metadata,
+			Attribute:   attributes,
+			Seo:         seo,
+			ID:          product.ID,
+		}
+		return txQueries.UpdateProductFull(ctx, params)
+	}
+
+	txQueries := sqlite.New(tx)
+
+	// SQLite uses NullInt64 for quantity
+	var quantityInt64 sql.NullInt64
+	if product.Quantity > 0 {
+		quantityInt64 = sql.NullInt64{Int64: int64(product.Quantity), Valid: true}
+	}
+
+	params := sqlite.UpdateProductFullParams{
+		Name:        product.Name,
+		Brief:       product.Brief,
+		Desc:        product.Description,
+		Slug:        product.Slug,
+		Amount:      float64(product.Amount),
+		Quantity:    quantityInt64,
+		Sku:         productSKU,
+		HasVariants: hasVariants,
+		Metadata:    metadata,
+		Attribute:   attributes,
+		Seo:         seo,
+		ID:          product.ID,
+	}
+	return txQueries.UpdateProductFull(ctx, params)
 }
 
 // syncProductVariants handles all variant-related CRUD operations
@@ -700,26 +1145,21 @@ func publicProductFilter(cartID string) (string, []any) {
 	return ` WHERE product.deleted = 0 AND product.active = 1 `, nil
 }
 
-// IsProduct checks if a product with the given slug exists and is active.
+// IsProduct checks if a product with the given slug exists and is active using sqlc.
 func (q *ProductQueries) IsProduct(ctx context.Context, slug string) bool {
+	queries := getSQLCQueries()
+
 	var exists bool
-	var query string
+	var err error
+
 	if DBType() == "postgres" {
-		query = `
-			SELECT EXISTS (
-				SELECT 1 FROM product
-				WHERE product.slug = $1 AND product.deleted = FALSE AND product.active = TRUE
-			)
-		`
+		pgQueries := queries.(*postgres.Queries)
+		exists, err = pgQueries.ProductExists(ctx, slug)
 	} else {
-		query = `
-			SELECT EXISTS (
-				SELECT 1 FROM product
-				WHERE product.slug = ? AND product.deleted = 0 AND product.active = 1
-			)
-		`
+		sqliteQueries := queries.(*sqlite.Queries)
+		exists, err = sqliteQueries.ProductExists(ctx, slug)
 	}
-	err := q.DB.QueryRowContext(ctx, query, slug).Scan(&exists)
+
 	return err == nil && exists
 }
 
@@ -754,32 +1194,50 @@ func (q *ProductQueries) ProductImages(ctx context.Context, id string) (*[]model
 	return q.mapToModelFiles(images), nil
 }
 
-// fetchProductImages performs database query to get image(s) for a product
+// fetchProductImages performs database query to get image(s) for a product using sqlc
 func (q *ProductQueries) fetchProductImages(ctx context.Context, id string) ([]productImage, error) {
-	var query string
+	queries := getSQLCQueries()
+
+	var results interface{}
+	var err error
+
 	if DBType() == "postgres" {
-		query = `SELECT id, name, ext FROM product_image WHERE product_id = $1`
+		pgQueries := queries.(*postgres.Queries)
+		results, err = pgQueries.ListProductImages(ctx, id)
 	} else {
-		query = `SELECT id, name, ext FROM product_image WHERE product_id = ?`
+		sqliteQueries := queries.(*sqlite.Queries)
+		results, err = sqliteQueries.ListProductImages(ctx, id)
 	}
-	rows, err := q.DB.QueryContext(ctx, query, id)
+
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.ErrProductNotFound
 		}
 		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
 
+	// Convert sqlc results to productImage slice
 	var images []productImage
-	for rows.Next() {
-		var img productImage
-		if err := rows.Scan(&img.ID, &img.Name, &img.Ext); err != nil {
-			return nil, err
+	switch v := results.(type) {
+	case []postgres.ProductImage:
+		for _, img := range v {
+			images = append(images, productImage{
+				ID:   img.ID,
+				Name: img.Name,
+				Ext:  img.Ext,
+			})
 		}
-		images = append(images, img)
+	case []sqlite.ProductImage:
+		for _, img := range v {
+			images = append(images, productImage{
+				ID:   img.ID,
+				Name: img.Name,
+				Ext:  img.Ext,
+			})
+		}
 	}
-	return images, rows.Err()
+
+	return images, nil
 }
 
 // mapToModelFiles creates a representation of the database results as a domain object
@@ -795,23 +1253,44 @@ func (q *ProductQueries) mapToModelFiles(images []productImage) *[]models.File {
 	return &result
 }
 
-// AddImage attaches an image to a product by inserting a new record in the product_image table.
+// AddImage attaches an image to a product by inserting a new record in the product_image table using sqlc.
 func (q *ProductQueries) AddImage(ctx context.Context, productID, fileUUID, fileExt, origName string) (*models.File, error) {
-	file := &models.File{
-		ID:   security.RandomString(),
-		Name: fileUUID,
-		Ext:  fileExt,
+	queries := getSQLCQueries()
+	imageID := security.RandomString()
+
+	if DBType() == "postgres" {
+		pgQueries := queries.(*postgres.Queries)
+		params := postgres.CreateProductImageParams{
+			ID:        imageID,
+			ProductID: productID,
+			Name:      fileUUID,
+			Ext:       fileExt,
+			OrigName:  origName,
+		}
+		_, err := pgQueries.CreateProductImage(ctx, params)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		sqliteQueries := queries.(*sqlite.Queries)
+		params := sqlite.CreateProductImageParams{
+			ID:        imageID,
+			ProductID: productID,
+			Name:      fileUUID,
+			Ext:       fileExt,
+			OrigName:  origName,
+		}
+		_, err := sqliteQueries.CreateProductImage(ctx, params)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	var query string
-	if DBType() == "postgres" {
-		query = `INSERT INTO product_image (id, product_id, name, ext, orig_name) VALUES ($1, $2, $3, $4, $5)`
-	} else {
-		query = `INSERT INTO product_image (id, product_id, name, ext, orig_name) VALUES (?, ?, ?, ?, ?)`
-	}
-	_, err := q.DB.ExecContext(ctx, query, file.ID, productID, file.Name, file.Ext, origName)
-	if err != nil {
-		return nil, err
+	// Convert result to models.File
+	file := &models.File{
+		ID:   imageID,
+		Name: fileUUID,
+		Ext:  fileExt,
 	}
 
 	return file, nil
@@ -845,25 +1324,44 @@ func (q *ProductQueries) deleteImageRecord(ctx context.Context, productID, image
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	// Get image info before deletion
+	// Get image info before deletion using sqlc
 	info := &imageInfo{}
-	var selectQuery, deleteQuery string
+	var image interface{}
+
 	if DBType() == "postgres" {
-		selectQuery = `SELECT name, ext FROM product_image WHERE id = $1`
-		deleteQuery = `DELETE FROM product_image WHERE id = $1 AND product_id = $2`
+		txQueries := postgres.New(tx)
+		image, err = txQueries.GetProductImage(ctx, imageID)
+		if err != nil {
+			return nil, err
+		}
+		pgImage := image.(postgres.ProductImage)
+		if pgImage.ProductID != productID {
+			return nil, sql.ErrNoRows
+		}
+		info.name = pgImage.Name
+		info.ext = pgImage.Ext
+
+		// Delete the database record
+		if err := txQueries.DeleteProductImage(ctx, imageID); err != nil {
+			return nil, err
+		}
 	} else {
-		selectQuery = `SELECT name, ext FROM product_image WHERE id = ?`
-		deleteQuery = `DELETE FROM product_image WHERE id = ? AND product_id = ?`
-	}
+		txQueries := sqlite.New(tx)
+		image, err = txQueries.GetProductImage(ctx, imageID)
+		if err != nil {
+			return nil, err
+		}
+		sqliteImage := image.(sqlite.ProductImage)
+		if sqliteImage.ProductID != productID {
+			return nil, sql.ErrNoRows
+		}
+		info.name = sqliteImage.Name
+		info.ext = sqliteImage.Ext
 
-	err = tx.QueryRowContext(ctx, selectQuery, imageID).Scan(&info.name, &info.ext)
-	if err != nil {
-		return nil, err
-	}
-
-	// Delete the database record
-	if _, err := tx.ExecContext(ctx, deleteQuery, imageID, productID); err != nil {
-		return nil, err
+		// Delete the database record
+		if err := txQueries.DeleteProductImage(ctx, imageID); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -895,124 +1393,169 @@ func (q *ProductQueries) deleteImageFiles(name, ext string) error {
 	return nil
 }
 
-// ProductDigital retrieves the digital content associated with a given product ID.
+// ProductDigital retrieves the digital content associated with a given product ID using sqlc.
 func (q *ProductQueries) ProductDigital(ctx context.Context, productID string) (*models.Digital, error) {
+	queries := getSQLCQueries()
 	digital := &models.Digital{}
 
-	var query string
+	var rows interface{}
+	var err error
+
 	if DBType() == "postgres" {
-		query = `
-			SELECT
-					p.digital,
-					df.id, df.name, df.ext,
-					dd.id, dd.content, dd.cart_id
-			FROM product p
-			LEFT JOIN digital_file df ON p.id = df.product_id
-			LEFT JOIN digital_data dd ON p.id = dd.product_id
-			WHERE p.id = $1
-		`
+		pgQueries := queries.(*postgres.Queries)
+		rows, err = pgQueries.GetProductDigitalContent(ctx, productID)
 	} else {
-		query = `
-			SELECT
-					p.digital,
-					df.id, df.name, df.ext,
-					dd.id, dd.content, dd.cart_id
-			FROM product p
-			LEFT JOIN digital_file df ON p.id = df.product_id
-			LEFT JOIN digital_data dd ON p.id = dd.product_id
-			WHERE p.id = ?
-		`
+		sqliteQueries := queries.(*sqlite.Queries)
+		rows, err = sqliteQueries.GetProductDigitalContent(ctx, productID)
 	}
 
-	rows, err := q.DB.QueryContext(ctx, query, productID)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
 
-	var digitalType sql.NullString
-	for rows.Next() {
-		var fileID, fileName, fileExt sql.NullString
-		var dataID, dataContent, cartID sql.NullString
-
-		err := rows.Scan(
-			&digitalType,
-			&fileID, &fileName, &fileExt,
-			&dataID, &dataContent, &cartID,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		if digital.Type == "" {
-			digital.Type = digitalType.String
-		}
-
-		if fileID.Valid {
-			file := models.File{
-				ID:   fileID.String,
-				Name: fileName.String,
-				Ext:  fileExt.String,
+	// Process rows based on database type
+	switch v := rows.(type) {
+	case []postgres.GetProductDigitalContentRow:
+		for _, row := range v {
+			if digital.Type == "" && row.Digital.Valid {
+				digital.Type = row.Digital.String
 			}
-			digital.Files = append(digital.Files, file)
-		}
-		if dataID.Valid {
-			data := models.Data{
-				ID:      dataID.String,
-				Content: dataContent.String,
-				CartID:  cartID.String,
-			}
-			digital.Data = append(digital.Data, data)
-		}
-	}
 
-	if err := rows.Err(); err != nil {
-		return nil, err
+			if row.FileID.Valid {
+				file := models.File{
+					ID:   row.FileID.String,
+					Name: row.FileName.String,
+					Ext:  row.FileExt.String,
+				}
+				digital.Files = append(digital.Files, file)
+			}
+			if row.DataID.Valid {
+				data := models.Data{
+					ID:      row.DataID.String,
+					Content: row.DataContent.String,
+					CartID:  row.DataCartID.String,
+				}
+				digital.Data = append(digital.Data, data)
+			}
+		}
+	case []sqlite.GetProductDigitalContentRow:
+		for _, row := range v {
+			if digital.Type == "" && row.Digital.Valid {
+				digital.Type = row.Digital.String
+			}
+
+			if row.FileID.Valid {
+				file := models.File{
+					ID:   row.FileID.String,
+					Name: row.FileName.String,
+					Ext:  row.FileExt.String,
+				}
+				digital.Files = append(digital.Files, file)
+			}
+			if row.DataID.Valid {
+				data := models.Data{
+					ID:      row.DataID.String,
+					Content: row.DataContent.String,
+					CartID:  row.DataCartID.String,
+				}
+				digital.Data = append(digital.Data, data)
+			}
+		}
 	}
 
 	return digital, nil
 }
 
-// DigitalFile retrieves a single digital file by ID and product ID.
+// DigitalFile retrieves a single digital file by ID and product ID using sqlc.
 func (q *ProductQueries) DigitalFile(ctx context.Context, productID, fileID string) (*models.File, error) {
-	file := &models.File{}
-	var query string
+	queries := getSQLCQueries()
+
+	var digitalFile interface{}
+	var err error
+
 	if DBType() == "postgres" {
-		query = `SELECT id, name, ext, orig_name FROM digital_file WHERE id = $1 AND product_id = $2`
+		pgQueries := queries.(*postgres.Queries)
+		digitalFile, err = pgQueries.GetDigitalFile(ctx, fileID)
 	} else {
-		query = `SELECT id, name, ext, orig_name FROM digital_file WHERE id = ? AND product_id = ?`
+		sqliteQueries := queries.(*sqlite.Queries)
+		digitalFile, err = sqliteQueries.GetDigitalFile(ctx, fileID)
 	}
-	err := q.DB.QueryRowContext(ctx, query, fileID, productID).
-		Scan(&file.ID, &file.Name, &file.Ext, &file.OrigName)
+
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.ErrProductNotFound
 		}
 		return nil, err
 	}
+
+	// Verify product_id matches and convert to models.File
+	file := &models.File{}
+	switch v := digitalFile.(type) {
+	case postgres.DigitalFile:
+		if v.ProductID != productID {
+			return nil, errors.ErrProductNotFound
+		}
+		file.ID = v.ID
+		file.Name = v.Name
+		file.Ext = v.Ext
+		file.OrigName = v.OrigName
+	case sqlite.DigitalFile:
+		if v.ProductID != productID {
+			return nil, errors.ErrProductNotFound
+		}
+		file.ID = v.ID
+		file.Name = v.Name
+		file.Ext = v.Ext
+		file.OrigName = v.OrigName
+	}
+
 	return file, nil
 }
 
-// AddDigitalFile associates a digital file with a product in the database.
+// AddDigitalFile associates a digital file with a product in the database using sqlc.
 func (q *ProductQueries) AddDigitalFile(ctx context.Context, productID, fileUUID, fileExt, origName string) (*models.File, error) {
-	file := &models.File{
-		ID:   security.RandomString(),
-		Name: fileUUID,
-		Ext:  fileExt,
+	queries := getSQLCQueries()
+	fileID := security.RandomString()
+
+	if DBType() == "postgres" {
+		pgQueries := queries.(*postgres.Queries)
+		params := postgres.CreateDigitalFileParams{
+			ID:        fileID,
+			ProductID: productID,
+			Name:      fileUUID,
+			Ext:       fileExt,
+			OrigName:  origName,
+		}
+		result, err := pgQueries.CreateDigitalFile(ctx, params)
+		if err != nil {
+			return nil, err
+		}
+		return &models.File{
+			ID:       result.ID,
+			Name:     result.Name,
+			Ext:      result.Ext,
+			OrigName: result.OrigName,
+		}, nil
 	}
 
-	var query string
-	if DBType() == "postgres" {
-		query = `INSERT INTO digital_file (id, product_id, name, ext, orig_name) VALUES ($1, $2, $3, $4, $5)`
-	} else {
-		query = `INSERT INTO digital_file (id, product_id, name, ext, orig_name) VALUES (?, ?, ?, ?, ?)`
+	sqliteQueries := queries.(*sqlite.Queries)
+	params := sqlite.CreateDigitalFileParams{
+		ID:        fileID,
+		ProductID: productID,
+		Name:      fileUUID,
+		Ext:       fileExt,
+		OrigName:  origName,
 	}
-	_, err := q.DB.ExecContext(ctx, query, file.ID, productID, file.Name, file.Ext, origName)
+	result, err := sqliteQueries.CreateDigitalFile(ctx, params)
 	if err != nil {
 		return nil, err
 	}
-
-	return file, nil
+	return &models.File{
+		ID:       result.ID,
+		Name:     result.Name,
+		Ext:      result.Ext,
+		OrigName: result.OrigName,
+	}, nil
 }
 
 // AddDigitalData adds a new digital data record associated with a product.
@@ -1036,23 +1579,34 @@ func (q *ProductQueries) AddDigitalData(ctx context.Context, productID, content 
 	return file, nil
 }
 
-// UpdateDigital updates the content of a digital data record in the database.
+// UpdateDigital updates the content of a digital data record in the database using sqlc.
 func (q *ProductQueries) UpdateDigital(ctx context.Context, digital *models.Data) error {
-	var query string
+	queries := getSQLCQueries()
+
 	if DBType() == "postgres" {
-		query = `UPDATE digital_data SET content = $1 WHERE id = $2`
-	} else {
-		query = `UPDATE digital_data SET content = ? WHERE id = ?`
+		pgQueries := queries.(*postgres.Queries)
+		params := postgres.UpdateDigitalDataParams{
+			Content: digital.Content,
+			ID:      digital.ID,
+		}
+		return pgQueries.UpdateDigitalData(ctx, params)
 	}
-	_, err := q.DB.ExecContext(ctx, query, digital.Content, digital.ID)
-	return err
+
+	sqliteQueries := queries.(*sqlite.Queries)
+	params := sqlite.UpdateDigitalDataParams{
+		Content: digital.Content,
+		ID:      digital.ID,
+	}
+	return sqliteQueries.UpdateDigitalData(ctx, params)
 }
 
 func (q *ProductQueries) DeleteDigital(ctx context.Context, productID, digitalID string) error {
+	queries := getSQLCQueries()
 	var digitalType string
 	var name, ext sql.NullString
 
-	var selectQuery, deleteFileQuery, deleteDataQuery string
+	// Get product digital type and file info
+	var selectQuery string
 	if DBType() == "postgres" {
 		selectQuery = `
 			SELECT p.digital, df.name, df.ext
@@ -1060,8 +1614,6 @@ func (q *ProductQueries) DeleteDigital(ctx context.Context, productID, digitalID
 			LEFT JOIN digital_file df ON df.id = $1 AND df.product_id = p.id
 			WHERE p.id = $2
 		`
-		deleteFileQuery = `DELETE FROM digital_file WHERE id = $1 AND product_id = $2`
-		deleteDataQuery = `DELETE FROM digital_data WHERE id = $1 AND product_id = $2`
 	} else {
 		selectQuery = `
 			SELECT p.digital, df.name, df.ext
@@ -1069,8 +1621,6 @@ func (q *ProductQueries) DeleteDigital(ctx context.Context, productID, digitalID
 			LEFT JOIN digital_file df ON df.id = ? AND df.product_id = p.id
 			WHERE p.id = ?
 		`
-		deleteFileQuery = `DELETE FROM digital_file WHERE id = ? AND product_id = ?`
-		deleteDataQuery = `DELETE FROM digital_data WHERE id = ? AND product_id = ?`
 	}
 
 	err := q.DB.QueryRowContext(ctx, selectQuery, digitalID, productID).Scan(&digitalType, &name, &ext)
@@ -1078,10 +1628,19 @@ func (q *ProductQueries) DeleteDigital(ctx context.Context, productID, digitalID
 		return err
 	}
 
+	// Delete using sqlc queries
 	switch digitalType {
 	case "file":
-		if _, err := q.DB.ExecContext(ctx, deleteFileQuery, digitalID, productID); err != nil {
-			return fmt.Errorf("deleting from digital_file: %w", err)
+		if DBType() == "postgres" {
+			pgQueries := queries.(*postgres.Queries)
+			if err := pgQueries.DeleteDigitalFile(ctx, digitalID); err != nil {
+				return fmt.Errorf("deleting from digital_file: %w", err)
+			}
+		} else {
+			sqliteQueries := queries.(*sqlite.Queries)
+			if err := sqliteQueries.DeleteDigitalFile(ctx, digitalID); err != nil {
+				return fmt.Errorf("deleting from digital_file: %w", err)
+			}
 		}
 
 		filePath := fmt.Sprintf("./lc_digitals/%s.%s", name.String, ext.String)
@@ -1090,8 +1649,16 @@ func (q *ProductQueries) DeleteDigital(ctx context.Context, productID, digitalID
 		}
 
 	case "data":
-		if _, err := q.DB.ExecContext(ctx, deleteDataQuery, digitalID, productID); err != nil {
-			return fmt.Errorf("deleting from digital_data: %w", err)
+		if DBType() == "postgres" {
+			pgQueries := queries.(*postgres.Queries)
+			if err := pgQueries.DeleteDigitalData(ctx, digitalID); err != nil {
+				return fmt.Errorf("deleting from digital_data: %w", err)
+			}
+		} else {
+			sqliteQueries := queries.(*sqlite.Queries)
+			if err := sqliteQueries.DeleteDigitalData(ctx, digitalID); err != nil {
+				return fmt.Errorf("deleting from digital_data: %w", err)
+			}
 		}
 	}
 

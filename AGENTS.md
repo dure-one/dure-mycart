@@ -2,7 +2,7 @@
 
 Concise, progressive-disclosure guide for AI coding agents working on
 **myCart** (formerly *litecart*): a single-binary e-commerce backend written
-in Go + SQLite with two SvelteKit frontends (admin panel and storefront).
+in Go with SQLite or PostgreSQL, plus two SvelteKit frontends (admin panel and storefront).
 
 Start here, then descend into the directory-scoped `AGENTS.md` files when
 touching that subtree.

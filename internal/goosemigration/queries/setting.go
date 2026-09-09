@@ -204,41 +204,43 @@ func parseSettingValue(value string, fieldPtr any) error {
 	return nil
 }
 
-// GetSettingByGroup retrieves settings based on the provided `settings` struct, populating it with values from the database.
+// GetSettingByGroup retrieves settings based on the provided `settings` struct, populating it with values from the database using sqlc.
 func (q *SettingQueries) GetSettingByGroup(ctx context.Context, settings any) (any, error) {
 	fieldMap := q.GroupFieldMap(settings)
 	if fieldMap == nil {
 		return nil, errors.ErrSettingNotFound
 	}
 
-	keys := make([]any, 0, len(fieldMap))
-	for k := range fieldMap {
-		keys = append(keys, k)
-	}
+	queries := getSQLCQueries()
 
-	// Build database-specific placeholders
-	placeholders := BuildPlaceholders(len(keys))
-	query := fmt.Sprintf("SELECT key, value FROM setting WHERE key IN (%s)", placeholders)
-	rows, err := q.DB.QueryContext(ctx, query, keys...)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
+	// Query each setting by key using sqlc
+	for key, fieldPtr := range fieldMap {
+		var result interface{}
+		var err error
 
-	for rows.Next() {
-		var key, value string
-		if err := rows.Scan(&key, &value); err != nil {
+		if DBType() == "postgres" {
+			pgQueries := queries.(*postgres.Queries)
+			result, err = pgQueries.GetSettingByKey(ctx, key)
+		} else {
+			sqliteQueries := queries.(*sqlite.Queries)
+			result, err = sqliteQueries.GetSettingByKey(ctx, key)
+		}
+
+		if err != nil {
+			if err == sql.ErrNoRows {
+				continue // Key not found, skip
+			}
 			return nil, err
 		}
 
-		if fieldPtr, ok := fieldMap[key]; ok {
-			if err := parseSettingValue(value, fieldPtr); err != nil {
-				return nil, err
-			}
+		// Extract value from result
+		setting := toModelSetting(result)
+		valueStr, _ := setting.Value.(string)
+
+		// Parse and assign to field
+		if err := parseSettingValue(valueStr, fieldPtr); err != nil {
+			return nil, err
 		}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 
 	return settings, nil
@@ -279,7 +281,7 @@ func serializeSettingValue(valuePtr any) (string, bool, error) {
 	}
 }
 
-// UpdateSettingByGroup updates the settings in the database using a transaction.
+// UpdateSettingByGroup updates the settings in the database using a transaction and sqlc.
 // It takes a context and a settings object of any type as arguments.
 // Creates new settings if they don't exist, updates existing ones otherwise.
 func (q *SettingQueries) UpdateSettingByGroup(ctx context.Context, settings any) error {
@@ -291,25 +293,13 @@ func (q *SettingQueries) UpdateSettingByGroup(ctx context.Context, settings any)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	// Build database-specific UPSERT query
-	var upsertQuery string
-	if DBType() == "postgres" || DBType() == "postgresql" {
-		upsertQuery = `
-			INSERT INTO setting (id, key, value) VALUES ($1, $2, $3)
-			ON CONFLICT(key) DO UPDATE SET value = excluded.value
-		`
+	// Create transaction-bound queries
+	var txQueries interface{}
+	if DBType() == "postgres" {
+		txQueries = postgres.New(tx)
 	} else {
-		upsertQuery = `
-			INSERT INTO setting (id, key, value) VALUES (?, ?, ?)
-			ON CONFLICT(key) DO UPDATE SET value = excluded.value
-		`
+		txQueries = sqlite.New(tx)
 	}
-
-	upsertStmt, err := tx.PrepareContext(ctx, upsertQuery)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = upsertStmt.Close() }()
 
 	for key, valuePtr := range fieldMap {
 		value, ok, err := serializeSettingValue(valuePtr)
@@ -321,36 +311,82 @@ func (q *SettingQueries) UpdateSettingByGroup(ctx context.Context, settings any)
 		}
 
 		newID := security.RandomString()
-		if _, err = upsertStmt.ExecContext(ctx, newID, key, value); err != nil {
-			return err
+		valueNull := sql.NullString{String: value, Valid: true}
+
+		if DBType() == "postgres" {
+			pgQueries := txQueries.(*postgres.Queries)
+			params := postgres.UpsertSettingParams{
+				ID:    newID,
+				Key:   key,
+				Value: valueNull,
+			}
+			if err := pgQueries.UpsertSetting(ctx, params); err != nil {
+				return err
+			}
+		} else {
+			sqliteQueries := txQueries.(*sqlite.Queries)
+			params := sqlite.UpsertSettingParams{
+				ID:    newID,
+				Key:   key,
+				Value: valueNull,
+			}
+			if err := sqliteQueries.UpsertSetting(ctx, params); err != nil {
+				return err
+			}
 		}
 	}
 
 	return tx.Commit()
 }
 
-// UpdatePassword updates the current user's password in the database.
+// UpdatePassword updates the current user's password in the database using sqlc.
 func (q *SettingQueries) UpdatePassword(ctx context.Context, password *models.Password) error {
-	var passwordHash string
-	query := `SELECT value FROM setting WHERE key = 'password'`
-	if err := q.DB.QueryRowContext(ctx, query).Scan(&passwordHash); err != nil {
+	queries := getSQLCQueries()
+
+	// Get current password hash
+	var result interface{}
+	var err error
+
+	if DBType() == "postgres" {
+		pgQueries := queries.(*postgres.Queries)
+		result, err = pgQueries.GetSettingByKey(ctx, "password")
+	} else {
+		sqliteQueries := queries.(*sqlite.Queries)
+		result, err = sqliteQueries.GetSettingByKey(ctx, "password")
+	}
+
+	if err != nil {
 		return errors.ErrUserNotFound
 	}
-	compareUserPassword := security.ComparePasswords(passwordHash, password.Old)
-	if !compareUserPassword {
+
+	// Extract password hash from result
+	setting := toModelSetting(result)
+	passwordHash, _ := setting.Value.(string)
+
+	// Verify old password
+	if !security.ComparePasswords(passwordHash, password.Old) {
 		return errors.ErrWrongPassword
 	}
 
-	// Build database-specific UPDATE query
-	var updateQuery string
-	if DBType() == "postgres" || DBType() == "postgresql" {
-		updateQuery = `UPDATE setting SET value = $1 WHERE key = 'password'`
-	} else {
-		updateQuery = `UPDATE setting SET value = ? WHERE key = 'password'`
+	// Update with new password hash
+	newHash := security.GeneratePassword(password.New)
+	newHashNull := sql.NullString{String: newHash, Valid: true}
+
+	if DBType() == "postgres" {
+		pgQueries := queries.(*postgres.Queries)
+		params := postgres.UpdateSettingParams{
+			Value: newHashNull,
+			Key:   "password",
+		}
+		return pgQueries.UpdateSetting(ctx, params)
 	}
 
-	_, err := q.DB.ExecContext(ctx, updateQuery, security.GeneratePassword(password.New))
-	return err
+	sqliteQueries := queries.(*sqlite.Queries)
+	params := sqlite.UpdateSettingParams{
+		Value: newHashNull,
+		Key:   "password",
+	}
+	return sqliteQueries.UpdateSetting(ctx, params)
 }
 
 // GetSettingByKey retrieves settings by key using sqlc.

@@ -46,6 +46,13 @@ type DigitalFile struct {
 	OrigName  string `json:"orig_name"`
 }
 
+type GooseDbVersion struct {
+	ID        int64        `json:"id"`
+	VersionID int64        `json:"version_id"`
+	IsApplied int64        `json:"is_applied"`
+	Tstamp    sql.NullTime `json:"tstamp"`
+}
+
 type NewCart struct {
 	ID        string       `json:"id"`
 	SessionID string       `json:"session_id"`
@@ -64,7 +71,7 @@ type Page struct {
 	Active   bool            `json:"active"`
 	Created  sql.NullTime    `json:"created"`
 	Updated  sql.NullTime    `json:"updated"`
-	Seo      json.RawMessage `json:"\"seo\""`
+	Seo      json.RawMessage `json:"seo"`
 }
 
 type Product struct {
@@ -80,8 +87,8 @@ type Product struct {
 	Deleted     bool            `json:"deleted"`
 	Created     sql.NullTime    `json:"created"`
 	Updated     sql.NullTime    `json:"updated"`
-	Seo         json.RawMessage `json:"\"seo\""`
-	Brief       string          `json:"\"brief\""`
+	Seo         json.RawMessage `json:"seo"`
+	Brief       string          `json:"brief"`
 	Quantity    sql.NullInt64   `json:"quantity"`
 	Sku         sql.NullString  `json:"sku"`
 	HasVariants sql.NullBool    `json:"has_variants"`
@@ -148,6 +155,11 @@ type Setting struct {
 	ID    string         `json:"id"`
 	Key   string         `json:"key"`
 	Value sql.NullString `json:"value"`
+}
+
+type SqliteSequence struct {
+	Name interface{} `json:"name"`
+	Seq  interface{} `json:"seq"`
 }
 
 type Subdomain struct {

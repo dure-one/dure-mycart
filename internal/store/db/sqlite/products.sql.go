@@ -35,14 +35,15 @@ func (q *Queries) CountProducts(ctx context.Context) (int64, error) {
 }
 
 const createProduct = `-- name: CreateProduct :one
-INSERT INTO product (id, name, "desc", slug, amount, metadata, attribute, digital, active, created)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-RETURNING id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated
+INSERT INTO product (id, name, brief, "desc", slug, amount, metadata, attribute, digital, active, created)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+RETURNING id, name, brief, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated
 `
 
 type CreateProductParams struct {
 	ID        string          `json:"id"`
 	Name      string          `json:"name"`
+	Brief     string          `json:"brief"`
 	Desc      string          `json:"desc"`
 	Slug      string          `json:"slug"`
 	Amount    interface{}     `json:"amount"`
@@ -55,6 +56,7 @@ type CreateProductParams struct {
 type CreateProductRow struct {
 	ID        string          `json:"id"`
 	Name      string          `json:"name"`
+	Brief     string          `json:"brief"`
 	Desc      string          `json:"desc"`
 	Slug      string          `json:"slug"`
 	Amount    interface{}     `json:"amount"`
@@ -71,6 +73,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (C
 	row := q.queryRow(ctx, q.createProductStmt, createProduct,
 		arg.ID,
 		arg.Name,
+		arg.Brief,
 		arg.Desc,
 		arg.Slug,
 		arg.Amount,
@@ -83,6 +86,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (C
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.Brief,
 		&i.Desc,
 		&i.Slug,
 		&i.Amount,
@@ -281,6 +285,206 @@ func (q *Queries) GetProductBySlug(ctx context.Context, slug string) (GetProduct
 		&i.Updated,
 	)
 	return i, err
+}
+
+const getProductDetailByID = `-- name: GetProductDetailByID :one
+SELECT DISTINCT
+  p.id,
+  p.name,
+  p.brief,
+  p.desc,
+  p.slug,
+  p.amount,
+  p.quantity,
+  p.sku,
+  p.has_variants,
+  p.active,
+  p.metadata,
+  p.attribute,
+  p.digital,
+  p.seo,
+  json_group_array(json_object('id', pi.id, 'name', pi.name, 'ext', pi.ext)) as images,
+  EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = p.id AND digital_data.cart_id IS NULL) OR
+  EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = p.id) AS digital_filled,
+  strftime('%s', p.created) as created,
+  strftime('%s', p.updated) as updated
+FROM product p
+LEFT JOIN product_image pi ON p.id = pi.product_id
+WHERE p.id = ?
+GROUP BY p.id
+`
+
+type GetProductDetailByIDRow struct {
+	ID            string          `json:"id"`
+	Name          string          `json:"name"`
+	Brief         string          `json:"brief"`
+	Desc          string          `json:"desc"`
+	Slug          string          `json:"slug"`
+	Amount        interface{}     `json:"amount"`
+	Quantity      sql.NullInt64   `json:"quantity"`
+	Sku           sql.NullString  `json:"sku"`
+	HasVariants   sql.NullBool    `json:"has_variants"`
+	Active        bool            `json:"active"`
+	Metadata      json.RawMessage `json:"metadata"`
+	Attribute     json.RawMessage `json:"attribute"`
+	Digital       sql.NullString  `json:"digital"`
+	Seo           json.RawMessage `json:"seo"`
+	Images        interface{}     `json:"images"`
+	DigitalFilled sql.NullBool    `json:"digital_filled"`
+	Created       interface{}     `json:"created"`
+	Updated       interface{}     `json:"updated"`
+}
+
+func (q *Queries) GetProductDetailByID(ctx context.Context, id string) (GetProductDetailByIDRow, error) {
+	row := q.queryRow(ctx, q.getProductDetailByIDStmt, getProductDetailByID, id)
+	var i GetProductDetailByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Brief,
+		&i.Desc,
+		&i.Slug,
+		&i.Amount,
+		&i.Quantity,
+		&i.Sku,
+		&i.HasVariants,
+		&i.Active,
+		&i.Metadata,
+		&i.Attribute,
+		&i.Digital,
+		&i.Seo,
+		&i.Images,
+		&i.DigitalFilled,
+		&i.Created,
+		&i.Updated,
+	)
+	return i, err
+}
+
+const getProductDetailBySlug = `-- name: GetProductDetailBySlug :one
+SELECT DISTINCT
+  p.id,
+  p.name,
+  p.brief,
+  p.desc,
+  p.slug,
+  p.amount,
+  p.quantity,
+  p.sku,
+  p.has_variants,
+  p.active,
+  p.metadata,
+  p.attribute,
+  p.digital,
+  p.seo,
+  json_group_array(json_object('id', pi.id, 'name', pi.name, 'ext', pi.ext)) as images,
+  strftime('%s', p.created) as created,
+  strftime('%s', p.updated) as updated
+FROM product p
+LEFT JOIN product_image pi ON p.id = pi.product_id
+WHERE p.slug = ? AND p.deleted = 0 AND p.active = 1
+GROUP BY p.id
+`
+
+type GetProductDetailBySlugRow struct {
+	ID          string          `json:"id"`
+	Name        string          `json:"name"`
+	Brief       string          `json:"brief"`
+	Desc        string          `json:"desc"`
+	Slug        string          `json:"slug"`
+	Amount      interface{}     `json:"amount"`
+	Quantity    sql.NullInt64   `json:"quantity"`
+	Sku         sql.NullString  `json:"sku"`
+	HasVariants sql.NullBool    `json:"has_variants"`
+	Active      bool            `json:"active"`
+	Metadata    json.RawMessage `json:"metadata"`
+	Attribute   json.RawMessage `json:"attribute"`
+	Digital     sql.NullString  `json:"digital"`
+	Seo         json.RawMessage `json:"seo"`
+	Images      interface{}     `json:"images"`
+	Created     interface{}     `json:"created"`
+	Updated     interface{}     `json:"updated"`
+}
+
+func (q *Queries) GetProductDetailBySlug(ctx context.Context, slug string) (GetProductDetailBySlugRow, error) {
+	row := q.queryRow(ctx, q.getProductDetailBySlugStmt, getProductDetailBySlug, slug)
+	var i GetProductDetailBySlugRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Brief,
+		&i.Desc,
+		&i.Slug,
+		&i.Amount,
+		&i.Quantity,
+		&i.Sku,
+		&i.HasVariants,
+		&i.Active,
+		&i.Metadata,
+		&i.Attribute,
+		&i.Digital,
+		&i.Seo,
+		&i.Images,
+		&i.Created,
+		&i.Updated,
+	)
+	return i, err
+}
+
+const getProductDigitalContent = `-- name: GetProductDigitalContent :many
+SELECT
+    p.digital,
+    df.id as file_id,
+    df.name as file_name,
+    df.ext as file_ext,
+    dd.id as data_id,
+    dd.content as data_content,
+    dd.cart_id as data_cart_id
+FROM product p
+LEFT JOIN digital_file df ON p.id = df.product_id
+LEFT JOIN digital_data dd ON p.id = dd.product_id
+WHERE p.id = ?
+`
+
+type GetProductDigitalContentRow struct {
+	Digital     sql.NullString `json:"digital"`
+	FileID      sql.NullString `json:"file_id"`
+	FileName    sql.NullString `json:"file_name"`
+	FileExt     sql.NullString `json:"file_ext"`
+	DataID      sql.NullString `json:"data_id"`
+	DataContent sql.NullString `json:"data_content"`
+	DataCartID  sql.NullString `json:"data_cart_id"`
+}
+
+func (q *Queries) GetProductDigitalContent(ctx context.Context, id string) ([]GetProductDigitalContentRow, error) {
+	rows, err := q.query(ctx, q.getProductDigitalContentStmt, getProductDigitalContent, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetProductDigitalContentRow{}
+	for rows.Next() {
+		var i GetProductDigitalContentRow
+		if err := rows.Scan(
+			&i.Digital,
+			&i.FileID,
+			&i.FileName,
+			&i.FileExt,
+			&i.DataID,
+			&i.DataContent,
+			&i.DataCartID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getProductOption = `-- name: GetProductOption :one
@@ -641,6 +845,168 @@ func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]L
 	return items, nil
 }
 
+const listProductsPrivate = `-- name: ListProductsPrivate :many
+SELECT DISTINCT
+  p.id,
+  p.name,
+  p.brief,
+  p.slug,
+  p.amount,
+  p.quantity,
+  p.has_variants,
+  p.active,
+  p.digital,
+  EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = p.id AND digital_data.cart_id IS NULL) OR
+  EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = p.id) AS digital_filled,
+  (SELECT json_group_array(json_object('id', product_image.id, 'name', product_image.name, 'ext', product_image.ext))
+   FROM product_image WHERE product_id = p.id GROUP BY id LIMIT 1) as image,
+  (SELECT json_group_array(json_object('id', pv.id, 'sku', pv.sku, 'quantity', pv.quantity, 'price_surcharge', pv.price_surcharge, 'option_values', json(pv.option_values), 'active', CASE WHEN pv.active = 1 THEN json('true') ELSE json('false') END))
+   FROM product_variant pv WHERE pv.product_id = p.id) as variants,
+  strftime('%s', p.created) as created
+FROM product p
+WHERE p.deleted = 0
+LIMIT ? OFFSET ?
+`
+
+type ListProductsPrivateParams struct {
+	Limit  int64 `json:"limit"`
+	Offset int64 `json:"offset"`
+}
+
+type ListProductsPrivateRow struct {
+	ID            string         `json:"id"`
+	Name          string         `json:"name"`
+	Brief         string         `json:"brief"`
+	Slug          string         `json:"slug"`
+	Amount        interface{}    `json:"amount"`
+	Quantity      sql.NullInt64  `json:"quantity"`
+	HasVariants   sql.NullBool   `json:"has_variants"`
+	Active        bool           `json:"active"`
+	Digital       sql.NullString `json:"digital"`
+	DigitalFilled sql.NullBool   `json:"digital_filled"`
+	Image         interface{}    `json:"image"`
+	Variants      interface{}    `json:"variants"`
+	Created       interface{}    `json:"created"`
+}
+
+func (q *Queries) ListProductsPrivate(ctx context.Context, arg ListProductsPrivateParams) ([]ListProductsPrivateRow, error) {
+	rows, err := q.query(ctx, q.listProductsPrivateStmt, listProductsPrivate, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListProductsPrivateRow{}
+	for rows.Next() {
+		var i ListProductsPrivateRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Brief,
+			&i.Slug,
+			&i.Amount,
+			&i.Quantity,
+			&i.HasVariants,
+			&i.Active,
+			&i.Digital,
+			&i.DigitalFilled,
+			&i.Image,
+			&i.Variants,
+			&i.Created,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProductsPublic = `-- name: ListProductsPublic :many
+SELECT DISTINCT
+  p.id,
+  p.name,
+  p.brief,
+  p.slug,
+  p.amount,
+  p.quantity,
+  p.has_variants,
+  p.active,
+  p.digital,
+  EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = p.id AND digital_data.cart_id IS NULL) OR
+  EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = p.id) AS digital_filled,
+  (SELECT json_group_array(json_object('id', product_image.id, 'name', product_image.name, 'ext', product_image.ext))
+   FROM product_image WHERE product_id = p.id GROUP BY id LIMIT 1) as image,
+  (SELECT json_group_array(json_object('id', pv.id, 'sku', pv.sku, 'quantity', pv.quantity, 'price_surcharge', pv.price_surcharge, 'option_values', json(pv.option_values), 'active', CASE WHEN pv.active = 1 THEN json('true') ELSE json('false') END))
+   FROM product_variant pv WHERE pv.product_id = p.id AND pv.active = 1) as variants,
+  strftime('%s', p.created) as created
+FROM product p
+WHERE p.deleted = 0 AND p.active = 1
+LIMIT ? OFFSET ?
+`
+
+type ListProductsPublicParams struct {
+	Limit  int64 `json:"limit"`
+	Offset int64 `json:"offset"`
+}
+
+type ListProductsPublicRow struct {
+	ID            string         `json:"id"`
+	Name          string         `json:"name"`
+	Brief         string         `json:"brief"`
+	Slug          string         `json:"slug"`
+	Amount        interface{}    `json:"amount"`
+	Quantity      sql.NullInt64  `json:"quantity"`
+	HasVariants   sql.NullBool   `json:"has_variants"`
+	Active        bool           `json:"active"`
+	Digital       sql.NullString `json:"digital"`
+	DigitalFilled sql.NullBool   `json:"digital_filled"`
+	Image         interface{}    `json:"image"`
+	Variants      interface{}    `json:"variants"`
+	Created       interface{}    `json:"created"`
+}
+
+func (q *Queries) ListProductsPublic(ctx context.Context, arg ListProductsPublicParams) ([]ListProductsPublicRow, error) {
+	rows, err := q.query(ctx, q.listProductsPublicStmt, listProductsPublic, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListProductsPublicRow{}
+	for rows.Next() {
+		var i ListProductsPublicRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Brief,
+			&i.Slug,
+			&i.Amount,
+			&i.Quantity,
+			&i.HasVariants,
+			&i.Active,
+			&i.Digital,
+			&i.DigitalFilled,
+			&i.Image,
+			&i.Variants,
+			&i.Created,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const productExists = `-- name: ProductExists :one
 SELECT EXISTS(SELECT 1 FROM product WHERE slug = ? AND deleted = FALSE)
 `
@@ -704,6 +1070,46 @@ WHERE id = ?
 
 func (q *Queries) UpdateProductActive(ctx context.Context, id string) error {
 	_, err := q.exec(ctx, q.updateProductActiveStmt, updateProductActive, id)
+	return err
+}
+
+const updateProductFull = `-- name: UpdateProductFull :exec
+UPDATE product
+SET name = ?, brief = ?, "desc" = ?, slug = ?, amount = ?, quantity = ?, sku = ?,
+    has_variants = ?, metadata = ?, attribute = ?, seo = ?, updated = CURRENT_TIMESTAMP
+WHERE id = ?
+`
+
+type UpdateProductFullParams struct {
+	Name        string          `json:"name"`
+	Brief       string          `json:"brief"`
+	Desc        string          `json:"desc"`
+	Slug        string          `json:"slug"`
+	Amount      interface{}     `json:"amount"`
+	Quantity    sql.NullInt64   `json:"quantity"`
+	Sku         sql.NullString  `json:"sku"`
+	HasVariants sql.NullBool    `json:"has_variants"`
+	Metadata    json.RawMessage `json:"metadata"`
+	Attribute   json.RawMessage `json:"attribute"`
+	Seo         json.RawMessage `json:"seo"`
+	ID          string          `json:"id"`
+}
+
+func (q *Queries) UpdateProductFull(ctx context.Context, arg UpdateProductFullParams) error {
+	_, err := q.exec(ctx, q.updateProductFullStmt, updateProductFull,
+		arg.Name,
+		arg.Brief,
+		arg.Desc,
+		arg.Slug,
+		arg.Amount,
+		arg.Quantity,
+		arg.Sku,
+		arg.HasVariants,
+		arg.Metadata,
+		arg.Attribute,
+		arg.Seo,
+		arg.ID,
+	)
 	return err
 }
 

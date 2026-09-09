@@ -24,14 +24,20 @@ LIMIT $1 OFFSET $2;
 SELECT COUNT(*) FROM product WHERE deleted = FALSE;
 
 -- name: CreateProduct :one
-INSERT INTO product (id, name, "desc", slug, amount, metadata, attribute, digital, active, created)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-RETURNING id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated;
+INSERT INTO product (id, name, brief, "desc", slug, amount, metadata, attribute, digital, active, created)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+RETURNING id, name, brief, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated;
 
 -- name: UpdateProduct :exec
 UPDATE product
 SET name = $1, "desc" = $2, slug = $3, amount = $4, metadata = $5, attribute = $6, digital = $7, active = $8, updated = NOW()
 WHERE id = $9;
+
+-- name: UpdateProductFull :exec
+UPDATE product
+SET name = $1, brief = $2, "desc" = $3, slug = $4, amount = $5, quantity = $6, sku = $7,
+    has_variants = $8, metadata = $9, attribute = $10, seo = $11, updated = NOW()
+WHERE id = $12;
 
 -- name: UpdateProductActive :exec
 UPDATE product
@@ -116,3 +122,111 @@ FROM product p
 LEFT JOIN product_image pi ON p.id = pi.product_id
 WHERE p.active = TRUE AND p.deleted = FALSE
 ORDER BY p.created DESC;
+
+-- name: ListProductsPrivate :many
+SELECT DISTINCT
+  p.id,
+  p.name,
+  p.brief,
+  p.slug,
+  p.amount,
+  p.quantity,
+  p.has_variants,
+  p.active,
+  p.digital,
+  EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = p.id AND digital_data.cart_id IS NULL) OR
+  EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = p.id) AS digital_filled,
+  (SELECT jsonb_agg(jsonb_build_object('id', product_image.id, 'name', product_image.name, 'ext', product_image.ext))
+   FROM product_image WHERE product_id = p.id LIMIT 1) as image,
+  (SELECT jsonb_agg(jsonb_build_object('id', pv.id, 'sku', pv.sku, 'quantity', pv.quantity, 'price_surcharge', pv.price_surcharge, 'option_values', pv.option_values::jsonb, 'active', CASE WHEN pv.active THEN 'true'::jsonb ELSE 'false'::jsonb END))
+   FROM product_variant pv WHERE pv.product_id = p.id) as variants,
+  EXTRACT(EPOCH FROM p.created)::bigint as created
+FROM product p
+WHERE p.deleted = FALSE
+LIMIT $1 OFFSET $2;
+
+-- name: ListProductsPublic :many
+SELECT DISTINCT
+  p.id,
+  p.name,
+  p.brief,
+  p.slug,
+  p.amount,
+  p.quantity,
+  p.has_variants,
+  p.active,
+  p.digital,
+  EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = p.id AND digital_data.cart_id IS NULL) OR
+  EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = p.id) AS digital_filled,
+  (SELECT jsonb_agg(jsonb_build_object('id', product_image.id, 'name', product_image.name, 'ext', product_image.ext))
+   FROM product_image WHERE product_id = p.id LIMIT 1) as image,
+  (SELECT jsonb_agg(jsonb_build_object('id', pv.id, 'sku', pv.sku, 'quantity', pv.quantity, 'price_surcharge', pv.price_surcharge, 'option_values', pv.option_values::jsonb, 'active', CASE WHEN pv.active THEN 'true'::jsonb ELSE 'false'::jsonb END))
+   FROM product_variant pv WHERE pv.product_id = p.id AND pv.active = TRUE) as variants,
+  EXTRACT(EPOCH FROM p.created)::bigint as created
+FROM product p
+WHERE p.deleted = FALSE AND p.active = TRUE
+LIMIT $1 OFFSET $2;
+
+-- name: GetProductDetailByID :one
+SELECT DISTINCT
+  p.id,
+  p.name,
+  p.brief,
+  p.desc,
+  p.slug,
+  p.amount,
+  p.quantity,
+  p.sku,
+  p.has_variants,
+  p.active,
+  p.metadata,
+  p.attribute,
+  p.digital,
+  p.seo,
+  jsonb_agg(jsonb_build_object('id', pi.id, 'name', pi.name, 'ext', pi.ext)) as images,
+  EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = p.id AND digital_data.cart_id IS NULL) OR
+  EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = p.id) AS digital_filled,
+  EXTRACT(EPOCH FROM p.created)::bigint as created,
+  EXTRACT(EPOCH FROM p.updated)::bigint as updated
+FROM product p
+LEFT JOIN product_image pi ON p.id = pi.product_id
+WHERE p.id = $1
+GROUP BY p.id, p.name, p.brief, p.desc, p.slug, p.amount, p.quantity, p.sku, p.has_variants, p.active, p.metadata, p.attribute, p.digital, p.seo, p.created, p.updated;
+
+-- name: GetProductDetailBySlug :one
+SELECT DISTINCT
+  p.id,
+  p.name,
+  p.brief,
+  p.desc,
+  p.slug,
+  p.amount,
+  p.quantity,
+  p.sku,
+  p.has_variants,
+  p.active,
+  p.metadata,
+  p.attribute,
+  p.digital,
+  p.seo,
+  jsonb_agg(jsonb_build_object('id', pi.id, 'name', pi.name, 'ext', pi.ext)) as images,
+  EXTRACT(EPOCH FROM p.created)::bigint as created,
+  EXTRACT(EPOCH FROM p.updated)::bigint as updated
+FROM product p
+LEFT JOIN product_image pi ON p.id = pi.product_id
+WHERE p.slug = $1 AND p.deleted = FALSE AND p.active = TRUE
+GROUP BY p.id, p.name, p.brief, p.desc, p.slug, p.amount, p.quantity, p.sku, p.has_variants, p.active, p.metadata, p.attribute, p.digital, p.seo, p.created, p.updated;
+
+-- name: GetProductDigitalContent :many
+SELECT
+    p.digital,
+    df.id as file_id,
+    df.name as file_name,
+    df.ext as file_ext,
+    dd.id as data_id,
+    dd.content as data_content,
+    dd.cart_id as data_cart_id
+FROM product p
+LEFT JOIN digital_file df ON p.id = df.product_id
+LEFT JOIN digital_data dd ON p.id = dd.product_id
+WHERE p.id = $1;

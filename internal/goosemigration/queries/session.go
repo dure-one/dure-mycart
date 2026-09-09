@@ -50,21 +50,27 @@ func (q *SettingQueries) GetSession(ctx context.Context, key string) (string, er
 	return "", sql.ErrNoRows
 }
 
-// AddSession upserts a session record using direct SQL for UPSERT support.
+// AddSession upserts a session record using sqlc-generated UpsertSession.
 func (q *SettingQueries) AddSession(ctx context.Context, key, value string, expires int64) error {
+	queries := getSQLCQueries()
+
 	if DBType() == "postgres" {
-		_, err := q.DB.ExecContext(ctx,
-			`INSERT INTO session (key, value, expires) VALUES ($1, $2, $3)
-			 ON CONFLICT (key) DO UPDATE SET value = $2, expires = $3`,
-			key, value, expires)
-		return err
+		pgQueries := queries.(*postgres.Queries)
+		params := postgres.UpsertSessionParams{
+			Key:     key,
+			Value:   sql.NullString{String: value, Valid: true},
+			Expires: sql.NullInt32{Int32: int32(expires), Valid: true},
+		}
+		return pgQueries.UpsertSession(ctx, params)
 	}
 
-	// SQLite: INSERT OR REPLACE
-	_, err := q.DB.ExecContext(ctx,
-		`INSERT OR REPLACE INTO session (key, value, expires) VALUES (?, ?, ?)`,
-		key, value, expires)
-	return err
+	sqliteQueries := queries.(*sqlite.Queries)
+	params := sqlite.UpsertSessionParams{
+		Key:     key,
+		Value:   sql.NullString{String: value, Valid: true},
+		Expires: sql.NullInt64{Int64: expires, Valid: true},
+	}
+	return sqliteQueries.UpsertSession(ctx, params)
 }
 
 // UpdateSession updates the session with new value and expiration using sqlc.
