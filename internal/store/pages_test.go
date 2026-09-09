@@ -14,7 +14,7 @@ func TestGetPageBySlug(t *testing.T) {
 
 	// Create a page first
 	page, err := store.CreatePage(ctx, db.CreatePageParams{
-		ID:      "test-page-id",
+		ID:      NewTestID(),
 		Name:    "Test Page",
 		Slug:    "test-page",
 		Content: sql.NullString{String: "Test content", Valid: true},
@@ -22,12 +22,12 @@ func TestGetPageBySlug(t *testing.T) {
 		Active:  true,
 	})
 	require.NoError(t, err)
-	require.Equal(t, "test-page-id", page.ID)
+	require.Equal(t, NewTestID(), page.ID)
 
 	// Retrieve page by slug
 	retrieved, err := store.GetPageBySlug(ctx, "test-page")
 	require.NoError(t, err)
-	require.Equal(t, "test-page-id", retrieved.ID)
+	require.Equal(t, NewTestID(), retrieved.ID)
 	require.Equal(t, "Test Page", retrieved.Name)
 	require.Equal(t, "test-page", retrieved.Slug)
 	require.True(t, retrieved.Content.Valid)

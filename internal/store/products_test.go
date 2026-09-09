@@ -14,7 +14,7 @@ func TestGetProductByID(t *testing.T) {
 
 	// Create a product first
 	product, err := store.CreateProduct(ctx, db.CreateProductParams{
-		ID:        "test-product-id",
+		ID:        NewTestID(),
 		Name:      "Test Product",
 		Desc:      "Test description",
 		Slug:      "test-product",
@@ -25,12 +25,12 @@ func TestGetProductByID(t *testing.T) {
 		Active:    true,
 	})
 	require.NoError(t, err)
-	require.Equal(t, "test-product-id", product.ID)
+	require.Equal(t, NewTestID(), product.ID)
 
 	// Retrieve product by ID
-	retrieved, err := store.GetProductByID(ctx, "test-product-id")
+	retrieved, err := store.GetProductByID(ctx, NewTestID())
 	require.NoError(t, err)
-	require.Equal(t, "test-product-id", retrieved.ID)
+	require.Equal(t, NewTestID(), retrieved.ID)
 	require.Equal(t, "Test Product", retrieved.Name)
 	require.Equal(t, "Test description", retrieved.Desc)
 	require.Equal(t, "test-product", retrieved.Slug)

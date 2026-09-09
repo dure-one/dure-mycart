@@ -14,7 +14,7 @@ func TestGetSession(t *testing.T) {
 	// Add a session
 	key := "test_key"
 	value := "test_value"
-	expires := int64(9999999999)
+	expires := int64(2000000000) // May 2033 - fits in PostgreSQL Int32
 	err := store.AddSession(ctx, key, value, expires)
 	require.NoError(t, err)
 
