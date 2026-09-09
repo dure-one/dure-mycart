@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/shurco/mycart/internal/store/db/postgres"
 	"github.com/shurco/mycart/internal/store/db/sqlite"
@@ -390,5 +391,147 @@ func FromSQLiteProductRow(p interface{}) Product {
 		}
 	default:
 		return Product{}
+	}
+}
+
+// User is the unified type for user authentication
+type User struct {
+	ID        string
+	Email     string
+	Password  string
+	CreatedAt time.Time
+	UpdatedAt sql.NullTime
+}
+
+// CreateUserParams for CreateUser operation
+type CreateUserParams struct {
+	ID        string
+	Email     string
+	Password  string
+	CreatedAt time.Time
+	UpdatedAt sql.NullTime
+}
+
+// UpdateUserPasswordParams for UpdateUserPassword operation
+type UpdateUserPasswordParams struct {
+	Password  string
+	UpdatedAt time.Time
+	Email     string
+}
+
+// FromPostgresUser converts postgres.User to unified User
+func FromPostgresUser(u postgres.User) User {
+	return User{
+		ID:        u.ID,
+		Email:     u.Email,
+		Password:  u.Password,
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
+	}
+}
+
+// FromSQLiteUser converts sqlite.User to unified User
+func FromSQLiteUser(u sqlite.User) User {
+	return User{
+		ID:        u.ID,
+		Email:     u.Email,
+		Password:  u.Password,
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
+	}
+}
+
+// Cart is the unified type for shopping carts
+type Cart struct {
+	ID        string
+	SessionID string
+	Status    string
+	Total     string
+	CreatedAt time.Time
+	UpdatedAt sql.NullTime
+}
+
+// CreateCartParams for CreateCart operation
+type CreateCartParams struct {
+	ID        string
+	SessionID string
+	Status    string
+	Total     string
+	CreatedAt time.Time
+	UpdatedAt sql.NullTime
+}
+
+// FromPostgresCart converts postgres.Cart to unified Cart
+func FromPostgresCart(c postgres.Cart) Cart {
+	return Cart{
+		ID:        c.ID,
+		SessionID: c.SessionID,
+		Status:    c.Status,
+		Total:     c.Total,
+		CreatedAt: c.CreatedAt,
+		UpdatedAt: c.UpdatedAt,
+	}
+}
+
+// FromSQLiteCart converts sqlite.Cart to unified Cart
+func FromSQLiteCart(c sqlite.Cart) Cart {
+	return Cart{
+		ID:        c.ID,
+		SessionID: c.SessionID,
+		Status:    c.Status,
+		Total:     convertAmount(c.Total),
+		CreatedAt: c.CreatedAt,
+		UpdatedAt: c.UpdatedAt,
+	}
+}
+
+// CartItem is the unified type for cart line items
+type CartItem struct {
+	ID        string
+	CartID    string
+	ProductID string
+	Quantity  int64
+	Price     string
+	CreatedAt time.Time
+}
+
+// CreateCartItemParams for CreateCartItem operation
+type CreateCartItemParams struct {
+	ID        string
+	CartID    string
+	ProductID string
+	Quantity  int64
+	Price     string
+	CreatedAt time.Time
+}
+
+// UpdateCartItemParams for UpdateCartItem operation
+type UpdateCartItemParams struct {
+	Quantity int64
+	Price    string
+	ID       string
+}
+
+// FromPostgresCartItem converts postgres.CartItem to unified CartItem
+func FromPostgresCartItem(ci postgres.CartItem) CartItem {
+	return CartItem{
+		ID:        ci.ID,
+		CartID:    ci.CartID,
+		ProductID: ci.ProductID,
+		Quantity:  ci.Quantity,
+		Price:     ci.Price,
+		CreatedAt: ci.CreatedAt,
+	}
+}
+
+// FromSQLiteCartItem converts sqlite.CartItem to unified CartItem
+func FromSQLiteCartItem(ci sqlite.CartItem) CartItem {
+	return CartItem{
+		ID:        ci.ID,
+		CartID:    ci.CartID,
+		ProductID: ci.ProductID,
+		Quantity:  ci.Quantity,
+		Price:     convertAmount(ci.Price),
+		CreatedAt: ci.CreatedAt,
 	}
 }
