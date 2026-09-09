@@ -221,6 +221,33 @@ func initPostgres(sqlDB *sql.DB) {
 	DeleteProductFunc = func(ctx context.Context, id string) error {
 		return q.DeleteProduct(ctx, id)
 	}
+
+	// Auth operations
+	GetUserByEmailFunc = func(ctx context.Context, email string) (User, error) {
+		pgUser, err := q.GetUserByEmail(ctx, email)
+		if err != nil {
+			return User{}, err
+		}
+		return FromPostgresUser(pgUser), nil
+	}
+
+	CreateUserFunc = func(ctx context.Context, arg CreateUserParams) error {
+		return q.CreateUser(ctx, postgres.CreateUserParams{
+			ID:        arg.ID,
+			Email:     arg.Email,
+			Password:  arg.Password,
+			CreatedAt: arg.CreatedAt,
+			UpdatedAt: arg.UpdatedAt,
+		})
+	}
+
+	UpdateUserPasswordFunc = func(ctx context.Context, arg UpdateUserPasswordParams) error {
+		return q.UpdateUserPassword(ctx, postgres.UpdateUserPasswordParams{
+			Password:  arg.Password,
+			UpdatedAt: arg.UpdatedAt,
+			Email:     arg.Email,
+		})
+	}
 }
 
 // initSQLite assigns SQLite sqlc implementations to function pointers
@@ -409,5 +436,32 @@ func initSQLite(sqlDB *sql.DB) {
 
 	DeleteProductFunc = func(ctx context.Context, id string) error {
 		return q.DeleteProduct(ctx, id)
+	}
+
+	// Auth operations
+	GetUserByEmailFunc = func(ctx context.Context, email string) (User, error) {
+		sqliteUser, err := q.GetUserByEmail(ctx, email)
+		if err != nil {
+			return User{}, err
+		}
+		return FromSQLiteUser(sqliteUser), nil
+	}
+
+	CreateUserFunc = func(ctx context.Context, arg CreateUserParams) error {
+		return q.CreateUser(ctx, sqlite.CreateUserParams{
+			ID:        arg.ID,
+			Email:     arg.Email,
+			Password:  arg.Password,
+			CreatedAt: arg.CreatedAt,
+			UpdatedAt: arg.UpdatedAt,
+		})
+	}
+
+	UpdateUserPasswordFunc = func(ctx context.Context, arg UpdateUserPasswordParams) error {
+		return q.UpdateUserPassword(ctx, sqlite.UpdateUserPasswordParams{
+			Password:  arg.Password,
+			UpdatedAt: arg.UpdatedAt,
+			Email:     arg.Email,
+		})
 	}
 }

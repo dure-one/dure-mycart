@@ -33,6 +33,11 @@ var (
 	CreateProductFunc    func(ctx context.Context, params CreateProductParams) (Product, error)
 	UpdateProductFunc    func(ctx context.Context, params UpdateProductParams) error
 	DeleteProductFunc    func(ctx context.Context, id string) error
+
+	// Auth operations
+	GetUserByEmailFunc     func(ctx context.Context, email string) (User, error)
+	CreateUserFunc         func(ctx context.Context, arg CreateUserParams) error
+	UpdateUserPasswordFunc func(ctx context.Context, arg UpdateUserPasswordParams) error
 )
 
 // Additional function pointers can be added here as needed during migration
