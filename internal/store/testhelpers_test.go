@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -104,35 +103,52 @@ func setupPostgresTest(t *testing.T) context.Context {
 // cleanupTestData removes test data from PostgreSQL database
 func cleanupTestData(t *testing.T, sqlDB *sql.DB) {
 	t.Helper()
+	ctx := context.Background()
+
+	// Check which tables exist first to avoid PostgreSQL errors in logs
+	existingTables := make(map[string]bool)
+	rows, err := sqlDB.QueryContext(ctx, `
+		SELECT tablename
+		FROM pg_tables
+		WHERE schemaname = 'public'
+	`)
+	if err != nil {
+		t.Logf("failed to query existing tables: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var tableName string
+		if err := rows.Scan(&tableName); err != nil {
+			continue
+		}
+		existingTables[tableName] = true
+	}
 
 	// Tables with 'id' column (singular names from init_db.sql)
 	tablesWithID := []string{
 		"cart_items", "new_carts", "cart", "digital_file", "digital_data",
-		"product_image", "product", "page", "setting", "subdomain",
+		"product_image", "product", "page", "setting", "subdomain", "users",
 	}
 
-	ctx := context.Background()
 	for _, table := range tablesWithID {
+		if !existingTables[table] {
+			continue // Skip non-existent tables
+		}
 		_, err := sqlDB.ExecContext(ctx,
 			fmt.Sprintf("DELETE FROM %s WHERE id LIKE 'test_%%'", table))
 		if err != nil {
-			// Ignore "relation does not exist" errors - table may not be created yet
-			if !strings.Contains(err.Error(), "does not exist") {
-				t.Logf("cleanup warning for %s: %v", table, err)
-			}
+			t.Logf("cleanup failed for %s: %v", table, err)
 		}
 	}
 
 	// session table uses 'key' instead of 'id'
-	_, err := sqlDB.ExecContext(ctx, "DELETE FROM session WHERE key LIKE 'test_%'")
-	if err != nil && !strings.Contains(err.Error(), "does not exist") {
-		t.Logf("cleanup warning for session: %v", err)
-	}
-
-	// users table cleanup (from our new migration)
-	_, err = sqlDB.ExecContext(ctx, "DELETE FROM users WHERE id LIKE 'test_%'")
-	if err != nil && !strings.Contains(err.Error(), "does not exist") {
-		t.Logf("cleanup warning for users: %v", err)
+	if existingTables["session"] {
+		_, err := sqlDB.ExecContext(ctx, "DELETE FROM session WHERE key LIKE 'test_%'")
+		if err != nil {
+			t.Logf("cleanup failed for session: %v", err)
+		}
 	}
 }
 
