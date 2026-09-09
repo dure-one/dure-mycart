@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/joho/godotenv"
 	"github.com/shurco/mycart/db/migrations"
 	"github.com/shurco/mycart/internal/goosemigration/queries"
 	"github.com/shurco/mycart/internal/store"
@@ -69,10 +70,16 @@ func setupSQLiteTest(t *testing.T) context.Context {
 func setupPostgresTest(t *testing.T) context.Context {
 	t.Helper()
 
-	// Get connection string from environment or use default Supabase
+	// Load .env file if it exists (contains DATABASE_URL)
+	_ = godotenv.Load("../../.env") // Ignore error if .env doesn't exist
+
+	// Get connection string from environment (TEST_DATABASE_URL or DATABASE_URL from .env)
 	connStr := os.Getenv("TEST_DATABASE_URL")
 	if connStr == "" {
-		connStr = "postgresql://postgres:enfpakdlzkxm!23@db.tybjgfktpgkvrjmzamhx.supabase.co:5432/postgres"
+		connStr = os.Getenv("DATABASE_URL")
+	}
+	if connStr == "" {
+		t.Fatal("DATABASE_URL not set in .env or TEST_DATABASE_URL environment variable")
 	}
 
 	// Set up environment for PostgreSQL
