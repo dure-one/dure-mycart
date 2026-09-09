@@ -17,10 +17,19 @@ import (
 // DB connection for transaction-based operations
 // Set by app initialization
 var sqlDB *sql.DB
+var dbType string
 
 // InitStore initializes the store package with database connection
+// Deprecated: Use InitStoreWithType to support multiple database backends
 func InitStore(database *sql.DB) {
 	sqlDB = database
+	dbType = "sqlite" // default for backward compatibility
+}
+
+// InitStoreWithType initializes the store package with database connection and type
+func InitStoreWithType(database *sql.DB, databaseType string) {
+	sqlDB = database
+	dbType = databaseType
 }
 
 // GroupFieldMap generates a map of fields based on the type of settings.
@@ -122,7 +131,9 @@ func GetSettingByGroup(ctx context.Context, settings any) (any, error) {
 		keys = append(keys, k)
 	}
 
-	query := fmt.Sprintf("SELECT key, value FROM setting WHERE key IN (%s)", strings.Repeat("?, ", len(keys)-1)+"?")
+	// Build placeholders based on database type
+	placeholders := buildPlaceholders(len(keys))
+	query := fmt.Sprintf("SELECT key, value FROM setting WHERE key IN (%s)", placeholders)
 	rows, err := sqlDB.QueryContext(ctx, query, keys...)
 	if err != nil {
 		return nil, err
@@ -143,6 +154,25 @@ func GetSettingByGroup(ctx context.Context, settings any) (any, error) {
 	}
 
 	return settings, nil
+}
+
+// buildPlaceholders generates database-specific parameter placeholders
+func buildPlaceholders(count int) string {
+	if count == 0 {
+		return ""
+	}
+
+	// PostgreSQL uses $1, $2, $3... while SQLite uses ?, ?, ?
+	if dbType == "postgres" || dbType == "postgresql" {
+		placeholders := make([]string, count)
+		for i := 0; i < count; i++ {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+		}
+		return strings.Join(placeholders, ", ")
+	}
+
+	// SQLite and default
+	return strings.Repeat("?, ", count-1) + "?"
 }
 
 // GetSettingByGroupTyped is a generic function that retrieves a setting from the database.
@@ -166,10 +196,9 @@ func UpdateSettingByGroup(ctx context.Context, settings any) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	upsertStmt, err := tx.PrepareContext(ctx, `
-		INSERT INTO setting (id, key, value) VALUES (?, ?, ?)
-		ON CONFLICT(key) DO UPDATE SET value = excluded.value
-	`)
+	// Build upsert query with database-specific placeholders
+	upsertQuery := buildUpsertQuery()
+	upsertStmt, err := tx.PrepareContext(ctx, upsertQuery)
 	if err != nil {
 		return err
 	}
@@ -193,6 +222,21 @@ func UpdateSettingByGroup(ctx context.Context, settings any) error {
 	return tx.Commit()
 }
 
+// buildUpsertQuery generates database-specific UPSERT statement
+func buildUpsertQuery() string {
+	if dbType == "postgres" || dbType == "postgresql" {
+		return `
+			INSERT INTO setting (id, key, value) VALUES ($1, $2, $3)
+			ON CONFLICT(key) DO UPDATE SET value = excluded.value
+		`
+	}
+	// SQLite and default
+	return `
+		INSERT INTO setting (id, key, value) VALUES (?, ?, ?)
+		ON CONFLICT(key) DO UPDATE SET value = excluded.value
+	`
+}
+
 // UpdatePassword updates the current user's password in the database.
 func UpdatePassword(ctx context.Context, password *models.Password) error {
 	var passwordHash string
@@ -205,7 +249,12 @@ func UpdatePassword(ctx context.Context, password *models.Password) error {
 		return errors.ErrWrongPassword
 	}
 
-	query = `UPDATE setting SET value = ? WHERE key = 'password'`
+	// Use database-specific placeholder
+	placeholder := "?"
+	if dbType == "postgres" || dbType == "postgresql" {
+		placeholder = "$1"
+	}
+	query = fmt.Sprintf("UPDATE setting SET value = %s WHERE key = 'password'", placeholder)
 	_, err := sqlDB.ExecContext(ctx, query, security.GeneratePassword(password.New))
 	return err
 }

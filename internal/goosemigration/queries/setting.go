@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/shurco/mycart/internal/store/db/postgres"
 	"github.com/shurco/mycart/internal/store/db/sqlite"
@@ -23,20 +22,10 @@ func getSQLCQueries() interface{} {
 	return dbAdapter.Queries()
 }
 
-// buildPlaceholders generates database-appropriate placeholders for IN clauses
-// DEPRECATED: This function is kept for backward compatibility with cart.go
-// New code should use sqlc queries instead
+// buildPlaceholders is deprecated - use BuildPlaceholders from queries package
+// Kept for backward compatibility with cart.go
 func buildPlaceholders(count int) string {
-	if DBType() == "postgres" {
-		// PostgreSQL: $1, $2, $3
-		parts := make([]string, count)
-		for i := 0; i < count; i++ {
-			parts[i] = fmt.Sprintf("$%d", i+1)
-		}
-		return strings.Join(parts, ", ")
-	}
-	// SQLite: ?, ?, ?
-	return strings.Repeat("?, ", count-1) + "?"
+	return BuildPlaceholders(count)
 }
 
 // toModelSetting converts sqlc Setting to models.SettingName
@@ -227,7 +216,9 @@ func (q *SettingQueries) GetSettingByGroup(ctx context.Context, settings any) (a
 		keys = append(keys, k)
 	}
 
-	query := fmt.Sprintf("SELECT key, value FROM setting WHERE key IN (%s)", strings.Repeat("?, ", len(keys)-1)+"?")
+	// Build database-specific placeholders
+	placeholders := BuildPlaceholders(len(keys))
+	query := fmt.Sprintf("SELECT key, value FROM setting WHERE key IN (%s)", placeholders)
 	rows, err := q.DB.QueryContext(ctx, query, keys...)
 	if err != nil {
 		return nil, err
@@ -300,10 +291,21 @@ func (q *SettingQueries) UpdateSettingByGroup(ctx context.Context, settings any)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	upsertStmt, err := tx.PrepareContext(ctx, `
-		INSERT INTO setting (id, key, value) VALUES (?, ?, ?)
-		ON CONFLICT(key) DO UPDATE SET value = excluded.value
-	`)
+	// Build database-specific UPSERT query
+	var upsertQuery string
+	if DBType() == "postgres" || DBType() == "postgresql" {
+		upsertQuery = `
+			INSERT INTO setting (id, key, value) VALUES ($1, $2, $3)
+			ON CONFLICT(key) DO UPDATE SET value = excluded.value
+		`
+	} else {
+		upsertQuery = `
+			INSERT INTO setting (id, key, value) VALUES (?, ?, ?)
+			ON CONFLICT(key) DO UPDATE SET value = excluded.value
+		`
+	}
+
+	upsertStmt, err := tx.PrepareContext(ctx, upsertQuery)
 	if err != nil {
 		return err
 	}
@@ -339,8 +341,15 @@ func (q *SettingQueries) UpdatePassword(ctx context.Context, password *models.Pa
 		return errors.ErrWrongPassword
 	}
 
-	query = `UPDATE setting SET value = ? WHERE key = 'password'`
-	_, err := q.DB.ExecContext(ctx, query, security.GeneratePassword(password.New))
+	// Build database-specific UPDATE query
+	var updateQuery string
+	if DBType() == "postgres" || DBType() == "postgresql" {
+		updateQuery = `UPDATE setting SET value = $1 WHERE key = 'password'`
+	} else {
+		updateQuery = `UPDATE setting SET value = ? WHERE key = 'password'`
+	}
+
+	_, err := q.DB.ExecContext(ctx, updateQuery, security.GeneratePassword(password.New))
 	return err
 }
 

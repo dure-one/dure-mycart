@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"strings"
 
 	"github.com/shurco/mycart/db/migrations"
 	"github.com/shurco/mycart/internal/goosemigration/database"
@@ -126,4 +127,29 @@ func Close() error {
 		return dbAdapter.Close()
 	}
 	return nil
+}
+
+// BuildPlaceholder returns database-specific parameter placeholder for a single parameter
+func BuildPlaceholder(index int) string {
+	if DBType() == "postgres" || DBType() == "postgresql" {
+		return fmt.Sprintf("$%d", index)
+	}
+	return "?"
+}
+
+// BuildPlaceholders returns comma-separated placeholders for IN clauses
+func BuildPlaceholders(count int) string {
+	if count == 0 {
+		return ""
+	}
+
+	if DBType() == "postgres" || DBType() == "postgresql" {
+		parts := make([]string, count)
+		for i := 0; i < count; i++ {
+			parts[i] = fmt.Sprintf("$%d", i+1)
+		}
+		return strings.Join(parts, ", ")
+	}
+
+	return strings.Repeat("?, ", count-1) + "?"
 }

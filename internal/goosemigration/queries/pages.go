@@ -117,7 +117,12 @@ func toModelPage(p interface{}) *models.Page {
 // loadPageSeo loads the seo field for a page from the database
 func (q *PageQueries) loadPageSeo(ctx context.Context, page *models.Page) error {
 	var seo sql.NullString
-	query := `SELECT seo FROM page WHERE id = ?`
+	var query string
+	if DBType() == "postgres" || DBType() == "postgresql" {
+		query = `SELECT seo FROM page WHERE id = $1`
+	} else {
+		query = `SELECT seo FROM page WHERE id = ?`
+	}
 	if err := q.DB.QueryRowContext(ctx, query, page.ID).Scan(&seo); err != nil {
 		return err
 	}
@@ -179,11 +184,20 @@ func (q *PageQueries) ListPages(ctx context.Context, private bool, limit, offset
 
 		var params []any
 		if limit > 0 {
-			query += " LIMIT ?"
-			params = append(params, limit)
-			if offset > 0 {
-				query += " OFFSET ?"
-				params = append(params, offset)
+			if DBType() == "postgres" || DBType() == "postgresql" {
+				query += " LIMIT $1"
+				params = append(params, limit)
+				if offset > 0 {
+					query += " OFFSET $2"
+					params = append(params, offset)
+				}
+			} else {
+				query += " LIMIT ?"
+				params = append(params, limit)
+				if offset > 0 {
+					query += " OFFSET ?"
+					params = append(params, offset)
+				}
 			}
 		}
 
@@ -519,7 +533,12 @@ func (q *PageQueries) UpdatePage(ctx context.Context, page *models.Page) error {
 		return err
 	}
 
-	query := `UPDATE page SET seo = ? WHERE id = ?`
+	var query string
+	if DBType() == "postgres" || DBType() == "postgresql" {
+		query = `UPDATE page SET seo = $1 WHERE id = $2`
+	} else {
+		query = `UPDATE page SET seo = ? WHERE id = ?`
+	}
 	_, err = q.DB.ExecContext(ctx, query, seo, page.ID)
 	return err
 }

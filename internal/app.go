@@ -57,8 +57,8 @@ func NewApp(httpAddr, httpsAddr string, noSite, appDev bool) error {
 		return err
 	}
 
-	// Initialize store package with database connection for transactions
-	store.InitStore(queries.Adapter().DB())
+	// Initialize store package with database connection and type for transactions
+	store.InitStoreWithType(queries.Adapter().DB(), queries.DBType())
 
 	app, err := setupFiberApp(noSite)
 	if err != nil {

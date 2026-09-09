@@ -81,17 +81,19 @@ func (q *ProductQueries) ListProducts(ctx context.Context, private bool, limit, 
 			params = append(params, item.ProductID)
 			countParams = append(countParams, item.ProductID)
 		}
-		queryAddon = fmt.Sprintf("AND product.id IN (%s)", strings.Repeat("?, ", len(idList)-1)+"?")
+		queryAddon = fmt.Sprintf("AND product.id IN (%s)", BuildPlaceholders(len(idList)))
 	}
 
 	query += queryPublic
 
 	// Add pagination
 	if limit > 0 {
-		query += " LIMIT ?"
+		paramIndex := len(params) + 1
+		query += " LIMIT " + BuildPlaceholder(paramIndex)
 		params = append(params, limit)
 		if offset > 0 {
-			query += " OFFSET ?"
+			paramIndex++
+			query += " OFFSET " + BuildPlaceholder(paramIndex)
 			params = append(params, offset)
 		}
 	}
@@ -194,18 +196,19 @@ func (q *ProductQueries) Product(ctx context.Context, private bool, id string) (
 	`
 
 	// Добавляем вычисление digital_filled для приватных запросов
+	placeholder := BuildPlaceholder(1)
 	if private {
 		query += `, EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = product.id AND digital_data.cart_id IS NULL) OR
 				EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = product.id) AS digital_filled
 			FROM product
 			LEFT JOIN product_image pi ON product.id = pi.product_id
-			WHERE product.id = ?
+			WHERE product.id = ` + placeholder + `
 			GROUP BY product.id`
 	} else {
 		query += `
 			FROM product
 			LEFT JOIN product_image pi ON product.id = pi.product_id
-			WHERE product.slug = ? AND product.deleted = 0 AND product.active = 1
+			WHERE product.slug = ` + placeholder + ` AND product.deleted = 0 AND product.active = 1
 			GROUP BY product.id`
 	}
 
@@ -304,7 +307,7 @@ func (q *ProductQueries) Product(ctx context.Context, private bool, id string) (
 		optionsQuery := `
 			SELECT id, name, position
 			FROM product_option
-			WHERE product_id = ?
+			WHERE product_id = ` + BuildPlaceholder(1) + `
 			ORDER BY position`
 
 		optionRows, err := q.DB.QueryContext(ctx, optionsQuery, product.ID)
@@ -332,7 +335,7 @@ func (q *ProductQueries) Product(ctx context.Context, private bool, id string) (
 			valuesQuery := `
 				SELECT id, option_id, value, position
 				FROM product_option_value
-				WHERE option_id IN (SELECT id FROM product_option WHERE product_id = ?)
+				WHERE option_id IN (SELECT id FROM product_option WHERE product_id = ` + BuildPlaceholder(1) + `)
 				ORDER BY option_id, position`
 
 			valuesRows, err := q.DB.QueryContext(ctx, valuesQuery, product.ID)
@@ -362,7 +365,7 @@ func (q *ProductQueries) Product(ctx context.Context, private bool, id string) (
 		variantsQuery := `
 			SELECT id, sku, price_surcharge, quantity, option_values, active
 			FROM product_variant
-			WHERE product_id = ? AND deleted = 0`
+			WHERE product_id = ` + BuildPlaceholder(1) + ` AND deleted = 0`
 
 		variantRows, err := q.DB.QueryContext(ctx, variantsQuery, product.ID)
 		if err != nil {
