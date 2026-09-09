@@ -2,9 +2,13 @@ package store_test
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/shurco/mycart/db/migrations"
 	"github.com/shurco/mycart/internal/goosemigration/queries"
 	"github.com/shurco/mycart/internal/store"
@@ -12,8 +16,33 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// setupTestDB initializes an in-memory SQLite database for testing
+// getTestDBType returns the database type for tests from environment variable
+func getTestDBType() string {
+	if dbType := os.Getenv("TEST_DB_TYPE"); dbType != "" {
+		return dbType
+	}
+	return "sqlite" // default to SQLite for fast tests
+}
+
+// setupTestDB initializes a test database (SQLite or PostgreSQL) based on TEST_DB_TYPE
 func setupTestDB(t *testing.T) context.Context {
+	t.Helper()
+
+	dbType := getTestDBType()
+
+	switch dbType {
+	case "sqlite":
+		return setupSQLiteTest(t)
+	case "postgres", "postgresql":
+		return setupPostgresTest(t)
+	default:
+		t.Fatalf("unsupported TEST_DB_TYPE: %s", dbType)
+		return nil
+	}
+}
+
+// setupSQLiteTest initializes an in-memory SQLite database for testing
+func setupSQLiteTest(t *testing.T) context.Context {
 	t.Helper()
 
 	// Set up environment for SQLite
@@ -34,4 +63,76 @@ func setupTestDB(t *testing.T) context.Context {
 	})
 
 	return context.Background()
+}
+
+// setupPostgresTest initializes a PostgreSQL database connection for testing
+func setupPostgresTest(t *testing.T) context.Context {
+	t.Helper()
+
+	// Get connection string from environment or use default Supabase
+	connStr := os.Getenv("TEST_DATABASE_URL")
+	if connStr == "" {
+		connStr = "postgresql://postgres:enfpakdlzkxm!23@db.tybjgfktpgkvrjmzamhx.supabase.co:5432/postgres"
+	}
+
+	// Set up environment for PostgreSQL
+	os.Setenv("DB_TYPE", "postgres")
+	os.Setenv("DATABASE_URL", connStr)
+
+	// Initialize database
+	err := queries.New(migrations.Embed())
+	require.NoError(t, err)
+
+	// Verify connection
+	err = queries.Adapter().DB().Ping()
+	require.NoError(t, err, "failed to ping PostgreSQL database")
+
+	// Initialize store layer
+	err = db.Init(queries.Adapter().DB(), "postgres")
+	require.NoError(t, err)
+	store.InitStore(queries.Adapter().DB())
+
+	t.Cleanup(func() {
+		cleanupTestData(t, queries.Adapter().DB())
+		queries.Close()
+	})
+
+	return context.Background()
+}
+
+// cleanupTestData removes test data from PostgreSQL database
+func cleanupTestData(t *testing.T, sqlDB *sql.DB) {
+	t.Helper()
+
+	tables := []string{
+		"carts", "cart_items", "digital_files", "digital_data",
+		"product_images", "products", "pages", "sessions",
+		"settings", "subdomains",
+	}
+
+	ctx := context.Background()
+	for _, table := range tables {
+		_, err := sqlDB.ExecContext(ctx,
+			fmt.Sprintf("DELETE FROM %s WHERE id LIKE 'test_%%'", table))
+		if err != nil {
+			t.Logf("cleanup warning for %s: %v", table, err)
+		}
+	}
+}
+
+// Test data helpers
+
+// NewTestID generates a test-prefixed UUID for safe cleanup
+func NewTestID() string {
+	return "test_" + uuid.New().String()
+}
+
+// NewTestEmail generates a unique test email
+func NewTestEmail() string {
+	return fmt.Sprintf("test_%s@example.com", uuid.New().String()[:8])
+}
+
+// NewTestTimestamp returns current time for test data
+func NewTestTimestamp() time.Time {
+	return time.Now().UTC()
 }

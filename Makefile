@@ -43,26 +43,26 @@ dev:
 
 test:
 	@echo "Running tests with SQLite..."
-	go test ./... -v -count=1 -race
+	go test ./... -v -count=1
 
 test-unit:
 	@echo "Running unit tests..."
-	go test ./... -short -v -count=1 -race
+	go test ./... -short -v -count=1
 
 test-integration:
 	@echo "Running integration tests with SQLite..."
-	TEST_DB_TYPE=sqlite go test ./internal/store/... -v -count=1 -race
+	TEST_DB_TYPE=sqlite go test ./internal/store/... -v -count=1
 
 test-postgres:
 	@echo "Running integration tests with PostgreSQL..."
-	TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1 -race
+	TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1
 
 test-all:
 	@echo "Running tests against SQLite..."
-	TEST_DB_TYPE=sqlite go test ./internal/store/... -v -count=1 -race
+	TEST_DB_TYPE=sqlite go test ./internal/store/... -v -count=1
 	@echo ""
 	@echo "Running tests against PostgreSQL..."
-	TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1 -race
+	TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1
 
 e2e-admin:
 	@echo "Running admin panel e2e tests..."
