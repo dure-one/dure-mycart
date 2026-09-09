@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shurco/mycart/internal/goosemigration/queries"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/testutil"
 	"github.com/shurco/mycart/pkg/litepay"

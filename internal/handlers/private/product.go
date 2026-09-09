@@ -10,9 +10,9 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/shurco/mycart/internal/goosemigration/queries"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/store"
+	"github.com/shurco/mycart/internal/store/db"
 	"github.com/shurco/mycart/pkg/csvimport"
 	"github.com/shurco/mycart/pkg/errors"
 	"github.com/shurco/mycart/pkg/logging"
@@ -449,16 +449,12 @@ func AddProductDigital(c fiber.Ctx) error {
 func DownloadProductDigital(c fiber.Ctx) error {
 	productID := c.Params("product_id")
 	fileID := c.Params("digital_id")
-	db := queries.DB()
 	log := logging.New()
 
-	file, err := db.DigitalFile(c.Context(), productID, fileID)
+	file, err := store.DigitalFile(c.Context(), productID, fileID)
 	if err != nil {
-		if errors.Is(err, errors.ErrProductNotFound) {
-			return webutil.StatusNotFound(c)
-		}
 		log.ErrorStack(err)
-		return webutil.StatusInternalServerError(c)
+		return webutil.StatusNotFound(c)
 	}
 
 	filePath := filepath.Join(dirDigitals, file.Name+"."+file.Ext)
@@ -604,7 +600,7 @@ func ImportPreview(c fiber.Ctx) error {
 	defer file.Close()
 
 	// Create importer and validate
-	importer := csvimport.NewCSVImporter(store.ProductQueriesDB().DB)
+	importer := csvimport.NewCSVImporter(db.DB())
 	result, _, err := importer.ValidateAndPreview(file)
 	if err != nil {
 		log.ErrorStack(err)
@@ -643,7 +639,7 @@ func ImportProducts(c fiber.Ctx) error {
 	defer file.Close()
 
 	// Create importer and validate
-	importer := csvimport.NewCSVImporter(store.ProductQueriesDB().DB)
+	importer := csvimport.NewCSVImporter(db.DB())
 	_, products, err := importer.ValidateAndPreview(file)
 	if err != nil {
 		log.ErrorStack(err)

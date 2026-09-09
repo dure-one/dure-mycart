@@ -6,7 +6,8 @@ import (
 
 	"github.com/shurco/mycart/db/migrations"
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/goosemigration/queries"
+	"github.com/shurco/mycart/internal/store"
+	"github.com/shurco/mycart/internal/store/db"
 )
 
 // InstallAdmin performs first-time setup with the given admin credentials.
@@ -21,11 +22,11 @@ func InstallAdmin(ctx context.Context, install *models.Install) error {
 		return fmt.Errorf("init: %w", err)
 	}
 
-	if err := queries.New(migrations.Embed()); err != nil {
+	if err := db.Init(migrations.Embed()); err != nil {
 		return fmt.Errorf("connect database: %w", err)
 	}
 
-	if err := queries.DB().Install(ctx, install); err != nil {
+	if err := store.Install(ctx, install); err != nil {
 		return fmt.Errorf("install: %w", err)
 	}
 

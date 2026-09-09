@@ -8,7 +8,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 
 	"github.com/shurco/mycart/db/migrations"
 	"github.com/shurco/mycart/internal/middleware"
-	"github.com/shurco/mycart/internal/goosemigration/queries"
 	"github.com/shurco/mycart/internal/routes"
 	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/internal/store/db"
@@ -46,19 +44,14 @@ func NewApp(httpAddr, httpsAddr string, noSite, appDev bool) error {
 
 	schema, mainAddr := determineSchemaAndAddr(httpAddr, httpsAddr)
 
-	if err := queries.New(migrations.Embed()); err != nil {
-		log.Err(err).Send()
-		return err
-	}
-
-	// Initialize function pointers for zero-overhead database abstraction
-	if err := db.Init(queries.Adapter().DB(), queries.DBType()); err != nil {
-		log.Err(err).Msg("failed to initialize database function pointers")
+	// Initialize database: connection, migrations, function pointers
+	if err := db.Init(migrations.Embed()); err != nil {
+		log.Err(err).Msg("failed to initialize database")
 		return err
 	}
 
 	// Initialize store package with database connection and type for transactions
-	store.InitStoreWithType(queries.Adapter().DB(), queries.DBType())
+	store.InitStoreWithType(db.DB(), db.Type())
 
 	app, err := setupFiberApp(noSite)
 	if err != nil {
@@ -242,17 +235,15 @@ func handleShutdown(ctx context.Context, app *fiber.App, idleConnsClosed chan st
 
 // InstallCheck checks the installation status and redirects to the installation page if necessary.
 func InstallCheck(c fiber.Ctx) error {
-	db := queries.DB()
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	response, err := db.GetSettingByKey(ctx, "installed")
+	installed, err := store.IsInstalled(ctx)
 	if err != nil {
 		return webutil.StatusInternalServerError(c)
 	}
 
-	install, _ := strconv.ParseBool(fmt.Sprint(response["installed"].Value))
+	install := installed
 	path := c.Path()
 
 	if !install {

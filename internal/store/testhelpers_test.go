@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/shurco/mycart/db/migrations"
-	"github.com/shurco/mycart/internal/goosemigration/queries"
 	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/internal/store/db"
 	"github.com/stretchr/testify/require"

@@ -542,3 +542,145 @@ func FromSQLiteCartItem(ci sqlite.CartItem) CartItem {
 		CreatedAt: ci.CreatedAt,
 	}
 }
+
+// Legacy cart types (old JSON schema - used until full migration to new_carts)
+
+// OldCartRow is the unified type for cart table rows (with JSON cart field)
+type OldCartRow struct {
+	ID            string
+	Email         sql.NullString
+	AmountTotal   string
+	Currency      string
+	PaymentID     sql.NullString
+	PaymentStatus sql.NullString
+	Cart          string // JSON string
+	PaymentSystem string
+	Created       sql.NullTime
+	Updated       sql.NullTime
+}
+
+// CreateOldCartParams for CreateCart operation on old cart table
+type CreateOldCartParams struct {
+	ID            string
+	Email         sql.NullString
+	AmountTotal   string
+	Currency      string
+	PaymentID     sql.NullString
+	PaymentStatus sql.NullString
+	Cart          []byte // JSON bytes
+	PaymentSystem string
+}
+
+// UpdateOldCartParams for UpdateCart operation on old cart table
+type UpdateOldCartParams struct {
+	Email         sql.NullString
+	AmountTotal   string
+	Currency      string
+	PaymentID     sql.NullString
+	PaymentStatus sql.NullString
+	Cart          []byte // JSON bytes
+	PaymentSystem string
+	ID            string
+}
+
+// PaymentSettingRow represents a payment setting row
+type PaymentSettingRow struct {
+	Key   string
+	Value sql.NullString
+}
+
+// FromPostgresGetCartRow converts postgres.GetCartRow to unified OldCartRow
+func FromPostgresGetCartRow(c postgres.GetCartRow) OldCartRow {
+	return OldCartRow{
+		ID:            c.ID,
+		Email:         c.Email,
+		AmountTotal:   c.AmountTotal,
+		Currency:      c.Currency,
+		PaymentID:     c.PaymentID,
+		PaymentStatus: c.PaymentStatus,
+		Cart:          c.Cart,
+		PaymentSystem: c.PaymentSystem,
+		Created:       c.Created,
+		Updated:       c.Updated,
+	}
+}
+
+// FromPostgresListCartsRow converts postgres.ListCartsRow to unified OldCartRow
+func FromPostgresListCartsRow(c postgres.ListCartsRow) OldCartRow {
+	return OldCartRow{
+		ID:            c.ID,
+		Email:         c.Email,
+		AmountTotal:   c.AmountTotal,
+		Currency:      c.Currency,
+		PaymentID:     c.PaymentID,
+		PaymentStatus: c.PaymentStatus,
+		Cart:          c.Cart,
+		PaymentSystem: c.PaymentSystem,
+		Created:       c.Created,
+		Updated:       c.Updated,
+	}
+}
+
+// FromPostgresCreateCartRow converts postgres.CreateCartRow to unified OldCartRow
+func FromPostgresCreateCartRow(c postgres.CreateCartRow) OldCartRow {
+	return OldCartRow{
+		ID:            c.ID,
+		Email:         c.Email,
+		AmountTotal:   c.AmountTotal,
+		Currency:      c.Currency,
+		PaymentID:     c.PaymentID,
+		PaymentStatus: c.PaymentStatus,
+		Cart:          c.Cart,
+		PaymentSystem: c.PaymentSystem,
+		Created:       c.Created,
+		Updated:       c.Updated,
+	}
+}
+
+// FromSQLiteGetCartRow converts sqlite.GetCartRow to unified OldCartRow
+func FromSQLiteGetCartRow(c sqlite.GetCartRow) OldCartRow {
+	return OldCartRow{
+		ID:            c.ID,
+		Email:         c.Email,
+		AmountTotal:   fmt.Sprintf("%v", c.AmountTotal), // Convert interface{} to string
+		Currency:      c.Currency,
+		PaymentID:     c.PaymentID,
+		PaymentStatus: c.PaymentStatus,
+		Cart:          c.Cart,
+		PaymentSystem: c.PaymentSystem,
+		Created:       c.Created,
+		Updated:       c.Updated,
+	}
+}
+
+// FromSQLiteListCartsRow converts sqlite.ListCartsRow to unified OldCartRow
+func FromSQLiteListCartsRow(c sqlite.ListCartsRow) OldCartRow {
+	return OldCartRow{
+		ID:            c.ID,
+		Email:         c.Email,
+		AmountTotal:   fmt.Sprintf("%v", c.AmountTotal), // Convert interface{} to string
+		Currency:      c.Currency,
+		PaymentID:     c.PaymentID,
+		PaymentStatus: c.PaymentStatus,
+		Cart:          c.Cart,
+		PaymentSystem: c.PaymentSystem,
+		Created:       c.Created,
+		Updated:       c.Updated,
+	}
+}
+
+// FromSQLiteCreateCartRow converts sqlite.CreateCartRow to unified OldCartRow
+func FromSQLiteCreateCartRow(c sqlite.CreateCartRow) OldCartRow {
+	return OldCartRow{
+		ID:            c.ID,
+		Email:         c.Email,
+		AmountTotal:   fmt.Sprintf("%v", c.AmountTotal), // Convert interface{} to string
+		Currency:      c.Currency,
+		PaymentID:     c.PaymentID,
+		PaymentStatus: c.PaymentStatus,
+		Cart:          c.Cart,
+		PaymentSystem: c.PaymentSystem,
+		Created:       c.Created,
+		Updated:       c.Updated,
+	}
+}

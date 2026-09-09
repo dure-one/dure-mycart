@@ -2,7 +2,7 @@ package app
 
 import (
 	"github.com/shurco/mycart/db/migrations"
-	"github.com/shurco/mycart/internal/goosemigration/queries"
+	"github.com/shurco/mycart/internal/store/db"
 	"github.com/shurco/mycart/pkg/fsutil"
 )
 
@@ -27,5 +27,5 @@ func Init() error {
 // Migrate performs database migrations
 // This function respects DB_TYPE and DATABASE_URL environment variables
 func Migrate() error {
-	return queries.New(migrations.Embed())
+	return db.Init(migrations.Embed())
 }

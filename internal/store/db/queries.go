@@ -39,7 +39,7 @@ var (
 	CreateUserFunc         func(ctx context.Context, arg CreateUserParams) error
 	UpdateUserPasswordFunc func(ctx context.Context, arg UpdateUserPasswordParams) error
 
-	// Cart operations
+	// Cart operations (new normalized schema)
 	CreateNewCartFunc           func(ctx context.Context, arg CreateCartParams) error
 	GetNewCartByIDFunc          func(ctx context.Context, id string) (Cart, error)
 	GetNewCartBySessionIDFunc   func(ctx context.Context, sessionID string) (Cart, error)
@@ -51,6 +51,15 @@ var (
 	UpdateCartItemFunc          func(ctx context.Context, arg UpdateCartItemParams) error
 	DeleteCartItemFunc          func(ctx context.Context, id string) error
 	DeleteCartItemsByCartIDFunc func(ctx context.Context, cartID string) error
+
+	// Legacy cart operations (old JSON schema - to be migrated)
+	GetOldCartFunc          func(ctx context.Context, id string) (OldCartRow, error)
+	ListOldCartsFunc        func(ctx context.Context, limit, offset int32) ([]OldCartRow, error)
+	CountOldCartsFunc       func(ctx context.Context) (int64, error)
+	CreateOldCartFunc       func(ctx context.Context, arg CreateOldCartParams) (OldCartRow, error)
+	UpdateOldCartFunc       func(ctx context.Context, arg UpdateOldCartParams) error
+	DeleteOldCartFunc       func(ctx context.Context, id string) error
+	GetPaymentSettingsFunc  func(ctx context.Context) ([]PaymentSettingRow, error)
 )
 
 // Additional function pointers can be added here as needed during migration

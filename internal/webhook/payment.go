@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/goosemigration/queries"
+	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/pkg/litepay"
 	"github.com/shurco/mycart/pkg/logging"
 )
@@ -40,12 +40,10 @@ type Data struct {
 // SendPaymentHook sends a payment webhook notification to the configured URL.
 // Returns nil to avoid blocking the main process on webhook errors.
 func SendPaymentHook(resData *Payment) error {
-	db := queries.DB()
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	webhookSetting, err := queries.GetSettingByGroup[models.Webhook](ctx, db)
+	webhookSetting, err := store.GetSettingByGroupTyped[models.Webhook](ctx)
 	if err != nil {
 		return err
 	}

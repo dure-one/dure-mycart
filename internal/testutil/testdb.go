@@ -17,7 +17,6 @@ import (
 	"github.com/pressly/goose/v3"
 
 	"github.com/shurco/mycart/db/migrations"
-	"github.com/shurco/mycart/internal/goosemigration/queries"
 	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/internal/store/db"
 	"github.com/shurco/mycart/pkg/jwtutil"
@@ -75,10 +74,9 @@ func SetupTestDB(t *testing.T) func() {
 		t.Fatalf("run fixtures: %v", err)
 	}
 
-	queries.NewFromDB(sqlite)
 	store.InitStore(sqlite)
 
-	if err := db.Init(sqlite, "sqlite"); err != nil {
+	if err := db.InitFromDB(sqlite, "sqlite"); err != nil {
 		t.Fatalf("init store function pointers: %v", err)
 	}
 
@@ -103,7 +101,7 @@ func SetupTestApp(t *testing.T) (app *fiber.App, cookie string, cleanup func()) 
 		t.Fatalf("generate jwt: %v", err)
 	}
 
-	if err := queries.DB().AddSession(context.Background(), "test-user-id", "admin", exp); err != nil {
+	if err := store.AddSession(context.Background(), "test-user-id", "admin", exp); err != nil {
 		t.Fatalf("add session: %v", err)
 	}
 

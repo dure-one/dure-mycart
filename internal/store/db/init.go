@@ -3,29 +3,331 @@ package db
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"fmt"
+	"io/fs"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/pressly/goose/v3"
+	_ "github.com/lib/pq"
+	_ "modernc.org/sqlite"
 
 	"github.com/shurco/mycart/internal/store/db/postgres"
 	"github.com/shurco/mycart/internal/store/db/sqlite"
 )
 
-// Init initializes function pointers based on database type
-// Call once at application startup after database connection
-func Init(sqlDB *sql.DB, dbType string) error {
-	if sqlDB == nil {
-		return fmt.Errorf("database connection is nil")
+// Package-level database connection state
+var (
+	db     *sql.DB
+	dbType string
+)
+
+// Config holds database configuration
+type Config struct {
+	Type       string
+	SQLite     SQLiteConfig
+	PostgreSQL PostgresConfig
+}
+
+type SQLiteConfig struct {
+	Path string
+}
+
+type PostgresConfig struct {
+	Host            string
+	Port            int
+	Database        string
+	User            string
+	Password        string
+	SSLMode         string
+	ConnectTimeout  int
+	MaxOpenConns    int
+	MaxIdleConns    int
+}
+
+func (c *PostgresConfig) ConnectionString() string {
+	return fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s connect_timeout=%d",
+		c.Host, c.Port, c.User, c.Password, c.Database, c.SSLMode, c.ConnectTimeout,
+	)
+}
+
+// loadConfig loads database configuration from environment variables
+func loadConfig() *Config {
+	cfg := &Config{
+		Type: getEnv("DB_TYPE", "sqlite"),
 	}
 
+	cfg.SQLite = SQLiteConfig{
+		Path: getEnv("SQLITE_PATH", "./lc_base/data.db"),
+	}
+
+	cfg.PostgreSQL = PostgresConfig{
+		Host:           getEnv("DB_HOST", "localhost"),
+		Port:           getEnvInt("DB_PORT", 5432),
+		Database:       getEnv("DB_NAME", "mycart"),
+		User:           getEnv("DB_USER", "postgres"),
+		Password:       os.Getenv("DB_PASSWORD"),
+		SSLMode:        getEnv("DB_SSLMODE", "require"),
+		ConnectTimeout: getEnvInt("DB_CONNECT_TIMEOUT", 10),
+		MaxOpenConns:   getEnvInt("DB_MAX_OPEN_CONNS", 25),
+		MaxIdleConns:   getEnvInt("DB_MAX_IDLE_CONNS", 5),
+	}
+
+	// Override with DATABASE_URL if present
+	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
+		cfg.PostgreSQL = parseConnectionURL(databaseURL, cfg.PostgreSQL)
+	}
+
+	return cfg
+}
+
+// getEnv returns environment variable or default value
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+// getEnvInt returns environment variable as int or default value
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if intVal, err := strconv.Atoi(value); err == nil {
+			return intVal
+		}
+	}
+	return defaultValue
+}
+
+// parseConnectionURL parses DATABASE_URL and merges with defaults
+func parseConnectionURL(rawURL string, defaults PostgresConfig) PostgresConfig {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		fmt.Printf("⚠️  Failed to parse DATABASE_URL: %v\n", err)
+		return defaults
+	}
+
+	cfg := defaults
+	if u.Hostname() != "" {
+		cfg.Host = u.Hostname()
+	}
+	if u.Port() != "" {
+		if port, err := strconv.Atoi(u.Port()); err == nil {
+			cfg.Port = port
+		}
+	}
+	if u.User != nil {
+		cfg.User = u.User.Username()
+		if password, ok := u.User.Password(); ok {
+			cfg.Password = password
+		}
+	}
+	if u.Path != "" {
+		cfg.Database = strings.TrimPrefix(u.Path, "/")
+	}
+
+	return cfg
+}
+
+// connectWithRetry connects to database with retry logic (3 attempts, exponential backoff)
+func connectWithRetry(cfg *Config) (*sql.DB, error) {
+	var conn *sql.DB
+	var err error
+
+	// Determine driver and DSN
+	var driver, dsn string
+	switch cfg.Type {
+	case "postgres", "postgresql":
+		driver = "postgres"
+		dsn = cfg.PostgreSQL.ConnectionString()
+	default:
+		driver = "sqlite"
+		dsn = cfg.SQLite.Path
+	}
+
+	// Retry logic: 3 attempts with exponential backoff
+	maxAttempts := 3
+	backoff := []time.Duration{1 * time.Second, 2 * time.Second, 4 * time.Second}
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		conn, err = sql.Open(driver, dsn)
+		if err != nil {
+			if attempt < maxAttempts-1 {
+				fmt.Printf("⚠️  Database connection attempt %d/%d failed: %v\n", attempt+1, maxAttempts, err)
+				time.Sleep(backoff[attempt])
+				continue
+			}
+			return nil, fmt.Errorf("failed to open database after %d attempts: %w", maxAttempts, err)
+		}
+
+		// Test connection
+		if err = conn.Ping(); err != nil {
+			conn.Close()
+			if attempt < maxAttempts-1 {
+				fmt.Printf("⚠️  Database ping attempt %d/%d failed: %v\n", attempt+1, maxAttempts, err)
+				time.Sleep(backoff[attempt])
+				continue
+			}
+			return nil, fmt.Errorf("failed to ping database after %d attempts: %w", maxAttempts, err)
+		}
+
+		// Configure connection pool
+		if cfg.Type == "postgres" || cfg.Type == "postgresql" {
+			conn.SetMaxOpenConns(cfg.PostgreSQL.MaxOpenConns)
+			conn.SetMaxIdleConns(cfg.PostgreSQL.MaxIdleConns)
+		} else {
+			conn.SetMaxOpenConns(1) // SQLite: single connection
+		}
+
+		return conn, nil
+	}
+
+	return nil, fmt.Errorf("unreachable: retry logic failed")
+}
+
+// runMigrations runs goose migrations
+func runMigrations(db *sql.DB, dbType string, migrationsFS embed.FS) error {
+	// Determine the migration path based on database type
+	var migrationPath string
 	switch dbType {
+	case "sqlite":
+		migrationPath = "sqlite"
+	case "postgresql", "postgres":
+		migrationPath = "postgres"
+	default:
+		return fmt.Errorf("unsupported database type for migrations: %s", dbType)
+	}
+
+	// Get the subdirectory from the embedded filesystem
+	migrationsSubFS, err := fs.Sub(migrationsFS, migrationPath)
+	if err != nil {
+		return fmt.Errorf("failed to access migrations directory %s: %w", migrationPath, err)
+	}
+
+	// Set the appropriate goose dialect
+	var dialect string
+	if dbType == "sqlite" {
+		dialect = "sqlite3"
+	} else {
+		dialect = "postgres"
+	}
+
+	// Set goose to use the correct dialect
+	if err := goose.SetDialect(dialect); err != nil {
+		return fmt.Errorf("failed to set goose dialect to %s: %w", dialect, err)
+	}
+
+	// Run migrations
+	goose.SetBaseFS(migrationsSubFS)
+	if err := goose.Up(db, "."); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	return nil
+}
+
+// logDatabaseInfo logs connection information
+func logDatabaseInfo(cfg *Config) {
+	switch cfg.Type {
+	case "postgres", "postgresql":
+		connInfo := fmt.Sprintf("%s@%s:%d/%s",
+			cfg.PostgreSQL.User,
+			cfg.PostgreSQL.Host,
+			cfg.PostgreSQL.Port,
+			cfg.PostgreSQL.Database)
+		fmt.Printf("🔌 Database: PostgreSQL (%s)\n", connInfo)
+	default:
+		fmt.Printf("🔌 Database: SQLite (%s)\n", cfg.SQLite.Path)
+	}
+}
+
+// Init initializes database connection, runs migrations, and initializes function pointers
+// Single entry point replacing queries.New() + old db.Init() + store.InitStoreWithType()
+func Init(migrationsFS embed.FS) error {
+	// 1. Load configuration
+	cfg := loadConfig()
+
+	// 2. Connect with retry
+	conn, err := connectWithRetry(cfg)
+	if err != nil {
+		return fmt.Errorf("database connection failed: %w", err)
+	}
+	db = conn
+	dbType = cfg.Type
+
+	// Log connection info
+	logDatabaseInfo(cfg)
+
+	// 3. Run migrations
+	if err := runMigrations(db, dbType, migrationsFS); err != nil {
+		db.Close()
+		return fmt.Errorf("migration failed: %w", err)
+	}
+
+	// 4. Initialize function pointers
+	if err := initFunctionPointers(db, dbType); err != nil {
+		db.Close()
+		return fmt.Errorf("function pointer init failed: %w", err)
+	}
+
+	return nil
+}
+
+// initFunctionPointers delegates to postgres or sqlite initialization
+func initFunctionPointers(sqlDB *sql.DB, dbTypeName string) error {
+	switch dbTypeName {
 	case "postgres", "postgresql":
 		initPostgres(sqlDB)
 	case "sqlite", "sqlite3":
 		initSQLite(sqlDB)
 	default:
-		return fmt.Errorf("unsupported database type: %s", dbType)
+		return fmt.Errorf("unsupported database type: %s", dbTypeName)
+	}
+	return nil
+}
+
+// Close closes the database connection
+func Close() error {
+	if db != nil {
+		return db.Close()
+	}
+	return nil
+}
+
+// Health checks database health
+func Health() error {
+	if db == nil {
+		return fmt.Errorf("database not initialized")
+	}
+	return db.Ping()
+}
+
+// Type returns database type ("sqlite" or "postgres")
+func Type() string {
+	return dbType
+}
+
+// DB returns *sql.DB for transactions in store layer
+func DB() *sql.DB {
+	return db
+}
+
+// InitFromDB initializes function pointers from an existing database connection
+// Used for testing with in-memory databases
+func InitFromDB(sqlDB *sql.DB, dbTypeName string) error {
+	if sqlDB == nil {
+		return fmt.Errorf("database connection is nil")
 	}
 
-	return nil
+	db = sqlDB
+	dbType = dbTypeName
+
+	return initFunctionPointers(sqlDB, dbTypeName)
 }
 
 // initPostgres assigns PostgreSQL sqlc implementations to function pointers
@@ -336,6 +638,83 @@ func initPostgres(sqlDB *sql.DB) {
 	DeleteCartItemsByCartIDFunc = func(ctx context.Context, cartID string) error {
 		return q.DeleteCartItemsByCartID(ctx, cartID)
 	}
+
+	// Legacy cart operations (old JSON schema)
+	GetOldCartFunc = func(ctx context.Context, id string) (OldCartRow, error) {
+		pgCart, err := q.GetCart(ctx, id)
+		if err != nil {
+			return OldCartRow{}, err
+		}
+		return FromPostgresGetCartRow(pgCart), nil
+	}
+
+	ListOldCartsFunc = func(ctx context.Context, limit, offset int32) ([]OldCartRow, error) {
+		pgCarts, err := q.ListCarts(ctx, postgres.ListCartsParams{
+			Limit:  limit,
+			Offset: offset,
+		})
+		if err != nil {
+			return nil, err
+		}
+		carts := make([]OldCartRow, len(pgCarts))
+		for i, c := range pgCarts {
+			carts[i] = FromPostgresListCartsRow(c)
+		}
+		return carts, nil
+	}
+
+	CountOldCartsFunc = func(ctx context.Context) (int64, error) {
+		return q.CountCarts(ctx)
+	}
+
+	CreateOldCartFunc = func(ctx context.Context, arg CreateOldCartParams) (OldCartRow, error) {
+		pgCart, err := q.CreateCart(ctx, postgres.CreateCartParams{
+			ID:            arg.ID,
+			Email:         arg.Email,
+			AmountTotal:   arg.AmountTotal,
+			Currency:      arg.Currency,
+			PaymentID:     arg.PaymentID,
+			PaymentStatus: arg.PaymentStatus,
+			Cart:          arg.Cart,
+			PaymentSystem: arg.PaymentSystem,
+		})
+		if err != nil {
+			return OldCartRow{}, err
+		}
+		return FromPostgresCreateCartRow(pgCart), nil
+	}
+
+	UpdateOldCartFunc = func(ctx context.Context, arg UpdateOldCartParams) error {
+		return q.UpdateCart(ctx, postgres.UpdateCartParams{
+			Email:         arg.Email,
+			AmountTotal:   arg.AmountTotal,
+			Currency:      arg.Currency,
+			PaymentID:     arg.PaymentID,
+			PaymentStatus: arg.PaymentStatus,
+			Cart:          arg.Cart,
+			PaymentSystem: arg.PaymentSystem,
+			ID:            arg.ID,
+		})
+	}
+
+	DeleteOldCartFunc = func(ctx context.Context, id string) error {
+		return q.DeleteCart(ctx, id)
+	}
+
+	GetPaymentSettingsFunc = func(ctx context.Context) ([]PaymentSettingRow, error) {
+		pgSettings, err := q.GetPaymentSettings(ctx)
+		if err != nil {
+			return nil, err
+		}
+		settings := make([]PaymentSettingRow, len(pgSettings))
+		for i, s := range pgSettings {
+			settings[i] = PaymentSettingRow{
+				Key:   s.Key,
+				Value: s.Value,
+			}
+		}
+		return settings, nil
+	}
 }
 
 // initSQLite assigns SQLite sqlc implementations to function pointers
@@ -639,5 +1018,98 @@ func initSQLite(sqlDB *sql.DB) {
 
 	DeleteCartItemsByCartIDFunc = func(ctx context.Context, cartID string) error {
 		return q.DeleteCartItemsByCartID(ctx, cartID)
+	}
+
+	// Legacy cart operations (old JSON schema)
+	GetOldCartFunc = func(ctx context.Context, id string) (OldCartRow, error) {
+		sqliteCart, err := q.GetCart(ctx, id)
+		if err != nil {
+			return OldCartRow{}, err
+		}
+		return FromSQLiteGetCartRow(sqliteCart), nil
+	}
+
+	ListOldCartsFunc = func(ctx context.Context, limit, offset int32) ([]OldCartRow, error) {
+		sqliteCarts, err := q.ListCarts(ctx, sqlite.ListCartsParams{
+			Limit:  int64(limit),
+			Offset: int64(offset),
+		})
+		if err != nil {
+			return nil, err
+		}
+		carts := make([]OldCartRow, len(sqliteCarts))
+		for i, c := range sqliteCarts {
+			carts[i] = FromSQLiteListCartsRow(c)
+		}
+		return carts, nil
+	}
+
+	CountOldCartsFunc = func(ctx context.Context) (int64, error) {
+		return q.CountCarts(ctx)
+	}
+
+	CreateOldCartFunc = func(ctx context.Context, arg CreateOldCartParams) (OldCartRow, error) {
+		// Convert string amount to interface{} (int64) for SQLite
+		var amountTotal interface{}
+		if amt, err := strconv.ParseInt(arg.AmountTotal, 10, 64); err == nil {
+			amountTotal = amt
+		} else {
+			amountTotal = arg.AmountTotal // Fallback to string if parse fails
+		}
+
+		sqliteCart, err := q.CreateCart(ctx, sqlite.CreateCartParams{
+			ID:            arg.ID,
+			Email:         arg.Email,
+			AmountTotal:   amountTotal,
+			Currency:      arg.Currency,
+			PaymentID:     arg.PaymentID,
+			PaymentStatus: arg.PaymentStatus,
+			Cart:          arg.Cart,
+			PaymentSystem: arg.PaymentSystem,
+		})
+		if err != nil {
+			return OldCartRow{}, err
+		}
+		return FromSQLiteCreateCartRow(sqliteCart), nil
+	}
+
+	UpdateOldCartFunc = func(ctx context.Context, arg UpdateOldCartParams) error {
+		// Convert string amount to interface{} (int64) for SQLite
+		var amountTotal interface{}
+		if amt, err := strconv.ParseInt(arg.AmountTotal, 10, 64); err == nil {
+			amountTotal = amt
+		} else {
+			amountTotal = arg.AmountTotal // Fallback to string if parse fails
+		}
+
+		return q.UpdateCart(ctx, sqlite.UpdateCartParams{
+			Email:         arg.Email,
+			AmountTotal:   amountTotal,
+			Currency:      arg.Currency,
+			PaymentID:     arg.PaymentID,
+			PaymentStatus: arg.PaymentStatus,
+			Cart:          arg.Cart,
+			PaymentSystem: arg.PaymentSystem,
+			ID:            arg.ID,
+		})
+	}
+
+	DeleteOldCartFunc = func(ctx context.Context, id string) error {
+		return q.DeleteCart(ctx, id)
+	}
+
+	GetPaymentSettingsFunc = func(ctx context.Context) ([]PaymentSettingRow, error) {
+		sqliteSettings, err := q.GetPaymentSettings(ctx)
+		if err != nil {
+			return nil, err
+		}
+		settings := make([]PaymentSettingRow, len(sqliteSettings))
+		for i, s := range sqliteSettings {
+			settings[i] = PaymentSettingRow{
+				Key:   s.Key,
+				Value: s.Value,
+			}
+		}
+		return settings, nil
 	}
 }

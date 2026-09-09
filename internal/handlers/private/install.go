@@ -3,7 +3,6 @@ package handlers
 import (
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/shurco/mycart/internal/goosemigration/queries"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/pkg/errors"
@@ -63,7 +62,7 @@ func Install(c fiber.Ctx) error {
 	}
 
 	if err := store.Install(c.Context(), request); err != nil {
-		if errors.Is(err, queries.ErrAlreadyInstalled) {
+		if errors.Is(err, store.ErrAlreadyInstalled) {
 			return webutil.StatusBadRequest(c, err.Error())
 		}
 		log.ErrorStack(err)

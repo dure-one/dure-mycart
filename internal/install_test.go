@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/goosemigration/queries"
 )
 
 func TestInstallAdmin_CreatesAdminAccount(t *testing.T) {
