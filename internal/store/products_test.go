@@ -43,11 +43,13 @@ func TestGetProductBySlug(t *testing.T) {
 	ctx := setupTestDB(t)
 
 	// Create a product
+	productID := NewTestID()
+	slug := "slug-test-product-" + productID
 	_, err := store.CreateProduct(ctx, db.CreateProductParams{
-		ID:        "slug-test",
+		ID:        productID,
 		Name:      "Slug Test",
 		Desc:      "Description",
-		Slug:      "slug-test-product",
+		Slug:      slug,
 		Amount:    "2000",
 		Metadata:  []byte(`{}`),
 		Attribute: []byte(`{}`),
@@ -57,9 +59,9 @@ func TestGetProductBySlug(t *testing.T) {
 	require.NoError(t, err)
 
 	// Retrieve by slug
-	product, err := store.GetProductBySlug(ctx, "slug-test-product")
+	product, err := store.GetProductBySlug(ctx, slug)
 	require.NoError(t, err)
-	require.Equal(t, "slug-test", product.ID)
+	require.Equal(t, productID, product.ID)
 	require.Equal(t, "Slug Test", product.Name)
 }
 
@@ -67,11 +69,13 @@ func TestUpdateProduct(t *testing.T) {
 	ctx := setupTestDB(t)
 
 	// Create a product
+	productID := NewTestID()
+	slug := "original-slug-" + productID
 	product, err := store.CreateProduct(ctx, db.CreateProductParams{
-		ID:        "update-test",
+		ID:        productID,
 		Name:      "Original Name",
 		Desc:      "Original description",
-		Slug:      "original-slug",
+		Slug:      slug,
 		Amount:    "1500",
 		Metadata:  []byte(`{}`),
 		Attribute: []byte(`{}`),
