@@ -87,10 +87,11 @@ func TestUpdateProduct(t *testing.T) {
 	require.NoError(t, err)
 
 	// Update the product
+	updatedSlug := "updated-slug-" + productID
 	err = store.UpdateProductSqlc(ctx, db.UpdateProductParams{
 		Name:      "Updated Name",
 		Desc:      "Updated description",
-		Slug:      "updated-slug",
+		Slug:      updatedSlug,
 		Amount:    "2500",
 		Metadata:  []byte(`{"key":"value"}`),
 		Attribute: []byte(`{"attr":"val"}`),
@@ -105,7 +106,7 @@ func TestUpdateProduct(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "Updated Name", updated.Name)
 	require.Equal(t, "Updated description", updated.Desc)
-	require.Equal(t, "updated-slug", updated.Slug)
+	require.Equal(t, updatedSlug, updated.Slug)
 	require.Equal(t, "2500", updated.Amount)
 	require.True(t, updated.Active)
 }
