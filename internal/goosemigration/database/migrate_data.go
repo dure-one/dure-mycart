@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/shurco/mycart/internal/db/postgres"
-	"github.com/shurco/mycart/internal/db/sqlite"
+	"github.com/shurco/mycart/internal/store/db/postgres"
+	"github.com/shurco/mycart/internal/store/db/sqlite"
 )
 
 // MigrateData copies all data from source database to target database.

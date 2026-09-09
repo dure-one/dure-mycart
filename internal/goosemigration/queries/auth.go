@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/shurco/mycart/internal/db/postgres"
-	"github.com/shurco/mycart/internal/db/sqlite"
+	"github.com/shurco/mycart/internal/store/db/postgres"
+	"github.com/shurco/mycart/internal/store/db/sqlite"
 	"github.com/shurco/mycart/pkg/errors"
 )
 

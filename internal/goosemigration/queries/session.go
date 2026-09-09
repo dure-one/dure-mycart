@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/shurco/mycart/internal/db/postgres"
-	"github.com/shurco/mycart/internal/db/sqlite"
+	"github.com/shurco/mycart/internal/store/db/postgres"
+	"github.com/shurco/mycart/internal/store/db/sqlite"
 )
 
 // GetSession retrieves the session value for a given key if it hasn't expired using sqlc.
