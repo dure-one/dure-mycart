@@ -75,6 +75,14 @@ func (q *InstallQueries) Install(ctx context.Context, i *models.Install) error {
 		"email":      i.Email,
 		"password":   passwordHash,
 		"jwt_secret": jwt_secret,
+		"db_type":    i.DBType,
+	}
+
+	// Add database-specific connection details
+	if i.DBType == "postgres" {
+		settings["database_url"] = i.DatabaseURL
+	} else if i.DBType == "sqlite" {
+		settings["sqlite_path"] = i.SQLitePath
 	}
 
 	// Create transaction-bound queries to prevent deadlock
