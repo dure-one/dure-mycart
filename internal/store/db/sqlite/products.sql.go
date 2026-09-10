@@ -1018,6 +1018,21 @@ func (q *Queries) ProductExists(ctx context.Context, slug string) (bool, error) 
 	return exists, err
 }
 
+const productHasSoldDigitalData = `-- name: ProductHasSoldDigitalData :one
+SELECT EXISTS(
+	SELECT 1 FROM digital_data dd
+	INNER JOIN cart c ON dd.cart_id = c.id
+	WHERE dd.product_id = ? AND c.payment_status = 'paid'
+)
+`
+
+func (q *Queries) ProductHasSoldDigitalData(ctx context.Context, productID string) (bool, error) {
+	row := q.queryRow(ctx, q.productHasSoldDigitalDataStmt, productHasSoldDigitalData, productID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const softDeleteProduct = `-- name: SoftDeleteProduct :exec
 UPDATE product
 SET deleted = TRUE, updated = CURRENT_TIMESTAMP

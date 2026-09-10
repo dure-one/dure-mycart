@@ -340,6 +340,26 @@ func convertAmount(v interface{}) string {
 	}
 }
 
+// convertPriceToFloat converts string price to sql.NullFloat64 for SQLite
+func convertPriceToFloat(price sql.NullString) sql.NullFloat64 {
+	if !price.Valid {
+		return sql.NullFloat64{Valid: false}
+	}
+	var f float64
+	if _, err := fmt.Sscanf(price.String, "%f", &f); err == nil {
+		return sql.NullFloat64{Float64: f, Valid: true}
+	}
+	return sql.NullFloat64{Valid: false}
+}
+
+// convertFloatToPrice converts sql.NullFloat64 to string price
+func convertFloatToPrice(price sql.NullFloat64) sql.NullString {
+	if !price.Valid {
+		return sql.NullString{Valid: false}
+	}
+	return sql.NullString{String: fmt.Sprintf("%.2f", price.Float64), Valid: true}
+}
+
 // FromSQLiteProductRow converts sqlite Row types to unified Product
 func FromSQLiteProductRow(p interface{}) Product {
 	switch v := p.(type) {
@@ -683,4 +703,173 @@ func FromSQLiteCreateCartRow(c sqlite.CreateCartRow) OldCartRow {
 		Created:       c.Created,
 		Updated:       c.Updated,
 	}
+}
+
+// Additional Product types
+
+// UpdateProductFullParams for UpdateProductFull operation
+type UpdateProductFullParams struct {
+	Name        string
+	Brief       string
+	Desc        string
+	Slug        string
+	Amount      string
+	Quantity    sql.NullInt64
+	Sku         sql.NullString
+	HasVariants sql.NullBool
+	Metadata    []byte
+	Attribute   []byte
+	Seo         []byte
+	ID          string
+}
+
+// ListProductsPrivateParams for listing products (admin view)
+type ListProductsPrivateParams struct {
+	Limit  int32
+	Offset int32
+}
+
+// ListProductsPublicParams for listing active products (public view)
+type ListProductsPublicParams struct {
+	Limit  int32
+	Offset int32
+}
+
+// ProductListRow represents a product in list view
+type ProductListRow struct {
+	ID        string
+	Name      string
+	Brief     string
+	Desc      string
+	Slug      string
+	Amount    string
+	Quantity  sql.NullInt64
+	Sku       sql.NullString
+	Metadata  []byte
+	Attribute []byte
+	Digital   sql.NullString
+	Active    bool
+	Deleted   bool
+	Created   sql.NullTime
+	Updated   sql.NullTime
+}
+
+// ProductDetail represents full product details with all fields
+type ProductDetail struct {
+	ID          string
+	Name        string
+	Brief       string
+	Desc        string
+	Slug        string
+	Amount      string
+	Quantity    sql.NullInt64
+	Sku         sql.NullString
+	HasVariants bool
+	Metadata    []byte
+	Attribute   []byte
+	Seo         []byte
+	Digital     sql.NullString
+	Active      bool
+	Deleted     bool
+	Created     sql.NullTime
+	Updated     sql.NullTime
+}
+
+// ProductImage types
+
+// ProductImage represents a product image
+type ProductImage struct {
+	ID        string
+	ProductID string
+	Name      string
+	Ext       string
+	OrigName  string
+}
+
+// CreateProductImageParams for creating a product image
+type CreateProductImageParams struct {
+	ID        string
+	ProductID string
+	Name      string
+	Ext       string
+	OrigName  string
+}
+
+// ProductVariant types
+
+// ProductVariant represents a product variant
+type ProductVariant struct {
+	ID             string
+	ProductID      string
+	Sku            sql.NullString
+	PriceSurcharge sql.NullString // postgres uses string, sqlite uses float64
+	Quantity       sql.NullInt64
+	OptionValues   string
+	Active         sql.NullBool
+	Deleted        sql.NullBool
+	Created        sql.NullTime
+	Updated        sql.NullTime
+}
+
+// CreateProductVariantParams for creating a product variant
+type CreateProductVariantParams struct {
+	ID             string
+	ProductID      string
+	Sku            sql.NullString
+	PriceSurcharge sql.NullString
+	Quantity       sql.NullInt64
+	OptionValues   string
+}
+
+// UpdateProductVariantParams for updating a product variant
+type UpdateProductVariantParams struct {
+	Sku            sql.NullString
+	PriceSurcharge sql.NullString
+	Quantity       sql.NullInt64
+	OptionValues   string
+	ID             string
+}
+
+// DigitalFile types
+
+// DigitalFile represents a digital file for a product
+type DigitalFile struct {
+	ID        string
+	ProductID string
+	Name      string
+	Ext       string
+	OrigName  string
+}
+
+// CreateDigitalFileParams for creating a digital file
+type CreateDigitalFileParams struct {
+	ID        string
+	ProductID string
+	Name      string
+	Ext       string
+	OrigName  string
+}
+
+// DigitalData types
+
+// DigitalData represents digital content data
+type DigitalData struct {
+	ID        string
+	ProductID string
+	Content   string
+	CartID    sql.NullString
+}
+
+// CreateDigitalDataParams for creating digital data
+type CreateDigitalDataParams struct {
+	ID        string
+	ProductID string
+	Content   string
+	CartID    sql.NullString
+}
+
+// UpdateDigitalDataParams for updating digital data
+type UpdateDigitalDataParams struct {
+	Content string
+	ID      string
 }

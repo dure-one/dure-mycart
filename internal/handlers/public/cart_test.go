@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/shurco/mycart/internal/models"
+	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/internal/testutil"
 )
 
@@ -107,10 +108,9 @@ func TestPaymentCallback(t *testing.T) {
 
 func clearWebhookURL(t *testing.T) {
 	t.Helper()
-	db := queries.DB()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	_ = db.UpdateSettingByKey(ctx, &models.SettingName{Key: "webhook_url", Value: ""})
+	_ = store.UpdateSettingByKey(ctx, &models.SettingName{Key: "webhook_url", Value: ""})
 }
 
 

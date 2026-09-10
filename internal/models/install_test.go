@@ -10,12 +10,12 @@ func TestInstall_Validate(t *testing.T) {
 		in      Install
 		wantErr bool
 	}{
-		{"ok minimal", Install{Email: "admin@example.com", Password: "Str0ngPass!"}, false},
-		{"ok with domain", Install{Email: "admin@example.com", Password: "Str0ngPass!", Domain: "example.com"}, false},
-		{"missing email", Install{Password: "Str0ngPass!"}, true},
-		{"bad email", Install{Email: "not-an-email", Password: "Str0ngPass!"}, true},
-		{"short password", Install{Email: "admin@example.com", Password: "123"}, true},
-		{"password >72", Install{Email: "admin@example.com", Password: make73()}, true},
+		{"ok minimal", Install{Email: "admin@example.com", Password: "Str0ngPass!", DBType: "sqlite", SQLitePath: ":memory:"}, false},
+		{"ok with domain", Install{Email: "admin@example.com", Password: "Str0ngPass!", Domain: "example.com", DBType: "sqlite", SQLitePath: ":memory:"}, false},
+		{"missing email", Install{Password: "Str0ngPass!", DBType: "sqlite", SQLitePath: ":memory:"}, true},
+		{"bad email", Install{Email: "not-an-email", Password: "Str0ngPass!", DBType: "sqlite", SQLitePath: ":memory:"}, true},
+		{"short password", Install{Email: "admin@example.com", Password: "123", DBType: "sqlite", SQLitePath: ":memory:"}, true},
+		{"password >72", Install{Email: "admin@example.com", Password: make73(), DBType: "sqlite", SQLitePath: ":memory:"}, true},
 	}
 	for _, tc := range tests {
 		tc := tc

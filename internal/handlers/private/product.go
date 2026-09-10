@@ -211,6 +211,10 @@ func DeleteProduct(c fiber.Ctx) error {
 
 	if err := store.DeleteProduct(c.Context(), productID); err != nil {
 		log.ErrorStack(err)
+		// Return 400 if deletion blocked by sold digital keys guard
+		if strings.Contains(err.Error(), "cannot delete product with sold digital keys") {
+			return webutil.StatusBadRequest(c, err.Error())
+		}
 		return webutil.StatusInternalServerError(c)
 	}
 

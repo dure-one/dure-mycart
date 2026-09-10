@@ -24,12 +24,18 @@ func ensureSenderEmail(ctx context.Context, mailSetting *models.Mail) error {
 		return fmt.Errorf("sender email is not configured and failed to get user email: %w", err)
 	}
 
-	if !setting.Value.Valid || setting.Value.String == "" {
+	// Check if email setting value is valid and non-empty
+	if !setting.Value.Valid {
+		return fmt.Errorf("sender email is not configured and user email is NULL")
+	}
+
+	emailValue := setting.Value.String
+	if emailValue == "" {
 		return fmt.Errorf("sender email is not configured and user email is empty")
 	}
 
 	// Use user email as sender email
-	mailSetting.SenderEmail = setting.Value.String
+	mailSetting.SenderEmail = emailValue
 	return nil
 }
 

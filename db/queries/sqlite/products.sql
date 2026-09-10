@@ -44,6 +44,13 @@ UPDATE product
 SET active = NOT active, updated = CURRENT_TIMESTAMP
 WHERE id = ?;
 
+-- name: ProductHasSoldDigitalData :one
+SELECT EXISTS(
+	SELECT 1 FROM digital_data dd
+	INNER JOIN cart c ON dd.cart_id = c.id
+	WHERE dd.product_id = ? AND c.payment_status = 'paid'
+);
+
 -- name: SoftDeleteProduct :exec
 UPDATE product
 SET deleted = TRUE, updated = CURRENT_TIMESTAMP

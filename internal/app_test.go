@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/shurco/mycart/db/migrations"
+	"github.com/shurco/mycart/internal/store/db"
 	"github.com/shurco/mycart/pkg/logging"
 )
 
@@ -111,8 +112,8 @@ func TestInstallCheck_RedirectsWhenNotInstalled(t *testing.T) {
 	}
 	_ = os.MkdirAll("lc_base", 0o775)
 	t.Cleanup(func() { _ = os.Chdir(prev) })
-	if err := queries.New(migrations.Embed()); err != nil {
-		t.Fatalf("queries.New: %v", err)
+	if err := db.Init(migrations.Embed()); err != nil {
+		t.Fatalf("db.Init: %v", err)
 	}
 
 	app := fiber.New()

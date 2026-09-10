@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/shurco/mycart/db/migrations"
-	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/internal/store/db"
 	"github.com/stretchr/testify/require"
 )
@@ -49,17 +48,12 @@ func setupSQLiteTest(t *testing.T) context.Context {
 	os.Setenv("DB_TYPE", "sqlite")
 	os.Setenv("SQLITE_PATH", ":memory:")
 
-	// Initialize database
-	err := queries.New(migrations.Embed())
+	// Initialize database (runs migrations and sets up function pointers)
+	err := db.Init(migrations.Embed())
 	require.NoError(t, err)
-
-	// Initialize store layer
-	err = db.Init(queries.Adapter().DB(), "sqlite")
-	require.NoError(t, err)
-	store.InitStore(queries.Adapter().DB())
 
 	t.Cleanup(func() {
-		queries.Close()
+		db.Close()
 	})
 
 	return context.Background()
@@ -85,22 +79,17 @@ func setupPostgresTest(t *testing.T) context.Context {
 	os.Setenv("DB_TYPE", "postgres")
 	os.Setenv("DATABASE_URL", connStr)
 
-	// Initialize database
-	err := queries.New(migrations.Embed())
+	// Initialize database (runs migrations and sets up function pointers)
+	err := db.Init(migrations.Embed())
 	require.NoError(t, err)
 
 	// Verify connection
-	err = queries.Adapter().DB().Ping()
+	err = db.Health()
 	require.NoError(t, err, "failed to ping PostgreSQL database")
 
-	// Initialize store layer
-	err = db.Init(queries.Adapter().DB(), "postgres")
-	require.NoError(t, err)
-	store.InitStore(queries.Adapter().DB())
-
 	t.Cleanup(func() {
-		cleanupTestData(t, queries.Adapter().DB())
-		queries.Close()
+		cleanupTestData(t, db.DB())
+		db.Close()
 	})
 
 	return context.Background()

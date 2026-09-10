@@ -23,8 +23,8 @@ Repo layout:
 |------|---------|
 | `cmd/` | `main` package and runtime-writable `lc_base/`, `lc_uploads/`, `lc_digitals/` dirs used in dev. |
 | `internal/` | Private application code (HTTP handlers, store layer, DB queries, middleware, mailer, webhooks). |
-| `internal/store/` | Business logic facade layer - handlers call this, delegates to goosemigration queries. |
-| `internal/goosemigration/` | Database migration infrastructure and query wrappers (goose + internal queries). |
+| `internal/store/` | Business logic facade layer - handlers call this, delegates to database operations. |
+| `internal/store/db/` | Database abstraction layer using function pointers for query operations. |
 | `pkg/` | Reusable packages that could in theory live in their own repo (`litepay`, `jwtutil`, `httpclient`, `webutil`, …). |
 | `web/admin/` | SvelteKit admin panel, served at `/_/`. |
 | `web/site/` | SvelteKit storefront, served at `/`. |
@@ -68,8 +68,7 @@ Default admin credentials after `./scripts/migration dev up`:
   `errors.Is` / `errors.As`, never `==`. The custom helper
   `pkg/errors.ErrorStack` produces annotated stack traces for logs.
 - **Resource management.** Never `defer` inside a loop. Extract the
-  per-iteration body into a helper so `defer` runs per call (see
-  `scanDigitalFiles` in `internal/goosemigration/queries/cart.go`).
+  per-iteration body into a helper so `defer` runs per call.
 - **HTTP clients.** Never use `http.DefaultClient` or an ad-hoc
   `http.Client{}` for outbound calls. Use `pkg/httpclient.New()` or
   `pkg/httpclient.NewWithTimeout(...)` to inherit the shared timeout
@@ -84,7 +83,7 @@ Default admin credentials after `./scripts/migration dev up`:
 - **SQL safety.** Always parameterised queries. Use `INSERT OR REPLACE`
   for idempotent session writes (`store.AddSession`).
 - **Handler pattern.** Handlers call `internal/store` methods, not database queries directly.
-  Store layer provides business logic facade over `internal/goosemigration/queries`.
+  Store layer provides business logic facade over `internal/store/db` operations.
 
 Frontend (SvelteKit / Svelte 5):
 

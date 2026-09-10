@@ -112,27 +112,28 @@ func ListProducts(ctx context.Context, private bool, limit, offset int, cartID s
 		products.Products = append(products.Products, p)
 	}
 
+	products.Total = len(products.Products)
 	return products, nil
 }
 
-// Product retrieves a single product by ID
-func Product(ctx context.Context, private bool, productID string) (*models.Product, error) {
+// Product retrieves a single product by ID or slug
+func Product(ctx context.Context, private bool, productIDOrSlug string) (*models.Product, error) {
 	var query string
 	if private {
 		if db.Type() == "postgres" {
 			query = `SELECT id, name, brief, desc, slug, amount, quantity, sku, has_variants, active, digital, metadata, attribute, seo, created, updated
-			         FROM product WHERE id = $1 AND deleted = false`
+			         FROM product WHERE (id = $1 OR slug = $2) AND deleted = false`
 		} else {
 			query = `SELECT id, name, brief, desc, slug, amount, quantity, sku, has_variants, active, digital, metadata, attribute, seo, created, updated
-			         FROM product WHERE id = ? AND deleted = 0`
+			         FROM product WHERE (id = ? OR slug = ?) AND deleted = 0`
 		}
 	} else {
 		if db.Type() == "postgres" {
 			query = `SELECT id, name, brief, desc, slug, amount, quantity, sku, has_variants, active, digital, metadata, attribute, seo, created, updated
-			         FROM product WHERE id = $1 AND deleted = false AND active = true`
+			         FROM product WHERE (id = $1 OR slug = $2) AND deleted = false AND active = true`
 		} else {
 			query = `SELECT id, name, brief, desc, slug, amount, quantity, sku, has_variants, active, digital, metadata, attribute, seo, created, updated
-			         FROM product WHERE id = ? AND deleted = 0 AND active = 1`
+			         FROM product WHERE (id = ? OR slug = ?) AND deleted = 0 AND active = 1`
 		}
 	}
 
@@ -143,7 +144,7 @@ func Product(ctx context.Context, private bool, productID string) (*models.Produ
 	var hasVariants sql.NullBool
 	var created, updated sql.NullTime
 
-	err := db.DB().QueryRowContext(ctx, query, productID).Scan(
+	err := db.DB().QueryRowContext(ctx, query, productIDOrSlug, productIDOrSlug).Scan(
 		&p.ID, &p.Name, &p.Brief, &p.Description, &p.Slug, &p.Amount, &quantity, &sku,
 		&hasVariants, &p.Active, &digitalType, &metadata, &attributes, &seo, &created, &updated)
 	if err != nil {
@@ -345,16 +346,60 @@ func AddProduct(ctx context.Context, product *models.Product) (*models.Product, 
 
 // UpdateProduct updates an existing product
 func UpdateProduct(ctx context.Context, product *models.Product) error {
-	metadata, _ := json.Marshal(product.Metadata)
-	attributes, _ := json.Marshal(product.Attributes)
-	seoJSON, _ := json.Marshal(product.Seo)
+	// Fetch existing product to merge updates (prevents zero values from overwriting existing data)
+	existing, err := Product(ctx, true, product.ID)
+	if err != nil {
+		return fmt.Errorf("fetch existing product: %w", err)
+	}
+
+	// Merge non-zero fields from request into existing product
+	if product.Name != "" {
+		existing.Name = product.Name
+	}
+	if product.Brief != "" {
+		existing.Brief = product.Brief
+	}
+	if product.Description != "" {
+		existing.Description = product.Description
+	}
+	if product.Slug != "" {
+		existing.Slug = product.Slug
+	}
+	if product.Amount != 0 {
+		existing.Amount = product.Amount
+	}
+	if product.Quantity != 0 {
+		existing.Quantity = product.Quantity
+	}
+	if product.SKU != "" {
+		existing.SKU = product.SKU
+	}
+	if product.Digital.Type != "" {
+		existing.Digital.Type = product.Digital.Type
+	}
+	if len(product.Metadata) > 0 {
+		existing.Metadata = product.Metadata
+	}
+	if len(product.Attributes) > 0 {
+		existing.Attributes = product.Attributes
+	}
+	if product.Seo != nil {
+		existing.Seo = product.Seo
+	}
+	// Note: Active is a boolean, so we always use the request value
+	existing.Active = product.Active
+
+	// Now update with merged values
+	metadata, _ := json.Marshal(existing.Metadata)
+	attributes, _ := json.Marshal(existing.Attributes)
+	seoJSON, _ := json.Marshal(existing.Seo)
 
 	// Convert empty SKU to NULL to avoid unique constraint violations
 	var skuParam interface{}
-	if product.SKU == "" {
+	if existing.SKU == "" {
 		skuParam = nil
 	} else {
-		skuParam = product.SKU
+		skuParam = existing.SKU
 	}
 
 	var query string
@@ -368,15 +413,25 @@ func UpdateProduct(ctx context.Context, product *models.Product) error {
 		         WHERE id = ?`
 	}
 
-	_, err := db.DB().ExecContext(ctx, query, product.Name, product.Amount, product.Slug,
-		metadata, attributes, product.Brief, product.Description, product.Digital.Type,
-		product.Active, product.Quantity, skuParam, seoJSON, product.ID)
+	_, err = db.DB().ExecContext(ctx, query, existing.Name, existing.Amount, existing.Slug,
+		metadata, attributes, existing.Brief, existing.Description, existing.Digital.Type,
+		existing.Active, existing.Quantity, skuParam, seoJSON, existing.ID)
 	return err
 }
 
 // DeleteProduct deletes a product by ID (soft delete)
 func DeleteProduct(ctx context.Context, productID string) error {
-	return db.SoftDeleteProductFunc(ctx, productID)
+	// Guard: prevent deletion if product has sold digital data
+	hasSold, err := db.ProductHasSoldDigitalDataFunc(ctx, productID)
+	if err != nil {
+		return fmt.Errorf("check sold digital data: %w", err)
+	}
+	if hasSold {
+		return fmt.Errorf("cannot delete product with sold digital keys")
+	}
+
+	// Hard delete products without sold digital data
+	return db.DeleteProductFunc(ctx, productID)
 }
 
 // UpdateActive toggles product active status

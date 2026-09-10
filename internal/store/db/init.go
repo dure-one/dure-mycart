@@ -524,6 +524,299 @@ func initPostgres(sqlDB *sql.DB) {
 		return q.DeleteProduct(ctx, id)
 	}
 
+	UpdateProductFullFunc = func(ctx context.Context, params UpdateProductFullParams) error {
+		return q.UpdateProductFull(ctx, postgres.UpdateProductFullParams{
+			Name:        params.Name,
+			Brief:       params.Brief,
+			Desc:        params.Desc,
+			Slug:        params.Slug,
+			Amount:      params.Amount,
+			Quantity:    sql.NullInt32{Int32: int32(params.Quantity.Int64), Valid: params.Quantity.Valid},
+			Sku:         params.Sku,
+			HasVariants: params.HasVariants, // sql.NullBool matches
+			Metadata:    params.Metadata,
+			Attribute:   params.Attribute,
+			Seo:         params.Seo,
+			ID:          params.ID,
+		})
+	}
+
+	UpdateProductActiveFunc = func(ctx context.Context, id string) error {
+		return q.UpdateProductActive(ctx, id)
+	}
+
+	ProductHasSoldDigitalDataFunc = func(ctx context.Context, productID string) (bool, error) {
+		return q.ProductHasSoldDigitalData(ctx, productID)
+	}
+
+	SoftDeleteProductFunc = func(ctx context.Context, id string) error {
+		return q.SoftDeleteProduct(ctx, id)
+	}
+
+	// Product image operations
+	GetProductImageFunc = func(ctx context.Context, id string) (ProductImage, error) {
+		pgImg, err := q.GetProductImage(ctx, id)
+		if err != nil {
+			return ProductImage{}, err
+		}
+		return ProductImage{
+			ID:        pgImg.ID,
+			ProductID: pgImg.ProductID,
+			Name:      pgImg.Name,
+			Ext:       pgImg.Ext,
+			OrigName:  pgImg.OrigName,
+		}, nil
+	}
+
+	ListProductImagesFunc = func(ctx context.Context, productID string) ([]ProductImage, error) {
+		pgImgs, err := q.ListProductImages(ctx, productID)
+		if err != nil {
+			return nil, err
+		}
+		images := make([]ProductImage, len(pgImgs))
+		for i, img := range pgImgs {
+			images[i] = ProductImage{
+				ID:        img.ID,
+				ProductID: img.ProductID,
+				Name:      img.Name,
+				Ext:       img.Ext,
+				OrigName:  img.OrigName,
+			}
+		}
+		return images, nil
+	}
+
+	CreateProductImageFunc = func(ctx context.Context, params CreateProductImageParams) (ProductImage, error) {
+		pgImg, err := q.CreateProductImage(ctx, postgres.CreateProductImageParams{
+			ID:        params.ID,
+			ProductID: params.ProductID,
+			Name:      params.Name,
+			Ext:       params.Ext,
+			OrigName:  params.OrigName,
+		})
+		if err != nil {
+			return ProductImage{}, err
+		}
+		return ProductImage{
+			ID:        pgImg.ID,
+			ProductID: pgImg.ProductID,
+			Name:      pgImg.Name,
+			Ext:       pgImg.Ext,
+			OrigName:  pgImg.OrigName,
+		}, nil
+	}
+
+	DeleteProductImageFunc = func(ctx context.Context, id string) error {
+		return q.DeleteProductImage(ctx, id)
+	}
+
+	DeleteProductImagesFunc = func(ctx context.Context, productID string) error {
+		return q.DeleteProductImages(ctx, productID)
+	}
+
+	// Product variant operations
+	ListProductVariantsByProductFunc = func(ctx context.Context, productID string) ([]ProductVariant, error) {
+		pgVariants, err := q.ListProductVariantsByProduct(ctx, productID)
+		if err != nil {
+			return nil, err
+		}
+		variants := make([]ProductVariant, len(pgVariants))
+		for i, v := range pgVariants {
+			variants[i] = ProductVariant{
+				ID:             v.ID,
+				ProductID:      v.ProductID,
+				Sku:            v.Sku,
+				PriceSurcharge: v.PriceSurcharge,
+				Quantity:       sql.NullInt64{Int64: int64(v.Quantity.Int32), Valid: v.Quantity.Valid},
+				OptionValues:   v.OptionValues,
+				Active:         v.Active, // sql.NullBool
+				Deleted:        v.Deleted, // sql.NullBool
+				Created:        v.Created,
+				Updated:        v.Updated,
+			}
+		}
+		return variants, nil
+	}
+
+	CreateProductVariantFunc = func(ctx context.Context, params CreateProductVariantParams) (ProductVariant, error) {
+		pgVariant, err := q.CreateProductVariant(ctx, postgres.CreateProductVariantParams{
+			ID:             params.ID,
+			ProductID:      params.ProductID,
+			Sku:            params.Sku,
+			PriceSurcharge: params.PriceSurcharge,
+			Quantity:       sql.NullInt32{Int32: int32(params.Quantity.Int64), Valid: params.Quantity.Valid},
+			OptionValues:   params.OptionValues,
+		})
+		if err != nil {
+			return ProductVariant{}, err
+		}
+		return ProductVariant{
+			ID:             pgVariant.ID,
+			ProductID:      pgVariant.ProductID,
+			Sku:            pgVariant.Sku,
+			PriceSurcharge: pgVariant.PriceSurcharge,
+			Quantity:       sql.NullInt64{Int64: int64(pgVariant.Quantity.Int32), Valid: pgVariant.Quantity.Valid},
+			OptionValues:   pgVariant.OptionValues,
+			Active:         pgVariant.Active, // sql.NullBool
+			Deleted:        pgVariant.Deleted, // sql.NullBool
+			Created:        pgVariant.Created,
+			Updated:        pgVariant.Updated,
+		}, nil
+	}
+
+	UpdateProductVariantFunc = func(ctx context.Context, params UpdateProductVariantParams) error {
+		return q.UpdateProductVariant(ctx, postgres.UpdateProductVariantParams{
+			Sku:            params.Sku,
+			PriceSurcharge: params.PriceSurcharge,
+			Quantity:       sql.NullInt32{Int32: int32(params.Quantity.Int64), Valid: params.Quantity.Valid},
+			OptionValues:   params.OptionValues,
+			ID:             params.ID,
+			// Note: Active field not updated in PostgreSQL query
+		})
+	}
+
+	DeleteProductVariantFunc = func(ctx context.Context, id string) error {
+		return q.DeleteProductVariant(ctx, id)
+	}
+
+	// Digital file operations
+	GetDigitalFileFunc = func(ctx context.Context, id string) (DigitalFile, error) {
+		pgFile, err := q.GetDigitalFile(ctx, id)
+		if err != nil {
+			return DigitalFile{}, err
+		}
+		return DigitalFile{
+			ID:        pgFile.ID,
+			ProductID: pgFile.ProductID,
+			Name:      pgFile.Name,
+			Ext:       pgFile.Ext,
+			OrigName:  pgFile.OrigName,
+		}, nil
+	}
+
+	ListDigitalFilesFunc = func(ctx context.Context, productID string) ([]DigitalFile, error) {
+		pgFiles, err := q.ListDigitalFiles(ctx, productID)
+		if err != nil {
+			return nil, err
+		}
+		files := make([]DigitalFile, len(pgFiles))
+		for i, f := range pgFiles {
+			files[i] = DigitalFile{
+				ID:        f.ID,
+				ProductID: f.ProductID,
+				Name:      f.Name,
+				Ext:       f.Ext,
+				OrigName:  f.OrigName,
+			}
+		}
+		return files, nil
+	}
+
+	CreateDigitalFileFunc = func(ctx context.Context, params CreateDigitalFileParams) (DigitalFile, error) {
+		pgFile, err := q.CreateDigitalFile(ctx, postgres.CreateDigitalFileParams{
+			ID:        params.ID,
+			ProductID: params.ProductID,
+			Name:      params.Name,
+			Ext:       params.Ext,
+			OrigName:  params.OrigName,
+		})
+		if err != nil {
+			return DigitalFile{}, err
+		}
+		return DigitalFile{
+			ID:        pgFile.ID,
+			ProductID: pgFile.ProductID,
+			Name:      pgFile.Name,
+			Ext:       pgFile.Ext,
+			OrigName:  pgFile.OrigName,
+		}, nil
+	}
+
+	DeleteDigitalFileFunc = func(ctx context.Context, id string) error {
+		return q.DeleteDigitalFile(ctx, id)
+	}
+
+	DeleteDigitalFilesFunc = func(ctx context.Context, productID string) error {
+		return q.DeleteDigitalFiles(ctx, productID)
+	}
+
+	// Digital data operations
+	GetDigitalDataFunc = func(ctx context.Context, id string) (DigitalData, error) {
+		pgData, err := q.GetDigitalData(ctx, id)
+		if err != nil {
+			return DigitalData{}, err
+		}
+		return DigitalData{
+			ID:        pgData.ID,
+			ProductID: pgData.ProductID,
+			Content:   pgData.Content,
+			CartID:    pgData.CartID,
+		}, nil
+	}
+
+	GetDigitalDataByProductFunc = func(ctx context.Context, productID string) (DigitalData, error) {
+		pgData, err := q.GetDigitalDataByProduct(ctx, productID)
+		if err != nil {
+			return DigitalData{}, err
+		}
+		return DigitalData{
+			ID:        pgData.ID,
+			ProductID: pgData.ProductID,
+			Content:   pgData.Content,
+			CartID:    pgData.CartID,
+		}, nil
+	}
+
+	ListDigitalDataByCartFunc = func(ctx context.Context, cartID string) ([]DigitalData, error) {
+		pgData, err := q.ListDigitalDataByCart(ctx, sql.NullString{String: cartID, Valid: true})
+		if err != nil {
+			return nil, err
+		}
+		data := make([]DigitalData, len(pgData))
+		for i, d := range pgData {
+			data[i] = DigitalData{
+				ID:        d.ID,
+				ProductID: d.ProductID,
+				Content:   d.Content,
+				CartID:    d.CartID,
+			}
+		}
+		return data, nil
+	}
+
+	CreateDigitalDataFunc = func(ctx context.Context, params CreateDigitalDataParams) (DigitalData, error) {
+		pgData, err := q.CreateDigitalData(ctx, postgres.CreateDigitalDataParams{
+			ID:        params.ID,
+			ProductID: params.ProductID,
+			Content:   params.Content,
+			CartID:    params.CartID,
+		})
+		if err != nil {
+			return DigitalData{}, err
+		}
+		return DigitalData{
+			ID:        pgData.ID,
+			ProductID: pgData.ProductID,
+			Content:   pgData.Content,
+			CartID:    pgData.CartID,
+		}, nil
+	}
+
+	UpdateDigitalDataFunc = func(ctx context.Context, params UpdateDigitalDataParams) error {
+		return q.UpdateDigitalData(ctx, postgres.UpdateDigitalDataParams{
+			Content: params.Content,
+			ID:      params.ID,
+		})
+	}
+
+	DeleteDigitalDataFunc = func(ctx context.Context, id string) error {
+		return q.DeleteDigitalData(ctx, id)
+	}
+
+	DeleteDigitalDataByProductFunc = func(ctx context.Context, productID string) error {
+		return q.DeleteDigitalDataByProduct(ctx, productID)
+	}
+
 	// Auth operations
 	GetUserByEmailFunc = func(ctx context.Context, email string) (User, error) {
 		pgUser, err := q.GetUserByEmail(ctx, email)
@@ -903,6 +1196,299 @@ func initSQLite(sqlDB *sql.DB) {
 
 	DeleteProductFunc = func(ctx context.Context, id string) error {
 		return q.DeleteProduct(ctx, id)
+	}
+
+	UpdateProductFullFunc = func(ctx context.Context, params UpdateProductFullParams) error {
+		return q.UpdateProductFull(ctx, sqlite.UpdateProductFullParams{
+			Name:        params.Name,
+			Brief:       params.Brief,
+			Desc:        params.Desc,
+			Slug:        params.Slug,
+			Amount:      params.Amount,
+			Quantity:    params.Quantity, // sqlite uses Int64
+			Sku:         params.Sku,
+			HasVariants: params.HasVariants,
+			Metadata:    params.Metadata,
+			Attribute:   params.Attribute,
+			Seo:         params.Seo,
+			ID:          params.ID,
+		})
+	}
+
+	UpdateProductActiveFunc = func(ctx context.Context, id string) error {
+		return q.UpdateProductActive(ctx, id)
+	}
+
+	ProductHasSoldDigitalDataFunc = func(ctx context.Context, productID string) (bool, error) {
+		return q.ProductHasSoldDigitalData(ctx, productID)
+	}
+
+	SoftDeleteProductFunc = func(ctx context.Context, id string) error {
+		return q.SoftDeleteProduct(ctx, id)
+	}
+
+	// Product image operations
+	GetProductImageFunc = func(ctx context.Context, id string) (ProductImage, error) {
+		sqliteImg, err := q.GetProductImage(ctx, id)
+		if err != nil {
+			return ProductImage{}, err
+		}
+		return ProductImage{
+			ID:        sqliteImg.ID,
+			ProductID: sqliteImg.ProductID,
+			Name:      sqliteImg.Name,
+			Ext:       sqliteImg.Ext,
+			OrigName:  sqliteImg.OrigName,
+		}, nil
+	}
+
+	ListProductImagesFunc = func(ctx context.Context, productID string) ([]ProductImage, error) {
+		sqliteImgs, err := q.ListProductImages(ctx, productID)
+		if err != nil {
+			return nil, err
+		}
+		images := make([]ProductImage, len(sqliteImgs))
+		for i, img := range sqliteImgs {
+			images[i] = ProductImage{
+				ID:        img.ID,
+				ProductID: img.ProductID,
+				Name:      img.Name,
+				Ext:       img.Ext,
+				OrigName:  img.OrigName,
+			}
+		}
+		return images, nil
+	}
+
+	CreateProductImageFunc = func(ctx context.Context, params CreateProductImageParams) (ProductImage, error) {
+		sqliteImg, err := q.CreateProductImage(ctx, sqlite.CreateProductImageParams{
+			ID:        params.ID,
+			ProductID: params.ProductID,
+			Name:      params.Name,
+			Ext:       params.Ext,
+			OrigName:  params.OrigName,
+		})
+		if err != nil {
+			return ProductImage{}, err
+		}
+		return ProductImage{
+			ID:        sqliteImg.ID,
+			ProductID: sqliteImg.ProductID,
+			Name:      sqliteImg.Name,
+			Ext:       sqliteImg.Ext,
+			OrigName:  sqliteImg.OrigName,
+		}, nil
+	}
+
+	DeleteProductImageFunc = func(ctx context.Context, id string) error {
+		return q.DeleteProductImage(ctx, id)
+	}
+
+	DeleteProductImagesFunc = func(ctx context.Context, productID string) error {
+		return q.DeleteProductImages(ctx, productID)
+	}
+
+	// Product variant operations
+	ListProductVariantsByProductFunc = func(ctx context.Context, productID string) ([]ProductVariant, error) {
+		sqliteVariants, err := q.ListProductVariantsByProduct(ctx, productID)
+		if err != nil {
+			return nil, err
+		}
+		variants := make([]ProductVariant, len(sqliteVariants))
+		for i, v := range sqliteVariants {
+			variants[i] = ProductVariant{
+				ID:             v.ID,
+				ProductID:      v.ProductID,
+				Sku:            v.Sku,
+				PriceSurcharge: convertFloatToPrice(v.PriceSurcharge),
+				Quantity:       v.Quantity, // sqlite already uses Int64
+				OptionValues:   v.OptionValues,
+				Active:         v.Active,
+				Deleted:        v.Deleted,
+				Created:        v.Created,
+				Updated:        v.Updated,
+			}
+		}
+		return variants, nil
+	}
+
+	CreateProductVariantFunc = func(ctx context.Context, params CreateProductVariantParams) (ProductVariant, error) {
+		sqliteVariant, err := q.CreateProductVariant(ctx, sqlite.CreateProductVariantParams{
+			ID:             params.ID,
+			ProductID:      params.ProductID,
+			Sku:            params.Sku,
+			PriceSurcharge: convertPriceToFloat(params.PriceSurcharge),
+			Quantity:       params.Quantity, // sqlite uses Int64
+			OptionValues:   params.OptionValues,
+		})
+		if err != nil {
+			return ProductVariant{}, err
+		}
+		return ProductVariant{
+			ID:             sqliteVariant.ID,
+			ProductID:      sqliteVariant.ProductID,
+			Sku:            sqliteVariant.Sku,
+			PriceSurcharge: convertFloatToPrice(sqliteVariant.PriceSurcharge),
+			Quantity:       sqliteVariant.Quantity,
+			OptionValues:   sqliteVariant.OptionValues,
+			Active:         sqliteVariant.Active,
+			Deleted:        sqliteVariant.Deleted,
+			Created:        sqliteVariant.Created,
+			Updated:        sqliteVariant.Updated,
+		}, nil
+	}
+
+	UpdateProductVariantFunc = func(ctx context.Context, params UpdateProductVariantParams) error {
+		return q.UpdateProductVariant(ctx, sqlite.UpdateProductVariantParams{
+			Sku:            params.Sku,
+			PriceSurcharge: convertPriceToFloat(params.PriceSurcharge),
+			Quantity:       params.Quantity, // sqlite uses Int64
+			OptionValues:   params.OptionValues,
+			ID:             params.ID,
+			// Note: Active field not updated in SQLite query
+		})
+	}
+
+	DeleteProductVariantFunc = func(ctx context.Context, id string) error {
+		return q.DeleteProductVariant(ctx, id)
+	}
+
+	// Digital file operations
+	GetDigitalFileFunc = func(ctx context.Context, id string) (DigitalFile, error) {
+		sqliteFile, err := q.GetDigitalFile(ctx, id)
+		if err != nil {
+			return DigitalFile{}, err
+		}
+		return DigitalFile{
+			ID:        sqliteFile.ID,
+			ProductID: sqliteFile.ProductID,
+			Name:      sqliteFile.Name,
+			Ext:       sqliteFile.Ext,
+			OrigName:  sqliteFile.OrigName,
+		}, nil
+	}
+
+	ListDigitalFilesFunc = func(ctx context.Context, productID string) ([]DigitalFile, error) {
+		sqliteFiles, err := q.ListDigitalFiles(ctx, productID)
+		if err != nil {
+			return nil, err
+		}
+		files := make([]DigitalFile, len(sqliteFiles))
+		for i, f := range sqliteFiles {
+			files[i] = DigitalFile{
+				ID:        f.ID,
+				ProductID: f.ProductID,
+				Name:      f.Name,
+				Ext:       f.Ext,
+				OrigName:  f.OrigName,
+			}
+		}
+		return files, nil
+	}
+
+	CreateDigitalFileFunc = func(ctx context.Context, params CreateDigitalFileParams) (DigitalFile, error) {
+		sqliteFile, err := q.CreateDigitalFile(ctx, sqlite.CreateDigitalFileParams{
+			ID:        params.ID,
+			ProductID: params.ProductID,
+			Name:      params.Name,
+			Ext:       params.Ext,
+			OrigName:  params.OrigName,
+		})
+		if err != nil {
+			return DigitalFile{}, err
+		}
+		return DigitalFile{
+			ID:        sqliteFile.ID,
+			ProductID: sqliteFile.ProductID,
+			Name:      sqliteFile.Name,
+			Ext:       sqliteFile.Ext,
+			OrigName:  sqliteFile.OrigName,
+		}, nil
+	}
+
+	DeleteDigitalFileFunc = func(ctx context.Context, id string) error {
+		return q.DeleteDigitalFile(ctx, id)
+	}
+
+	DeleteDigitalFilesFunc = func(ctx context.Context, productID string) error {
+		return q.DeleteDigitalFiles(ctx, productID)
+	}
+
+	// Digital data operations
+	GetDigitalDataFunc = func(ctx context.Context, id string) (DigitalData, error) {
+		sqliteData, err := q.GetDigitalData(ctx, id)
+		if err != nil {
+			return DigitalData{}, err
+		}
+		return DigitalData{
+			ID:        sqliteData.ID,
+			ProductID: sqliteData.ProductID,
+			Content:   sqliteData.Content,
+			CartID:    sqliteData.CartID,
+		}, nil
+	}
+
+	GetDigitalDataByProductFunc = func(ctx context.Context, productID string) (DigitalData, error) {
+		sqliteData, err := q.GetDigitalDataByProduct(ctx, productID)
+		if err != nil {
+			return DigitalData{}, err
+		}
+		return DigitalData{
+			ID:        sqliteData.ID,
+			ProductID: sqliteData.ProductID,
+			Content:   sqliteData.Content,
+			CartID:    sqliteData.CartID,
+		}, nil
+	}
+
+	ListDigitalDataByCartFunc = func(ctx context.Context, cartID string) ([]DigitalData, error) {
+		sqliteData, err := q.ListDigitalDataByCart(ctx, sql.NullString{String: cartID, Valid: true})
+		if err != nil {
+			return nil, err
+		}
+		data := make([]DigitalData, len(sqliteData))
+		for i, d := range sqliteData {
+			data[i] = DigitalData{
+				ID:        d.ID,
+				ProductID: d.ProductID,
+				Content:   d.Content,
+				CartID:    d.CartID,
+			}
+		}
+		return data, nil
+	}
+
+	CreateDigitalDataFunc = func(ctx context.Context, params CreateDigitalDataParams) (DigitalData, error) {
+		sqliteData, err := q.CreateDigitalData(ctx, sqlite.CreateDigitalDataParams{
+			ID:        params.ID,
+			ProductID: params.ProductID,
+			Content:   params.Content,
+			CartID:    params.CartID,
+		})
+		if err != nil {
+			return DigitalData{}, err
+		}
+		return DigitalData{
+			ID:        sqliteData.ID,
+			ProductID: sqliteData.ProductID,
+			Content:   sqliteData.Content,
+			CartID:    sqliteData.CartID,
+		}, nil
+	}
+
+	UpdateDigitalDataFunc = func(ctx context.Context, params UpdateDigitalDataParams) error {
+		return q.UpdateDigitalData(ctx, sqlite.UpdateDigitalDataParams{
+			Content: params.Content,
+			ID:      params.ID,
+		})
+	}
+
+	DeleteDigitalDataFunc = func(ctx context.Context, id string) error {
+		return q.DeleteDigitalData(ctx, id)
+	}
+
+	DeleteDigitalDataByProductFunc = func(ctx context.Context, productID string) error {
+		return q.DeleteDigitalDataByProduct(ctx, productID)
 	}
 
 	// Auth operations

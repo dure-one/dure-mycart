@@ -282,6 +282,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.productExistsStmt, err = db.PrepareContext(ctx, productExists); err != nil {
 		return nil, fmt.Errorf("error preparing query ProductExists: %w", err)
 	}
+	if q.productHasSoldDigitalDataStmt, err = db.PrepareContext(ctx, productHasSoldDigitalData); err != nil {
+		return nil, fmt.Errorf("error preparing query ProductHasSoldDigitalData: %w", err)
+	}
 	if q.softDeleteProductStmt, err = db.PrepareContext(ctx, softDeleteProduct); err != nil {
 		return nil, fmt.Errorf("error preparing query SoftDeleteProduct: %w", err)
 	}
@@ -777,6 +780,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing productExistsStmt: %w", cerr)
 		}
 	}
+	if q.productHasSoldDigitalDataStmt != nil {
+		if cerr := q.productHasSoldDigitalDataStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing productHasSoldDigitalDataStmt: %w", cerr)
+		}
+	}
 	if q.softDeleteProductStmt != nil {
 		if cerr := q.softDeleteProductStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing softDeleteProductStmt: %w", cerr)
@@ -1002,6 +1010,7 @@ type Queries struct {
 	listSubdomainsStmt               *sql.Stmt
 	pageExistsStmt                   *sql.Stmt
 	productExistsStmt                *sql.Stmt
+	productHasSoldDigitalDataStmt    *sql.Stmt
 	softDeleteProductStmt            *sql.Stmt
 	subdomainExistsStmt              *sql.Stmt
 	updateCartStmt                   *sql.Stmt
@@ -1114,6 +1123,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		listSubdomainsStmt:               q.listSubdomainsStmt,
 		pageExistsStmt:                   q.pageExistsStmt,
 		productExistsStmt:                q.productExistsStmt,
+		productHasSoldDigitalDataStmt:    q.productHasSoldDigitalDataStmt,
 		softDeleteProductStmt:            q.softDeleteProductStmt,
 		subdomainExistsStmt:              q.subdomainExistsStmt,
 		updateCartStmt:                   q.updateCartStmt,

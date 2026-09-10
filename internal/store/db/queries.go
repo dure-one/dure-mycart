@@ -28,11 +28,48 @@ var (
 	DeletePageFunc    func(ctx context.Context, id string) error
 
 	// Product operations
-	GetProductByIDFunc   func(ctx context.Context, id string) (Product, error)
-	GetProductBySlugFunc func(ctx context.Context, slug string) (Product, error)
-	CreateProductFunc    func(ctx context.Context, params CreateProductParams) (Product, error)
-	UpdateProductFunc    func(ctx context.Context, params UpdateProductParams) error
-	DeleteProductFunc    func(ctx context.Context, id string) error
+	GetProductByIDFunc     func(ctx context.Context, id string) (Product, error)
+	GetProductBySlugFunc   func(ctx context.Context, slug string) (Product, error)
+	CreateProductFunc      func(ctx context.Context, params CreateProductParams) (Product, error)
+	UpdateProductFunc      func(ctx context.Context, params UpdateProductParams) error
+	UpdateProductFullFunc  func(ctx context.Context, params UpdateProductFullParams) error
+	UpdateProductActiveFunc func(ctx context.Context, id string) error
+	ProductHasSoldDigitalDataFunc func(ctx context.Context, productID string) (bool, error)
+	SoftDeleteProductFunc  func(ctx context.Context, id string) error
+	DeleteProductFunc      func(ctx context.Context, id string) error
+	ListProductsPrivateFunc func(ctx context.Context, params ListProductsPrivateParams) ([]ProductListRow, error)
+	ListProductsPublicFunc  func(ctx context.Context, params ListProductsPublicParams) ([]ProductListRow, error)
+	GetProductDetailByIDFunc func(ctx context.Context, id string) (ProductDetail, error)
+	GetProductDetailBySlugFunc func(ctx context.Context, slug string) (ProductDetail, error)
+
+	// Product image operations
+	GetProductImageFunc    func(ctx context.Context, id string) (ProductImage, error)
+	ListProductImagesFunc  func(ctx context.Context, productID string) ([]ProductImage, error)
+	CreateProductImageFunc func(ctx context.Context, params CreateProductImageParams) (ProductImage, error)
+	DeleteProductImageFunc func(ctx context.Context, id string) error
+	DeleteProductImagesFunc func(ctx context.Context, productID string) error
+
+	// Product variant operations
+	ListProductVariantsByProductFunc func(ctx context.Context, productID string) ([]ProductVariant, error)
+	CreateProductVariantFunc         func(ctx context.Context, params CreateProductVariantParams) (ProductVariant, error)
+	UpdateProductVariantFunc         func(ctx context.Context, params UpdateProductVariantParams) error
+	DeleteProductVariantFunc         func(ctx context.Context, id string) error
+
+	// Digital file operations
+	GetDigitalFileFunc     func(ctx context.Context, id string) (DigitalFile, error)
+	ListDigitalFilesFunc   func(ctx context.Context, productID string) ([]DigitalFile, error)
+	CreateDigitalFileFunc  func(ctx context.Context, params CreateDigitalFileParams) (DigitalFile, error)
+	DeleteDigitalFileFunc  func(ctx context.Context, id string) error
+	DeleteDigitalFilesFunc func(ctx context.Context, productID string) error
+
+	// Digital data operations
+	GetDigitalDataFunc          func(ctx context.Context, id string) (DigitalData, error)
+	GetDigitalDataByProductFunc func(ctx context.Context, productID string) (DigitalData, error)
+	ListDigitalDataByCartFunc   func(ctx context.Context, cartID string) ([]DigitalData, error)
+	CreateDigitalDataFunc       func(ctx context.Context, params CreateDigitalDataParams) (DigitalData, error)
+	UpdateDigitalDataFunc       func(ctx context.Context, params UpdateDigitalDataParams) error
+	DeleteDigitalDataFunc       func(ctx context.Context, id string) error
+	DeleteDigitalDataByProductFunc func(ctx context.Context, productID string) error
 
 	// Auth operations
 	GetUserByEmailFunc     func(ctx context.Context, email string) (User, error)

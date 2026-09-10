@@ -2,34 +2,16 @@ package mailer
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
 
 	mailer "github.com/xhit/go-simple-mail/v2"
 
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/db/migrations"
+	"github.com/shurco/mycart/internal/store"
+	"github.com/shurco/mycart/internal/testutil"
 )
 
-// bootstrapDB brings up a fresh queries DB in a temp working directory.
-// Several functions in this package call queries.DB() directly so tests
-// must share the package-level instance.
-func bootstrapDB(t *testing.T) *queries.Base {
-	t.Helper()
-	dir := t.TempDir()
-	prev, _ := os.Getwd()
-	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
-	_ = os.MkdirAll("lc_base", 0o775)
-	t.Cleanup(func() { _ = os.Chdir(prev) })
-
-	if err := queries.New(migrations.Embed()); err != nil {
-		t.Fatalf("queries.New: %v", err)
-	}
-	return queries.DB()
-}
 
 func TestEncryptionTypesLookup(t *testing.T) {
 	t.Parallel()
@@ -107,10 +89,12 @@ func TestTextTemplate_RendersData(t *testing.T) {
 }
 
 func TestEnsureSenderEmail_UsesConfigured(t *testing.T) {
-	db := bootstrapDB(t)
+	_, _, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
 	ctx := context.Background()
 	m := &models.Mail{SenderEmail: "configured@example.com"}
-	if err := ensureSenderEmail(ctx, db, m); err != nil {
+	if err := ensureSenderEmail(ctx, m); err != nil {
 		t.Fatalf("ensureSenderEmail: %v", err)
 	}
 	if m.SenderEmail != "configured@example.com" {
@@ -119,22 +103,26 @@ func TestEnsureSenderEmail_UsesConfigured(t *testing.T) {
 }
 
 func TestEnsureSenderEmail_EmptyFallbackMissing(t *testing.T) {
-	db := bootstrapDB(t)
+	_, _, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
 	ctx := context.Background()
 
 	// With a blank `email` setting the function must surface an error rather
 	// than silently leaving SenderEmail blank.
 	m := &models.Mail{}
-	if err := ensureSenderEmail(ctx, db, m); err == nil {
+	if err := ensureSenderEmail(ctx, m); err == nil {
 		t.Error("expected error when both sender email and user email are empty")
 	}
 }
 
 func TestEnsureSenderEmail_FallbackSuccess(t *testing.T) {
-	db := bootstrapDB(t)
+	_, _, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
 	ctx := context.Background()
 
-	if err := db.UpdateSettingByKey(ctx, &models.SettingName{
+	if err := store.UpdateSettingByKey(ctx, &models.SettingName{
 		Key:   "email",
 		Value: "owner@example.com",
 	}); err != nil {
@@ -142,7 +130,7 @@ func TestEnsureSenderEmail_FallbackSuccess(t *testing.T) {
 	}
 
 	m := &models.Mail{}
-	if err := ensureSenderEmail(ctx, db, m); err != nil {
+	if err := ensureSenderEmail(ctx, m); err != nil {
 		t.Fatalf("ensureSenderEmail: %v", err)
 	}
 	if m.SenderEmail != "owner@example.com" {
@@ -151,7 +139,9 @@ func TestEnsureSenderEmail_FallbackSuccess(t *testing.T) {
 }
 
 func TestSendTestLetter_RejectsMissingSMTP(t *testing.T) {
-	bootstrapDB(t)
+	_, _, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
 	if err := SendTestLetter("smtp"); err == nil {
 		t.Error("expected error when SMTP is unconfigured")
 	}
@@ -159,10 +149,10 @@ func TestSendTestLetter_RejectsMissingSMTP(t *testing.T) {
 
 // seedSMTP fills the mail settings group with a minimal usable SMTP config,
 // so letter functions proceed past the graceful "SMTP not configured" skip.
-func seedSMTP(t *testing.T, db *queries.Base) {
+func seedSMTP(t *testing.T) {
 	t.Helper()
 
-	setting, err := queries.GetSettingByGroup[models.Mail](context.Background(), db)
+	setting, err := store.GetSettingByGroupTyped[models.Mail](context.Background())
 	if err != nil {
 		t.Fatalf("load mail settings: %v", err)
 	}
@@ -170,14 +160,16 @@ func seedSMTP(t *testing.T, db *queries.Base) {
 	setting.SMTP.Port = 25
 	setting.SMTP.Username = "u"
 	setting.SMTP.Password = "p"
-	if err := db.UpdateSettingByGroup(context.Background(), setting); err != nil {
+	if err := store.UpdateSettingByGroup(context.Background(), setting); err != nil {
 		t.Fatalf("seed smtp: %v", err)
 	}
 }
 
 func TestSendPrepaymentLetter_MissingTemplate(t *testing.T) {
-	db := bootstrapDB(t)
-	seedSMTP(t, db)
+	_, _, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	seedSMTP(t)
 	// With SMTP configured the call reaches CartLetterPayment, which fails
 	// to unmarshal the missing payment template.
 	if err := SendPrepaymentLetter("x@y.com", "1 USD", "http://pay"); err == nil {
@@ -186,7 +178,9 @@ func TestSendPrepaymentLetter_MissingTemplate(t *testing.T) {
 }
 
 func TestSendPrepaymentLetter_SkipsWhenSMTPUnconfigured(t *testing.T) {
-	bootstrapDB(t)
+	_, _, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
 	// No template seeded and no SMTP configured: the letter must be skipped
 	// gracefully instead of returning an error (dev/test environments).
 	if err := SendPrepaymentLetter("x@y.com", "1 USD", "http://pay"); err != nil {
@@ -195,8 +189,10 @@ func TestSendPrepaymentLetter_SkipsWhenSMTPUnconfigured(t *testing.T) {
 }
 
 func TestSendCartLetter_CartNotFound(t *testing.T) {
-	db := bootstrapDB(t)
-	seedSMTP(t, db)
+	_, _, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	seedSMTP(t)
 
 	if err := SendCartLetter("missing-cart"); err == nil {
 		t.Error("expected error for missing cart")

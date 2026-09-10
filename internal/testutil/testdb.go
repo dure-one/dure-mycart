@@ -44,7 +44,9 @@ func SetupTestDB(t *testing.T) func() {
 
 	dirCleanup := WithCmdTestDir(t)
 
-	sqlite, err := sql.Open("sqlite", ":memory:?_pragma=foreign_keys(ON)")
+	// Use file::memory:?mode=memory&cache=shared to share in-memory DB across connections
+	// Plain :memory: creates separate DB per connection!
+	sqlite, err := sql.Open("sqlite", "file::memory:?mode=memory&cache=shared&_pragma=foreign_keys(ON)")
 	if err != nil {
 		t.Fatalf("open in-memory sqlite: %v", err)
 	}
