@@ -749,7 +749,7 @@ func initPostgres(sqlDB *sql.DB) {
 			Amount:      pgDetail.Amount,
 			Quantity:    sql.NullInt64{Int64: int64(pgDetail.Quantity.Int32), Valid: pgDetail.Quantity.Valid},
 			Sku:         pgDetail.Sku,
-			HasVariants: false, // GetProductDetailBySlug doesn't return this field
+			HasVariants: pgDetail.HasVariants.Bool,
 			Metadata:    pgDetail.Metadata,
 			Attribute:   pgDetail.Attribute,
 			Seo:         pgDetail.Seo,

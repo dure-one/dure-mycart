@@ -748,6 +748,21 @@ func convertProductListRowToModel(row db.ProductListRow) *models.Product {
 		json.Unmarshal(row.Attribute, &p.Attributes)
 	}
 
+	// Handle HasVariants nullable boolean
+	if row.HasVariants.Valid {
+		p.HasVariants = row.HasVariants.Bool
+	}
+
+	// Parse images JSON array
+	if len(row.Image) > 0 && string(row.Image) != "[]" {
+		json.Unmarshal(row.Image, &p.Images)
+	}
+
+	// Parse variants JSON array
+	if len(row.Variants) > 0 && string(row.Variants) != "[]" {
+		json.Unmarshal(row.Variants, &p.Variants)
+	}
+
 	return p
 }
 
