@@ -705,7 +705,7 @@ func initPostgres(sqlDB *sql.DB) {
 		if err != nil {
 			return ProductDetail{}, err
 		}
-		return ProductDetail{
+		detail := ProductDetail{
 			ID:          pgDetail.ID,
 			Name:        pgDetail.Name,
 			Brief:       pgDetail.Brief,
@@ -720,9 +720,15 @@ func initPostgres(sqlDB *sql.DB) {
 			Seo:         pgDetail.Seo,
 			Digital:     pgDetail.Digital,
 			Active:      pgDetail.Active,
-			Created:     sql.NullTime{Time: time.Unix(pgDetail.Created, 0), Valid: pgDetail.Created != 0},
-			Updated:     sql.NullTime{Time: time.Unix(pgDetail.Updated, 0), Valid: pgDetail.Updated != 0},
-		}, nil
+		}
+		// Handle interface{} types from PostgreSQL
+		if createdInt, ok := pgDetail.Created.(int64); ok && createdInt != 0 {
+			detail.Created = sql.NullTime{Time: time.Unix(createdInt, 0), Valid: true}
+		}
+		if updatedInt, ok := pgDetail.Updated.(int64); ok && updatedInt != 0 {
+			detail.Updated = sql.NullTime{Time: time.Unix(updatedInt, 0), Valid: true}
+		}
+		return detail, nil
 	}
 
 	GetProductDetailBySlugFunc = func(ctx context.Context, slug string) (ProductDetail, error) {
@@ -730,7 +736,7 @@ func initPostgres(sqlDB *sql.DB) {
 		if err != nil {
 			return ProductDetail{}, err
 		}
-		return ProductDetail{
+		detail := ProductDetail{
 			ID:          pgDetail.ID,
 			Name:        pgDetail.Name,
 			Brief:       pgDetail.Brief,
@@ -745,9 +751,15 @@ func initPostgres(sqlDB *sql.DB) {
 			Seo:         pgDetail.Seo,
 			Digital:     pgDetail.Digital,
 			Active:      pgDetail.Active,
-			Created:     sql.NullTime{Time: time.Unix(pgDetail.Created, 0), Valid: pgDetail.Created != 0},
-			Updated:     sql.NullTime{Time: time.Unix(pgDetail.Updated, 0), Valid: pgDetail.Updated != 0},
-		}, nil
+		}
+		// Handle interface{} types from PostgreSQL
+		if createdInt, ok := pgDetail.Created.(int64); ok && createdInt != 0 {
+			detail.Created = sql.NullTime{Time: time.Unix(createdInt, 0), Valid: true}
+		}
+		if updatedInt, ok := pgDetail.Updated.(int64); ok && updatedInt != 0 {
+			detail.Updated = sql.NullTime{Time: time.Unix(updatedInt, 0), Valid: true}
+		}
+		return detail, nil
 	}
 
 	// Product image operations

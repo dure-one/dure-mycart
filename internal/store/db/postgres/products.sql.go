@@ -377,8 +377,8 @@ SELECT DISTINCT
   jsonb_agg(jsonb_build_object('id', pi.id, 'name', pi.name, 'ext', pi.ext)) as images,
   EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = p.id AND digital_data.cart_id IS NULL) OR
   EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = p.id) AS digital_filled,
-  EXTRACT(EPOCH FROM p.created)::bigint as created,
-  EXTRACT(EPOCH FROM p.updated)::bigint as updated
+  COALESCE(EXTRACT(EPOCH FROM p.created)::bigint, 0) as created,
+  COALESCE(EXTRACT(EPOCH FROM p.updated)::bigint, 0) as updated
 FROM product p
 LEFT JOIN product_image pi ON p.id = pi.product_id
 WHERE p.id = $1
@@ -402,8 +402,8 @@ type GetProductDetailByIDRow struct {
 	Seo           json.RawMessage `json:"seo"`
 	Images        json.RawMessage `json:"images"`
 	DigitalFilled sql.NullBool    `json:"digital_filled"`
-	Created       int64           `json:"created"`
-	Updated       int64           `json:"updated"`
+	Created       interface{}     `json:"created"`
+	Updated       interface{}     `json:"updated"`
 }
 
 func (q *Queries) GetProductDetailByID(ctx context.Context, id string) (GetProductDetailByIDRow, error) {
@@ -449,8 +449,8 @@ SELECT DISTINCT
   p.digital,
   p.seo,
   jsonb_agg(jsonb_build_object('id', pi.id, 'name', pi.name, 'ext', pi.ext)) as images,
-  EXTRACT(EPOCH FROM p.created)::bigint as created,
-  EXTRACT(EPOCH FROM p.updated)::bigint as updated
+  COALESCE(EXTRACT(EPOCH FROM p.created)::bigint, 0) as created,
+  COALESCE(EXTRACT(EPOCH FROM p.updated)::bigint, 0) as updated
 FROM product p
 LEFT JOIN product_image pi ON p.id = pi.product_id
 WHERE p.slug = $1 AND p.deleted = FALSE AND p.active = TRUE
@@ -473,8 +473,8 @@ type GetProductDetailBySlugRow struct {
 	Digital     sql.NullString  `json:"digital"`
 	Seo         json.RawMessage `json:"seo"`
 	Images      json.RawMessage `json:"images"`
-	Created     int64           `json:"created"`
-	Updated     int64           `json:"updated"`
+	Created     interface{}     `json:"created"`
+	Updated     interface{}     `json:"updated"`
 }
 
 func (q *Queries) GetProductDetailBySlug(ctx context.Context, slug string) (GetProductDetailBySlugRow, error) {
