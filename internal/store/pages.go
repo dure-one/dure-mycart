@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/store/db"
@@ -78,7 +77,7 @@ func PageByID(ctx context.Context, id string) (*models.Page, error) {
 	dbPage, err := db.GetPageByIDFunc(ctx, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("page not found")
+			return nil, errors.ErrPageNotFound
 		}
 		return nil, err
 	}
@@ -226,6 +225,10 @@ func convertDBPageToModel(dbPage db.Page) *models.Page {
 func loadPageSeo(ctx context.Context, page *models.Page) error {
 	seo, err := db.GetPageSeoFunc(ctx, page.ID)
 	if err != nil {
+		// SEO data is optional - if not found, just skip
+		if err == sql.ErrNoRows {
+			return nil
+		}
 		return err
 	}
 
