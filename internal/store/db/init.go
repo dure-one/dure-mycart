@@ -613,6 +613,13 @@ func initPostgres(sqlDB *sql.DB) {
 		return q.SoftDeleteProduct(ctx, id)
 	}
 
+	CheckSlugExistsFunc = func(ctx context.Context, slug string, excludeID string) (int64, error) {
+		return q.CheckSlugExists(ctx, postgres.CheckSlugExistsParams{
+			Slug: slug,
+			ID:   excludeID,
+		})
+	}
+
 	ListProductsPrivateFunc = func(ctx context.Context, params ListProductsPrivateParams) ([]ProductListRow, error) {
 		pgProducts, err := q.ListProductsPrivate(ctx, postgres.ListProductsPrivateParams{
 			Limit:  params.Limit,
@@ -624,17 +631,27 @@ func initPostgres(sqlDB *sql.DB) {
 		products := make([]ProductListRow, len(pgProducts))
 		for i, pg := range pgProducts {
 			products[i] = ProductListRow{
-				ID:       pg.ID,
-				Name:     pg.Name,
-				Brief:    pg.Brief,
-				Slug:     pg.Slug,
-				Amount:   pg.Amount,
-				Quantity: sql.NullInt64{Int64: int64(pg.Quantity.Int32), Valid: pg.Quantity.Valid},
-				Digital:  pg.Digital,
-				Active:   pg.Active,
+				ID:            pg.ID,
+				Name:          pg.Name,
+				Brief:         pg.Brief,
+				Slug:          pg.Slug,
+				Amount:        pg.Amount,
+				Quantity:      sql.NullInt64{Int64: int64(pg.Quantity.Int32), Valid: pg.Quantity.Valid},
+				HasVariants:   pg.HasVariants,
+				Digital:       pg.Digital,
+				DigitalFilled: pg.DigitalFilled,
+				Active:        pg.Active,
 			}
-			if pg.HasVariants.Valid {
-				products[i].Metadata = []byte(fmt.Sprintf(`{"has_variants":%t}`, pg.HasVariants.Bool))
+			// Convert interface{} to []byte for Image and Variants
+			if imageData, ok := pg.Image.([]byte); ok {
+				products[i].Image = imageData
+			} else if imageStr, ok := pg.Image.(string); ok {
+				products[i].Image = []byte(imageStr)
+			}
+			if variantsData, ok := pg.Variants.([]byte); ok {
+				products[i].Variants = variantsData
+			} else if variantsStr, ok := pg.Variants.(string); ok {
+				products[i].Variants = []byte(variantsStr)
 			}
 			if pg.Created != 0 {
 				products[i].Created = sql.NullTime{Time: time.Unix(pg.Created, 0), Valid: true}
@@ -654,17 +671,27 @@ func initPostgres(sqlDB *sql.DB) {
 		products := make([]ProductListRow, len(pgProducts))
 		for i, pg := range pgProducts {
 			products[i] = ProductListRow{
-				ID:       pg.ID,
-				Name:     pg.Name,
-				Brief:    pg.Brief,
-				Slug:     pg.Slug,
-				Amount:   pg.Amount,
-				Quantity: sql.NullInt64{Int64: int64(pg.Quantity.Int32), Valid: pg.Quantity.Valid},
-				Digital:  pg.Digital,
-				Active:   pg.Active,
+				ID:            pg.ID,
+				Name:          pg.Name,
+				Brief:         pg.Brief,
+				Slug:          pg.Slug,
+				Amount:        pg.Amount,
+				Quantity:      sql.NullInt64{Int64: int64(pg.Quantity.Int32), Valid: pg.Quantity.Valid},
+				HasVariants:   pg.HasVariants,
+				Digital:       pg.Digital,
+				DigitalFilled: pg.DigitalFilled,
+				Active:        pg.Active,
 			}
-			if pg.HasVariants.Valid {
-				products[i].Metadata = []byte(fmt.Sprintf(`{"has_variants":%t}`, pg.HasVariants.Bool))
+			// Convert interface{} to []byte for Image and Variants
+			if imageData, ok := pg.Image.([]byte); ok {
+				products[i].Image = imageData
+			} else if imageStr, ok := pg.Image.(string); ok {
+				products[i].Image = []byte(imageStr)
+			}
+			if variantsData, ok := pg.Variants.([]byte); ok {
+				products[i].Variants = variantsData
+			} else if variantsStr, ok := pg.Variants.(string); ok {
+				products[i].Variants = []byte(variantsStr)
 			}
 			if pg.Created != 0 {
 				products[i].Created = sql.NullTime{Time: time.Unix(pg.Created, 0), Valid: true}
@@ -1585,6 +1612,13 @@ func initSQLite(sqlDB *sql.DB) {
 		return q.SoftDeleteProduct(ctx, id)
 	}
 
+	CheckSlugExistsFunc = func(ctx context.Context, slug string, excludeID string) (int64, error) {
+		return q.CheckSlugExists(ctx, sqlite.CheckSlugExistsParams{
+			Slug: slug,
+			ID:   excludeID,
+		})
+	}
+
 	ListProductsPrivateFunc = func(ctx context.Context, params ListProductsPrivateParams) ([]ProductListRow, error) {
 		sqliteProducts, err := q.ListProductsPrivate(ctx, sqlite.ListProductsPrivateParams{
 			Limit:  int64(params.Limit),
@@ -1596,20 +1630,30 @@ func initSQLite(sqlDB *sql.DB) {
 		products := make([]ProductListRow, len(sqliteProducts))
 		for i, sq := range sqliteProducts {
 			products[i] = ProductListRow{
-				ID:       sq.ID,
-				Name:     sq.Name,
-				Brief:    sq.Brief,
-				Slug:     sq.Slug,
-				Quantity: sql.NullInt64{Int64: sq.Quantity.Int64, Valid: sq.Quantity.Valid},
-				Digital:  sq.Digital,
-				Active:   sq.Active,
+				ID:            sq.ID,
+				Name:          sq.Name,
+				Brief:         sq.Brief,
+				Slug:          sq.Slug,
+				Quantity:      sql.NullInt64{Int64: sq.Quantity.Int64, Valid: sq.Quantity.Valid},
+				HasVariants:   sq.HasVariants,
+				Digital:       sq.Digital,
+				DigitalFilled: sq.DigitalFilled,
+				Active:        sq.Active,
 			}
 			// SQLite returns interface{} for some fields - need type assertions
 			if amountStr, ok := sq.Amount.(string); ok {
 				products[i].Amount = amountStr
 			}
-			if sq.HasVariants.Valid {
-				products[i].Metadata = []byte(fmt.Sprintf(`{"has_variants":%t}`, sq.HasVariants.Bool))
+			// Convert interface{} to []byte for Image and Variants
+			if imageData, ok := sq.Image.([]byte); ok {
+				products[i].Image = imageData
+			} else if imageStr, ok := sq.Image.(string); ok {
+				products[i].Image = []byte(imageStr)
+			}
+			if variantsData, ok := sq.Variants.([]byte); ok {
+				products[i].Variants = variantsData
+			} else if variantsStr, ok := sq.Variants.(string); ok {
+				products[i].Variants = []byte(variantsStr)
 			}
 			if createdInt, ok := sq.Created.(int64); ok && createdInt != 0 {
 				products[i].Created = sql.NullTime{Time: time.Unix(createdInt, 0), Valid: true}
@@ -1629,20 +1673,30 @@ func initSQLite(sqlDB *sql.DB) {
 		products := make([]ProductListRow, len(sqliteProducts))
 		for i, sq := range sqliteProducts {
 			products[i] = ProductListRow{
-				ID:       sq.ID,
-				Name:     sq.Name,
-				Brief:    sq.Brief,
-				Slug:     sq.Slug,
-				Quantity: sql.NullInt64{Int64: sq.Quantity.Int64, Valid: sq.Quantity.Valid},
-				Digital:  sq.Digital,
-				Active:   sq.Active,
+				ID:            sq.ID,
+				Name:          sq.Name,
+				Brief:         sq.Brief,
+				Slug:          sq.Slug,
+				Quantity:      sql.NullInt64{Int64: sq.Quantity.Int64, Valid: sq.Quantity.Valid},
+				HasVariants:   sq.HasVariants,
+				Digital:       sq.Digital,
+				DigitalFilled: sq.DigitalFilled,
+				Active:        sq.Active,
 			}
 			// SQLite returns interface{} for some fields - need type assertions
 			if amountStr, ok := sq.Amount.(string); ok {
 				products[i].Amount = amountStr
 			}
-			if sq.HasVariants.Valid {
-				products[i].Metadata = []byte(fmt.Sprintf(`{"has_variants":%t}`, sq.HasVariants.Bool))
+			// Convert interface{} to []byte for Image and Variants
+			if imageData, ok := sq.Image.([]byte); ok {
+				products[i].Image = imageData
+			} else if imageStr, ok := sq.Image.(string); ok {
+				products[i].Image = []byte(imageStr)
+			}
+			if variantsData, ok := sq.Variants.([]byte); ok {
+				products[i].Variants = variantsData
+			} else if variantsStr, ok := sq.Variants.(string); ok {
+				products[i].Variants = []byte(variantsStr)
 			}
 			if createdInt, ok := sq.Created.(int64); ok && createdInt != 0 {
 				products[i].Created = sql.NullTime{Time: time.Unix(createdInt, 0), Valid: true}

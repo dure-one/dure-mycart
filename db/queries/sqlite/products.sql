@@ -62,6 +62,9 @@ DELETE FROM product WHERE id = ?;
 -- name: ProductExists :one
 SELECT EXISTS(SELECT 1 FROM product WHERE slug = ? AND deleted = FALSE);
 
+-- name: CheckSlugExists :one
+SELECT COUNT(*) FROM product WHERE slug = ? AND id != ? AND deleted = FALSE;
+
 -- Product Variant Queries
 
 -- name: GetProductWithVariants :many
@@ -163,10 +166,10 @@ SELECT DISTINCT
   p.digital,
   EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = p.id AND digital_data.cart_id IS NULL) OR
   EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = p.id) AS digital_filled,
-  (SELECT json_group_array(json_object('id', product_image.id, 'name', product_image.name, 'ext', product_image.ext))
-   FROM product_image WHERE product_id = p.id GROUP BY id LIMIT 1) as image,
-  (SELECT json_group_array(json_object('id', pv.id, 'sku', pv.sku, 'quantity', pv.quantity, 'price_surcharge', pv.price_surcharge, 'option_values', json(pv.option_values), 'active', CASE WHEN pv.active = 1 THEN json('true') ELSE json('false') END))
-   FROM product_variant pv WHERE pv.product_id = p.id) as variants,
+  COALESCE((SELECT json_group_array(json_object('id', product_image.id, 'name', product_image.name, 'ext', product_image.ext))
+   FROM product_image WHERE product_id = p.id GROUP BY id LIMIT 1), '[]') as image,
+  COALESCE((SELECT json_group_array(json_object('id', pv.id, 'sku', pv.sku, 'quantity', pv.quantity, 'price_surcharge', pv.price_surcharge, 'option_values', json(pv.option_values), 'active', CASE WHEN pv.active = 1 THEN json('true') ELSE json('false') END))
+   FROM product_variant pv WHERE pv.product_id = p.id), '[]') as variants,
   strftime('%s', p.created) as created
 FROM product p
 WHERE p.deleted = 0
@@ -185,10 +188,10 @@ SELECT DISTINCT
   p.digital,
   EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = p.id AND digital_data.cart_id IS NULL) OR
   EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = p.id) AS digital_filled,
-  (SELECT json_group_array(json_object('id', product_image.id, 'name', product_image.name, 'ext', product_image.ext))
-   FROM product_image WHERE product_id = p.id GROUP BY id LIMIT 1) as image,
-  (SELECT json_group_array(json_object('id', pv.id, 'sku', pv.sku, 'quantity', pv.quantity, 'price_surcharge', pv.price_surcharge, 'option_values', json(pv.option_values), 'active', CASE WHEN pv.active = 1 THEN json('true') ELSE json('false') END))
-   FROM product_variant pv WHERE pv.product_id = p.id AND pv.active = 1) as variants,
+  COALESCE((SELECT json_group_array(json_object('id', product_image.id, 'name', product_image.name, 'ext', product_image.ext))
+   FROM product_image WHERE product_id = p.id GROUP BY id LIMIT 1), '[]') as image,
+  COALESCE((SELECT json_group_array(json_object('id', pv.id, 'sku', pv.sku, 'quantity', pv.quantity, 'price_surcharge', pv.price_surcharge, 'option_values', json(pv.option_values), 'active', CASE WHEN pv.active = 1 THEN json('true') ELSE json('false') END))
+   FROM product_variant pv WHERE pv.product_id = p.id AND pv.active = 1), '[]') as variants,
   strftime('%s', p.created) as created
 FROM product p
 WHERE p.deleted = 0 AND p.active = 1

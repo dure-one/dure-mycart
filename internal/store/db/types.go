@@ -783,21 +783,25 @@ type ListProductsPublicParams struct {
 
 // ProductListRow represents a product in list view
 type ProductListRow struct {
-	ID        string
-	Name      string
-	Brief     string
-	Desc      string
-	Slug      string
-	Amount    string
-	Quantity  sql.NullInt64
-	Sku       sql.NullString
-	Metadata  []byte
-	Attribute []byte
-	Digital   sql.NullString
-	Active    bool
-	Deleted   bool
-	Created   sql.NullTime
-	Updated   sql.NullTime
+	ID            string
+	Name          string
+	Brief         string
+	Desc          string
+	Slug          string
+	Amount        string
+	Quantity      sql.NullInt64
+	Sku           sql.NullString
+	HasVariants   sql.NullBool
+	Metadata      []byte
+	Attribute     []byte
+	Digital       sql.NullString
+	DigitalFilled sql.NullBool
+	Image         []byte // JSON array of images
+	Variants      []byte // JSON array of variants
+	Active        bool
+	Deleted       bool
+	Created       sql.NullTime
+	Updated       sql.NullTime
 }
 
 // ProductDetail represents full product details with all fields

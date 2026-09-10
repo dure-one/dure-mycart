@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"bytes"
+	"encoding/json"
 	"image"
 	"image/color"
 	"image/png"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -37,6 +39,49 @@ func TestProducts(t *testing.T) {
 			resp := testutil.DoRequest(t, app, http.MethodGet, "/api/_/products"+tt.query, "", "")
 			testutil.AssertStatus(t, resp, tt.wantStatus)
 		})
+	}
+}
+
+// TestProductsWithNullImageColumn tests that listing products works correctly
+// when products have no images (NULL image column in database).
+// Regression test for: "sql: Scan error on column index 10, name \"image\": unsupported Scan"
+func TestProductsWithNullImageColumn(t *testing.T) {
+	app, _, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	// First, create a product without images
+	app.Post("/api/_/products", AddProduct)
+	productBody := `{"name":"NoImageProduct","slug":"no-image-prod","amount":1000,"digital":{"type":"file"}}`
+	createResp := testutil.DoRequest(t, app, http.MethodPost, "/api/_/products", productBody, "")
+	testutil.AssertStatus(t, createResp, http.StatusOK)
+
+	// Now list products - should not fail with scan error even though product has no images
+	app.Get("/api/_/products", Products)
+	listResp := testutil.DoRequest(t, app, http.MethodGet, "/api/_/products", "", "")
+
+	// Read response body BEFORE AssertStatus closes it
+	body, err := io.ReadAll(listResp.Body)
+	if err != nil {
+		t.Fatalf("failed to read response body: %v", err)
+	}
+	listResp.Body.Close()
+
+	// Now check status
+	testutil.AssertStatusCode(t, listResp.StatusCode, http.StatusOK)
+
+	// Verify response contains products array
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	products, ok := result["result"].(map[string]interface{})["products"]
+	if !ok {
+		t.Fatal("response missing products array")
+	}
+
+	if products == nil {
+		t.Fatal("products should not be nil")
 	}
 }
 
@@ -289,14 +334,16 @@ func createTestImageBadMIME(t *testing.T) (*bytes.Buffer, string) {
 }
 
 func TestGenerateSlugHandler(t *testing.T) {
-	app, _, cleanup := testutil.SetupTestApp(t)
+	app, cookie, cleanup := testutil.SetupTestApp(t)
 	defer cleanup()
 
 	app.Post("/api/_/products/slug/generate", GenerateSlug)
+	app.Post("/api/_/products", AddProduct)
 
 	tests := []struct {
 		name       string
 		payload    string
+		setup      func(t *testing.T) // Optional setup function
 		wantStatus int
 		wantSlug   string
 	}{
@@ -311,13 +358,78 @@ func TestGenerateSlugHandler(t *testing.T) {
 			payload:    `{"name": ""}`,
 			wantStatus: 400,
 		},
+		{
+			name:       "handles existing slug with increment",
+			payload:    `{"name": "Yoga Strap"}`,
+			wantStatus: 200,
+			wantSlug:   "yoga-strap-2",
+			setup: func(t *testing.T) {
+				// Create existing product with slug "yoga-strap"
+				productPayload := `{
+					"name": "Existing Yoga Strap",
+					"slug": "yoga-strap",
+					"amount": 1000,
+					"digital": {"type": "file"}
+				}`
+				resp := testutil.DoRequest(t, app, http.MethodPost, "/api/_/products", productPayload, cookie)
+				testutil.AssertStatus(t, resp, 200)
+			},
+		},
+		{
+			name:       "excludes own ID when updating",
+			payload:    `{"name": "Premium Yoga Strap", "exclude_id": "test-product-id"}`,
+			wantStatus: 200,
+			wantSlug:   "premium-yoga-strap",
+			setup: func(t *testing.T) {
+				// Create product with same slug but will be excluded by ID
+				productPayload := `{
+					"id": "test-product-id",
+					"name": "Existing Premium Yoga Strap",
+					"slug": "premium-yoga-strap",
+					"amount": 1000,
+					"digital": {"type": "file"}
+				}`
+				resp := testutil.DoRequest(t, app, http.MethodPost, "/api/_/products", productPayload, cookie)
+				testutil.AssertStatus(t, resp, 200)
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp := testutil.DoRequest(t, app, http.MethodPost, "/api/_/products/slug/generate", tt.payload, "")
+			if tt.setup != nil {
+				tt.setup(t)
+			}
+
+			resp := testutil.DoRequest(t, app, http.MethodPost, "/api/_/products/slug/generate", tt.payload, cookie)
+
+			// Read body before AssertStatus (which might close it)
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatalf("Failed to read response body: %v", err)
+			}
+			defer resp.Body.Close()
+
 			testutil.AssertStatus(t, resp, tt.wantStatus)
-			// Note: Full response validation will be added when handler is implemented
+
+			if tt.wantStatus == 200 && tt.wantSlug != "" {
+				var result map[string]interface{}
+				if err := json.Unmarshal(body, &result); err != nil {
+					t.Fatalf("Failed to unmarshal response: %v", err)
+				}
+
+				if resultData, ok := result["result"].(map[string]interface{}); ok {
+					if slug, ok := resultData["slug"].(string); ok {
+						if slug != tt.wantSlug {
+							t.Errorf("Expected slug %q, got %q", tt.wantSlug, slug)
+						}
+					} else {
+						t.Error("Response missing 'slug' field")
+					}
+				} else {
+					t.Error("Response missing 'result' field")
+				}
+			}
 		})
 	}
 }
