@@ -96,6 +96,8 @@ async function installStore(baseURL: string) {
         email: 'admin@example.com',
         password: 'test1234',
         domain: 'localhost:8080',
+        dbType: 'sqlite',
+        sqlitePath: 'lc_base/data.db',
       }),
       signal: controller.signal,
     })
