@@ -604,7 +604,7 @@ func ImportPreview(c fiber.Ctx) error {
 	defer file.Close()
 
 	// Create importer and validate
-	importer := csvimport.NewCSVImporter(db.DB())
+	importer := csvimport.NewCSVImporter(db.DB(), db.Type())
 	result, _, err := importer.ValidateAndPreview(file)
 	if err != nil {
 		log.ErrorStack(err)
@@ -643,7 +643,7 @@ func ImportProducts(c fiber.Ctx) error {
 	defer file.Close()
 
 	// Create importer and validate
-	importer := csvimport.NewCSVImporter(db.DB())
+	importer := csvimport.NewCSVImporter(db.DB(), db.Type())
 	_, products, err := importer.ValidateAndPreview(file)
 	if err != nil {
 		log.ErrorStack(err)

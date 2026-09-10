@@ -40,7 +40,7 @@ func TestCSVValidation(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
-	importer := NewCSVImporter(db)
+	importer := NewCSVImporter(db, "sqlite")
 
 	tests := []struct {
 		name       string
