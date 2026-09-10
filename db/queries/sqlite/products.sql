@@ -1,20 +1,20 @@
 -- name: GetProductByID :one
-SELECT id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated
+SELECT id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated, seo, brief, quantity, sku, has_variants
 FROM product WHERE id = ? AND deleted = FALSE LIMIT 1;
 
 -- name: GetProductBySlug :one
-SELECT id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated
+SELECT id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated, seo, brief, quantity, sku, has_variants
 FROM product WHERE slug = ? AND deleted = FALSE LIMIT 1;
 
 -- name: ListProducts :many
-SELECT id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated
+SELECT id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated, seo, brief, quantity, sku, has_variants
 FROM product
 WHERE deleted = FALSE
 ORDER BY created DESC
 LIMIT ? OFFSET ?;
 
 -- name: ListActiveProducts :many
-SELECT id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated
+SELECT id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated, seo, brief, quantity, sku, has_variants
 FROM product
 WHERE active = TRUE AND deleted = FALSE
 ORDER BY created DESC

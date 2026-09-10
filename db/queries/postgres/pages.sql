@@ -1,19 +1,19 @@
 -- name: GetPageByID :one
-SELECT id, name, slug, content, position, active, created, updated
+SELECT id, name, slug, content, position, active, created, updated, seo
 FROM page WHERE id = $1 LIMIT 1;
 
 -- name: GetPageBySlug :one
-SELECT id, name, slug, content, position, active, created, updated
+SELECT id, name, slug, content, position, active, created, updated, seo
 FROM page WHERE slug = $1 LIMIT 1;
 
 -- name: ListPages :many
-SELECT id, name, slug, content, position, active, created, updated
+SELECT id, name, slug, content, position, active, created, updated, seo
 FROM page
 ORDER BY created DESC
 LIMIT $1 OFFSET $2;
 
 -- name: ListPagesByPosition :many
-SELECT id, name, slug, content, position, active, created, updated
+SELECT id, name, slug, content, position, active, created, updated, seo
 FROM page
 WHERE position = $1 AND active = $2
 ORDER BY created DESC;
@@ -24,7 +24,7 @@ SELECT COUNT(*) FROM page;
 -- name: CreatePage :one
 INSERT INTO page (id, name, slug, content, position, active, created)
 VALUES ($1, $2, $3, $4, $5, $6, NOW())
-RETURNING id, name, slug, content, position, active, created, updated;
+RETURNING id, name, slug, content, position, active, created, updated, seo;
 
 -- name: UpdatePage :exec
 UPDATE page

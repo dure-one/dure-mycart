@@ -25,3 +25,12 @@ sql:
         emit_interface: false
         emit_exact_table_names: false
         emit_empty_slices: true
+        overrides:
+          - column: "product.seo"
+            go_type: "string"
+          - column: "page.seo"
+            go_type: "string"
+          - column: "product.metadata"
+            go_type: "string"
+          - column: "product.attribute"
+            go_type: "string"

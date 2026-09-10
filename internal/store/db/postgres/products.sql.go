@@ -279,28 +279,13 @@ func (q *Queries) DeleteProductVariant(ctx context.Context, id string) error {
 }
 
 const getProductByID = `-- name: GetProductByID :one
-SELECT id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated
+SELECT id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated, seo, brief, quantity, sku, has_variants
 FROM product WHERE id = $1 AND deleted = FALSE LIMIT 1
 `
 
-type GetProductByIDRow struct {
-	ID        string          `json:"id"`
-	Name      string          `json:"name"`
-	Desc      string          `json:"desc"`
-	Slug      string          `json:"slug"`
-	Amount    string          `json:"amount"`
-	Metadata  json.RawMessage `json:"metadata"`
-	Attribute json.RawMessage `json:"attribute"`
-	Digital   sql.NullString  `json:"digital"`
-	Active    bool            `json:"active"`
-	Deleted   bool            `json:"deleted"`
-	Created   sql.NullTime    `json:"created"`
-	Updated   sql.NullTime    `json:"updated"`
-}
-
-func (q *Queries) GetProductByID(ctx context.Context, id string) (GetProductByIDRow, error) {
+func (q *Queries) GetProductByID(ctx context.Context, id string) (Product, error) {
 	row := q.queryRow(ctx, q.getProductByIDStmt, getProductByID, id)
-	var i GetProductByIDRow
+	var i Product
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -314,33 +299,23 @@ func (q *Queries) GetProductByID(ctx context.Context, id string) (GetProductByID
 		&i.Deleted,
 		&i.Created,
 		&i.Updated,
+		&i.Seo,
+		&i.Brief,
+		&i.Quantity,
+		&i.Sku,
+		&i.HasVariants,
 	)
 	return i, err
 }
 
 const getProductBySlug = `-- name: GetProductBySlug :one
-SELECT id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated
+SELECT id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated, seo, brief, quantity, sku, has_variants
 FROM product WHERE slug = $1 AND deleted = FALSE LIMIT 1
 `
 
-type GetProductBySlugRow struct {
-	ID        string          `json:"id"`
-	Name      string          `json:"name"`
-	Desc      string          `json:"desc"`
-	Slug      string          `json:"slug"`
-	Amount    string          `json:"amount"`
-	Metadata  json.RawMessage `json:"metadata"`
-	Attribute json.RawMessage `json:"attribute"`
-	Digital   sql.NullString  `json:"digital"`
-	Active    bool            `json:"active"`
-	Deleted   bool            `json:"deleted"`
-	Created   sql.NullTime    `json:"created"`
-	Updated   sql.NullTime    `json:"updated"`
-}
-
-func (q *Queries) GetProductBySlug(ctx context.Context, slug string) (GetProductBySlugRow, error) {
+func (q *Queries) GetProductBySlug(ctx context.Context, slug string) (Product, error) {
 	row := q.queryRow(ctx, q.getProductBySlugStmt, getProductBySlug, slug)
-	var i GetProductBySlugRow
+	var i Product
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -354,6 +329,11 @@ func (q *Queries) GetProductBySlug(ctx context.Context, slug string) (GetProduct
 		&i.Deleted,
 		&i.Created,
 		&i.Updated,
+		&i.Seo,
+		&i.Brief,
+		&i.Quantity,
+		&i.Sku,
+		&i.HasVariants,
 	)
 	return i, err
 }
@@ -693,7 +673,7 @@ func (q *Queries) GetProductsWithImages(ctx context.Context) ([]GetProductsWithI
 }
 
 const listActiveProducts = `-- name: ListActiveProducts :many
-SELECT id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated
+SELECT id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated, seo, brief, quantity, sku, has_variants
 FROM product
 WHERE active = TRUE AND deleted = FALSE
 ORDER BY created DESC
@@ -705,30 +685,15 @@ type ListActiveProductsParams struct {
 	Offset int32 `json:"offset"`
 }
 
-type ListActiveProductsRow struct {
-	ID        string          `json:"id"`
-	Name      string          `json:"name"`
-	Desc      string          `json:"desc"`
-	Slug      string          `json:"slug"`
-	Amount    string          `json:"amount"`
-	Metadata  json.RawMessage `json:"metadata"`
-	Attribute json.RawMessage `json:"attribute"`
-	Digital   sql.NullString  `json:"digital"`
-	Active    bool            `json:"active"`
-	Deleted   bool            `json:"deleted"`
-	Created   sql.NullTime    `json:"created"`
-	Updated   sql.NullTime    `json:"updated"`
-}
-
-func (q *Queries) ListActiveProducts(ctx context.Context, arg ListActiveProductsParams) ([]ListActiveProductsRow, error) {
+func (q *Queries) ListActiveProducts(ctx context.Context, arg ListActiveProductsParams) ([]Product, error) {
 	rows, err := q.query(ctx, q.listActiveProductsStmt, listActiveProducts, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListActiveProductsRow{}
+	items := []Product{}
 	for rows.Next() {
-		var i ListActiveProductsRow
+		var i Product
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -742,6 +707,11 @@ func (q *Queries) ListActiveProducts(ctx context.Context, arg ListActiveProducts
 			&i.Deleted,
 			&i.Created,
 			&i.Updated,
+			&i.Seo,
+			&i.Brief,
+			&i.Quantity,
+			&i.Sku,
+			&i.HasVariants,
 		); err != nil {
 			return nil, err
 		}
@@ -932,7 +902,7 @@ func (q *Queries) ListProductVariantsByProduct(ctx context.Context, productID st
 }
 
 const listProducts = `-- name: ListProducts :many
-SELECT id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated
+SELECT id, name, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated, seo, brief, quantity, sku, has_variants
 FROM product
 WHERE deleted = FALSE
 ORDER BY created DESC
@@ -944,30 +914,15 @@ type ListProductsParams struct {
 	Offset int32 `json:"offset"`
 }
 
-type ListProductsRow struct {
-	ID        string          `json:"id"`
-	Name      string          `json:"name"`
-	Desc      string          `json:"desc"`
-	Slug      string          `json:"slug"`
-	Amount    string          `json:"amount"`
-	Metadata  json.RawMessage `json:"metadata"`
-	Attribute json.RawMessage `json:"attribute"`
-	Digital   sql.NullString  `json:"digital"`
-	Active    bool            `json:"active"`
-	Deleted   bool            `json:"deleted"`
-	Created   sql.NullTime    `json:"created"`
-	Updated   sql.NullTime    `json:"updated"`
-}
-
-func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]ListProductsRow, error) {
+func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]Product, error) {
 	rows, err := q.query(ctx, q.listProductsStmt, listProducts, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListProductsRow{}
+	items := []Product{}
 	for rows.Next() {
-		var i ListProductsRow
+		var i Product
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -981,6 +936,11 @@ func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]L
 			&i.Deleted,
 			&i.Created,
 			&i.Updated,
+			&i.Seo,
+			&i.Brief,
+			&i.Quantity,
+			&i.Sku,
+			&i.HasVariants,
 		); err != nil {
 			return nil, err
 		}

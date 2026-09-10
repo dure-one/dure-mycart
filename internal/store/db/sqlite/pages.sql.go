@@ -8,7 +8,6 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 )
 
 const countPages = `-- name: CountPages :one
@@ -25,7 +24,7 @@ func (q *Queries) CountPages(ctx context.Context) (int64, error) {
 const createPage = `-- name: CreatePage :one
 INSERT INTO page (id, name, slug, content, position, active, created)
 VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-RETURNING id, name, slug, content, position, active, created, updated
+RETURNING id, name, slug, content, position, active, created, updated, seo
 `
 
 type CreatePageParams struct {
@@ -37,18 +36,7 @@ type CreatePageParams struct {
 	Active   bool           `json:"active"`
 }
 
-type CreatePageRow struct {
-	ID       string         `json:"id"`
-	Name     string         `json:"name"`
-	Slug     string         `json:"slug"`
-	Content  sql.NullString `json:"content"`
-	Position string         `json:"position"`
-	Active   bool           `json:"active"`
-	Created  sql.NullTime   `json:"created"`
-	Updated  sql.NullTime   `json:"updated"`
-}
-
-func (q *Queries) CreatePage(ctx context.Context, arg CreatePageParams) (CreatePageRow, error) {
+func (q *Queries) CreatePage(ctx context.Context, arg CreatePageParams) (Page, error) {
 	row := q.queryRow(ctx, q.createPageStmt, createPage,
 		arg.ID,
 		arg.Name,
@@ -57,7 +45,7 @@ func (q *Queries) CreatePage(ctx context.Context, arg CreatePageParams) (CreateP
 		arg.Position,
 		arg.Active,
 	)
-	var i CreatePageRow
+	var i Page
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -67,6 +55,7 @@ func (q *Queries) CreatePage(ctx context.Context, arg CreatePageParams) (CreateP
 		&i.Active,
 		&i.Created,
 		&i.Updated,
+		&i.Seo,
 	)
 	return i, err
 }
@@ -81,24 +70,13 @@ func (q *Queries) DeletePage(ctx context.Context, id string) error {
 }
 
 const getPageByID = `-- name: GetPageByID :one
-SELECT id, name, slug, content, position, active, created, updated
+SELECT id, name, slug, content, position, active, created, updated, seo
 FROM page WHERE id = ? LIMIT 1
 `
 
-type GetPageByIDRow struct {
-	ID       string         `json:"id"`
-	Name     string         `json:"name"`
-	Slug     string         `json:"slug"`
-	Content  sql.NullString `json:"content"`
-	Position string         `json:"position"`
-	Active   bool           `json:"active"`
-	Created  sql.NullTime   `json:"created"`
-	Updated  sql.NullTime   `json:"updated"`
-}
-
-func (q *Queries) GetPageByID(ctx context.Context, id string) (GetPageByIDRow, error) {
+func (q *Queries) GetPageByID(ctx context.Context, id string) (Page, error) {
 	row := q.queryRow(ctx, q.getPageByIDStmt, getPageByID, id)
-	var i GetPageByIDRow
+	var i Page
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -108,29 +86,19 @@ func (q *Queries) GetPageByID(ctx context.Context, id string) (GetPageByIDRow, e
 		&i.Active,
 		&i.Created,
 		&i.Updated,
+		&i.Seo,
 	)
 	return i, err
 }
 
 const getPageBySlug = `-- name: GetPageBySlug :one
-SELECT id, name, slug, content, position, active, created, updated
+SELECT id, name, slug, content, position, active, created, updated, seo
 FROM page WHERE slug = ? LIMIT 1
 `
 
-type GetPageBySlugRow struct {
-	ID       string         `json:"id"`
-	Name     string         `json:"name"`
-	Slug     string         `json:"slug"`
-	Content  sql.NullString `json:"content"`
-	Position string         `json:"position"`
-	Active   bool           `json:"active"`
-	Created  sql.NullTime   `json:"created"`
-	Updated  sql.NullTime   `json:"updated"`
-}
-
-func (q *Queries) GetPageBySlug(ctx context.Context, slug string) (GetPageBySlugRow, error) {
+func (q *Queries) GetPageBySlug(ctx context.Context, slug string) (Page, error) {
 	row := q.queryRow(ctx, q.getPageBySlugStmt, getPageBySlug, slug)
-	var i GetPageBySlugRow
+	var i Page
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -140,6 +108,7 @@ func (q *Queries) GetPageBySlug(ctx context.Context, slug string) (GetPageBySlug
 		&i.Active,
 		&i.Created,
 		&i.Updated,
+		&i.Seo,
 	)
 	return i, err
 }
@@ -148,9 +117,9 @@ const getPageSeo = `-- name: GetPageSeo :one
 SELECT seo FROM page WHERE id = ?
 `
 
-func (q *Queries) GetPageSeo(ctx context.Context, id string) (json.RawMessage, error) {
+func (q *Queries) GetPageSeo(ctx context.Context, id string) (string, error) {
 	row := q.queryRow(ctx, q.getPageSeoStmt, getPageSeo, id)
-	var seo json.RawMessage
+	var seo string
 	err := row.Scan(&seo)
 	return seo, err
 }
@@ -204,7 +173,7 @@ func (q *Queries) ListAllPages(ctx context.Context) ([]ListAllPagesRow, error) {
 }
 
 const listPages = `-- name: ListPages :many
-SELECT id, name, slug, content, position, active, created, updated
+SELECT id, name, slug, content, position, active, created, updated, seo
 FROM page
 ORDER BY created DESC
 LIMIT ? OFFSET ?
@@ -215,26 +184,15 @@ type ListPagesParams struct {
 	Offset int64 `json:"offset"`
 }
 
-type ListPagesRow struct {
-	ID       string         `json:"id"`
-	Name     string         `json:"name"`
-	Slug     string         `json:"slug"`
-	Content  sql.NullString `json:"content"`
-	Position string         `json:"position"`
-	Active   bool           `json:"active"`
-	Created  sql.NullTime   `json:"created"`
-	Updated  sql.NullTime   `json:"updated"`
-}
-
-func (q *Queries) ListPages(ctx context.Context, arg ListPagesParams) ([]ListPagesRow, error) {
+func (q *Queries) ListPages(ctx context.Context, arg ListPagesParams) ([]Page, error) {
 	rows, err := q.query(ctx, q.listPagesStmt, listPages, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListPagesRow{}
+	items := []Page{}
 	for rows.Next() {
-		var i ListPagesRow
+		var i Page
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -244,6 +202,7 @@ func (q *Queries) ListPages(ctx context.Context, arg ListPagesParams) ([]ListPag
 			&i.Active,
 			&i.Created,
 			&i.Updated,
+			&i.Seo,
 		); err != nil {
 			return nil, err
 		}
@@ -259,7 +218,7 @@ func (q *Queries) ListPages(ctx context.Context, arg ListPagesParams) ([]ListPag
 }
 
 const listPagesByPosition = `-- name: ListPagesByPosition :many
-SELECT id, name, slug, content, position, active, created, updated
+SELECT id, name, slug, content, position, active, created, updated, seo
 FROM page
 WHERE position = ? AND active = ?
 ORDER BY created DESC
@@ -270,26 +229,15 @@ type ListPagesByPositionParams struct {
 	Active   bool   `json:"active"`
 }
 
-type ListPagesByPositionRow struct {
-	ID       string         `json:"id"`
-	Name     string         `json:"name"`
-	Slug     string         `json:"slug"`
-	Content  sql.NullString `json:"content"`
-	Position string         `json:"position"`
-	Active   bool           `json:"active"`
-	Created  sql.NullTime   `json:"created"`
-	Updated  sql.NullTime   `json:"updated"`
-}
-
-func (q *Queries) ListPagesByPosition(ctx context.Context, arg ListPagesByPositionParams) ([]ListPagesByPositionRow, error) {
+func (q *Queries) ListPagesByPosition(ctx context.Context, arg ListPagesByPositionParams) ([]Page, error) {
 	rows, err := q.query(ctx, q.listPagesByPositionStmt, listPagesByPosition, arg.Position, arg.Active)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListPagesByPositionRow{}
+	items := []Page{}
 	for rows.Next() {
-		var i ListPagesByPositionRow
+		var i Page
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -299,6 +247,7 @@ func (q *Queries) ListPagesByPosition(ctx context.Context, arg ListPagesByPositi
 			&i.Active,
 			&i.Created,
 			&i.Updated,
+			&i.Seo,
 		); err != nil {
 			return nil, err
 		}
@@ -385,8 +334,8 @@ WHERE id = ?
 `
 
 type UpdatePageSeoParams struct {
-	Seo json.RawMessage `json:"seo"`
-	ID  string          `json:"id"`
+	Seo string `json:"seo"`
+	ID  string `json:"id"`
 }
 
 func (q *Queries) UpdatePageSeo(ctx context.Context, arg UpdatePageSeoParams) error {

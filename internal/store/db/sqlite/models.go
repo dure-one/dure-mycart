@@ -63,35 +63,35 @@ type NewCart struct {
 }
 
 type Page struct {
-	ID       string          `json:"id"`
-	Name     string          `json:"name"`
-	Slug     string          `json:"slug"`
-	Content  sql.NullString  `json:"content"`
-	Position string          `json:"position"`
-	Active   bool            `json:"active"`
-	Created  sql.NullTime    `json:"created"`
-	Updated  sql.NullTime    `json:"updated"`
-	Seo      json.RawMessage `json:"seo"`
+	ID       string         `json:"id"`
+	Name     string         `json:"name"`
+	Slug     string         `json:"slug"`
+	Content  sql.NullString `json:"content"`
+	Position string         `json:"position"`
+	Active   bool           `json:"active"`
+	Created  sql.NullTime   `json:"created"`
+	Updated  sql.NullTime   `json:"updated"`
+	Seo      string         `json:"seo"`
 }
 
 type Product struct {
-	ID          string          `json:"id"`
-	Name        string          `json:"name"`
-	Desc        string          `json:"desc"`
-	Slug        string          `json:"slug"`
-	Amount      interface{}     `json:"amount"`
-	Metadata    json.RawMessage `json:"metadata"`
-	Attribute   json.RawMessage `json:"attribute"`
-	Digital     sql.NullString  `json:"digital"`
-	Active      bool            `json:"active"`
-	Deleted     bool            `json:"deleted"`
-	Created     sql.NullTime    `json:"created"`
-	Updated     sql.NullTime    `json:"updated"`
-	Seo         json.RawMessage `json:"seo"`
-	Brief       string          `json:"brief"`
-	Quantity    sql.NullInt64   `json:"quantity"`
-	Sku         sql.NullString  `json:"sku"`
-	HasVariants sql.NullBool    `json:"has_variants"`
+	ID          string         `json:"id"`
+	Name        string         `json:"name"`
+	Desc        string         `json:"desc"`
+	Slug        string         `json:"slug"`
+	Amount      interface{}    `json:"amount"`
+	Metadata    string         `json:"metadata"`
+	Attribute   string         `json:"attribute"`
+	Digital     sql.NullString `json:"digital"`
+	Active      bool           `json:"active"`
+	Deleted     bool           `json:"deleted"`
+	Created     sql.NullTime   `json:"created"`
+	Updated     sql.NullTime   `json:"updated"`
+	Seo         string         `json:"seo"`
+	Brief       string         `json:"brief"`
+	Quantity    sql.NullInt64  `json:"quantity"`
+	Sku         sql.NullString `json:"sku"`
+	HasVariants sql.NullBool   `json:"has_variants"`
 }
 
 type ProductImage struct {

@@ -129,6 +129,7 @@ type Page struct {
 	Active   bool
 	Created  sql.NullTime
 	Updated  sql.NullTime
+	Seo      []byte // json.RawMessage
 }
 
 // CreatePageParams for CreatePage operation
@@ -153,9 +154,9 @@ type UpdatePageParams struct {
 
 // FromPostgresPageRow converts postgres Row types to unified Page
 func FromPostgresPageRow(p interface{}) Page {
-	// Handle different row types from postgres queries
+	// sqlc returns postgres.Page model when all columns are selected
 	switch v := p.(type) {
-	case postgres.GetPageBySlugRow:
+	case postgres.Page:
 		return Page{
 			ID:       v.ID,
 			Name:     v.Name,
@@ -165,38 +166,17 @@ func FromPostgresPageRow(p interface{}) Page {
 			Active:   v.Active,
 			Created:  v.Created,
 			Updated:  v.Updated,
-		}
-	case postgres.ListPagesRow:
-		return Page{
-			ID:       v.ID,
-			Name:     v.Name,
-			Slug:     v.Slug,
-			Content:  v.Content,
-			Position: v.Position,
-			Active:   v.Active,
-			Created:  v.Created,
-			Updated:  v.Updated,
-		}
-	case postgres.CreatePageRow:
-		return Page{
-			ID:       v.ID,
-			Name:     v.Name,
-			Slug:     v.Slug,
-			Content:  v.Content,
-			Position: v.Position,
-			Active:   v.Active,
-			Created:  v.Created,
-			Updated:  v.Updated,
+			Seo:      v.Seo,
 		}
 	default:
 		return Page{}
 	}
 }
 
-// FromSQLitePageRow converts sqlite Row types to unified Page
+// FromSQLitePageRow converts sqlite.Page model to unified Page
 func FromSQLitePageRow(p interface{}) Page {
 	switch v := p.(type) {
-	case sqlite.GetPageBySlugRow:
+	case sqlite.Page:
 		return Page{
 			ID:       v.ID,
 			Name:     v.Name,
@@ -206,28 +186,7 @@ func FromSQLitePageRow(p interface{}) Page {
 			Active:   v.Active,
 			Created:  v.Created,
 			Updated:  v.Updated,
-		}
-	case sqlite.ListPagesRow:
-		return Page{
-			ID:       v.ID,
-			Name:     v.Name,
-			Slug:     v.Slug,
-			Content:  v.Content,
-			Position: v.Position,
-			Active:   v.Active,
-			Created:  v.Created,
-			Updated:  v.Updated,
-		}
-	case sqlite.CreatePageRow:
-		return Page{
-			ID:       v.ID,
-			Name:     v.Name,
-			Slug:     v.Slug,
-			Content:  v.Content,
-			Position: v.Position,
-			Active:   v.Active,
-			Created:  v.Created,
-			Updated:  v.Updated,
+			Seo:      []byte(v.Seo), // Convert string to []byte
 		}
 	default:
 		return Page{}
@@ -286,38 +245,34 @@ type UpdateProductParams struct {
 	ID        string
 }
 
-// FromPostgresProductRow converts postgres Row types to unified Product
+// FromPostgresProductRow converts postgres Product model to unified Product
 func FromPostgresProductRow(p interface{}) Product {
 	switch v := p.(type) {
-	case postgres.GetProductByIDRow:
-		return Product{
-			ID:        v.ID,
-			Name:      v.Name,
-			Desc:      v.Desc,
-			Slug:      v.Slug,
-			Amount:    v.Amount,
-			Metadata:  v.Metadata,
-			Attribute: v.Attribute,
-			Digital:   v.Digital,
-			Active:    v.Active,
-			Deleted:   v.Deleted,
-			Created:   v.Created,
-			Updated:   v.Updated,
+	case postgres.Product:
+		// Convert Int32 to Int64 for unified type
+		var quantity sql.NullInt64
+		if v.Quantity.Valid {
+			quantity = sql.NullInt64{Int64: int64(v.Quantity.Int32), Valid: true}
 		}
-	case postgres.GetProductBySlugRow:
+
 		return Product{
-			ID:        v.ID,
-			Name:      v.Name,
-			Desc:      v.Desc,
-			Slug:      v.Slug,
-			Amount:    v.Amount,
-			Metadata:  v.Metadata,
-			Attribute: v.Attribute,
-			Digital:   v.Digital,
-			Active:    v.Active,
-			Deleted:   v.Deleted,
-			Created:   v.Created,
-			Updated:   v.Updated,
+			ID:          v.ID,
+			Name:        v.Name,
+			Brief:       v.Brief,
+			Desc:        v.Desc,
+			Slug:        v.Slug,
+			Amount:      v.Amount,
+			Metadata:    v.Metadata,
+			Attribute:   v.Attribute,
+			Digital:     v.Digital,
+			Active:      v.Active,
+			Deleted:     v.Deleted,
+			Created:     v.Created,
+			Updated:     v.Updated,
+			HasVariants: v.HasVariants,
+			Quantity:    quantity,
+			SKU:         v.Sku,
+			Seo:         v.Seo,
 		}
 	case postgres.CreateProductRow:
 		// Convert Int32 to Int64 for unified type
@@ -392,38 +347,28 @@ func convertFloatToPrice(price sql.NullFloat64) sql.NullString {
 	return sql.NullString{String: fmt.Sprintf("%.2f", price.Float64), Valid: true}
 }
 
-// FromSQLiteProductRow converts sqlite Row types to unified Product
+// FromSQLiteProductRow converts sqlite Product model to unified Product
 func FromSQLiteProductRow(p interface{}) Product {
 	switch v := p.(type) {
-	case sqlite.GetProductByIDRow:
+	case sqlite.Product:
 		return Product{
-			ID:        v.ID,
-			Name:      v.Name,
-			Desc:      v.Desc,
-			Slug:      v.Slug,
-			Amount:    convertAmount(v.Amount),
-			Metadata:  v.Metadata,
-			Attribute: v.Attribute,
-			Digital:   v.Digital,
-			Active:    v.Active,
-			Deleted:   v.Deleted,
-			Created:   v.Created,
-			Updated:   v.Updated,
-		}
-	case sqlite.GetProductBySlugRow:
-		return Product{
-			ID:        v.ID,
-			Name:      v.Name,
-			Desc:      v.Desc,
-			Slug:      v.Slug,
-			Amount:    convertAmount(v.Amount),
-			Metadata:  v.Metadata,
-			Attribute: v.Attribute,
-			Digital:   v.Digital,
-			Active:    v.Active,
-			Deleted:   v.Deleted,
-			Created:   v.Created,
-			Updated:   v.Updated,
+			ID:          v.ID,
+			Name:        v.Name,
+			Brief:       v.Brief,
+			Desc:        v.Desc,
+			Slug:        v.Slug,
+			Amount:      convertAmount(v.Amount),
+			Metadata:    []byte(v.Metadata),  // Convert string to []byte
+			Attribute:   []byte(v.Attribute), // Convert string to []byte
+			Digital:     v.Digital,
+			Active:      v.Active,
+			Deleted:     v.Deleted,
+			Created:     v.Created,
+			Updated:     v.Updated,
+			HasVariants: v.HasVariants,
+			Quantity:    v.Quantity,
+			SKU:         v.Sku,
+			Seo:         []byte(v.Seo), // Convert string to []byte
 		}
 	case sqlite.CreateProductRow:
 		// sqlite CreateProductRow has Strftime field instead of Created
@@ -442,8 +387,8 @@ func FromSQLiteProductRow(p interface{}) Product {
 			Desc:        v.Desc,
 			Slug:        v.Slug,
 			Amount:      convertAmount(v.Amount),
-			Metadata:    v.Metadata,
-			Attribute:   v.Attribute,
+			Metadata:    []byte(v.Metadata),  // Convert string to []byte
+			Attribute:   []byte(v.Attribute), // Convert string to []byte
 			Digital:     v.Digital,
 			Active:      v.Active,
 			Deleted:     v.Deleted,
@@ -452,7 +397,7 @@ func FromSQLiteProductRow(p interface{}) Product {
 			HasVariants: v.HasVariants,
 			Quantity:    v.Quantity,
 			SKU:         v.Sku,
-			Seo:         v.Seo,
+			Seo:         []byte(v.Seo), // Convert string to []byte
 		}
 	default:
 		return Product{}
