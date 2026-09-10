@@ -151,6 +151,17 @@ func UpdateSetting(c fiber.Ctx) error {
 	log := logging.New()
 	settingKey := c.Params("setting_key")
 
+	// Protected keys: must never be writable through the generic key/value PATCH fallback.
+	// - `installed`: flipping it re-opens the unauthenticated install endpoint
+	// - `jwt_secret`: rotating it enables token forgery
+	protectedKeys := map[string]bool{
+		"installed":  true,
+		"jwt_secret": true,
+	}
+	if protectedKeys[settingKey] {
+		return webutil.StatusBadRequest(c, "Cannot update protected setting: "+settingKey)
+	}
+
 	var request any
 	switch {
 	case settingKey == "password":

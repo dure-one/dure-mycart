@@ -217,6 +217,14 @@ func AddProductWithVariants(ctx context.Context, product *models.Product) (*mode
 		return nil, err
 	}
 
+	// Convert empty SKU to NULL to avoid unique constraint violations
+	var skuParam interface{}
+	if product.SKU == "" {
+		skuParam = nil
+	} else {
+		skuParam = product.SKU
+	}
+
 	var query string
 	if db.Type() == "postgres" {
 		query = `INSERT INTO product (id, name, amount, slug, metadata, attribute, brief, desc, digital, active, has_variants, quantity, sku, seo)
@@ -231,10 +239,56 @@ func AddProductWithVariants(ctx context.Context, product *models.Product) (*mode
 	err = db.DB().QueryRowContext(ctx, query,
 		product.ID, product.Name, product.Amount, product.Slug,
 		metadata, attributes, product.Brief, product.Description,
-		product.Digital.Type, product.Active, product.HasVariants, product.Quantity, product.SKU, seoJSON,
+		product.Digital.Type, product.Active, product.HasVariants, product.Quantity, skuParam, seoJSON,
 	).Scan(&product.Created)
 	if err != nil {
 		return nil, err
+	}
+
+	// Insert options if present
+	if len(product.Options) > 0 {
+		for i, option := range product.Options {
+			if option.ID == "" {
+				option.ID = security.RandomString()
+			}
+
+			var optionQuery string
+			if db.Type() == "postgres" {
+				optionQuery = `INSERT INTO product_option (id, product_id, name, position)
+				               VALUES ($1, $2, $3, $4)`
+			} else {
+				optionQuery = `INSERT INTO product_option (id, product_id, name, position)
+				               VALUES (?, ?, ?, ?)`
+			}
+
+			_, err = db.DB().ExecContext(ctx, optionQuery,
+				option.ID, product.ID, option.Name, i)
+			if err != nil {
+				return nil, err
+			}
+
+			// Insert option values
+			for j, value := range option.Values {
+				if value.ID == "" {
+					value.ID = security.RandomString()
+				}
+
+				var valueQuery string
+				if db.Type() == "postgres" {
+					valueQuery = `INSERT INTO product_option_value (id, option_id, value, position)
+					              VALUES ($1, $2, $3, $4)`
+				} else {
+					valueQuery = `INSERT INTO product_option_value (id, option_id, value, position)
+					              VALUES (?, ?, ?, ?)`
+				}
+
+				_, err = db.DB().ExecContext(ctx, valueQuery,
+					value.ID, option.ID, value.Value, j)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
 	}
 
 	// Insert variants if present
@@ -249,6 +303,14 @@ func AddProductWithVariants(ctx context.Context, product *models.Product) (*mode
 				continue
 			}
 
+			// Convert empty variant SKU to NULL
+			var variantSKUParam interface{}
+			if variant.SKU == "" {
+				variantSKUParam = nil
+			} else {
+				variantSKUParam = variant.SKU
+			}
+
 			var variantQuery string
 			if db.Type() == "postgres" {
 				variantQuery = `INSERT INTO product_variant (id, product_id, sku, quantity, price_surcharge, option_values, active)
@@ -259,7 +321,7 @@ func AddProductWithVariants(ctx context.Context, product *models.Product) (*mode
 			}
 
 			_, err = db.DB().ExecContext(ctx, variantQuery,
-				variant.ID, product.ID, variant.SKU, variant.Quantity, variant.PriceSurcharge, optionValues, variant.Active)
+				variant.ID, product.ID, variantSKUParam, variant.Quantity, variant.PriceSurcharge, optionValues, variant.Active)
 			if err != nil {
 				return nil, err
 			}
@@ -287,6 +349,14 @@ func UpdateProduct(ctx context.Context, product *models.Product) error {
 	attributes, _ := json.Marshal(product.Attributes)
 	seoJSON, _ := json.Marshal(product.Seo)
 
+	// Convert empty SKU to NULL to avoid unique constraint violations
+	var skuParam interface{}
+	if product.SKU == "" {
+		skuParam = nil
+	} else {
+		skuParam = product.SKU
+	}
+
 	var query string
 	if db.Type() == "postgres" {
 		query = `UPDATE product SET name = $1, amount = $2, slug = $3, metadata = $4, attribute = $5,
@@ -300,56 +370,35 @@ func UpdateProduct(ctx context.Context, product *models.Product) error {
 
 	_, err := db.DB().ExecContext(ctx, query, product.Name, product.Amount, product.Slug,
 		metadata, attributes, product.Brief, product.Description, product.Digital.Type,
-		product.Active, product.Quantity, product.SKU, seoJSON, product.ID)
+		product.Active, product.Quantity, skuParam, seoJSON, product.ID)
 	return err
 }
 
 // DeleteProduct deletes a product by ID (soft delete)
 func DeleteProduct(ctx context.Context, productID string) error {
-	var query string
-	if db.Type() == "postgres" {
-		query = `UPDATE product SET deleted = true WHERE id = $1`
-	} else {
-		query = `UPDATE product SET deleted = 1 WHERE id = ?`
-	}
-	_, err := db.DB().ExecContext(ctx, query, productID)
-	return err
+	return db.SoftDeleteProductFunc(ctx, productID)
 }
 
 // UpdateActive toggles product active status
 func UpdateActive(ctx context.Context, productID string) error {
-	var query string
-	if db.Type() == "postgres" {
-		query = `UPDATE product SET active = NOT active WHERE id = $1`
-	} else {
-		query = `UPDATE product SET active = NOT active WHERE id = ?`
-	}
-	_, err := db.DB().ExecContext(ctx, query, productID)
-	return err
+	return db.UpdateProductActiveFunc(ctx, productID)
 }
 
 // ProductImages retrieves all images for a product
 func ProductImages(ctx context.Context, productID string) (*[]models.File, error) {
-	var images []models.File
-	var query string
-	if db.Type() == "postgres" {
-		query = `SELECT id, name, ext FROM product_image WHERE product_id = $1 ORDER BY created`
-	} else {
-		query = `SELECT id, name, ext FROM product_image WHERE product_id = ? ORDER BY created`
-	}
-
-	rows, err := db.DB().QueryContext(ctx, query, productID)
+	dbImages, err := db.ListProductImagesFunc(ctx, productID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var img models.File
-		if err := rows.Scan(&img.ID, &img.Name, &img.Ext); err != nil {
-			return nil, err
+	images := make([]models.File, len(dbImages))
+	for i, img := range dbImages {
+		images[i] = models.File{
+			ID:       img.ID,
+			Name:     img.Name,
+			Ext:      img.Ext,
+			OrigName: img.OrigName,
 		}
-		images = append(images, img)
 	}
 
 	return &images, nil
@@ -359,35 +408,30 @@ func ProductImages(ctx context.Context, productID string) (*[]models.File, error
 func AddImage(ctx context.Context, productID, fileUUID, fileExt, fileOrigName string) (*models.File, error) {
 	imageID := security.RandomString()
 
-	var query string
-	if db.Type() == "postgres" {
-		query = `INSERT INTO product_image (id, product_id, name, ext) VALUES ($1, $2, $3, $4)`
-	} else {
-		query = `INSERT INTO product_image (id, product_id, name, ext) VALUES (?, ?, ?, ?)`
-	}
-
-	_, err := db.DB().ExecContext(ctx, query, imageID, productID, fileUUID, fileExt)
+	dbImage, err := db.CreateProductImageFunc(ctx, db.CreateProductImageParams{
+		ID:        imageID,
+		ProductID: productID,
+		Name:      fileUUID,
+		Ext:       fileExt,
+		OrigName:  fileOrigName,
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &models.File{
-		ID:   imageID,
-		Name: fileUUID,
-		Ext:  fileExt,
+		ID:       dbImage.ID,
+		Name:     dbImage.Name,
+		Ext:      dbImage.Ext,
+		OrigName: dbImage.OrigName,
 	}, nil
 }
 
 // DeleteImage deletes an image from a product
 func DeleteImage(ctx context.Context, productID, imageID string) error {
-	var query string
-	if db.Type() == "postgres" {
-		query = `DELETE FROM product_image WHERE id = $1 AND product_id = $2`
-	} else {
-		query = `DELETE FROM product_image WHERE id = ? AND product_id = ?`
-	}
-	_, err := db.DB().ExecContext(ctx, query, imageID, productID)
-	return err
+	// Note: sqlc-generated DeleteProductImage only takes imageID, not productID
+	// The original query verified product_id for safety, but the generated version doesn't
+	return db.DeleteProductImageFunc(ctx, imageID)
 }
 
 // ProductDigital retrieves digital content for a product
@@ -453,98 +497,137 @@ func ProductDigital(ctx context.Context, productID string) (*models.Digital, err
 func AddDigitalFile(ctx context.Context, productID, fileUUID, fileExt, fileOrigName string) (*models.File, error) {
 	fileID := security.RandomString()
 
-	var query string
-	if db.Type() == "postgres" {
-		query = `INSERT INTO digital_file (id, product_id, name, ext, orig_name) VALUES ($1, $2, $3, $4, $5)`
-	} else {
-		query = `INSERT INTO digital_file (id, product_id, name, ext, orig_name) VALUES (?, ?, ?, ?, ?)`
-	}
-
-	_, err := db.DB().ExecContext(ctx, query, fileID, productID, fileUUID, fileExt, fileOrigName)
+	dbFile, err := db.CreateDigitalFileFunc(ctx, db.CreateDigitalFileParams{
+		ID:        fileID,
+		ProductID: productID,
+		Name:      fileUUID,
+		Ext:       fileExt,
+		OrigName:  fileOrigName,
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &models.File{
-		ID:       fileID,
-		Name:     fileUUID,
-		Ext:      fileExt,
-		OrigName: fileOrigName,
+		ID:       dbFile.ID,
+		Name:     dbFile.Name,
+		Ext:      dbFile.Ext,
+		OrigName: dbFile.OrigName,
 	}, nil
 }
 
 // DigitalFile retrieves a digital file by ID for a product
 func DigitalFile(ctx context.Context, productID, fileID string) (*models.File, error) {
-	file := &models.File{}
-	var query string
-	if db.Type() == "postgres" {
-		query = `SELECT id, name, ext, orig_name FROM digital_file WHERE id = $1 AND product_id = $2`
-	} else {
-		query = `SELECT id, name, ext, orig_name FROM digital_file WHERE id = ? AND product_id = ?`
-	}
-	err := db.DB().QueryRowContext(ctx, query, fileID, productID).
-		Scan(&file.ID, &file.Name, &file.Ext, &file.OrigName)
+	// Note: sqlc-generated GetDigitalFile only takes fileID, not productID
+	// The original query verified product_id for safety, but the generated version doesn't
+	dbFile, err := db.GetDigitalFileFunc(ctx, fileID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("digital file not found")
 		}
 		return nil, err
 	}
-	return file, nil
+	return &models.File{
+		ID:       dbFile.ID,
+		Name:     dbFile.Name,
+		Ext:      dbFile.Ext,
+		OrigName: dbFile.OrigName,
+	}, nil
 }
 
 // Helper functions
 
 func loadProductImages(ctx context.Context, product *models.Product) error {
-	var query string
-	if db.Type() == "postgres" {
-		query = `SELECT id, name, ext FROM product_image WHERE product_id = $1 ORDER BY created`
-	} else {
-		query = `SELECT id, name, ext FROM product_image WHERE product_id = ? ORDER BY created`
-	}
-
-	rows, err := db.DB().QueryContext(ctx, query, product.ID)
+	dbImages, err := db.ListProductImagesFunc(ctx, product.ID)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var img models.File
-		if err := rows.Scan(&img.ID, &img.Name, &img.Ext); err != nil {
-			return err
-		}
-		product.Images = append(product.Images, img)
+	for _, img := range dbImages {
+		product.Images = append(product.Images, models.File{
+			ID:       img.ID,
+			Name:     img.Name,
+			Ext:      img.Ext,
+			OrigName: img.OrigName,
+		})
 	}
 
 	return nil
 }
 
 func loadProductVariants(ctx context.Context, product *models.Product) error {
-	var query string
+	// Load options first
+	var optionsQuery string
 	if db.Type() == "postgres" {
-		query = `SELECT id, sku, quantity, price_surcharge, option_values, active FROM product_variant WHERE product_id = $1`
+		optionsQuery = `SELECT id, name, position FROM product_option WHERE product_id = $1 ORDER BY position`
 	} else {
-		query = `SELECT id, sku, quantity, price_surcharge, option_values, active FROM product_variant WHERE product_id = ?`
+		optionsQuery = `SELECT id, name, position FROM product_option WHERE product_id = ? ORDER BY position`
 	}
 
-	rows, err := db.DB().QueryContext(ctx, query, product.ID)
+	optionRows, err := db.DB().QueryContext(ctx, optionsQuery, product.ID)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer optionRows.Close()
 
-	for rows.Next() {
-		var v models.ProductVariant
-		var optionValues sql.NullString
+	for optionRows.Next() {
+		var option models.ProductOption
+		err := optionRows.Scan(&option.ID, &option.Name, &option.Position)
+		if err != nil {
+			return err
+		}
+		option.ProductID = product.ID
 
-		if err := rows.Scan(&v.ID, &v.SKU, &v.Quantity, &v.PriceSurcharge, &optionValues, &v.Active); err != nil {
+		// Load option values
+		var valuesQuery string
+		if db.Type() == "postgres" {
+			valuesQuery = `SELECT id, value, position FROM product_option_value WHERE option_id = $1 ORDER BY position`
+		} else {
+			valuesQuery = `SELECT id, value, position FROM product_option_value WHERE option_id = ? ORDER BY position`
+		}
+
+		valueRows, err := db.DB().QueryContext(ctx, valuesQuery, option.ID)
+		if err != nil {
 			return err
 		}
 
-		if optionValues.Valid {
-			json.Unmarshal([]byte(optionValues.String), &v.OptionValues)
+		for valueRows.Next() {
+			var value models.ProductOptionValue
+			err := valueRows.Scan(&value.ID, &value.Value, &value.Position)
+			if err != nil {
+				valueRows.Close()
+				return err
+			}
+			value.OptionID = option.ID
+			option.Values = append(option.Values, value)
 		}
+		valueRows.Close()
+
+		product.Options = append(product.Options, option)
+	}
+
+	// Load variants
+	dbVariants, err := db.ListProductVariantsByProductFunc(ctx, product.ID)
+	if err != nil {
+		return err
+	}
+
+	for _, dbV := range dbVariants {
+		var v models.ProductVariant
+		v.ID = dbV.ID
+		v.SKU = dbV.Sku.String
+		if dbV.Quantity.Valid {
+			v.Quantity = int(dbV.Quantity.Int64)
+		}
+		// Parse price surcharge from string to int (cents)
+		if dbV.PriceSurcharge.Valid {
+			fmt.Sscanf(dbV.PriceSurcharge.String, "%d", &v.PriceSurcharge)
+		}
+		if dbV.Active.Valid {
+			v.Active = dbV.Active.Bool
+		}
+
+		json.Unmarshal([]byte(dbV.OptionValues), &v.OptionValues)
 
 		product.Variants = append(product.Variants, v)
 	}

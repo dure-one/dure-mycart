@@ -8,7 +8,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/shurco/mycart/db/migrations"
-	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/internal/store/db"
 	"github.com/shurco/mycart/internal/testutil"
 )
@@ -21,22 +20,16 @@ func setupCleanDB(t *testing.T) (*fiber.App, func()) {
 	os.Setenv("DB_TYPE", "sqlite")
 	os.Setenv("SQLITE_PATH", ":memory:")
 
-	// Initialize database with new pattern
-	if err := queries.New(migrations.Embed()); err != nil {
+	// Initialize database with migrations
+	if err := db.Init(migrations.Embed()); err != nil {
 		t.Fatal(err)
 	}
-
-	// Initialize store layer
-	if err := db.Init(queries.Adapter().DB(), "sqlite"); err != nil {
-		t.Fatal(err)
-	}
-	store.InitStore(queries.Adapter().DB())
 
 	app := fiber.New()
 
 	return app, func() {
 		_ = app.Shutdown()
-		queries.Close()
+		db.Close()
 		dirCleanup()
 	}
 }
@@ -54,12 +47,12 @@ func TestInstall(t *testing.T) {
 	}{
 		{
 			"invalid email",
-			`{"email":"bad","password":"secret","domain":"example.com"}`,
+			`{"email":"bad","password":"secret","domain":"example.com","dbType":"sqlite","sqlitePath":"lc_base/data.db"}`,
 			http.StatusBadRequest,
 		},
 		{
 			"short password",
-			`{"email":"admin@example.com","password":"12","domain":"example.com"}`,
+			`{"email":"admin@example.com","password":"12","domain":"example.com","dbType":"sqlite","sqlitePath":"lc_base/data.db"}`,
 			http.StatusBadRequest,
 		},
 		{
@@ -69,7 +62,7 @@ func TestInstall(t *testing.T) {
 		},
 		{
 			"valid install (last — mutates DB)",
-			`{"email":"admin@example.com","password":"secret","domain":"example.com"}`,
+			`{"email":"admin@example.com","password":"secret","domain":"example.com","dbType":"sqlite","sqlitePath":"lc_base/data.db"}`,
 			http.StatusOK,
 		},
 	}

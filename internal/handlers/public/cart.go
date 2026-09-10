@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/shurco/mycart/internal/mailer"
 	"github.com/shurco/mycart/internal/models"
@@ -492,12 +493,19 @@ func PaymentCallback(c fiber.Ctx) error {
 			log.ErrorStack(err)
 			return webutil.StatusBadRequest(c, err.Error())
 		}
+		// Verify signature before trusting any callback data
+		if err := litepay.VerifySpectrocoinCallback(response); err != nil {
+			log.Error().Err(err).Msg("Invalid SpectroCoin callback signature")
+			return webutil.StatusBadRequest(c, "Invalid signature")
+		}
 		payment.Status = litepay.StatusPayment(litepay.SPECTROCOIN, string(rune(response.Status)))
 		payment.MerchantID = response.MerchantApiID
 		payment.Coin = &litepay.Coin{
 			AmountTotal: response.ReceiveAmount,
 			Currency:    response.ReceiveCurrency,
 		}
+	default:
+		return webutil.StatusBadRequest(c, "Unsupported payment system for callbacks")
 	}
 
 	err := store.UpdateCart(c.Context(), &models.Cart{
@@ -584,6 +592,11 @@ func PaymentSuccess(c fiber.Ctx) error {
 	switch payment.PaymentSystem {
 	case litepay.STRIPE:
 		sessionStripe := c.Query("session")
+		// If cart has an existing payment session, validate it (cross-cart replay defense)
+		if cartInfo.PaymentID != "" && (sessionStripe == "" || sessionStripe != cartInfo.PaymentID) {
+			return webutil.StatusBadRequest(c, "Invalid or mismatched session")
+		}
+
 		setting, err := store.GetSettingByGroupTyped[models.Stripe](c.Context())
 		if err != nil {
 			log.ErrorStack(err)
@@ -593,6 +606,7 @@ func PaymentSuccess(c fiber.Ctx) error {
 		if !setting.Active {
 			return webutil.StatusNotFound(c)
 		}
+
 		response, err := litepay.New("", "", "").Stripe(setting.SecretKey).Checkout(payment, sessionStripe)
 		if err != nil {
 			log.ErrorStack(err)
@@ -603,6 +617,11 @@ func PaymentSuccess(c fiber.Ctx) error {
 
 	case litepay.PAYPAL:
 		tokenPaypal := c.Query("token")
+		// If cart has an existing payment session, validate it (cross-cart replay defense)
+		if cartInfo.PaymentID != "" && (tokenPaypal == "" || tokenPaypal != cartInfo.PaymentID) {
+			return webutil.StatusBadRequest(c, "Invalid or mismatched token")
+		}
+
 		setting, err := store.GetSettingByGroupTyped[models.Paypal](c.Context())
 		if err != nil {
 			log.ErrorStack(err)
@@ -612,6 +631,7 @@ func PaymentSuccess(c fiber.Ctx) error {
 		if !setting.Active {
 			return webutil.StatusNotFound(c)
 		}
+
 		response, err := litepay.New("", "", "").Paypal(setting.ClientID, setting.SecretKey).Checkout(payment, tokenPaypal)
 		if err != nil {
 			log.ErrorStack(err)
@@ -625,9 +645,11 @@ func PaymentSuccess(c fiber.Ctx) error {
 
 	case litepay.COINBASE:
 		chargeID := c.Query("charge_id")
-		if chargeID == "" {
-			chargeID = payment.CartID // Fallback to cart ID if charge_id not provided
+		// If cart has an existing payment session, validate it (cross-cart replay defense)
+		if cartInfo.PaymentID != "" && (chargeID == "" || chargeID != cartInfo.PaymentID) {
+			return webutil.StatusBadRequest(c, "Invalid or mismatched charge_id")
 		}
+
 		setting, err := store.GetSettingByGroupTyped[models.Coinbase](c.Context())
 		if err != nil {
 			log.ErrorStack(err)
@@ -637,6 +659,7 @@ func PaymentSuccess(c fiber.Ctx) error {
 		if !setting.Active {
 			return webutil.StatusNotFound(c)
 		}
+
 		response, err := litepay.New("", "", "").Coinbase(setting.ApiKey).Checkout(payment, chargeID)
 		if err != nil {
 			log.ErrorStack(err)
@@ -708,7 +731,42 @@ func PaymentCancel(c fiber.Ctx) error {
 		PaymentSystem: litepay.PaymentSystem(c.Query("payment_system")),
 	}
 
-	err := store.UpdateCart(c.Context(), &models.Cart{
+	// Validate cancel token
+	cancelToken := c.Query("cancel_token")
+	if cancelToken == "" {
+		return c.Redirect().To("/cart/payment/cancel?error=invalid_token")
+	}
+
+	// Get JWT secret for token verification
+	settingJWT, err := store.GetSettingByGroupTyped[models.JWT](c.Context())
+	if err != nil {
+		log.ErrorStack(err)
+		return c.Redirect().To("/cart/payment/cancel?error=server_error")
+	}
+
+	// Parse and verify the cancel token
+	token, err := jwt.Parse(cancelToken, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(settingJWT.Secret), nil
+	})
+	if err != nil || !token.Valid {
+		return c.Redirect().To("/cart/payment/cancel?error=invalid_token")
+	}
+
+	// Extract claims and verify the token is for this cart
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return c.Redirect().To("/cart/payment/cancel?error=invalid_token")
+	}
+
+	tokenCartID, ok := claims["id"].(string)
+	if !ok || tokenCartID != payment.CartID {
+		return c.Redirect().To("/cart/payment/cancel?error=invalid_token")
+	}
+
+	err = store.UpdateCart(c.Context(), &models.Cart{
 		Core: models.Core{
 			ID: payment.CartID,
 		},

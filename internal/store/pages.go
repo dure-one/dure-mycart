@@ -8,6 +8,7 @@ import (
 
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/store/db"
+	"github.com/shurco/mycart/pkg/errors"
 	"github.com/shurco/mycart/pkg/security"
 )
 
@@ -16,7 +17,7 @@ func Page(ctx context.Context, slug string) (*models.Page, error) {
 	dbPage, err := db.GetPageBySlugFunc(ctx, slug)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("page not found")
+			return nil, errors.ErrPageNotFound
 		}
 		return nil, err
 	}
