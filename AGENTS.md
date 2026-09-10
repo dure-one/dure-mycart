@@ -98,6 +98,8 @@ Frontend (SvelteKit / Svelte 5):
 
 ## 4. Testing Standards
 
+**Go backend:**
+
 - Files: `*_test.go` next to the code under test.
 - Style: table-driven, parallel (`t.Parallel()`), `t.Cleanup()` /
   `t.TempDir()` / `t.Setenv()` instead of hand-rolled teardown.
@@ -106,6 +108,14 @@ Frontend (SvelteKit / Svelte 5):
 - Every public function should have at least one happy-path and one
   error-path test. Integration-style tests for handlers live in
   `internal/handlers/*/...*_test.go`.
+
+**Frontend:**
+
+- Unit tests: Vitest for component/unit tests in `web/admin/` and `web/site/`
+- E2E tests: **Playwright (Patchright)** in `e2e/` directory — **NOT Vitest browser mode**
+  - Page objects: `e2e/features/*.feature.ts`
+  - Test specs: `e2e/tests/*.spec.ts`
+  - Run: `npx playwright test`
 
 ---
 

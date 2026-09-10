@@ -269,12 +269,30 @@ func (q *Queries) DeleteProductOptionValue(ctx context.Context, id string) error
 	return err
 }
 
+const deleteProductOptionsByProduct = `-- name: DeleteProductOptionsByProduct :exec
+DELETE FROM product_option WHERE product_id = $1
+`
+
+func (q *Queries) DeleteProductOptionsByProduct(ctx context.Context, productID string) error {
+	_, err := q.exec(ctx, q.deleteProductOptionsByProductStmt, deleteProductOptionsByProduct, productID)
+	return err
+}
+
 const deleteProductVariant = `-- name: DeleteProductVariant :exec
 DELETE FROM product_variant WHERE id = $1
 `
 
 func (q *Queries) DeleteProductVariant(ctx context.Context, id string) error {
 	_, err := q.exec(ctx, q.deleteProductVariantStmt, deleteProductVariant, id)
+	return err
+}
+
+const deleteProductVariantsByProduct = `-- name: DeleteProductVariantsByProduct :exec
+DELETE FROM product_variant WHERE product_id = $1
+`
+
+func (q *Queries) DeleteProductVariantsByProduct(ctx context.Context, productID string) error {
+	_, err := q.exec(ctx, q.deleteProductVariantsByProductStmt, deleteProductVariantsByProduct, productID)
 	return err
 }
 

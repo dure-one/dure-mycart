@@ -131,6 +131,12 @@ ORDER BY position;
 -- name: DeleteProductOptionValue :exec
 DELETE FROM product_option_value WHERE id = ?;
 
+-- name: DeleteProductOptionsByProduct :exec
+DELETE FROM product_option WHERE product_id = ?;
+
+-- name: DeleteProductVariantsByProduct :exec
+DELETE FROM product_variant WHERE product_id = ?;
+
 -- Advanced Product Queries
 
 -- name: BulkDeleteProductImages :exec

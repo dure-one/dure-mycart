@@ -328,6 +328,168 @@ func UpdateProduct(ctx context.Context, product *models.Product) error {
 	return db.UpdateProductFullFunc(ctx, params)
 }
 
+// UpdateProductWithVariants updates a product with variants (options and variants data)
+func UpdateProductWithVariants(ctx context.Context, product *models.Product) error {
+	// Fetch existing product to preserve fields not in the update request
+	existing, err := Product(ctx, true, product.ID)
+	if err != nil {
+		return fmt.Errorf("fetch existing product: %w", err)
+	}
+
+	// Merge non-zero fields from request into existing product
+	if product.Name != "" {
+		existing.Name = product.Name
+	}
+	if product.Brief != "" {
+		existing.Brief = product.Brief
+	}
+	if product.Description != "" {
+		existing.Description = product.Description
+	}
+	if product.Slug != "" {
+		existing.Slug = product.Slug
+	}
+	if product.Amount != 0 {
+		existing.Amount = product.Amount
+	}
+	if product.Quantity != 0 {
+		existing.Quantity = product.Quantity
+	}
+	if product.SKU != "" {
+		existing.SKU = product.SKU
+	}
+	if product.Digital.Type != "" {
+		existing.Digital.Type = product.Digital.Type
+	}
+	if len(product.Metadata) > 0 {
+		existing.Metadata = product.Metadata
+	}
+	if len(product.Attributes) > 0 {
+		existing.Attributes = product.Attributes
+	}
+	if product.Seo != nil {
+		existing.Seo = product.Seo
+	}
+	existing.Active = product.Active
+
+	// Handle variant data
+	existing.HasVariants = product.HasVariants
+	if product.HasVariants {
+		existing.Options = product.Options
+		existing.Variants = product.Variants
+	}
+
+	// Prepare JSON fields
+	metadata, _ := json.Marshal(existing.Metadata)
+	attributes, _ := json.Marshal(existing.Attributes)
+	seoJSON, _ := json.Marshal(existing.Seo)
+
+	// Update base product record (including has_variants field)
+	params := db.UpdateProductFullParams{
+		Name:        existing.Name,
+		Brief:       existing.Brief,
+		Desc:        existing.Description,
+		Slug:        existing.Slug,
+		Amount:      fmt.Sprintf("%d", existing.Amount),
+		Quantity:    sql.NullInt64{Int64: int64(existing.Quantity), Valid: existing.Quantity != 0},
+		Sku:         sql.NullString{String: existing.SKU, Valid: existing.SKU != ""},
+		HasVariants: sql.NullBool{Bool: existing.HasVariants, Valid: true},
+		Metadata:    metadata,
+		Attribute:   attributes,
+		Seo:         seoJSON,
+		ID:          existing.ID,
+	}
+
+	if err := db.UpdateProductFullFunc(ctx, params); err != nil {
+		return fmt.Errorf("update product: %w", err)
+	}
+
+	// If has_variants is true, update options and variants
+	if existing.HasVariants {
+		// Delete existing options (cascades to option_values via foreign key)
+		if err := db.DeleteProductOptionsByProductFunc(ctx, existing.ID); err != nil {
+			return fmt.Errorf("delete existing options: %w", err)
+		}
+
+		// Delete existing variants
+		if err := db.DeleteProductVariantsByProductFunc(ctx, existing.ID); err != nil {
+			return fmt.Errorf("delete existing variants: %w", err)
+		}
+
+		// Re-create options and option values
+		for i, option := range existing.Options {
+			if option.ID == "" {
+				option.ID = security.RandomString()
+			}
+
+			_, err = db.CreateProductOptionFunc(ctx, db.CreateProductOptionParams{
+				ID:        option.ID,
+				ProductID: existing.ID,
+				Name:      option.Name,
+				Position:  sql.NullInt64{Int64: int64(i), Valid: true},
+			})
+			if err != nil {
+				return fmt.Errorf("create option: %w", err)
+			}
+
+			for j, value := range option.Values {
+				if value.ID == "" {
+					value.ID = security.RandomString()
+				}
+
+				_, err = db.CreateProductOptionValueFunc(ctx, db.CreateProductOptionValueParams{
+					ID:       value.ID,
+					OptionID: option.ID,
+					Value:    value.Value,
+					Position: sql.NullInt64{Int64: int64(j), Valid: true},
+				})
+				if err != nil {
+					return fmt.Errorf("create option value: %w", err)
+				}
+			}
+		}
+
+		// Re-create variants
+		for _, variant := range existing.Variants {
+			if variant.ID == "" {
+				variant.ID = security.RandomString()
+			}
+
+			optionValues, err := json.Marshal(variant.OptionValues)
+			if err != nil {
+				return fmt.Errorf("marshal option values: %w", err)
+			}
+
+			var variantSKU sql.NullString
+			if variant.SKU != "" {
+				variantSKU = sql.NullString{String: variant.SKU, Valid: true}
+			}
+
+			_, err = db.CreateProductVariantFunc(ctx, db.CreateProductVariantParams{
+				ID:             variant.ID,
+				ProductID:      existing.ID,
+				Sku:            variantSKU,
+				PriceSurcharge: sql.NullString{String: fmt.Sprintf("%d", variant.PriceSurcharge), Valid: true},
+				Quantity:       sql.NullInt64{Int64: int64(variant.Quantity), Valid: true},
+				OptionValues:   string(optionValues),
+			})
+			if err != nil {
+				return fmt.Errorf("create variant: %w", err)
+			}
+		}
+	} else {
+		// If has_variants is false, clean up any existing variant data
+		if err := db.DeleteProductOptionsByProductFunc(ctx, existing.ID); err != nil {
+			return fmt.Errorf("cleanup options: %w", err)
+		}
+		if err := db.DeleteProductVariantsByProductFunc(ctx, existing.ID); err != nil {
+			return fmt.Errorf("cleanup variants: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // DeleteProduct deletes a product by ID (soft delete)
 func DeleteProduct(ctx context.Context, productID string) error {
 	// Guard: prevent deletion if product has sold digital data

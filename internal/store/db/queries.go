@@ -67,11 +67,13 @@ var (
 	CreateProductVariantFunc         func(ctx context.Context, params CreateProductVariantParams) (ProductVariant, error)
 	UpdateProductVariantFunc         func(ctx context.Context, params UpdateProductVariantParams) error
 	DeleteProductVariantFunc         func(ctx context.Context, id string) error
+	DeleteProductVariantsByProductFunc func(ctx context.Context, productID string) error
 
 	// Product option operations
 	ListProductOptionsByProductFunc     func(ctx context.Context, productID string) ([]ProductOption, error)
 	CreateProductOptionFunc             func(ctx context.Context, params CreateProductOptionParams) (ProductOption, error)
 	DeleteProductOptionFunc             func(ctx context.Context, id string) error
+	DeleteProductOptionsByProductFunc    func(ctx context.Context, productID string) error
 	CreateProductOptionValueFunc        func(ctx context.Context, params CreateProductOptionValueParams) (ProductOptionValue, error)
 	ListProductOptionValuesByOptionFunc func(ctx context.Context, optionID string) ([]ProductOptionValue, error)
 	DeleteProductOptionValueFunc        func(ctx context.Context, id string) error

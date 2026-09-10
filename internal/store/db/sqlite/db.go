@@ -129,8 +129,14 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteProductOptionValueStmt, err = db.PrepareContext(ctx, deleteProductOptionValue); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteProductOptionValue: %w", err)
 	}
+	if q.deleteProductOptionsByProductStmt, err = db.PrepareContext(ctx, deleteProductOptionsByProduct); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteProductOptionsByProduct: %w", err)
+	}
 	if q.deleteProductVariantStmt, err = db.PrepareContext(ctx, deleteProductVariant); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteProductVariant: %w", err)
+	}
+	if q.deleteProductVariantsByProductStmt, err = db.PrepareContext(ctx, deleteProductVariantsByProduct); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteProductVariantsByProduct: %w", err)
 	}
 	if q.deleteSessionStmt, err = db.PrepareContext(ctx, deleteSession); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteSession: %w", err)
@@ -555,9 +561,19 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing deleteProductOptionValueStmt: %w", cerr)
 		}
 	}
+	if q.deleteProductOptionsByProductStmt != nil {
+		if cerr := q.deleteProductOptionsByProductStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteProductOptionsByProductStmt: %w", cerr)
+		}
+	}
 	if q.deleteProductVariantStmt != nil {
 		if cerr := q.deleteProductVariantStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteProductVariantStmt: %w", cerr)
+		}
+	}
+	if q.deleteProductVariantsByProductStmt != nil {
+		if cerr := q.deleteProductVariantsByProductStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteProductVariantsByProductStmt: %w", cerr)
 		}
 	}
 	if q.deleteSessionStmt != nil {
@@ -1039,7 +1055,9 @@ type Queries struct {
 	deleteProductImagesStmt                *sql.Stmt
 	deleteProductOptionStmt                *sql.Stmt
 	deleteProductOptionValueStmt           *sql.Stmt
+	deleteProductOptionsByProductStmt      *sql.Stmt
 	deleteProductVariantStmt               *sql.Stmt
+	deleteProductVariantsByProductStmt     *sql.Stmt
 	deleteSessionStmt                      *sql.Stmt
 	deleteSettingStmt                      *sql.Stmt
 	deleteSubdomainStmt                    *sql.Stmt
@@ -1162,7 +1180,9 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		deleteProductImagesStmt:                q.deleteProductImagesStmt,
 		deleteProductOptionStmt:                q.deleteProductOptionStmt,
 		deleteProductOptionValueStmt:           q.deleteProductOptionValueStmt,
+		deleteProductOptionsByProductStmt:      q.deleteProductOptionsByProductStmt,
 		deleteProductVariantStmt:               q.deleteProductVariantStmt,
+		deleteProductVariantsByProductStmt:     q.deleteProductVariantsByProductStmt,
 		deleteSessionStmt:                      q.deleteSessionStmt,
 		deleteSettingStmt:                      q.deleteSettingStmt,
 		deleteSubdomainStmt:                    q.deleteSubdomainStmt,

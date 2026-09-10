@@ -973,6 +973,14 @@ func initPostgres(sqlDB *sql.DB) {
 		return q.DeleteProductOptionValue(ctx, id)
 	}
 
+	DeleteProductOptionsByProductFunc = func(ctx context.Context, productID string) error {
+		return q.DeleteProductOptionsByProduct(ctx, productID)
+	}
+
+	DeleteProductVariantsByProductFunc = func(ctx context.Context, productID string) error {
+		return q.DeleteProductVariantsByProduct(ctx, productID)
+	}
+
 	// Digital file operations
 	GetDigitalFileFunc = func(ctx context.Context, id string) (DigitalFile, error) {
 		pgFile, err := q.GetDigitalFile(ctx, id)
@@ -2005,6 +2013,14 @@ func initSQLite(sqlDB *sql.DB) {
 
 	DeleteProductOptionValueFunc = func(ctx context.Context, id string) error {
 		return q.DeleteProductOptionValue(ctx, id)
+	}
+
+	DeleteProductOptionsByProductFunc = func(ctx context.Context, productID string) error {
+		return q.DeleteProductOptionsByProduct(ctx, productID)
+	}
+
+	DeleteProductVariantsByProductFunc = func(ctx context.Context, productID string) error {
+		return q.DeleteProductVariantsByProduct(ctx, productID)
 	}
 
 	// Digital file operations

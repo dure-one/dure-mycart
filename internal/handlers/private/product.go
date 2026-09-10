@@ -179,7 +179,15 @@ func UpdateProduct(c fiber.Ctx) error {
 		return webutil.StatusBadRequest(c, err.Error())
 	}
 
-	if err := store.UpdateProduct(c.Context(), request); err != nil {
+	// Use appropriate update method based on has_variants
+	var err error
+	if request.HasVariants {
+		err = store.UpdateProductWithVariants(c.Context(), request)
+	} else {
+		err = store.UpdateProduct(c.Context(), request)
+	}
+
+	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
