@@ -108,6 +108,14 @@ func TestEnsureSenderEmail_EmptyFallbackMissing(t *testing.T) {
 
 	ctx := context.Background()
 
+	// Explicitly clear the email setting (fixtures set it to 'user@mail.com')
+	if err := store.UpdateSettingByKey(ctx, &models.SettingName{
+		Key:   "email",
+		Value: "",
+	}); err != nil {
+		t.Fatalf("clear email setting: %v", err)
+	}
+
 	// With a blank `email` setting the function must surface an error rather
 	// than silently leaving SenderEmail blank.
 	m := &models.Mail{}
@@ -180,6 +188,21 @@ func TestSendPrepaymentLetter_MissingTemplate(t *testing.T) {
 func TestSendPrepaymentLetter_SkipsWhenSMTPUnconfigured(t *testing.T) {
 	_, _, cleanup := testutil.SetupTestApp(t)
 	defer cleanup()
+
+	ctx := context.Background()
+
+	// Explicitly clear SMTP settings (fixtures set smtp_host='localhost' and smtp_port='1025')
+	setting, err := store.GetSettingByGroupTyped[models.Mail](ctx)
+	if err != nil {
+		t.Fatalf("load mail settings: %v", err)
+	}
+	setting.SMTP.Host = ""
+	setting.SMTP.Port = 0
+	setting.SMTP.Username = ""
+	setting.SMTP.Password = ""
+	if err := store.UpdateSettingByGroup(ctx, setting); err != nil {
+		t.Fatalf("clear smtp settings: %v", err)
+	}
 
 	// No template seeded and no SMTP configured: the letter must be skipped
 	// gracefully instead of returning an error (dev/test environments).
