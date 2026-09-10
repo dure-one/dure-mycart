@@ -141,6 +141,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getCartStmt, err = db.PrepareContext(ctx, getCart); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCart: %w", err)
 	}
+	if q.getCartByStatusAndIDStmt, err = db.PrepareContext(ctx, getCartByStatusAndID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetCartByStatusAndID: %w", err)
+	}
 	if q.getCartItemStmt, err = db.PrepareContext(ctx, getCartItem); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCartItem: %w", err)
 	}
@@ -312,6 +315,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.updateCartItemStmt, err = db.PrepareContext(ctx, updateCartItem); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateCartItem: %w", err)
 	}
+	if q.updateCartPaymentFieldsStmt, err = db.PrepareContext(ctx, updateCartPaymentFields); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateCartPaymentFields: %w", err)
+	}
+	if q.updateCartPaymentIDStmt, err = db.PrepareContext(ctx, updateCartPaymentID); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateCartPaymentID: %w", err)
+	}
 	if q.updateCartPaymentStatusStmt, err = db.PrepareContext(ctx, updateCartPaymentStatus); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateCartPaymentStatus: %w", err)
 	}
@@ -329,6 +338,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.updatePageContentStmt, err = db.PrepareContext(ctx, updatePageContent); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdatePageContent: %w", err)
+	}
+	if q.updatePageSeoStmt, err = db.PrepareContext(ctx, updatePageSeo); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdatePageSeo: %w", err)
 	}
 	if q.updateProductStmt, err = db.PrepareContext(ctx, updateProduct); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateProduct: %w", err)
@@ -558,6 +570,11 @@ func (q *Queries) Close() error {
 	if q.getCartStmt != nil {
 		if cerr := q.getCartStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getCartStmt: %w", cerr)
+		}
+	}
+	if q.getCartByStatusAndIDStmt != nil {
+		if cerr := q.getCartByStatusAndIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getCartByStatusAndIDStmt: %w", cerr)
 		}
 	}
 	if q.getCartItemStmt != nil {
@@ -845,6 +862,16 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing updateCartItemStmt: %w", cerr)
 		}
 	}
+	if q.updateCartPaymentFieldsStmt != nil {
+		if cerr := q.updateCartPaymentFieldsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateCartPaymentFieldsStmt: %w", cerr)
+		}
+	}
+	if q.updateCartPaymentIDStmt != nil {
+		if cerr := q.updateCartPaymentIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateCartPaymentIDStmt: %w", cerr)
+		}
+	}
 	if q.updateCartPaymentStatusStmt != nil {
 		if cerr := q.updateCartPaymentStatusStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateCartPaymentStatusStmt: %w", cerr)
@@ -873,6 +900,11 @@ func (q *Queries) Close() error {
 	if q.updatePageContentStmt != nil {
 		if cerr := q.updatePageContentStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updatePageContentStmt: %w", cerr)
+		}
+	}
+	if q.updatePageSeoStmt != nil {
+		if cerr := q.updatePageSeoStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updatePageSeoStmt: %w", cerr)
 		}
 	}
 	if q.updateProductStmt != nil {
@@ -1003,6 +1035,7 @@ type Queries struct {
 	deleteSettingStmt                      *sql.Stmt
 	deleteSubdomainStmt                    *sql.Stmt
 	getCartStmt                            *sql.Stmt
+	getCartByStatusAndIDStmt               *sql.Stmt
 	getCartItemStmt                        *sql.Stmt
 	getDigitalDataStmt                     *sql.Stmt
 	getDigitalDataByProductStmt            *sql.Stmt
@@ -1060,12 +1093,15 @@ type Queries struct {
 	subdomainExistsStmt                    *sql.Stmt
 	updateCartStmt                         *sql.Stmt
 	updateCartItemStmt                     *sql.Stmt
+	updateCartPaymentFieldsStmt            *sql.Stmt
+	updateCartPaymentIDStmt                *sql.Stmt
 	updateCartPaymentStatusStmt            *sql.Stmt
 	updateDigitalDataStmt                  *sql.Stmt
 	updateNewCartStmt                      *sql.Stmt
 	updatePageStmt                         *sql.Stmt
 	updatePageActiveStmt                   *sql.Stmt
 	updatePageContentStmt                  *sql.Stmt
+	updatePageSeoStmt                      *sql.Stmt
 	updateProductStmt                      *sql.Stmt
 	updateProductActiveStmt                *sql.Stmt
 	updateProductFullStmt                  *sql.Stmt
@@ -1121,6 +1157,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		deleteSettingStmt:                      q.deleteSettingStmt,
 		deleteSubdomainStmt:                    q.deleteSubdomainStmt,
 		getCartStmt:                            q.getCartStmt,
+		getCartByStatusAndIDStmt:               q.getCartByStatusAndIDStmt,
 		getCartItemStmt:                        q.getCartItemStmt,
 		getDigitalDataStmt:                     q.getDigitalDataStmt,
 		getDigitalDataByProductStmt:            q.getDigitalDataByProductStmt,
@@ -1178,12 +1215,15 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		subdomainExistsStmt:                    q.subdomainExistsStmt,
 		updateCartStmt:                         q.updateCartStmt,
 		updateCartItemStmt:                     q.updateCartItemStmt,
+		updateCartPaymentFieldsStmt:            q.updateCartPaymentFieldsStmt,
+		updateCartPaymentIDStmt:                q.updateCartPaymentIDStmt,
 		updateCartPaymentStatusStmt:            q.updateCartPaymentStatusStmt,
 		updateDigitalDataStmt:                  q.updateDigitalDataStmt,
 		updateNewCartStmt:                      q.updateNewCartStmt,
 		updatePageStmt:                         q.updatePageStmt,
 		updatePageActiveStmt:                   q.updatePageActiveStmt,
 		updatePageContentStmt:                  q.updatePageContentStmt,
+		updatePageSeoStmt:                      q.updatePageSeoStmt,
 		updateProductStmt:                      q.updateProductStmt,
 		updateProductActiveStmt:                q.updateProductActiveStmt,
 		updateProductFullStmt:                  q.updateProductFullStmt,

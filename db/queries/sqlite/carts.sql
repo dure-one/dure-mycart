@@ -26,6 +26,21 @@ UPDATE cart
 SET payment_status = ?, updated = CURRENT_TIMESTAMP
 WHERE id = ?;
 
+-- name: UpdateCartPaymentID :exec
+UPDATE cart
+SET payment_id = ?, updated = CURRENT_TIMESTAMP
+WHERE id = ?;
+
+-- name: UpdateCartPaymentFields :exec
+UPDATE cart
+SET payment_id = ?, payment_status = ?, updated = CURRENT_TIMESTAMP
+WHERE id = ?;
+
+-- name: GetCartByStatusAndID :one
+SELECT email, CAST(cart AS TEXT) as cart FROM cart
+WHERE payment_status = ? AND id = ?
+LIMIT 1;
+
 -- name: DeleteCart :exec
 DELETE FROM cart WHERE id = ?;
 

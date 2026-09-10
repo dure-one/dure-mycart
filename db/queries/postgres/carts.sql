@@ -26,6 +26,21 @@ UPDATE cart
 SET payment_status = $1, updated = NOW()
 WHERE id = $2;
 
+-- name: UpdateCartPaymentID :exec
+UPDATE cart
+SET payment_id = $1, updated = NOW()
+WHERE id = $2;
+
+-- name: UpdateCartPaymentFields :exec
+UPDATE cart
+SET payment_id = $1, payment_status = $2, updated = NOW()
+WHERE id = $3;
+
+-- name: GetCartByStatusAndID :one
+SELECT email, cart::text as cart FROM cart
+WHERE payment_status = $1 AND id = $2
+LIMIT 1;
+
 -- name: DeleteCart :exec
 DELETE FROM cart WHERE id = $1;
 

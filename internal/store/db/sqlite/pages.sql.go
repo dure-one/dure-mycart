@@ -377,3 +377,19 @@ func (q *Queries) UpdatePageContent(ctx context.Context, arg UpdatePageContentPa
 	_, err := q.exec(ctx, q.updatePageContentStmt, updatePageContent, arg.Content, arg.ID)
 	return err
 }
+
+const updatePageSeo = `-- name: UpdatePageSeo :exec
+UPDATE page
+SET seo = ?, updated = CURRENT_TIMESTAMP
+WHERE id = ?
+`
+
+type UpdatePageSeoParams struct {
+	Seo json.RawMessage `json:"seo"`
+	ID  string          `json:"id"`
+}
+
+func (q *Queries) UpdatePageSeo(ctx context.Context, arg UpdatePageSeoParams) error {
+	_, err := q.exec(ctx, q.updatePageSeoStmt, updatePageSeo, arg.Seo, arg.ID)
+	return err
+}

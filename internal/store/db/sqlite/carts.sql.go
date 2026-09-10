@@ -124,6 +124,29 @@ func (q *Queries) GetCart(ctx context.Context, id string) (GetCartRow, error) {
 	return i, err
 }
 
+const getCartByStatusAndID = `-- name: GetCartByStatusAndID :one
+SELECT email, CAST(cart AS TEXT) as cart FROM cart
+WHERE payment_status = ? AND id = ?
+LIMIT 1
+`
+
+type GetCartByStatusAndIDParams struct {
+	PaymentStatus sql.NullString `json:"payment_status"`
+	ID            string         `json:"id"`
+}
+
+type GetCartByStatusAndIDRow struct {
+	Email sql.NullString `json:"email"`
+	Cart  string         `json:"cart"`
+}
+
+func (q *Queries) GetCartByStatusAndID(ctx context.Context, arg GetCartByStatusAndIDParams) (GetCartByStatusAndIDRow, error) {
+	row := q.queryRow(ctx, q.getCartByStatusAndIDStmt, getCartByStatusAndID, arg.PaymentStatus, arg.ID)
+	var i GetCartByStatusAndIDRow
+	err := row.Scan(&i.Email, &i.Cart)
+	return i, err
+}
+
 const listAllCarts = `-- name: ListAllCarts :many
 SELECT id, email, amount_total, currency, payment_id, payment_status, CAST(cart AS TEXT) as cart, payment_system, created, updated
 FROM cart ORDER BY created
@@ -263,6 +286,39 @@ func (q *Queries) UpdateCart(ctx context.Context, arg UpdateCartParams) error {
 		arg.PaymentSystem,
 		arg.ID,
 	)
+	return err
+}
+
+const updateCartPaymentFields = `-- name: UpdateCartPaymentFields :exec
+UPDATE cart
+SET payment_id = ?, payment_status = ?, updated = CURRENT_TIMESTAMP
+WHERE id = ?
+`
+
+type UpdateCartPaymentFieldsParams struct {
+	PaymentID     sql.NullString `json:"payment_id"`
+	PaymentStatus sql.NullString `json:"payment_status"`
+	ID            string         `json:"id"`
+}
+
+func (q *Queries) UpdateCartPaymentFields(ctx context.Context, arg UpdateCartPaymentFieldsParams) error {
+	_, err := q.exec(ctx, q.updateCartPaymentFieldsStmt, updateCartPaymentFields, arg.PaymentID, arg.PaymentStatus, arg.ID)
+	return err
+}
+
+const updateCartPaymentID = `-- name: UpdateCartPaymentID :exec
+UPDATE cart
+SET payment_id = ?, updated = CURRENT_TIMESTAMP
+WHERE id = ?
+`
+
+type UpdateCartPaymentIDParams struct {
+	PaymentID sql.NullString `json:"payment_id"`
+	ID        string         `json:"id"`
+}
+
+func (q *Queries) UpdateCartPaymentID(ctx context.Context, arg UpdateCartPaymentIDParams) error {
+	_, err := q.exec(ctx, q.updateCartPaymentIDStmt, updateCartPaymentID, arg.PaymentID, arg.ID)
 	return err
 }
 

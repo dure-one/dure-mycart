@@ -510,6 +510,13 @@ func initPostgres(sqlDB *sql.DB) {
 		return q.GetPageSeo(ctx, id)
 	}
 
+	UpdatePageSeoFunc = func(ctx context.Context, seo []byte, id string) error {
+		return q.UpdatePageSeo(ctx, postgres.UpdatePageSeoParams{
+			Seo: seo,
+			ID:  id,
+		})
+	}
+
 	// Product operations
 	GetProductByIDFunc = func(ctx context.Context, id string) (Product, error) {
 		pgProduct, err := q.GetProductByID(ctx, id)
@@ -1255,6 +1262,39 @@ func initPostgres(sqlDB *sql.DB) {
 		return q.DeleteCart(ctx, id)
 	}
 
+	UpdateCartPaymentIDFunc = func(ctx context.Context, paymentID sql.NullString, id string) error {
+		return q.UpdateCartPaymentID(ctx, postgres.UpdateCartPaymentIDParams{
+			PaymentID: paymentID,
+			ID:        id,
+		})
+	}
+
+	UpdateCartPaymentStatusFunc = func(ctx context.Context, paymentStatus sql.NullString, id string) error {
+		return q.UpdateCartPaymentStatus(ctx, postgres.UpdateCartPaymentStatusParams{
+			PaymentStatus: paymentStatus,
+			ID:            id,
+		})
+	}
+
+	UpdateCartPaymentFieldsFunc = func(ctx context.Context, paymentID, paymentStatus sql.NullString, id string) error {
+		return q.UpdateCartPaymentFields(ctx, postgres.UpdateCartPaymentFieldsParams{
+			PaymentID:     paymentID,
+			PaymentStatus: paymentStatus,
+			ID:            id,
+		})
+	}
+
+	GetCartByStatusAndIDFunc = func(ctx context.Context, paymentStatus sql.NullString, id string) (string, string, error) {
+		row, err := q.GetCartByStatusAndID(ctx, postgres.GetCartByStatusAndIDParams{
+			PaymentStatus: paymentStatus,
+			ID:            id,
+		})
+		if err != nil {
+			return "", "", err
+		}
+		return row.Email.String, row.Cart, nil
+	}
+
 	GetPaymentSettingsFunc = func(ctx context.Context) ([]PaymentSettingRow, error) {
 		pgSettings, err := q.GetPaymentSettings(ctx)
 		if err != nil {
@@ -1443,6 +1483,13 @@ func initSQLite(sqlDB *sql.DB) {
 
 	GetPageSeoFunc = func(ctx context.Context, id string) ([]byte, error) {
 		return q.GetPageSeo(ctx, id)
+	}
+
+	UpdatePageSeoFunc = func(ctx context.Context, seo []byte, id string) error {
+		return q.UpdatePageSeo(ctx, sqlite.UpdatePageSeoParams{
+			Seo: seo,
+			ID:  id,
+		})
 	}
 
 	// Product operations
@@ -2222,6 +2269,39 @@ func initSQLite(sqlDB *sql.DB) {
 
 	DeleteOldCartFunc = func(ctx context.Context, id string) error {
 		return q.DeleteCart(ctx, id)
+	}
+
+	UpdateCartPaymentIDFunc = func(ctx context.Context, paymentID sql.NullString, id string) error {
+		return q.UpdateCartPaymentID(ctx, sqlite.UpdateCartPaymentIDParams{
+			PaymentID: paymentID,
+			ID:        id,
+		})
+	}
+
+	UpdateCartPaymentStatusFunc = func(ctx context.Context, paymentStatus sql.NullString, id string) error {
+		return q.UpdateCartPaymentStatus(ctx, sqlite.UpdateCartPaymentStatusParams{
+			PaymentStatus: paymentStatus,
+			ID:            id,
+		})
+	}
+
+	UpdateCartPaymentFieldsFunc = func(ctx context.Context, paymentID, paymentStatus sql.NullString, id string) error {
+		return q.UpdateCartPaymentFields(ctx, sqlite.UpdateCartPaymentFieldsParams{
+			PaymentID:     paymentID,
+			PaymentStatus: paymentStatus,
+			ID:            id,
+		})
+	}
+
+	GetCartByStatusAndIDFunc = func(ctx context.Context, paymentStatus sql.NullString, id string) (string, string, error) {
+		row, err := q.GetCartByStatusAndID(ctx, sqlite.GetCartByStatusAndIDParams{
+			PaymentStatus: paymentStatus,
+			ID:            id,
+		})
+		if err != nil {
+			return "", "", err
+		}
+		return row.Email.String, row.Cart, nil
 	}
 
 	GetPaymentSettingsFunc = func(ctx context.Context) ([]PaymentSettingRow, error) {

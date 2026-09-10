@@ -125,13 +125,7 @@ func AddPage(ctx context.Context, page *models.Page) (*models.Page, error) {
 			return nil, err
 		}
 		// Need to update SEO separately as CreatePage doesn't handle it
-		var query string
-		if db.Type() == "postgres" {
-			query = `UPDATE page SET seo = $1 WHERE id = $2`
-		} else {
-			query = `UPDATE page SET seo = ? WHERE id = ?`
-		}
-		if _, err := db.DB().ExecContext(ctx, query, seoJSON, page.ID); err != nil {
+		if err := db.UpdatePageSeoFunc(ctx, seoJSON, page.ID); err != nil {
 			return nil, err
 		}
 	}
@@ -165,13 +159,7 @@ func UpdatePage(ctx context.Context, page *models.Page) error {
 		if err != nil {
 			return err
 		}
-		var query string
-		if db.Type() == "postgres" {
-			query = `UPDATE page SET seo = $1 WHERE id = $2`
-		} else {
-			query = `UPDATE page SET seo = ? WHERE id = ?`
-		}
-		if _, err := db.DB().ExecContext(ctx, query, seoJSON, page.ID); err != nil {
+		if err := db.UpdatePageSeoFunc(ctx, seoJSON, page.ID); err != nil {
 			return err
 		}
 	}

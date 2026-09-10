@@ -53,3 +53,8 @@ FROM page ORDER BY created;
 
 -- name: GetPageSeo :one
 SELECT seo FROM page WHERE id = $1;
+
+-- name: UpdatePageSeo :exec
+UPDATE page
+SET seo = $1, updated = NOW()
+WHERE id = $2;

@@ -36,6 +36,7 @@ var (
 	DeletePageFunc          func(ctx context.Context, id string) error
 	PageExistsFunc          func(ctx context.Context, slug string) (bool, error)
 	GetPageSeoFunc          func(ctx context.Context, id string) ([]byte, error)
+	UpdatePageSeoFunc       func(ctx context.Context, seo []byte, id string) error
 
 	// Product operations
 	GetProductByIDFunc     func(ctx context.Context, id string) (Product, error)
@@ -109,13 +110,17 @@ var (
 	DeleteCartItemsByCartIDFunc func(ctx context.Context, cartID string) error
 
 	// Legacy cart operations (old JSON schema - to be migrated)
-	GetOldCartFunc          func(ctx context.Context, id string) (OldCartRow, error)
-	ListOldCartsFunc        func(ctx context.Context, limit, offset int32) ([]OldCartRow, error)
-	CountOldCartsFunc       func(ctx context.Context) (int64, error)
-	CreateOldCartFunc       func(ctx context.Context, arg CreateOldCartParams) (OldCartRow, error)
-	UpdateOldCartFunc       func(ctx context.Context, arg UpdateOldCartParams) error
-	DeleteOldCartFunc       func(ctx context.Context, id string) error
-	GetPaymentSettingsFunc  func(ctx context.Context) ([]PaymentSettingRow, error)
+	GetOldCartFunc               func(ctx context.Context, id string) (OldCartRow, error)
+	ListOldCartsFunc             func(ctx context.Context, limit, offset int32) ([]OldCartRow, error)
+	CountOldCartsFunc            func(ctx context.Context) (int64, error)
+	CreateOldCartFunc            func(ctx context.Context, arg CreateOldCartParams) (OldCartRow, error)
+	UpdateOldCartFunc            func(ctx context.Context, arg UpdateOldCartParams) error
+	UpdateCartPaymentIDFunc      func(ctx context.Context, paymentID sql.NullString, id string) error
+	UpdateCartPaymentStatusFunc  func(ctx context.Context, paymentStatus sql.NullString, id string) error
+	UpdateCartPaymentFieldsFunc  func(ctx context.Context, paymentID, paymentStatus sql.NullString, id string) error
+	GetCartByStatusAndIDFunc     func(ctx context.Context, paymentStatus sql.NullString, id string) (string, string, error) // returns email, cart
+	DeleteOldCartFunc            func(ctx context.Context, id string) error
+	GetPaymentSettingsFunc       func(ctx context.Context) ([]PaymentSettingRow, error)
 )
 
 // Additional function pointers can be added here as needed during migration

@@ -187,44 +187,32 @@ func AddCart(ctx context.Context, cart *models.Cart) error {
 
 // UpdateCart updates an existing cart.
 func UpdateCart(ctx context.Context, cart *models.Cart) error {
-	// Build dynamic SQL for partial update (only payment_id and payment_status)
-	var (
-		args   []any
-		sqlStr strings.Builder
-	)
+	// Partial update: only payment_id and/or payment_status
+	hasPaymentID := cart.PaymentID != ""
+	hasPaymentStatus := cart.PaymentStatus != ""
 
-	sqlStr.WriteString("UPDATE cart SET ")
-
-	paramIndex := 1
-	if cart.PaymentID != "" {
-		if db.Type() == "postgres" {
-			sqlStr.WriteString(fmt.Sprintf("payment_id = $%d, ", paramIndex))
-			paramIndex++
-		} else {
-			sqlStr.WriteString("payment_id = ?, ")
-		}
-		args = append(args, cart.PaymentID)
+	if hasPaymentID && hasPaymentStatus {
+		// Update both fields
+		return db.UpdateCartPaymentFieldsFunc(ctx,
+			sql.NullString{String: cart.PaymentID, Valid: true},
+			sql.NullString{String: string(cart.PaymentStatus), Valid: true},
+			cart.ID,
+		)
+	} else if hasPaymentID {
+		// Update only payment_id
+		return db.UpdateCartPaymentIDFunc(ctx,
+			sql.NullString{String: cart.PaymentID, Valid: true},
+			cart.ID,
+		)
+	} else if hasPaymentStatus {
+		// Update only payment_status
+		return db.UpdateCartPaymentStatusFunc(ctx,
+			sql.NullString{String: string(cart.PaymentStatus), Valid: true},
+			cart.ID,
+		)
 	}
 
-	if cart.PaymentStatus != "" {
-		if db.Type() == "postgres" {
-			sqlStr.WriteString(fmt.Sprintf("payment_status = $%d, ", paramIndex))
-			paramIndex++
-		} else {
-			sqlStr.WriteString("payment_status = ?, ")
-		}
-		args = append(args, string(cart.PaymentStatus))
-	}
-
-	if db.Type() == "postgres" {
-		sqlStr.WriteString(fmt.Sprintf("updated = NOW() WHERE id = $%d", paramIndex))
-	} else {
-		sqlStr.WriteString("updated = datetime('now') WHERE id = ?")
-	}
-	args = append(args, cart.ID)
-
-	_, err := db.DB().ExecContext(ctx, sqlStr.String(), args...)
-	return err
+	return nil // No updates needed
 }
 
 // PaymentList retrieves available payment methods.
@@ -333,22 +321,18 @@ func CartLetterPayment(ctx context.Context, email, amountPayment, paymentURL str
 func CartLetterPurchase(ctx context.Context, cartID string) (*models.MessageMail, error) {
 	mail := &models.MessageMail{}
 
-	// Fetch cart with PAID status
-	var cartJSON string
-	var query string
-	if db.Type() == "postgres" {
-		query = `SELECT email, cart FROM cart WHERE payment_status = $1 AND id = $2`
-	} else {
-		query = `SELECT email, cart FROM cart WHERE payment_status = ? AND id = ?`
-	}
-
-	err := db.DB().QueryRowContext(ctx, query, string(litepay.PAID), cartID).Scan(&mail.To, &cartJSON)
+	// Fetch cart with PAID status using sqlc query
+	email, cartJSON, err := db.GetCartByStatusAndIDFunc(ctx,
+		sql.NullString{String: string(litepay.PAID), Valid: true},
+		cartID,
+	)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("cart not found")
 		}
 		return nil, fmt.Errorf("query cart: %w", err)
 	}
+	mail.To = email
 
 	// Unmarshal cart products
 	products := []models.CartProduct{}

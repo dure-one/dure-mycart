@@ -53,3 +53,8 @@ FROM page ORDER BY created;
 
 -- name: GetPageSeo :one
 SELECT seo FROM page WHERE id = ?;
+
+-- name: UpdatePageSeo :exec
+UPDATE page
+SET seo = ?, updated = CURRENT_TIMESTAMP
+WHERE id = ?;
