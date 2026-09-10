@@ -16,15 +16,20 @@ func TestGetProductByID(t *testing.T) {
 	productID := NewTestID()
 	slug := "test-product-" + productID
 	product, err := store.CreateProduct(ctx, db.CreateProductParams{
-		ID:        productID,
-		Name:      "Test Product",
-		Desc:      "Test description",
-		Slug:      slug,
-		Amount:    "1000",
-		Metadata:  []byte(`{}`),
-		Attribute: []byte(`{}`),
-		Digital:   sql.NullString{Valid: false},
-		Active:    true,
+		ID:          productID,
+		Name:        "Test Product",
+		Brief:       "",
+		Desc:        "Test description",
+		Slug:        slug,
+		Amount:      "1000",
+		Metadata:    []byte(`{}`),
+		Attribute:   []byte(`{}`),
+		Digital:     sql.NullString{Valid: false},
+		Active:      true,
+		HasVariants: false,
+		Quantity:    sql.NullInt64{},
+		SKU:         sql.NullString{},
+		Seo:         []byte(`{}`),
 	})
 	require.NoError(t, err)
 	require.Equal(t, productID, product.ID)
@@ -48,15 +53,20 @@ func TestGetProductBySlug(t *testing.T) {
 	productID := NewTestID()
 	slug := "slug-test-product-" + productID
 	_, err := store.CreateProduct(ctx, db.CreateProductParams{
-		ID:        productID,
-		Name:      "Slug Test",
-		Desc:      "Description",
-		Slug:      slug,
-		Amount:    "2000",
-		Metadata:  []byte(`{}`),
-		Attribute: []byte(`{}`),
-		Digital:   sql.NullString{Valid: false},
-		Active:    true,
+		ID:          productID,
+		Name:        "Slug Test",
+		Brief:       "",
+		Desc:        "Description",
+		Slug:        slug,
+		Amount:      "2000",
+		Metadata:    []byte(`{}`),
+		Attribute:   []byte(`{}`),
+		Digital:     sql.NullString{Valid: false},
+		Active:      true,
+		HasVariants: false,
+		Quantity:    sql.NullInt64{},
+		SKU:         sql.NullString{},
+		Seo:         []byte(`{}`),
 	})
 	require.NoError(t, err)
 
@@ -74,15 +84,20 @@ func TestUpdateProduct(t *testing.T) {
 	productID := NewTestID()
 	slug := "original-slug-" + productID
 	product, err := store.CreateProduct(ctx, db.CreateProductParams{
-		ID:        productID,
-		Name:      "Original Name",
-		Desc:      "Original description",
-		Slug:      slug,
-		Amount:    "1500",
-		Metadata:  []byte(`{}`),
-		Attribute: []byte(`{}`),
-		Digital:   sql.NullString{Valid: false},
-		Active:    false,
+		ID:          productID,
+		Name:        "Original Name",
+		Brief:       "",
+		Desc:        "Original description",
+		Slug:        slug,
+		Amount:      "1500",
+		Metadata:    []byte(`{}`),
+		Attribute:   []byte(`{}`),
+		Digital:     sql.NullString{Valid: false},
+		Active:      false,
+		HasVariants: false,
+		Quantity:    sql.NullInt64{},
+		SKU:         sql.NullString{},
+		Seo:         []byte(`{}`),
 	})
 	require.NoError(t, err)
 
@@ -116,15 +131,20 @@ func TestDeleteProduct(t *testing.T) {
 
 	// Create a product
 	product, err := store.CreateProduct(ctx, db.CreateProductParams{
-		ID:        "delete-test",
-		Name:      "Delete Me",
-		Desc:      "To be deleted",
-		Slug:      "delete-me",
-		Amount:    "999",
-		Metadata:  []byte(`{}`),
-		Attribute: []byte(`{}`),
-		Digital:   sql.NullString{Valid: false},
-		Active:    true,
+		ID:          "delete-test",
+		Name:        "Delete Me",
+		Brief:       "",
+		Desc:        "To be deleted",
+		Slug:        "delete-me",
+		Amount:      "999",
+		Metadata:    []byte(`{}`),
+		Attribute:   []byte(`{}`),
+		Digital:     sql.NullString{Valid: false},
+		Active:      true,
+		HasVariants: false,
+		Quantity:    sql.NullInt64{},
+		SKU:         sql.NullString{},
+		Seo:         []byte(`{}`),
 	})
 	require.NoError(t, err)
 

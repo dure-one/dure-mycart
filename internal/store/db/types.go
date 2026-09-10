@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/shurco/mycart/internal/store/db/postgres"
 	"github.com/shurco/mycart/internal/store/db/sqlite"
@@ -235,31 +236,41 @@ func FromSQLitePageRow(p interface{}) Page {
 
 // Product is the unified type for products
 type Product struct {
-	ID        string
-	Name      string
-	Desc      string
-	Slug      string
-	Amount    string
-	Metadata  []byte // json.RawMessage
-	Attribute []byte // json.RawMessage
-	Digital   sql.NullString
-	Active    bool
-	Deleted   bool
-	Created   sql.NullTime
-	Updated   sql.NullTime
+	ID          string
+	Name        string
+	Brief       string
+	Desc        string
+	Slug        string
+	Amount      string
+	Metadata    []byte // json.RawMessage
+	Attribute   []byte // json.RawMessage
+	Digital     sql.NullString
+	Active      bool
+	Deleted     bool
+	Created     sql.NullTime
+	Updated     sql.NullTime
+	HasVariants sql.NullBool
+	Quantity    sql.NullInt64
+	SKU         sql.NullString
+	Seo         []byte // json.RawMessage
 }
 
 // CreateProductParams for CreateProduct operation
 type CreateProductParams struct {
-	ID        string
-	Name      string
-	Desc      string
-	Slug      string
-	Amount    string
-	Metadata  []byte
-	Attribute []byte
-	Digital   sql.NullString
-	Active    bool
+	ID          string
+	Name        string
+	Brief       string
+	Desc        string
+	Slug        string
+	Amount      string
+	Metadata    []byte
+	Attribute   []byte
+	Digital     sql.NullString
+	Active      bool
+	HasVariants bool
+	Quantity    sql.NullInt64
+	SKU         sql.NullString
+	Seo         []byte
 }
 
 // UpdateProductParams for UpdateProduct operation
@@ -309,19 +320,33 @@ func FromPostgresProductRow(p interface{}) Product {
 			Updated:   v.Updated,
 		}
 	case postgres.CreateProductRow:
+		// Convert Int32 to Int64 for unified type
+		var quantity sql.NullInt64
+		if v.Quantity.Valid {
+			quantity = sql.NullInt64{Int64: int64(v.Quantity.Int32), Valid: true}
+		}
+
+		// Convert int64 epoch to sql.NullTime
+		created := sql.NullTime{Time: time.Unix(v.Created, 0), Valid: true}
+
 		return Product{
-			ID:        v.ID,
-			Name:      v.Name,
-			Desc:      v.Desc,
-			Slug:      v.Slug,
-			Amount:    v.Amount,
-			Metadata:  v.Metadata,
-			Attribute: v.Attribute,
-			Digital:   v.Digital,
-			Active:    v.Active,
-			Deleted:   v.Deleted,
-			Created:   v.Created,
-			Updated:   v.Updated,
+			ID:          v.ID,
+			Name:        v.Name,
+			Brief:       v.Brief,
+			Desc:        v.Desc,
+			Slug:        v.Slug,
+			Amount:      v.Amount,
+			Metadata:    v.Metadata,
+			Attribute:   v.Attribute,
+			Digital:     v.Digital,
+			Active:      v.Active,
+			Deleted:     v.Deleted,
+			Created:     created,
+			Updated:     v.Updated,
+			HasVariants: v.HasVariants,
+			Quantity:    quantity,
+			SKU:         v.Sku,
+			Seo:         v.Seo,
 		}
 	default:
 		return Product{}
@@ -401,19 +426,33 @@ func FromSQLiteProductRow(p interface{}) Product {
 			Updated:   v.Updated,
 		}
 	case sqlite.CreateProductRow:
+		// sqlite CreateProductRow has Strftime field instead of Created
+		var created sql.NullTime
+		if v.Strftime != nil {
+			// Convert interface{} to int64 for timestamp
+			if ts, ok := v.Strftime.(int64); ok {
+				created = sql.NullTime{Time: time.Unix(ts, 0), Valid: true}
+			}
+		}
+
 		return Product{
-			ID:        v.ID,
-			Name:      v.Name,
-			Desc:      v.Desc,
-			Slug:      v.Slug,
-			Amount:    convertAmount(v.Amount),
-			Metadata:  v.Metadata,
-			Attribute: v.Attribute,
-			Digital:   v.Digital,
-			Active:    v.Active,
-			Deleted:   v.Deleted,
-			Created:   v.Created,
-			Updated:   v.Updated,
+			ID:          v.ID,
+			Name:        v.Name,
+			Brief:       v.Brief,
+			Desc:        v.Desc,
+			Slug:        v.Slug,
+			Amount:      convertAmount(v.Amount),
+			Metadata:    v.Metadata,
+			Attribute:   v.Attribute,
+			Digital:     v.Digital,
+			Active:      v.Active,
+			Deleted:     v.Deleted,
+			Created:     created,
+			Updated:     v.Updated,
+			HasVariants: v.HasVariants,
+			Quantity:    v.Quantity,
+			SKU:         v.Sku,
+			Seo:         v.Seo,
 		}
 	default:
 		return Product{}
@@ -879,4 +918,39 @@ type CreateDigitalDataParams struct {
 type UpdateDigitalDataParams struct {
 	Content string
 	ID      string
+}
+
+// ProductOption types
+
+// ProductOption represents a product option (e.g., Size, Color)
+type ProductOption struct {
+	ID        string
+	ProductID string
+	Name      string
+	Position  sql.NullInt64
+	Created   sql.NullTime
+}
+
+// CreateProductOptionParams for creating a product option
+type CreateProductOptionParams struct {
+	ID        string
+	Name      string
+	ProductID string
+	Position  sql.NullInt64
+}
+
+// ProductOptionValue represents a value for a product option (e.g., "Small", "Red")
+type ProductOptionValue struct {
+	ID       string
+	OptionID string
+	Value    string
+	Position sql.NullInt64
+}
+
+// CreateProductOptionValueParams for creating a product option value
+type CreateProductOptionValueParams struct {
+	ID       string
+	OptionID string
+	Value    string
+	Position sql.NullInt64
 }

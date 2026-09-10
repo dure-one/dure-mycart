@@ -35,38 +35,46 @@ func (q *Queries) CountProducts(ctx context.Context) (int64, error) {
 }
 
 const createProduct = `-- name: CreateProduct :one
-INSERT INTO product (id, name, brief, "desc", slug, amount, metadata, attribute, digital, active, created)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-RETURNING id, name, brief, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated
+INSERT INTO product (id, name, brief, "desc", slug, amount, metadata, attribute, digital, active, has_variants, quantity, sku, seo, created)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+RETURNING id, name, brief, "desc", slug, amount, metadata, attribute, digital, active, has_variants, quantity, sku, seo, deleted, strftime('%s', created) as created, updated
 `
 
 type CreateProductParams struct {
-	ID        string          `json:"id"`
-	Name      string          `json:"name"`
-	Brief     string          `json:"brief"`
-	Desc      string          `json:"desc"`
-	Slug      string          `json:"slug"`
-	Amount    interface{}     `json:"amount"`
-	Metadata  json.RawMessage `json:"metadata"`
-	Attribute json.RawMessage `json:"attribute"`
-	Digital   sql.NullString  `json:"digital"`
-	Active    bool            `json:"active"`
+	ID          string          `json:"id"`
+	Name        string          `json:"name"`
+	Brief       string          `json:"brief"`
+	Desc        string          `json:"desc"`
+	Slug        string          `json:"slug"`
+	Amount      interface{}     `json:"amount"`
+	Metadata    json.RawMessage `json:"metadata"`
+	Attribute   json.RawMessage `json:"attribute"`
+	Digital     sql.NullString  `json:"digital"`
+	Active      bool            `json:"active"`
+	HasVariants sql.NullBool    `json:"has_variants"`
+	Quantity    sql.NullInt64   `json:"quantity"`
+	Sku         sql.NullString  `json:"sku"`
+	Seo         json.RawMessage `json:"seo"`
 }
 
 type CreateProductRow struct {
-	ID        string          `json:"id"`
-	Name      string          `json:"name"`
-	Brief     string          `json:"brief"`
-	Desc      string          `json:"desc"`
-	Slug      string          `json:"slug"`
-	Amount    interface{}     `json:"amount"`
-	Metadata  json.RawMessage `json:"metadata"`
-	Attribute json.RawMessage `json:"attribute"`
-	Digital   sql.NullString  `json:"digital"`
-	Active    bool            `json:"active"`
-	Deleted   bool            `json:"deleted"`
-	Created   sql.NullTime    `json:"created"`
-	Updated   sql.NullTime    `json:"updated"`
+	ID          string          `json:"id"`
+	Name        string          `json:"name"`
+	Brief       string          `json:"brief"`
+	Desc        string          `json:"desc"`
+	Slug        string          `json:"slug"`
+	Amount      interface{}     `json:"amount"`
+	Metadata    json.RawMessage `json:"metadata"`
+	Attribute   json.RawMessage `json:"attribute"`
+	Digital     sql.NullString  `json:"digital"`
+	Active      bool            `json:"active"`
+	HasVariants sql.NullBool    `json:"has_variants"`
+	Quantity    sql.NullInt64   `json:"quantity"`
+	Sku         sql.NullString  `json:"sku"`
+	Seo         json.RawMessage `json:"seo"`
+	Deleted     bool            `json:"deleted"`
+	Strftime    interface{}     `json:"strftime"`
+	Updated     sql.NullTime    `json:"updated"`
 }
 
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (CreateProductRow, error) {
@@ -81,6 +89,10 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (C
 		arg.Attribute,
 		arg.Digital,
 		arg.Active,
+		arg.HasVariants,
+		arg.Quantity,
+		arg.Sku,
+		arg.Seo,
 	)
 	var i CreateProductRow
 	err := row.Scan(
@@ -94,8 +106,12 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (C
 		&i.Attribute,
 		&i.Digital,
 		&i.Active,
+		&i.HasVariants,
+		&i.Quantity,
+		&i.Sku,
+		&i.Seo,
 		&i.Deleted,
-		&i.Created,
+		&i.Strftime,
 		&i.Updated,
 	)
 	return i, err
@@ -136,6 +152,36 @@ func (q *Queries) CreateProductOption(ctx context.Context, arg CreateProductOpti
 		&i.ProductID,
 		&i.Position,
 		&i.Created,
+	)
+	return i, err
+}
+
+const createProductOptionValue = `-- name: CreateProductOptionValue :one
+INSERT INTO product_option_value (id, option_id, value, position)
+VALUES (?, ?, ?, ?)
+RETURNING id, option_id, value, position
+`
+
+type CreateProductOptionValueParams struct {
+	ID       string        `json:"id"`
+	OptionID string        `json:"option_id"`
+	Value    string        `json:"value"`
+	Position sql.NullInt64 `json:"position"`
+}
+
+func (q *Queries) CreateProductOptionValue(ctx context.Context, arg CreateProductOptionValueParams) (ProductOptionValue, error) {
+	row := q.queryRow(ctx, q.createProductOptionValueStmt, createProductOptionValue,
+		arg.ID,
+		arg.OptionID,
+		arg.Value,
+		arg.Position,
+	)
+	var i ProductOptionValue
+	err := row.Scan(
+		&i.ID,
+		&i.OptionID,
+		&i.Value,
+		&i.Position,
 	)
 	return i, err
 }
@@ -195,6 +241,15 @@ DELETE FROM product_option WHERE id = ?
 
 func (q *Queries) DeleteProductOption(ctx context.Context, id string) error {
 	_, err := q.exec(ctx, q.deleteProductOptionStmt, deleteProductOption, id)
+	return err
+}
+
+const deleteProductOptionValue = `-- name: DeleteProductOptionValue :exec
+DELETE FROM product_option_value WHERE id = ?
+`
+
+func (q *Queries) DeleteProductOptionValue(ctx context.Context, id string) error {
+	_, err := q.exec(ctx, q.deleteProductOptionValueStmt, deleteProductOptionValue, id)
 	return err
 }
 
@@ -727,6 +782,85 @@ func (q *Queries) ListAllProducts(ctx context.Context) ([]ListAllProductsRow, er
 			&i.Deleted,
 			&i.Created,
 			&i.Updated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProductOptionValuesByOption = `-- name: ListProductOptionValuesByOption :many
+SELECT id, option_id, value, position
+FROM product_option_value
+WHERE option_id = ?
+ORDER BY position
+`
+
+func (q *Queries) ListProductOptionValuesByOption(ctx context.Context, optionID string) ([]ProductOptionValue, error) {
+	rows, err := q.query(ctx, q.listProductOptionValuesByOptionStmt, listProductOptionValuesByOption, optionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ProductOptionValue{}
+	for rows.Next() {
+		var i ProductOptionValue
+		if err := rows.Scan(
+			&i.ID,
+			&i.OptionID,
+			&i.Value,
+			&i.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProductOptionsByProduct = `-- name: ListProductOptionsByProduct :many
+SELECT id, name, product_id, position, created
+FROM product_option
+WHERE product_id = ?
+ORDER BY position
+`
+
+type ListProductOptionsByProductRow struct {
+	ID        string        `json:"id"`
+	Name      string        `json:"name"`
+	ProductID string        `json:"product_id"`
+	Position  sql.NullInt64 `json:"position"`
+	Created   sql.NullTime  `json:"created"`
+}
+
+func (q *Queries) ListProductOptionsByProduct(ctx context.Context, productID string) ([]ListProductOptionsByProductRow, error) {
+	rows, err := q.query(ctx, q.listProductOptionsByProductStmt, listProductOptionsByProduct, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListProductOptionsByProductRow{}
+	for rows.Next() {
+		var i ListProductOptionsByProductRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ProductID,
+			&i.Position,
+			&i.Created,
 		); err != nil {
 			return nil, err
 		}

@@ -158,6 +158,39 @@ func (q *Queries) ListDigitalDataByCart(ctx context.Context, cartID sql.NullStri
 	return items, nil
 }
 
+const listUnassignedDigitalDataByProduct = `-- name: ListUnassignedDigitalDataByProduct :many
+SELECT id, product_id, content, cart_id
+FROM digital_data WHERE product_id = $1 AND cart_id IS NULL
+`
+
+func (q *Queries) ListUnassignedDigitalDataByProduct(ctx context.Context, productID string) ([]DigitalDatum, error) {
+	rows, err := q.query(ctx, q.listUnassignedDigitalDataByProductStmt, listUnassignedDigitalDataByProduct, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DigitalDatum{}
+	for rows.Next() {
+		var i DigitalDatum
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProductID,
+			&i.Content,
+			&i.CartID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateDigitalData = `-- name: UpdateDigitalData :exec
 UPDATE digital_data
 SET content = $1

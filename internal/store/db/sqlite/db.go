@@ -63,6 +63,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.createProductOptionStmt, err = db.PrepareContext(ctx, createProductOption); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateProductOption: %w", err)
 	}
+	if q.createProductOptionValueStmt, err = db.PrepareContext(ctx, createProductOptionValue); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateProductOptionValue: %w", err)
+	}
 	if q.createProductVariantStmt, err = db.PrepareContext(ctx, createProductVariant); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateProductVariant: %w", err)
 	}
@@ -119,6 +122,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.deleteProductOptionStmt, err = db.PrepareContext(ctx, deleteProductOption); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteProductOption: %w", err)
+	}
+	if q.deleteProductOptionValueStmt, err = db.PrepareContext(ctx, deleteProductOptionValue); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteProductOptionValue: %w", err)
 	}
 	if q.deleteProductVariantStmt, err = db.PrepareContext(ctx, deleteProductVariant); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteProductVariant: %w", err)
@@ -258,6 +264,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.listProductImagesStmt, err = db.PrepareContext(ctx, listProductImages); err != nil {
 		return nil, fmt.Errorf("error preparing query ListProductImages: %w", err)
 	}
+	if q.listProductOptionValuesByOptionStmt, err = db.PrepareContext(ctx, listProductOptionValuesByOption); err != nil {
+		return nil, fmt.Errorf("error preparing query ListProductOptionValuesByOption: %w", err)
+	}
+	if q.listProductOptionsByProductStmt, err = db.PrepareContext(ctx, listProductOptionsByProduct); err != nil {
+		return nil, fmt.Errorf("error preparing query ListProductOptionsByProduct: %w", err)
+	}
 	if q.listProductVariantsByProductStmt, err = db.PrepareContext(ctx, listProductVariantsByProduct); err != nil {
 		return nil, fmt.Errorf("error preparing query ListProductVariantsByProduct: %w", err)
 	}
@@ -275,6 +287,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.listSubdomainsStmt, err = db.PrepareContext(ctx, listSubdomains); err != nil {
 		return nil, fmt.Errorf("error preparing query ListSubdomains: %w", err)
+	}
+	if q.listUnassignedDigitalDataByProductStmt, err = db.PrepareContext(ctx, listUnassignedDigitalDataByProduct); err != nil {
+		return nil, fmt.Errorf("error preparing query ListUnassignedDigitalDataByProduct: %w", err)
 	}
 	if q.pageExistsStmt, err = db.PrepareContext(ctx, pageExists); err != nil {
 		return nil, fmt.Errorf("error preparing query PageExists: %w", err)
@@ -415,6 +430,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing createProductOptionStmt: %w", cerr)
 		}
 	}
+	if q.createProductOptionValueStmt != nil {
+		if cerr := q.createProductOptionValueStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createProductOptionValueStmt: %w", cerr)
+		}
+	}
 	if q.createProductVariantStmt != nil {
 		if cerr := q.createProductVariantStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing createProductVariantStmt: %w", cerr)
@@ -508,6 +528,11 @@ func (q *Queries) Close() error {
 	if q.deleteProductOptionStmt != nil {
 		if cerr := q.deleteProductOptionStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteProductOptionStmt: %w", cerr)
+		}
+	}
+	if q.deleteProductOptionValueStmt != nil {
+		if cerr := q.deleteProductOptionValueStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteProductOptionValueStmt: %w", cerr)
 		}
 	}
 	if q.deleteProductVariantStmt != nil {
@@ -740,6 +765,16 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing listProductImagesStmt: %w", cerr)
 		}
 	}
+	if q.listProductOptionValuesByOptionStmt != nil {
+		if cerr := q.listProductOptionValuesByOptionStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listProductOptionValuesByOptionStmt: %w", cerr)
+		}
+	}
+	if q.listProductOptionsByProductStmt != nil {
+		if cerr := q.listProductOptionsByProductStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listProductOptionsByProductStmt: %w", cerr)
+		}
+	}
 	if q.listProductVariantsByProductStmt != nil {
 		if cerr := q.listProductVariantsByProductStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing listProductVariantsByProductStmt: %w", cerr)
@@ -768,6 +803,11 @@ func (q *Queries) Close() error {
 	if q.listSubdomainsStmt != nil {
 		if cerr := q.listSubdomainsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing listSubdomainsStmt: %w", cerr)
+		}
+	}
+	if q.listUnassignedDigitalDataByProductStmt != nil {
+		if cerr := q.listUnassignedDigitalDataByProductStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listUnassignedDigitalDataByProductStmt: %w", cerr)
 		}
 	}
 	if q.pageExistsStmt != nil {
@@ -922,227 +962,237 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                               DBTX
-	tx                               *sql.Tx
-	bulkDeleteProductImagesStmt      *sql.Stmt
-	countCartsStmt                   *sql.Stmt
-	countPagesStmt                   *sql.Stmt
-	countProductsStmt                *sql.Stmt
-	createCartStmt                   *sql.Stmt
-	createCartItemStmt               *sql.Stmt
-	createDigitalDataStmt            *sql.Stmt
-	createDigitalFileStmt            *sql.Stmt
-	createNewCartStmt                *sql.Stmt
-	createPageStmt                   *sql.Stmt
-	createProductStmt                *sql.Stmt
-	createProductImageStmt           *sql.Stmt
-	createProductOptionStmt          *sql.Stmt
-	createProductVariantStmt         *sql.Stmt
-	createSessionStmt                *sql.Stmt
-	createSettingStmt                *sql.Stmt
-	createSubdomainStmt              *sql.Stmt
-	createUserStmt                   *sql.Stmt
-	deleteCartStmt                   *sql.Stmt
-	deleteCartItemStmt               *sql.Stmt
-	deleteCartItemsByCartIDStmt      *sql.Stmt
-	deleteDigitalDataStmt            *sql.Stmt
-	deleteDigitalDataByProductStmt   *sql.Stmt
-	deleteDigitalFileStmt            *sql.Stmt
-	deleteDigitalFilesStmt           *sql.Stmt
-	deleteExpiredSessionsStmt        *sql.Stmt
-	deleteNewCartStmt                *sql.Stmt
-	deletePageStmt                   *sql.Stmt
-	deleteProductStmt                *sql.Stmt
-	deleteProductImageStmt           *sql.Stmt
-	deleteProductImagesStmt          *sql.Stmt
-	deleteProductOptionStmt          *sql.Stmt
-	deleteProductVariantStmt         *sql.Stmt
-	deleteSessionStmt                *sql.Stmt
-	deleteSettingStmt                *sql.Stmt
-	deleteSubdomainStmt              *sql.Stmt
-	getCartStmt                      *sql.Stmt
-	getCartItemStmt                  *sql.Stmt
-	getDigitalDataStmt               *sql.Stmt
-	getDigitalDataByProductStmt      *sql.Stmt
-	getDigitalFileStmt               *sql.Stmt
-	getNewCartByIDStmt               *sql.Stmt
-	getNewCartBySessionIDStmt        *sql.Stmt
-	getPageByIDStmt                  *sql.Stmt
-	getPageBySlugStmt                *sql.Stmt
-	getPageSeoStmt                   *sql.Stmt
-	getPasswordByEmailStmt           *sql.Stmt
-	getPaymentSettingsStmt           *sql.Stmt
-	getProductByIDStmt               *sql.Stmt
-	getProductBySlugStmt             *sql.Stmt
-	getProductDetailByIDStmt         *sql.Stmt
-	getProductDetailBySlugStmt       *sql.Stmt
-	getProductDigitalContentStmt     *sql.Stmt
-	getProductImageStmt              *sql.Stmt
-	getProductOptionStmt             *sql.Stmt
-	getProductWithVariantsStmt       *sql.Stmt
-	getProductsWithImagesStmt        *sql.Stmt
-	getSessionStmt                   *sql.Stmt
-	getSettingByKeyStmt              *sql.Stmt
-	getSubdomainStmt                 *sql.Stmt
-	getSubdomainByNameStmt           *sql.Stmt
-	getUserByEmailStmt               *sql.Stmt
-	listActiveProductsStmt           *sql.Stmt
-	listAllCartsStmt                 *sql.Stmt
-	listAllDigitalDataStmt           *sql.Stmt
-	listAllDigitalFilesStmt          *sql.Stmt
-	listAllPagesStmt                 *sql.Stmt
-	listAllProductImagesStmt         *sql.Stmt
-	listAllProductsStmt              *sql.Stmt
-	listAllSessionsStmt              *sql.Stmt
-	listAllSubdomainsStmt            *sql.Stmt
-	listCartItemsStmt                *sql.Stmt
-	listCartsStmt                    *sql.Stmt
-	listDigitalDataByCartStmt        *sql.Stmt
-	listDigitalFilesStmt             *sql.Stmt
-	listPagesStmt                    *sql.Stmt
-	listPagesByPositionStmt          *sql.Stmt
-	listProductImagesStmt            *sql.Stmt
-	listProductVariantsByProductStmt *sql.Stmt
-	listProductsStmt                 *sql.Stmt
-	listProductsPrivateStmt          *sql.Stmt
-	listProductsPublicStmt           *sql.Stmt
-	listSettingsStmt                 *sql.Stmt
-	listSubdomainsStmt               *sql.Stmt
-	pageExistsStmt                   *sql.Stmt
-	productExistsStmt                *sql.Stmt
-	productHasSoldDigitalDataStmt    *sql.Stmt
-	softDeleteProductStmt            *sql.Stmt
-	subdomainExistsStmt              *sql.Stmt
-	updateCartStmt                   *sql.Stmt
-	updateCartItemStmt               *sql.Stmt
-	updateCartPaymentStatusStmt      *sql.Stmt
-	updateDigitalDataStmt            *sql.Stmt
-	updateNewCartStmt                *sql.Stmt
-	updatePageStmt                   *sql.Stmt
-	updatePageActiveStmt             *sql.Stmt
-	updatePageContentStmt            *sql.Stmt
-	updateProductStmt                *sql.Stmt
-	updateProductActiveStmt          *sql.Stmt
-	updateProductFullStmt            *sql.Stmt
-	updateProductVariantStmt         *sql.Stmt
-	updateSessionStmt                *sql.Stmt
-	updateSettingStmt                *sql.Stmt
-	updateSubdomainStmt              *sql.Stmt
-	updateUserPasswordStmt           *sql.Stmt
-	upsertSessionStmt                *sql.Stmt
-	upsertSettingStmt                *sql.Stmt
+	db                                     DBTX
+	tx                                     *sql.Tx
+	bulkDeleteProductImagesStmt            *sql.Stmt
+	countCartsStmt                         *sql.Stmt
+	countPagesStmt                         *sql.Stmt
+	countProductsStmt                      *sql.Stmt
+	createCartStmt                         *sql.Stmt
+	createCartItemStmt                     *sql.Stmt
+	createDigitalDataStmt                  *sql.Stmt
+	createDigitalFileStmt                  *sql.Stmt
+	createNewCartStmt                      *sql.Stmt
+	createPageStmt                         *sql.Stmt
+	createProductStmt                      *sql.Stmt
+	createProductImageStmt                 *sql.Stmt
+	createProductOptionStmt                *sql.Stmt
+	createProductOptionValueStmt           *sql.Stmt
+	createProductVariantStmt               *sql.Stmt
+	createSessionStmt                      *sql.Stmt
+	createSettingStmt                      *sql.Stmt
+	createSubdomainStmt                    *sql.Stmt
+	createUserStmt                         *sql.Stmt
+	deleteCartStmt                         *sql.Stmt
+	deleteCartItemStmt                     *sql.Stmt
+	deleteCartItemsByCartIDStmt            *sql.Stmt
+	deleteDigitalDataStmt                  *sql.Stmt
+	deleteDigitalDataByProductStmt         *sql.Stmt
+	deleteDigitalFileStmt                  *sql.Stmt
+	deleteDigitalFilesStmt                 *sql.Stmt
+	deleteExpiredSessionsStmt              *sql.Stmt
+	deleteNewCartStmt                      *sql.Stmt
+	deletePageStmt                         *sql.Stmt
+	deleteProductStmt                      *sql.Stmt
+	deleteProductImageStmt                 *sql.Stmt
+	deleteProductImagesStmt                *sql.Stmt
+	deleteProductOptionStmt                *sql.Stmt
+	deleteProductOptionValueStmt           *sql.Stmt
+	deleteProductVariantStmt               *sql.Stmt
+	deleteSessionStmt                      *sql.Stmt
+	deleteSettingStmt                      *sql.Stmt
+	deleteSubdomainStmt                    *sql.Stmt
+	getCartStmt                            *sql.Stmt
+	getCartItemStmt                        *sql.Stmt
+	getDigitalDataStmt                     *sql.Stmt
+	getDigitalDataByProductStmt            *sql.Stmt
+	getDigitalFileStmt                     *sql.Stmt
+	getNewCartByIDStmt                     *sql.Stmt
+	getNewCartBySessionIDStmt              *sql.Stmt
+	getPageByIDStmt                        *sql.Stmt
+	getPageBySlugStmt                      *sql.Stmt
+	getPageSeoStmt                         *sql.Stmt
+	getPasswordByEmailStmt                 *sql.Stmt
+	getPaymentSettingsStmt                 *sql.Stmt
+	getProductByIDStmt                     *sql.Stmt
+	getProductBySlugStmt                   *sql.Stmt
+	getProductDetailByIDStmt               *sql.Stmt
+	getProductDetailBySlugStmt             *sql.Stmt
+	getProductDigitalContentStmt           *sql.Stmt
+	getProductImageStmt                    *sql.Stmt
+	getProductOptionStmt                   *sql.Stmt
+	getProductWithVariantsStmt             *sql.Stmt
+	getProductsWithImagesStmt              *sql.Stmt
+	getSessionStmt                         *sql.Stmt
+	getSettingByKeyStmt                    *sql.Stmt
+	getSubdomainStmt                       *sql.Stmt
+	getSubdomainByNameStmt                 *sql.Stmt
+	getUserByEmailStmt                     *sql.Stmt
+	listActiveProductsStmt                 *sql.Stmt
+	listAllCartsStmt                       *sql.Stmt
+	listAllDigitalDataStmt                 *sql.Stmt
+	listAllDigitalFilesStmt                *sql.Stmt
+	listAllPagesStmt                       *sql.Stmt
+	listAllProductImagesStmt               *sql.Stmt
+	listAllProductsStmt                    *sql.Stmt
+	listAllSessionsStmt                    *sql.Stmt
+	listAllSubdomainsStmt                  *sql.Stmt
+	listCartItemsStmt                      *sql.Stmt
+	listCartsStmt                          *sql.Stmt
+	listDigitalDataByCartStmt              *sql.Stmt
+	listDigitalFilesStmt                   *sql.Stmt
+	listPagesStmt                          *sql.Stmt
+	listPagesByPositionStmt                *sql.Stmt
+	listProductImagesStmt                  *sql.Stmt
+	listProductOptionValuesByOptionStmt    *sql.Stmt
+	listProductOptionsByProductStmt        *sql.Stmt
+	listProductVariantsByProductStmt       *sql.Stmt
+	listProductsStmt                       *sql.Stmt
+	listProductsPrivateStmt                *sql.Stmt
+	listProductsPublicStmt                 *sql.Stmt
+	listSettingsStmt                       *sql.Stmt
+	listSubdomainsStmt                     *sql.Stmt
+	listUnassignedDigitalDataByProductStmt *sql.Stmt
+	pageExistsStmt                         *sql.Stmt
+	productExistsStmt                      *sql.Stmt
+	productHasSoldDigitalDataStmt          *sql.Stmt
+	softDeleteProductStmt                  *sql.Stmt
+	subdomainExistsStmt                    *sql.Stmt
+	updateCartStmt                         *sql.Stmt
+	updateCartItemStmt                     *sql.Stmt
+	updateCartPaymentStatusStmt            *sql.Stmt
+	updateDigitalDataStmt                  *sql.Stmt
+	updateNewCartStmt                      *sql.Stmt
+	updatePageStmt                         *sql.Stmt
+	updatePageActiveStmt                   *sql.Stmt
+	updatePageContentStmt                  *sql.Stmt
+	updateProductStmt                      *sql.Stmt
+	updateProductActiveStmt                *sql.Stmt
+	updateProductFullStmt                  *sql.Stmt
+	updateProductVariantStmt               *sql.Stmt
+	updateSessionStmt                      *sql.Stmt
+	updateSettingStmt                      *sql.Stmt
+	updateSubdomainStmt                    *sql.Stmt
+	updateUserPasswordStmt                 *sql.Stmt
+	upsertSessionStmt                      *sql.Stmt
+	upsertSettingStmt                      *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                               tx,
-		tx:                               tx,
-		bulkDeleteProductImagesStmt:      q.bulkDeleteProductImagesStmt,
-		countCartsStmt:                   q.countCartsStmt,
-		countPagesStmt:                   q.countPagesStmt,
-		countProductsStmt:                q.countProductsStmt,
-		createCartStmt:                   q.createCartStmt,
-		createCartItemStmt:               q.createCartItemStmt,
-		createDigitalDataStmt:            q.createDigitalDataStmt,
-		createDigitalFileStmt:            q.createDigitalFileStmt,
-		createNewCartStmt:                q.createNewCartStmt,
-		createPageStmt:                   q.createPageStmt,
-		createProductStmt:                q.createProductStmt,
-		createProductImageStmt:           q.createProductImageStmt,
-		createProductOptionStmt:          q.createProductOptionStmt,
-		createProductVariantStmt:         q.createProductVariantStmt,
-		createSessionStmt:                q.createSessionStmt,
-		createSettingStmt:                q.createSettingStmt,
-		createSubdomainStmt:              q.createSubdomainStmt,
-		createUserStmt:                   q.createUserStmt,
-		deleteCartStmt:                   q.deleteCartStmt,
-		deleteCartItemStmt:               q.deleteCartItemStmt,
-		deleteCartItemsByCartIDStmt:      q.deleteCartItemsByCartIDStmt,
-		deleteDigitalDataStmt:            q.deleteDigitalDataStmt,
-		deleteDigitalDataByProductStmt:   q.deleteDigitalDataByProductStmt,
-		deleteDigitalFileStmt:            q.deleteDigitalFileStmt,
-		deleteDigitalFilesStmt:           q.deleteDigitalFilesStmt,
-		deleteExpiredSessionsStmt:        q.deleteExpiredSessionsStmt,
-		deleteNewCartStmt:                q.deleteNewCartStmt,
-		deletePageStmt:                   q.deletePageStmt,
-		deleteProductStmt:                q.deleteProductStmt,
-		deleteProductImageStmt:           q.deleteProductImageStmt,
-		deleteProductImagesStmt:          q.deleteProductImagesStmt,
-		deleteProductOptionStmt:          q.deleteProductOptionStmt,
-		deleteProductVariantStmt:         q.deleteProductVariantStmt,
-		deleteSessionStmt:                q.deleteSessionStmt,
-		deleteSettingStmt:                q.deleteSettingStmt,
-		deleteSubdomainStmt:              q.deleteSubdomainStmt,
-		getCartStmt:                      q.getCartStmt,
-		getCartItemStmt:                  q.getCartItemStmt,
-		getDigitalDataStmt:               q.getDigitalDataStmt,
-		getDigitalDataByProductStmt:      q.getDigitalDataByProductStmt,
-		getDigitalFileStmt:               q.getDigitalFileStmt,
-		getNewCartByIDStmt:               q.getNewCartByIDStmt,
-		getNewCartBySessionIDStmt:        q.getNewCartBySessionIDStmt,
-		getPageByIDStmt:                  q.getPageByIDStmt,
-		getPageBySlugStmt:                q.getPageBySlugStmt,
-		getPageSeoStmt:                   q.getPageSeoStmt,
-		getPasswordByEmailStmt:           q.getPasswordByEmailStmt,
-		getPaymentSettingsStmt:           q.getPaymentSettingsStmt,
-		getProductByIDStmt:               q.getProductByIDStmt,
-		getProductBySlugStmt:             q.getProductBySlugStmt,
-		getProductDetailByIDStmt:         q.getProductDetailByIDStmt,
-		getProductDetailBySlugStmt:       q.getProductDetailBySlugStmt,
-		getProductDigitalContentStmt:     q.getProductDigitalContentStmt,
-		getProductImageStmt:              q.getProductImageStmt,
-		getProductOptionStmt:             q.getProductOptionStmt,
-		getProductWithVariantsStmt:       q.getProductWithVariantsStmt,
-		getProductsWithImagesStmt:        q.getProductsWithImagesStmt,
-		getSessionStmt:                   q.getSessionStmt,
-		getSettingByKeyStmt:              q.getSettingByKeyStmt,
-		getSubdomainStmt:                 q.getSubdomainStmt,
-		getSubdomainByNameStmt:           q.getSubdomainByNameStmt,
-		getUserByEmailStmt:               q.getUserByEmailStmt,
-		listActiveProductsStmt:           q.listActiveProductsStmt,
-		listAllCartsStmt:                 q.listAllCartsStmt,
-		listAllDigitalDataStmt:           q.listAllDigitalDataStmt,
-		listAllDigitalFilesStmt:          q.listAllDigitalFilesStmt,
-		listAllPagesStmt:                 q.listAllPagesStmt,
-		listAllProductImagesStmt:         q.listAllProductImagesStmt,
-		listAllProductsStmt:              q.listAllProductsStmt,
-		listAllSessionsStmt:              q.listAllSessionsStmt,
-		listAllSubdomainsStmt:            q.listAllSubdomainsStmt,
-		listCartItemsStmt:                q.listCartItemsStmt,
-		listCartsStmt:                    q.listCartsStmt,
-		listDigitalDataByCartStmt:        q.listDigitalDataByCartStmt,
-		listDigitalFilesStmt:             q.listDigitalFilesStmt,
-		listPagesStmt:                    q.listPagesStmt,
-		listPagesByPositionStmt:          q.listPagesByPositionStmt,
-		listProductImagesStmt:            q.listProductImagesStmt,
-		listProductVariantsByProductStmt: q.listProductVariantsByProductStmt,
-		listProductsStmt:                 q.listProductsStmt,
-		listProductsPrivateStmt:          q.listProductsPrivateStmt,
-		listProductsPublicStmt:           q.listProductsPublicStmt,
-		listSettingsStmt:                 q.listSettingsStmt,
-		listSubdomainsStmt:               q.listSubdomainsStmt,
-		pageExistsStmt:                   q.pageExistsStmt,
-		productExistsStmt:                q.productExistsStmt,
-		productHasSoldDigitalDataStmt:    q.productHasSoldDigitalDataStmt,
-		softDeleteProductStmt:            q.softDeleteProductStmt,
-		subdomainExistsStmt:              q.subdomainExistsStmt,
-		updateCartStmt:                   q.updateCartStmt,
-		updateCartItemStmt:               q.updateCartItemStmt,
-		updateCartPaymentStatusStmt:      q.updateCartPaymentStatusStmt,
-		updateDigitalDataStmt:            q.updateDigitalDataStmt,
-		updateNewCartStmt:                q.updateNewCartStmt,
-		updatePageStmt:                   q.updatePageStmt,
-		updatePageActiveStmt:             q.updatePageActiveStmt,
-		updatePageContentStmt:            q.updatePageContentStmt,
-		updateProductStmt:                q.updateProductStmt,
-		updateProductActiveStmt:          q.updateProductActiveStmt,
-		updateProductFullStmt:            q.updateProductFullStmt,
-		updateProductVariantStmt:         q.updateProductVariantStmt,
-		updateSessionStmt:                q.updateSessionStmt,
-		updateSettingStmt:                q.updateSettingStmt,
-		updateSubdomainStmt:              q.updateSubdomainStmt,
-		updateUserPasswordStmt:           q.updateUserPasswordStmt,
-		upsertSessionStmt:                q.upsertSessionStmt,
-		upsertSettingStmt:                q.upsertSettingStmt,
+		db:                                     tx,
+		tx:                                     tx,
+		bulkDeleteProductImagesStmt:            q.bulkDeleteProductImagesStmt,
+		countCartsStmt:                         q.countCartsStmt,
+		countPagesStmt:                         q.countPagesStmt,
+		countProductsStmt:                      q.countProductsStmt,
+		createCartStmt:                         q.createCartStmt,
+		createCartItemStmt:                     q.createCartItemStmt,
+		createDigitalDataStmt:                  q.createDigitalDataStmt,
+		createDigitalFileStmt:                  q.createDigitalFileStmt,
+		createNewCartStmt:                      q.createNewCartStmt,
+		createPageStmt:                         q.createPageStmt,
+		createProductStmt:                      q.createProductStmt,
+		createProductImageStmt:                 q.createProductImageStmt,
+		createProductOptionStmt:                q.createProductOptionStmt,
+		createProductOptionValueStmt:           q.createProductOptionValueStmt,
+		createProductVariantStmt:               q.createProductVariantStmt,
+		createSessionStmt:                      q.createSessionStmt,
+		createSettingStmt:                      q.createSettingStmt,
+		createSubdomainStmt:                    q.createSubdomainStmt,
+		createUserStmt:                         q.createUserStmt,
+		deleteCartStmt:                         q.deleteCartStmt,
+		deleteCartItemStmt:                     q.deleteCartItemStmt,
+		deleteCartItemsByCartIDStmt:            q.deleteCartItemsByCartIDStmt,
+		deleteDigitalDataStmt:                  q.deleteDigitalDataStmt,
+		deleteDigitalDataByProductStmt:         q.deleteDigitalDataByProductStmt,
+		deleteDigitalFileStmt:                  q.deleteDigitalFileStmt,
+		deleteDigitalFilesStmt:                 q.deleteDigitalFilesStmt,
+		deleteExpiredSessionsStmt:              q.deleteExpiredSessionsStmt,
+		deleteNewCartStmt:                      q.deleteNewCartStmt,
+		deletePageStmt:                         q.deletePageStmt,
+		deleteProductStmt:                      q.deleteProductStmt,
+		deleteProductImageStmt:                 q.deleteProductImageStmt,
+		deleteProductImagesStmt:                q.deleteProductImagesStmt,
+		deleteProductOptionStmt:                q.deleteProductOptionStmt,
+		deleteProductOptionValueStmt:           q.deleteProductOptionValueStmt,
+		deleteProductVariantStmt:               q.deleteProductVariantStmt,
+		deleteSessionStmt:                      q.deleteSessionStmt,
+		deleteSettingStmt:                      q.deleteSettingStmt,
+		deleteSubdomainStmt:                    q.deleteSubdomainStmt,
+		getCartStmt:                            q.getCartStmt,
+		getCartItemStmt:                        q.getCartItemStmt,
+		getDigitalDataStmt:                     q.getDigitalDataStmt,
+		getDigitalDataByProductStmt:            q.getDigitalDataByProductStmt,
+		getDigitalFileStmt:                     q.getDigitalFileStmt,
+		getNewCartByIDStmt:                     q.getNewCartByIDStmt,
+		getNewCartBySessionIDStmt:              q.getNewCartBySessionIDStmt,
+		getPageByIDStmt:                        q.getPageByIDStmt,
+		getPageBySlugStmt:                      q.getPageBySlugStmt,
+		getPageSeoStmt:                         q.getPageSeoStmt,
+		getPasswordByEmailStmt:                 q.getPasswordByEmailStmt,
+		getPaymentSettingsStmt:                 q.getPaymentSettingsStmt,
+		getProductByIDStmt:                     q.getProductByIDStmt,
+		getProductBySlugStmt:                   q.getProductBySlugStmt,
+		getProductDetailByIDStmt:               q.getProductDetailByIDStmt,
+		getProductDetailBySlugStmt:             q.getProductDetailBySlugStmt,
+		getProductDigitalContentStmt:           q.getProductDigitalContentStmt,
+		getProductImageStmt:                    q.getProductImageStmt,
+		getProductOptionStmt:                   q.getProductOptionStmt,
+		getProductWithVariantsStmt:             q.getProductWithVariantsStmt,
+		getProductsWithImagesStmt:              q.getProductsWithImagesStmt,
+		getSessionStmt:                         q.getSessionStmt,
+		getSettingByKeyStmt:                    q.getSettingByKeyStmt,
+		getSubdomainStmt:                       q.getSubdomainStmt,
+		getSubdomainByNameStmt:                 q.getSubdomainByNameStmt,
+		getUserByEmailStmt:                     q.getUserByEmailStmt,
+		listActiveProductsStmt:                 q.listActiveProductsStmt,
+		listAllCartsStmt:                       q.listAllCartsStmt,
+		listAllDigitalDataStmt:                 q.listAllDigitalDataStmt,
+		listAllDigitalFilesStmt:                q.listAllDigitalFilesStmt,
+		listAllPagesStmt:                       q.listAllPagesStmt,
+		listAllProductImagesStmt:               q.listAllProductImagesStmt,
+		listAllProductsStmt:                    q.listAllProductsStmt,
+		listAllSessionsStmt:                    q.listAllSessionsStmt,
+		listAllSubdomainsStmt:                  q.listAllSubdomainsStmt,
+		listCartItemsStmt:                      q.listCartItemsStmt,
+		listCartsStmt:                          q.listCartsStmt,
+		listDigitalDataByCartStmt:              q.listDigitalDataByCartStmt,
+		listDigitalFilesStmt:                   q.listDigitalFilesStmt,
+		listPagesStmt:                          q.listPagesStmt,
+		listPagesByPositionStmt:                q.listPagesByPositionStmt,
+		listProductImagesStmt:                  q.listProductImagesStmt,
+		listProductOptionValuesByOptionStmt:    q.listProductOptionValuesByOptionStmt,
+		listProductOptionsByProductStmt:        q.listProductOptionsByProductStmt,
+		listProductVariantsByProductStmt:       q.listProductVariantsByProductStmt,
+		listProductsStmt:                       q.listProductsStmt,
+		listProductsPrivateStmt:                q.listProductsPrivateStmt,
+		listProductsPublicStmt:                 q.listProductsPublicStmt,
+		listSettingsStmt:                       q.listSettingsStmt,
+		listSubdomainsStmt:                     q.listSubdomainsStmt,
+		listUnassignedDigitalDataByProductStmt: q.listUnassignedDigitalDataByProductStmt,
+		pageExistsStmt:                         q.pageExistsStmt,
+		productExistsStmt:                      q.productExistsStmt,
+		productHasSoldDigitalDataStmt:          q.productHasSoldDigitalDataStmt,
+		softDeleteProductStmt:                  q.softDeleteProductStmt,
+		subdomainExistsStmt:                    q.subdomainExistsStmt,
+		updateCartStmt:                         q.updateCartStmt,
+		updateCartItemStmt:                     q.updateCartItemStmt,
+		updateCartPaymentStatusStmt:            q.updateCartPaymentStatusStmt,
+		updateDigitalDataStmt:                  q.updateDigitalDataStmt,
+		updateNewCartStmt:                      q.updateNewCartStmt,
+		updatePageStmt:                         q.updatePageStmt,
+		updatePageActiveStmt:                   q.updatePageActiveStmt,
+		updatePageContentStmt:                  q.updatePageContentStmt,
+		updateProductStmt:                      q.updateProductStmt,
+		updateProductActiveStmt:                q.updateProductActiveStmt,
+		updateProductFullStmt:                  q.updateProductFullStmt,
+		updateProductVariantStmt:               q.updateProductVariantStmt,
+		updateSessionStmt:                      q.updateSessionStmt,
+		updateSettingStmt:                      q.updateSettingStmt,
+		updateSubdomainStmt:                    q.updateSubdomainStmt,
+		updateUserPasswordStmt:                 q.updateUserPasswordStmt,
+		upsertSessionStmt:                      q.upsertSessionStmt,
+		upsertSettingStmt:                      q.upsertSettingStmt,
 	}
 }

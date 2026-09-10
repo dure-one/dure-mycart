@@ -10,6 +10,10 @@ FROM digital_data WHERE product_id = $1 LIMIT 1;
 SELECT id, product_id, content, cart_id
 FROM digital_data WHERE cart_id = $1;
 
+-- name: ListUnassignedDigitalDataByProduct :many
+SELECT id, product_id, content, cart_id
+FROM digital_data WHERE product_id = $1 AND cart_id IS NULL;
+
 -- name: CreateDigitalData :one
 INSERT INTO digital_data (id, product_id, content, cart_id)
 VALUES ($1, $2, $3, $4)

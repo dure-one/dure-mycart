@@ -528,16 +528,30 @@ func initPostgres(sqlDB *sql.DB) {
 	}
 
 	CreateProductFunc = func(ctx context.Context, params CreateProductParams) (Product, error) {
+		// Convert Int64 to Int32 for postgres
+		var quantity sql.NullInt32
+		if params.Quantity.Valid {
+			quantity = sql.NullInt32{Int32: int32(params.Quantity.Int64), Valid: true}
+		}
+
+		// Convert bool to NullBool
+		hasVariants := sql.NullBool{Bool: params.HasVariants, Valid: true}
+
 		pgProduct, err := q.CreateProduct(ctx, postgres.CreateProductParams{
-			ID:        params.ID,
-			Name:      params.Name,
-			Desc:      params.Desc,
-			Slug:      params.Slug,
-			Amount:    params.Amount,
-			Metadata:  params.Metadata,
-			Attribute: params.Attribute,
-			Digital:   params.Digital,
-			Active:    params.Active,
+			ID:          params.ID,
+			Name:        params.Name,
+			Brief:       params.Brief,
+			Desc:        params.Desc,
+			Slug:        params.Slug,
+			Amount:      params.Amount,
+			Metadata:    params.Metadata,
+			Attribute:   params.Attribute,
+			Digital:     params.Digital,
+			Active:      params.Active,
+			HasVariants: hasVariants,
+			Quantity:    quantity,
+			Sku:         params.SKU,
+			Seo:         params.Seo,
 		})
 		if err != nil {
 			return Product{}, err
@@ -590,6 +604,116 @@ func initPostgres(sqlDB *sql.DB) {
 
 	SoftDeleteProductFunc = func(ctx context.Context, id string) error {
 		return q.SoftDeleteProduct(ctx, id)
+	}
+
+	ListProductsPrivateFunc = func(ctx context.Context, params ListProductsPrivateParams) ([]ProductListRow, error) {
+		pgProducts, err := q.ListProductsPrivate(ctx, postgres.ListProductsPrivateParams{
+			Limit:  params.Limit,
+			Offset: params.Offset,
+		})
+		if err != nil {
+			return nil, err
+		}
+		products := make([]ProductListRow, len(pgProducts))
+		for i, pg := range pgProducts {
+			products[i] = ProductListRow{
+				ID:       pg.ID,
+				Name:     pg.Name,
+				Brief:    pg.Brief,
+				Slug:     pg.Slug,
+				Amount:   pg.Amount,
+				Quantity: sql.NullInt64{Int64: int64(pg.Quantity.Int32), Valid: pg.Quantity.Valid},
+				Digital:  pg.Digital,
+				Active:   pg.Active,
+			}
+			if pg.HasVariants.Valid {
+				products[i].Metadata = []byte(fmt.Sprintf(`{"has_variants":%t}`, pg.HasVariants.Bool))
+			}
+			if pg.Created != 0 {
+				products[i].Created = sql.NullTime{Time: time.Unix(pg.Created, 0), Valid: true}
+			}
+		}
+		return products, nil
+	}
+
+	ListProductsPublicFunc = func(ctx context.Context, params ListProductsPublicParams) ([]ProductListRow, error) {
+		pgProducts, err := q.ListProductsPublic(ctx, postgres.ListProductsPublicParams{
+			Limit:  params.Limit,
+			Offset: params.Offset,
+		})
+		if err != nil {
+			return nil, err
+		}
+		products := make([]ProductListRow, len(pgProducts))
+		for i, pg := range pgProducts {
+			products[i] = ProductListRow{
+				ID:       pg.ID,
+				Name:     pg.Name,
+				Brief:    pg.Brief,
+				Slug:     pg.Slug,
+				Amount:   pg.Amount,
+				Quantity: sql.NullInt64{Int64: int64(pg.Quantity.Int32), Valid: pg.Quantity.Valid},
+				Digital:  pg.Digital,
+				Active:   pg.Active,
+			}
+			if pg.HasVariants.Valid {
+				products[i].Metadata = []byte(fmt.Sprintf(`{"has_variants":%t}`, pg.HasVariants.Bool))
+			}
+			if pg.Created != 0 {
+				products[i].Created = sql.NullTime{Time: time.Unix(pg.Created, 0), Valid: true}
+			}
+		}
+		return products, nil
+	}
+
+	GetProductDetailByIDFunc = func(ctx context.Context, id string) (ProductDetail, error) {
+		pgDetail, err := q.GetProductDetailByID(ctx, id)
+		if err != nil {
+			return ProductDetail{}, err
+		}
+		return ProductDetail{
+			ID:          pgDetail.ID,
+			Name:        pgDetail.Name,
+			Brief:       pgDetail.Brief,
+			Desc:        pgDetail.Desc,
+			Slug:        pgDetail.Slug,
+			Amount:      pgDetail.Amount,
+			Quantity:    sql.NullInt64{Int64: int64(pgDetail.Quantity.Int32), Valid: pgDetail.Quantity.Valid},
+			Sku:         pgDetail.Sku,
+			HasVariants: pgDetail.HasVariants.Bool,
+			Metadata:    pgDetail.Metadata,
+			Attribute:   pgDetail.Attribute,
+			Seo:         pgDetail.Seo,
+			Digital:     pgDetail.Digital,
+			Active:      pgDetail.Active,
+			Created:     sql.NullTime{Time: time.Unix(pgDetail.Created, 0), Valid: pgDetail.Created != 0},
+			Updated:     sql.NullTime{Time: time.Unix(pgDetail.Updated, 0), Valid: pgDetail.Updated != 0},
+		}, nil
+	}
+
+	GetProductDetailBySlugFunc = func(ctx context.Context, slug string) (ProductDetail, error) {
+		pgDetail, err := q.GetProductDetailBySlug(ctx, slug)
+		if err != nil {
+			return ProductDetail{}, err
+		}
+		return ProductDetail{
+			ID:          pgDetail.ID,
+			Name:        pgDetail.Name,
+			Brief:       pgDetail.Brief,
+			Desc:        pgDetail.Desc,
+			Slug:        pgDetail.Slug,
+			Amount:      pgDetail.Amount,
+			Quantity:    sql.NullInt64{Int64: int64(pgDetail.Quantity.Int32), Valid: pgDetail.Quantity.Valid},
+			Sku:         pgDetail.Sku,
+			HasVariants: false, // GetProductDetailBySlug doesn't return this field
+			Metadata:    pgDetail.Metadata,
+			Attribute:   pgDetail.Attribute,
+			Seo:         pgDetail.Seo,
+			Digital:     pgDetail.Digital,
+			Active:      pgDetail.Active,
+			Created:     sql.NullTime{Time: time.Unix(pgDetail.Created, 0), Valid: pgDetail.Created != 0},
+			Updated:     sql.NullTime{Time: time.Unix(pgDetail.Updated, 0), Valid: pgDetail.Updated != 0},
+		}, nil
 	}
 
 	// Product image operations
@@ -718,6 +842,87 @@ func initPostgres(sqlDB *sql.DB) {
 		return q.DeleteProductVariant(ctx, id)
 	}
 
+	// Product option operations
+	ListProductOptionsByProductFunc = func(ctx context.Context, productID string) ([]ProductOption, error) {
+		pgOptions, err := q.ListProductOptionsByProduct(ctx, productID)
+		if err != nil {
+			return nil, err
+		}
+		options := make([]ProductOption, len(pgOptions))
+		for i, pg := range pgOptions {
+			options[i] = ProductOption{
+				ID:        pg.ID,
+				ProductID: pg.ProductID,
+				Name:      pg.Name,
+				Position:  sql.NullInt64{Int64: int64(pg.Position.Int32), Valid: pg.Position.Valid},
+				Created:   pg.Created,
+			}
+		}
+		return options, nil
+	}
+
+	CreateProductOptionFunc = func(ctx context.Context, params CreateProductOptionParams) (ProductOption, error) {
+		pgOption, err := q.CreateProductOption(ctx, postgres.CreateProductOptionParams{
+			ID:        params.ID,
+			Name:      params.Name,
+			ProductID: params.ProductID,
+			Position:  sql.NullInt32{Int32: int32(params.Position.Int64), Valid: params.Position.Valid},
+		})
+		if err != nil {
+			return ProductOption{}, err
+		}
+		return ProductOption{
+			ID:        pgOption.ID,
+			ProductID: pgOption.ProductID,
+			Name:      pgOption.Name,
+			Position:  sql.NullInt64{Int64: int64(pgOption.Position.Int32), Valid: pgOption.Position.Valid},
+			Created:   pgOption.Created,
+		}, nil
+	}
+
+	DeleteProductOptionFunc = func(ctx context.Context, id string) error {
+		return q.DeleteProductOption(ctx, id)
+	}
+
+	CreateProductOptionValueFunc = func(ctx context.Context, params CreateProductOptionValueParams) (ProductOptionValue, error) {
+		pgValue, err := q.CreateProductOptionValue(ctx, postgres.CreateProductOptionValueParams{
+			ID:       params.ID,
+			OptionID: params.OptionID,
+			Value:    params.Value,
+			Position: sql.NullInt32{Int32: int32(params.Position.Int64), Valid: params.Position.Valid},
+		})
+		if err != nil {
+			return ProductOptionValue{}, err
+		}
+		return ProductOptionValue{
+			ID:       pgValue.ID,
+			OptionID: pgValue.OptionID,
+			Value:    pgValue.Value,
+			Position: sql.NullInt64{Int64: int64(pgValue.Position.Int32), Valid: pgValue.Position.Valid},
+		}, nil
+	}
+
+	ListProductOptionValuesByOptionFunc = func(ctx context.Context, optionID string) ([]ProductOptionValue, error) {
+		pgValues, err := q.ListProductOptionValuesByOption(ctx, optionID)
+		if err != nil {
+			return nil, err
+		}
+		values := make([]ProductOptionValue, len(pgValues))
+		for i, pg := range pgValues {
+			values[i] = ProductOptionValue{
+				ID:       pg.ID,
+				OptionID: pg.OptionID,
+				Value:    pg.Value,
+				Position: sql.NullInt64{Int64: int64(pg.Position.Int32), Valid: pg.Position.Valid},
+			}
+		}
+		return values, nil
+	}
+
+	DeleteProductOptionValueFunc = func(ctx context.Context, id string) error {
+		return q.DeleteProductOptionValue(ctx, id)
+	}
+
 	// Digital file operations
 	GetDigitalFileFunc = func(ctx context.Context, id string) (DigitalFile, error) {
 		pgFile, err := q.GetDigitalFile(ctx, id)
@@ -808,6 +1013,23 @@ func initPostgres(sqlDB *sql.DB) {
 
 	ListDigitalDataByCartFunc = func(ctx context.Context, cartID string) ([]DigitalData, error) {
 		pgData, err := q.ListDigitalDataByCart(ctx, sql.NullString{String: cartID, Valid: true})
+		if err != nil {
+			return nil, err
+		}
+		data := make([]DigitalData, len(pgData))
+		for i, d := range pgData {
+			data[i] = DigitalData{
+				ID:        d.ID,
+				ProductID: d.ProductID,
+				Content:   d.Content,
+				CartID:    d.CartID,
+			}
+		}
+		return data, nil
+	}
+
+	ListUnassignedDigitalDataByProductFunc = func(ctx context.Context, productID string) ([]DigitalData, error) {
+		pgData, err := q.ListUnassignedDigitalDataByProduct(ctx, productID)
 		if err != nil {
 			return nil, err
 		}
@@ -1241,16 +1463,27 @@ func initSQLite(sqlDB *sql.DB) {
 	}
 
 	CreateProductFunc = func(ctx context.Context, params CreateProductParams) (Product, error) {
+		// Convert string Amount to interface{} for sqlite
+		var amount interface{} = params.Amount
+
+		// Convert bool to NullBool
+		hasVariants := sql.NullBool{Bool: params.HasVariants, Valid: true}
+
 		sqliteProduct, err := q.CreateProduct(ctx, sqlite.CreateProductParams{
-			ID:        params.ID,
-			Name:      params.Name,
-			Desc:      params.Desc,
-			Slug:      params.Slug,
-			Amount:    params.Amount,
-			Metadata:  params.Metadata,
-			Attribute: params.Attribute,
-			Digital:   params.Digital,
-			Active:    params.Active,
+			ID:          params.ID,
+			Name:        params.Name,
+			Brief:       params.Brief,
+			Desc:        params.Desc,
+			Slug:        params.Slug,
+			Amount:      amount,
+			Metadata:    params.Metadata,
+			Attribute:   params.Attribute,
+			Digital:     params.Digital,
+			Active:      params.Active,
+			HasVariants: hasVariants,
+			Quantity:    params.Quantity,
+			Sku:         params.SKU,
+			Seo:         params.Seo,
 		})
 		if err != nil {
 			return Product{}, err
@@ -1303,6 +1536,137 @@ func initSQLite(sqlDB *sql.DB) {
 
 	SoftDeleteProductFunc = func(ctx context.Context, id string) error {
 		return q.SoftDeleteProduct(ctx, id)
+	}
+
+	ListProductsPrivateFunc = func(ctx context.Context, params ListProductsPrivateParams) ([]ProductListRow, error) {
+		sqliteProducts, err := q.ListProductsPrivate(ctx, sqlite.ListProductsPrivateParams{
+			Limit:  int64(params.Limit),
+			Offset: int64(params.Offset),
+		})
+		if err != nil {
+			return nil, err
+		}
+		products := make([]ProductListRow, len(sqliteProducts))
+		for i, sq := range sqliteProducts {
+			products[i] = ProductListRow{
+				ID:       sq.ID,
+				Name:     sq.Name,
+				Brief:    sq.Brief,
+				Slug:     sq.Slug,
+				Quantity: sql.NullInt64{Int64: sq.Quantity.Int64, Valid: sq.Quantity.Valid},
+				Digital:  sq.Digital,
+				Active:   sq.Active,
+			}
+			// SQLite returns interface{} for some fields - need type assertions
+			if amountStr, ok := sq.Amount.(string); ok {
+				products[i].Amount = amountStr
+			}
+			if sq.HasVariants.Valid {
+				products[i].Metadata = []byte(fmt.Sprintf(`{"has_variants":%t}`, sq.HasVariants.Bool))
+			}
+			if createdInt, ok := sq.Created.(int64); ok && createdInt != 0 {
+				products[i].Created = sql.NullTime{Time: time.Unix(createdInt, 0), Valid: true}
+			}
+		}
+		return products, nil
+	}
+
+	ListProductsPublicFunc = func(ctx context.Context, params ListProductsPublicParams) ([]ProductListRow, error) {
+		sqliteProducts, err := q.ListProductsPublic(ctx, sqlite.ListProductsPublicParams{
+			Limit:  int64(params.Limit),
+			Offset: int64(params.Offset),
+		})
+		if err != nil {
+			return nil, err
+		}
+		products := make([]ProductListRow, len(sqliteProducts))
+		for i, sq := range sqliteProducts {
+			products[i] = ProductListRow{
+				ID:       sq.ID,
+				Name:     sq.Name,
+				Brief:    sq.Brief,
+				Slug:     sq.Slug,
+				Quantity: sql.NullInt64{Int64: sq.Quantity.Int64, Valid: sq.Quantity.Valid},
+				Digital:  sq.Digital,
+				Active:   sq.Active,
+			}
+			// SQLite returns interface{} for some fields - need type assertions
+			if amountStr, ok := sq.Amount.(string); ok {
+				products[i].Amount = amountStr
+			}
+			if sq.HasVariants.Valid {
+				products[i].Metadata = []byte(fmt.Sprintf(`{"has_variants":%t}`, sq.HasVariants.Bool))
+			}
+			if createdInt, ok := sq.Created.(int64); ok && createdInt != 0 {
+				products[i].Created = sql.NullTime{Time: time.Unix(createdInt, 0), Valid: true}
+			}
+		}
+		return products, nil
+	}
+
+	GetProductDetailByIDFunc = func(ctx context.Context, id string) (ProductDetail, error) {
+		sqliteDetail, err := q.GetProductDetailByID(ctx, id)
+		if err != nil {
+			return ProductDetail{}, err
+		}
+		detail := ProductDetail{
+			ID:          sqliteDetail.ID,
+			Name:        sqliteDetail.Name,
+			Brief:       sqliteDetail.Brief,
+			Desc:        sqliteDetail.Desc,
+			Slug:        sqliteDetail.Slug,
+			Quantity:    sqliteDetail.Quantity,
+			Sku:         sqliteDetail.Sku,
+			HasVariants: sqliteDetail.HasVariants.Bool,
+			Metadata:    sqliteDetail.Metadata,
+			Attribute:   sqliteDetail.Attribute,
+			Seo:         sqliteDetail.Seo,
+			Digital:     sqliteDetail.Digital,
+			Active:      sqliteDetail.Active,
+		}
+		// Handle interface{} types from SQLite
+		if amountStr, ok := sqliteDetail.Amount.(string); ok {
+			detail.Amount = amountStr
+		}
+		if createdInt, ok := sqliteDetail.Created.(int64); ok && createdInt != 0 {
+			detail.Created = sql.NullTime{Time: time.Unix(createdInt, 0), Valid: true}
+		}
+		if updatedInt, ok := sqliteDetail.Updated.(int64); ok && updatedInt != 0 {
+			detail.Updated = sql.NullTime{Time: time.Unix(updatedInt, 0), Valid: true}
+		}
+		return detail, nil
+	}
+
+	GetProductDetailBySlugFunc = func(ctx context.Context, slug string) (ProductDetail, error) {
+		sqliteDetail, err := q.GetProductDetailBySlug(ctx, slug)
+		if err != nil {
+			return ProductDetail{}, err
+		}
+		detail := ProductDetail{
+			ID:        sqliteDetail.ID,
+			Name:      sqliteDetail.Name,
+			Brief:     sqliteDetail.Brief,
+			Desc:      sqliteDetail.Desc,
+			Slug:      sqliteDetail.Slug,
+			Quantity:  sqliteDetail.Quantity,
+			Sku:       sqliteDetail.Sku,
+			Metadata:  sqliteDetail.Metadata,
+			Attribute: sqliteDetail.Attribute,
+			Seo:       sqliteDetail.Seo,
+			Digital:   sqliteDetail.Digital,
+			Active:    sqliteDetail.Active,
+		}
+		// Handle interface{} types from SQLite
+		if amountStr, ok := sqliteDetail.Amount.(string); ok {
+			detail.Amount = amountStr
+		}
+		if createdInt, ok := sqliteDetail.Created.(int64); ok && createdInt != 0 {
+			detail.Created = sql.NullTime{Time: time.Unix(createdInt, 0), Valid: true}
+		}
+		if updatedInt, ok := sqliteDetail.Updated.(int64); ok && updatedInt != 0 {
+			detail.Updated = sql.NullTime{Time: time.Unix(updatedInt, 0), Valid: true}
+		}
+		return detail, nil
 	}
 
 	// Product image operations
@@ -1431,6 +1795,87 @@ func initSQLite(sqlDB *sql.DB) {
 		return q.DeleteProductVariant(ctx, id)
 	}
 
+	// Product option operations
+	ListProductOptionsByProductFunc = func(ctx context.Context, productID string) ([]ProductOption, error) {
+		sqliteOptions, err := q.ListProductOptionsByProduct(ctx, productID)
+		if err != nil {
+			return nil, err
+		}
+		options := make([]ProductOption, len(sqliteOptions))
+		for i, sq := range sqliteOptions {
+			options[i] = ProductOption{
+				ID:        sq.ID,
+				ProductID: sq.ProductID,
+				Name:      sq.Name,
+				Position:  sq.Position,
+				Created:   sq.Created,
+			}
+		}
+		return options, nil
+	}
+
+	CreateProductOptionFunc = func(ctx context.Context, params CreateProductOptionParams) (ProductOption, error) {
+		sqliteOption, err := q.CreateProductOption(ctx, sqlite.CreateProductOptionParams{
+			ID:        params.ID,
+			Name:      params.Name,
+			ProductID: params.ProductID,
+			Position:  params.Position, // sqlite uses Int64
+		})
+		if err != nil {
+			return ProductOption{}, err
+		}
+		return ProductOption{
+			ID:        sqliteOption.ID,
+			ProductID: sqliteOption.ProductID,
+			Name:      sqliteOption.Name,
+			Position:  sqliteOption.Position,
+			Created:   sqliteOption.Created,
+		}, nil
+	}
+
+	DeleteProductOptionFunc = func(ctx context.Context, id string) error {
+		return q.DeleteProductOption(ctx, id)
+	}
+
+	CreateProductOptionValueFunc = func(ctx context.Context, params CreateProductOptionValueParams) (ProductOptionValue, error) {
+		sqliteValue, err := q.CreateProductOptionValue(ctx, sqlite.CreateProductOptionValueParams{
+			ID:       params.ID,
+			OptionID: params.OptionID,
+			Value:    params.Value,
+			Position: params.Position, // sqlite uses Int64
+		})
+		if err != nil {
+			return ProductOptionValue{}, err
+		}
+		return ProductOptionValue{
+			ID:       sqliteValue.ID,
+			OptionID: sqliteValue.OptionID,
+			Value:    sqliteValue.Value,
+			Position: sqliteValue.Position,
+		}, nil
+	}
+
+	ListProductOptionValuesByOptionFunc = func(ctx context.Context, optionID string) ([]ProductOptionValue, error) {
+		sqliteValues, err := q.ListProductOptionValuesByOption(ctx, optionID)
+		if err != nil {
+			return nil, err
+		}
+		values := make([]ProductOptionValue, len(sqliteValues))
+		for i, sv := range sqliteValues {
+			values[i] = ProductOptionValue{
+				ID:       sv.ID,
+				OptionID: sv.OptionID,
+				Value:    sv.Value,
+				Position: sv.Position,
+			}
+		}
+		return values, nil
+	}
+
+	DeleteProductOptionValueFunc = func(ctx context.Context, id string) error {
+		return q.DeleteProductOptionValue(ctx, id)
+	}
+
 	// Digital file operations
 	GetDigitalFileFunc = func(ctx context.Context, id string) (DigitalFile, error) {
 		sqliteFile, err := q.GetDigitalFile(ctx, id)
@@ -1521,6 +1966,23 @@ func initSQLite(sqlDB *sql.DB) {
 
 	ListDigitalDataByCartFunc = func(ctx context.Context, cartID string) ([]DigitalData, error) {
 		sqliteData, err := q.ListDigitalDataByCart(ctx, sql.NullString{String: cartID, Valid: true})
+		if err != nil {
+			return nil, err
+		}
+		data := make([]DigitalData, len(sqliteData))
+		for i, d := range sqliteData {
+			data[i] = DigitalData{
+				ID:        d.ID,
+				ProductID: d.ProductID,
+				Content:   d.Content,
+				CartID:    d.CartID,
+			}
+		}
+		return data, nil
+	}
+
+	ListUnassignedDigitalDataByProductFunc = func(ctx context.Context, productID string) ([]DigitalData, error) {
+		sqliteData, err := q.ListUnassignedDigitalDataByProduct(ctx, productID)
 		if err != nil {
 			return nil, err
 		}

@@ -65,6 +65,14 @@ var (
 	UpdateProductVariantFunc         func(ctx context.Context, params UpdateProductVariantParams) error
 	DeleteProductVariantFunc         func(ctx context.Context, id string) error
 
+	// Product option operations
+	ListProductOptionsByProductFunc     func(ctx context.Context, productID string) ([]ProductOption, error)
+	CreateProductOptionFunc             func(ctx context.Context, params CreateProductOptionParams) (ProductOption, error)
+	DeleteProductOptionFunc             func(ctx context.Context, id string) error
+	CreateProductOptionValueFunc        func(ctx context.Context, params CreateProductOptionValueParams) (ProductOptionValue, error)
+	ListProductOptionValuesByOptionFunc func(ctx context.Context, optionID string) ([]ProductOptionValue, error)
+	DeleteProductOptionValueFunc        func(ctx context.Context, id string) error
+
 	// Digital file operations
 	GetDigitalFileFunc     func(ctx context.Context, id string) (DigitalFile, error)
 	ListDigitalFilesFunc   func(ctx context.Context, productID string) ([]DigitalFile, error)
@@ -73,10 +81,11 @@ var (
 	DeleteDigitalFilesFunc func(ctx context.Context, productID string) error
 
 	// Digital data operations
-	GetDigitalDataFunc          func(ctx context.Context, id string) (DigitalData, error)
-	GetDigitalDataByProductFunc func(ctx context.Context, productID string) (DigitalData, error)
-	ListDigitalDataByCartFunc   func(ctx context.Context, cartID string) ([]DigitalData, error)
-	CreateDigitalDataFunc       func(ctx context.Context, params CreateDigitalDataParams) (DigitalData, error)
+	GetDigitalDataFunc                    func(ctx context.Context, id string) (DigitalData, error)
+	GetDigitalDataByProductFunc           func(ctx context.Context, productID string) (DigitalData, error)
+	ListDigitalDataByCartFunc             func(ctx context.Context, cartID string) ([]DigitalData, error)
+	ListUnassignedDigitalDataByProductFunc func(ctx context.Context, productID string) ([]DigitalData, error)
+	CreateDigitalDataFunc                  func(ctx context.Context, params CreateDigitalDataParams) (DigitalData, error)
 	UpdateDigitalDataFunc       func(ctx context.Context, params UpdateDigitalDataParams) error
 	DeleteDigitalDataFunc       func(ctx context.Context, id string) error
 	DeleteDigitalDataByProductFunc func(ctx context.Context, productID string) error

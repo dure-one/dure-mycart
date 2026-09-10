@@ -24,9 +24,9 @@ LIMIT $1 OFFSET $2;
 SELECT COUNT(*) FROM product WHERE deleted = FALSE;
 
 -- name: CreateProduct :one
-INSERT INTO product (id, name, brief, "desc", slug, amount, metadata, attribute, digital, active, created)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
-RETURNING id, name, brief, "desc", slug, amount, metadata, attribute, digital, active, deleted, created, updated;
+INSERT INTO product (id, name, brief, "desc", slug, amount, metadata, attribute, digital, active, has_variants, quantity, sku, seo, created)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
+RETURNING id, name, brief, "desc", slug, amount, metadata, attribute, digital, active, has_variants, quantity, sku, seo, deleted, EXTRACT(EPOCH FROM created)::bigint as created, updated;
 
 -- name: UpdateProduct :exec
 UPDATE product
@@ -111,6 +111,26 @@ RETURNING id, name, product_id, position, created;
 
 -- name: DeleteProductOption :exec
 DELETE FROM product_option WHERE id = $1;
+
+-- name: ListProductOptionsByProduct :many
+SELECT id, name, product_id, position, created
+FROM product_option
+WHERE product_id = $1
+ORDER BY position;
+
+-- name: CreateProductOptionValue :one
+INSERT INTO product_option_value (id, option_id, value, position)
+VALUES ($1, $2, $3, $4)
+RETURNING id, option_id, value, position;
+
+-- name: ListProductOptionValuesByOption :many
+SELECT id, option_id, value, position
+FROM product_option_value
+WHERE option_id = $1
+ORDER BY position;
+
+-- name: DeleteProductOptionValue :exec
+DELETE FROM product_option_value WHERE id = $1;
 
 -- Advanced Product Queries
 
