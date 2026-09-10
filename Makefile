@@ -16,8 +16,6 @@ help:
 	@echo "  test-all          - Run tests against both SQLite and PostgreSQL"
 	@echo ""
 	@echo "Frontend Tests:"
-	@echo "  e2e-admin         - Run admin panel e2e tests (browser)"
-	@echo "  e2e-site          - Run storefront e2e tests (browser)"
 	@echo "  e2e-all           - Run all frontend e2e tests"
 	@echo ""
 	@echo "Build:"
@@ -78,15 +76,9 @@ test-all:
 		TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1; \
 	fi
 
-e2e-admin:
+e2e-all:
 	@echo "Running admin panel e2e tests..."
-	cd web/admin && bun run test:browser
-
-e2e-site:
-	@echo "Running storefront e2e tests..."
-	cd web/site && bun run test:browser
-
-e2e-all: e2e-admin e2e-site
+	npm run test:e2e
 
 build-admin:
 	@echo "Building admin panel..."

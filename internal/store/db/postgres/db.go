@@ -27,6 +27,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.bulkDeleteProductImagesStmt, err = db.PrepareContext(ctx, bulkDeleteProductImages); err != nil {
 		return nil, fmt.Errorf("error preparing query BulkDeleteProductImages: %w", err)
 	}
+	if q.checkSlugExistsStmt, err = db.PrepareContext(ctx, checkSlugExists); err != nil {
+		return nil, fmt.Errorf("error preparing query CheckSlugExists: %w", err)
+	}
 	if q.countCartsStmt, err = db.PrepareContext(ctx, countCarts); err != nil {
 		return nil, fmt.Errorf("error preparing query CountCarts: %w", err)
 	}
@@ -380,6 +383,11 @@ func (q *Queries) Close() error {
 	if q.bulkDeleteProductImagesStmt != nil {
 		if cerr := q.bulkDeleteProductImagesStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing bulkDeleteProductImagesStmt: %w", cerr)
+		}
+	}
+	if q.checkSlugExistsStmt != nil {
+		if cerr := q.checkSlugExistsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing checkSlugExistsStmt: %w", cerr)
 		}
 	}
 	if q.countCartsStmt != nil {
@@ -997,6 +1005,7 @@ type Queries struct {
 	db                                     DBTX
 	tx                                     *sql.Tx
 	bulkDeleteProductImagesStmt            *sql.Stmt
+	checkSlugExistsStmt                    *sql.Stmt
 	countCartsStmt                         *sql.Stmt
 	countPagesStmt                         *sql.Stmt
 	countProductsStmt                      *sql.Stmt
@@ -1119,6 +1128,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		db:                                     tx,
 		tx:                                     tx,
 		bulkDeleteProductImagesStmt:            q.bulkDeleteProductImagesStmt,
+		checkSlugExistsStmt:                    q.checkSlugExistsStmt,
 		countCartsStmt:                         q.countCartsStmt,
 		countPagesStmt:                         q.countPagesStmt,
 		countProductsStmt:                      q.countProductsStmt,

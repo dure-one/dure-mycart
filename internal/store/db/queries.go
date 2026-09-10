@@ -48,6 +48,7 @@ var (
 	ProductHasSoldDigitalDataFunc func(ctx context.Context, productID string) (bool, error)
 	SoftDeleteProductFunc  func(ctx context.Context, id string) error
 	DeleteProductFunc      func(ctx context.Context, id string) error
+	CheckSlugExistsFunc    func(ctx context.Context, slug string, excludeID string) (int64, error)
 	ListProductsPrivateFunc func(ctx context.Context, params ListProductsPrivateParams) ([]ProductListRow, error)
 	ListProductsPublicFunc  func(ctx context.Context, params ListProductsPublicParams) ([]ProductListRow, error)
 	GetProductDetailByIDFunc func(ctx context.Context, id string) (ProductDetail, error)

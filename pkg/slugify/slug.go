@@ -2,20 +2,21 @@ package slugify
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
 	"github.com/gosimple/slug"
+	"github.com/shurco/mycart/internal/store/db"
 )
 
 // SlugService handles slug generation and uniqueness checking
 type SlugService struct {
-	db *sql.DB
+	// No fields needed - uses db.CheckSlugExistsFunc function pointer
 }
 
 // NewSlugService creates a new slug service
-func NewSlugService(db *sql.DB) *SlugService {
-	return &SlugService{db: db}
+// db parameter kept for backward compatibility but unused (migration to function pointers)
+func NewSlugService(_ interface{}) *SlugService {
+	return &SlugService{}
 }
 
 // Generate creates a URL-friendly slug from name, ensures uniqueness
@@ -51,13 +52,11 @@ func (s *SlugService) Generate(ctx context.Context, name string, excludeID strin
 
 // exists checks if a slug exists in the database (excluding a specific product ID)
 func (s *SlugService) exists(ctx context.Context, slug string, excludeID string) (bool, error) {
-	query := "SELECT COUNT(*) FROM product WHERE slug = ? AND id != ?"
 	if excludeID == "" {
 		excludeID = "" // Ensures no match
 	}
 
-	var count int
-	err := s.db.QueryRowContext(ctx, query, slug, excludeID).Scan(&count)
+	count, err := db.CheckSlugExistsFunc(ctx, slug, excludeID)
 	if err != nil {
 		return false, fmt.Errorf("querying slug: %w", err)
 	}
