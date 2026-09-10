@@ -53,7 +53,13 @@ func ListProducts(ctx context.Context, private bool, limit, offset int, cartID s
 		products.Products = append(products.Products, *p)
 	}
 
-	products.Total = len(products.Products)
+	// Get total count of all products (not just current page)
+	totalCount, err := db.CountProductsFunc(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("count products: %w", err)
+	}
+	products.Total = int(totalCount)
+
 	return products, nil
 }
 

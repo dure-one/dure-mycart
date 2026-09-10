@@ -700,6 +700,10 @@ func initPostgres(sqlDB *sql.DB) {
 		return products, nil
 	}
 
+	CountProductsFunc = func(ctx context.Context) (int64, error) {
+		return q.CountProducts(ctx)
+	}
+
 	GetProductDetailByIDFunc = func(ctx context.Context, id string) (ProductDetail, error) {
 		pgDetail, err := q.GetProductDetailByID(ctx, id)
 		if err != nil {
@@ -1729,6 +1733,10 @@ func initSQLite(sqlDB *sql.DB) {
 			}
 		}
 		return products, nil
+	}
+
+	CountProductsFunc = func(ctx context.Context) (int64, error) {
+		return q.CountProducts(ctx)
 	}
 
 	GetProductDetailByIDFunc = func(ctx context.Context, id string) (ProductDetail, error) {

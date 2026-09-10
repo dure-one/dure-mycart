@@ -51,6 +51,7 @@ var (
 	CheckSlugExistsFunc    func(ctx context.Context, slug string, excludeID string) (int64, error)
 	ListProductsPrivateFunc func(ctx context.Context, params ListProductsPrivateParams) ([]ProductListRow, error)
 	ListProductsPublicFunc  func(ctx context.Context, params ListProductsPublicParams) ([]ProductListRow, error)
+	CountProductsFunc       func(ctx context.Context) (int64, error)
 	GetProductDetailByIDFunc func(ctx context.Context, id string) (ProductDetail, error)
 	GetProductDetailBySlugFunc func(ctx context.Context, slug string) (ProductDetail, error)
 
