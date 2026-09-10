@@ -1,6 +1,9 @@
 package db
 
-import "context"
+import (
+	"context"
+	"database/sql"
+)
 
 // Function pointer variables for database operations
 // Initialized once at startup by Init() based on database type (postgres or sqlite)
@@ -19,13 +22,20 @@ var (
 	CreateSessionFunc func(ctx context.Context, arg CreateSessionParams) error
 	UpdateSessionFunc func(ctx context.Context, arg UpdateSessionParams) error
 	DeleteSessionFunc func(ctx context.Context, key string) error
+	UpsertSessionFunc func(ctx context.Context, arg UpsertSessionParams) error
 
 	// Page operations
-	GetPageBySlugFunc func(ctx context.Context, slug string) (Page, error)
-	ListPagesFunc     func(ctx context.Context, limit, offset int32) ([]Page, error)
-	CreatePageFunc    func(ctx context.Context, params CreatePageParams) (Page, error)
-	UpdatePageFunc    func(ctx context.Context, params UpdatePageParams) error
-	DeletePageFunc    func(ctx context.Context, id string) error
+	GetPageByIDFunc         func(ctx context.Context, id string) (Page, error)
+	GetPageBySlugFunc       func(ctx context.Context, slug string) (Page, error)
+	ListPagesFunc           func(ctx context.Context, limit, offset int32) ([]Page, error)
+	CountPagesFunc          func(ctx context.Context) (int64, error)
+	CreatePageFunc          func(ctx context.Context, params CreatePageParams) (Page, error)
+	UpdatePageFunc          func(ctx context.Context, params UpdatePageParams) error
+	UpdatePageContentFunc   func(ctx context.Context, id string, content sql.NullString) error
+	UpdatePageActiveFunc    func(ctx context.Context, id string) error
+	DeletePageFunc          func(ctx context.Context, id string) error
+	PageExistsFunc          func(ctx context.Context, slug string) (bool, error)
+	GetPageSeoFunc          func(ctx context.Context, id string) ([]byte, error)
 
 	// Product operations
 	GetProductByIDFunc     func(ctx context.Context, id string) (Product, error)

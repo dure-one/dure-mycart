@@ -367,6 +367,14 @@ func initPostgres(sqlDB *sql.DB) {
 
 	DeleteSessionFunc = q.DeleteSession
 
+	UpsertSessionFunc = func(ctx context.Context, arg UpsertSessionParams) error {
+		return q.UpsertSession(ctx, postgres.UpsertSessionParams{
+			Key:     arg.Key,
+			Value:   sql.NullString{String: arg.Value, Valid: arg.Value != ""},
+			Expires: sql.NullInt32{Int32: int32(arg.Expires), Valid: true},
+		})
+	}
+
 	// Wrap methods that need parameter type conversion
 	CreateSettingFunc = func(ctx context.Context, arg CreateSettingParams) (Setting, error) {
 		pgParams := postgres.CreateSettingParams{
@@ -469,6 +477,37 @@ func initPostgres(sqlDB *sql.DB) {
 
 	DeletePageFunc = func(ctx context.Context, id string) error {
 		return q.DeletePage(ctx, id)
+	}
+
+	GetPageByIDFunc = func(ctx context.Context, id string) (Page, error) {
+		pgPage, err := q.GetPageByID(ctx, id)
+		if err != nil {
+			return Page{}, err
+		}
+		return FromPostgresPageRow(pgPage), nil
+	}
+
+	CountPagesFunc = func(ctx context.Context) (int64, error) {
+		return q.CountPages(ctx)
+	}
+
+	UpdatePageContentFunc = func(ctx context.Context, id string, content sql.NullString) error {
+		return q.UpdatePageContent(ctx, postgres.UpdatePageContentParams{
+			Content: content,
+			ID:      id,
+		})
+	}
+
+	UpdatePageActiveFunc = func(ctx context.Context, id string) error {
+		return q.UpdatePageActive(ctx, id)
+	}
+
+	PageExistsFunc = func(ctx context.Context, slug string) (bool, error) {
+		return q.PageExists(ctx, slug)
+	}
+
+	GetPageSeoFunc = func(ctx context.Context, id string) ([]byte, error) {
+		return q.GetPageSeo(ctx, id)
 	}
 
 	// Product operations
@@ -1047,6 +1086,14 @@ func initSQLite(sqlDB *sql.DB) {
 
 	DeleteSessionFunc = q.DeleteSession
 
+	UpsertSessionFunc = func(ctx context.Context, arg UpsertSessionParams) error {
+		return q.UpsertSession(ctx, sqlite.UpsertSessionParams{
+			Key:     arg.Key,
+			Value:   sql.NullString{String: arg.Value, Valid: arg.Value != ""},
+			Expires: sql.NullInt64{Int64: arg.Expires, Valid: true},
+		})
+	}
+
 	// Wrap methods that need parameter type conversion
 	CreateSettingFunc = func(ctx context.Context, arg CreateSettingParams) (Setting, error) {
 		sqliteParams := sqlite.CreateSettingParams{
@@ -1143,6 +1190,37 @@ func initSQLite(sqlDB *sql.DB) {
 
 	DeletePageFunc = func(ctx context.Context, id string) error {
 		return q.DeletePage(ctx, id)
+	}
+
+	GetPageByIDFunc = func(ctx context.Context, id string) (Page, error) {
+		sqlitePage, err := q.GetPageByID(ctx, id)
+		if err != nil {
+			return Page{}, err
+		}
+		return FromSQLitePageRow(sqlitePage), nil
+	}
+
+	CountPagesFunc = func(ctx context.Context) (int64, error) {
+		return q.CountPages(ctx)
+	}
+
+	UpdatePageContentFunc = func(ctx context.Context, id string, content sql.NullString) error {
+		return q.UpdatePageContent(ctx, sqlite.UpdatePageContentParams{
+			Content: content,
+			ID:      id,
+		})
+	}
+
+	UpdatePageActiveFunc = func(ctx context.Context, id string) error {
+		return q.UpdatePageActive(ctx, id)
+	}
+
+	PageExistsFunc = func(ctx context.Context, slug string) (bool, error) {
+		return q.PageExists(ctx, slug)
+	}
+
+	GetPageSeoFunc = func(ctx context.Context, id string) ([]byte, error) {
+		return q.GetPageSeo(ctx, id)
 	}
 
 	// Product operations

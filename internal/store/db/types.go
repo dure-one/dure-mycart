@@ -54,6 +54,13 @@ type UpdateSessionParams struct {
 	Key     string
 }
 
+// UpsertSessionParams for UpsertSession operation
+type UpsertSessionParams struct {
+	Key     string
+	Value   string
+	Expires int64
+}
+
 // ToPostgresSetting converts unified Setting to postgres.Setting
 func ToPostgresSetting(s Setting) postgres.Setting {
 	return postgres.Setting{
