@@ -147,15 +147,20 @@ func TestCreateCartItem(t *testing.T) {
 	// Arrange - Create product first (cart_items has FK to product)
 	productID := NewTestID()
 	_, err := db.CreateProductFunc(ctx, db.CreateProductParams{
-		ID:        productID,
-		Name:      "Test Product",
-		Desc:      "Test Description",
-		Slug:      "test-product-" + productID,
-		Amount:    "50.00",
-		Metadata:  []byte("{}"),
-		Attribute: []byte("{}"),
-		Digital:   sql.NullString{Valid: false},
-		Active:    true,
+		ID:          productID,
+		Name:        "Test Product",
+		Brief:       "",
+		Desc:        "Test Description",
+		Slug:        "test-product-" + productID,
+		Amount:      "50.00",
+		Metadata:    []byte("{}"),
+		Attribute:   []byte("{}"),
+		Digital:     sql.NullString{Valid: false},
+		Active:      true,
+		HasVariants: false,
+		Quantity:    sql.NullInt64{},
+		SKU:         sql.NullString{},
+		Seo:         []byte("{}"),
 	})
 	require.NoError(t, err)
 
@@ -193,29 +198,39 @@ func TestListCartItems(t *testing.T) {
 	// Arrange - Create products
 	product1ID := NewTestID()
 	_, err := db.CreateProductFunc(ctx, db.CreateProductParams{
-		ID:        product1ID,
-		Name:      "Product 1",
-		Desc:      "Description 1",
-		Slug:      "product-1-" + product1ID,
-		Amount:    "25.00",
-		Metadata:  []byte("{}"),
-		Attribute: []byte("{}"),
-		Digital:   sql.NullString{Valid: false},
-		Active:    true,
+		ID:          product1ID,
+		Name:        "Product 1",
+		Brief:       "",
+		Desc:        "Description 1",
+		Slug:        "product-1-" + product1ID,
+		Amount:      "25.00",
+		Metadata:    []byte("{}"),
+		Attribute:   []byte("{}"),
+		Digital:     sql.NullString{Valid: false},
+		Active:      true,
+		HasVariants: false,
+		Quantity:    sql.NullInt64{},
+		SKU:         sql.NullString{},
+		Seo:         []byte("{}"),
 	})
 	require.NoError(t, err)
 
 	product2ID := NewTestID()
 	_, err = db.CreateProductFunc(ctx, db.CreateProductParams{
-		ID:        product2ID,
-		Name:      "Product 2",
-		Desc:      "Description 2",
-		Slug:      "product-2-" + product2ID,
-		Amount:    "15.00",
-		Metadata:  []byte("{}"),
-		Attribute: []byte("{}"),
-		Digital:   sql.NullString{Valid: false},
-		Active:    true,
+		ID:          product2ID,
+		Name:        "Product 2",
+		Brief:       "",
+		Desc:        "Description 2",
+		Slug:        "product-2-" + product2ID,
+		Amount:      "15.00",
+		Metadata:    []byte("{}"),
+		Attribute:   []byte("{}"),
+		Digital:     sql.NullString{Valid: false},
+		Active:      true,
+		HasVariants: false,
+		Quantity:    sql.NullInt64{},
+		SKU:         sql.NullString{},
+		Seo:         []byte("{}"),
 	})
 	require.NoError(t, err)
 
@@ -271,15 +286,20 @@ func TestUpdateCartItem(t *testing.T) {
 	// Arrange - Create product
 	productID := NewTestID()
 	_, err := db.CreateProductFunc(ctx, db.CreateProductParams{
-		ID:        productID,
-		Name:      "Test Product",
-		Desc:      "Test Description",
-		Slug:      "test-product-" + productID,
-		Amount:    "50.00",
-		Metadata:  []byte("{}"),
-		Attribute: []byte("{}"),
-		Digital:   sql.NullString{Valid: false},
-		Active:    true,
+		ID:          productID,
+		Name:        "Test Product",
+		Brief:       "",
+		Desc:        "Test Description",
+		Slug:        "test-product-" + productID,
+		Amount:      "50.00",
+		Metadata:    []byte("{}"),
+		Attribute:   []byte("{}"),
+		Digital:     sql.NullString{Valid: false},
+		Active:      true,
+		HasVariants: false,
+		Quantity:    sql.NullInt64{},
+		SKU:         sql.NullString{},
+		Seo:         []byte("{}"),
 	})
 	require.NoError(t, err)
 
@@ -329,15 +349,20 @@ func TestDeleteCartItem(t *testing.T) {
 	// Arrange - Create product
 	productID := NewTestID()
 	_, err := db.CreateProductFunc(ctx, db.CreateProductParams{
-		ID:        productID,
-		Name:      "Test Product",
-		Desc:      "Test Description",
-		Slug:      "test-product-" + productID,
-		Amount:    "50.00",
-		Metadata:  []byte("{}"),
-		Attribute: []byte("{}"),
-		Digital:   sql.NullString{Valid: false},
-		Active:    true,
+		ID:          productID,
+		Name:        "Test Product",
+		Brief:       "",
+		Desc:        "Test Description",
+		Slug:        "test-product-" + productID,
+		Amount:      "50.00",
+		Metadata:    []byte("{}"),
+		Attribute:   []byte("{}"),
+		Digital:     sql.NullString{Valid: false},
+		Active:      true,
+		HasVariants: false,
+		Quantity:    sql.NullInt64{},
+		SKU:         sql.NullString{},
+		Seo:         []byte("{}"),
 	})
 	require.NoError(t, err)
 
