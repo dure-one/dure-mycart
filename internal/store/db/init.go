@@ -1521,12 +1521,16 @@ func initSQLite(sqlDB *sql.DB) {
 	}
 
 	GetPageSeoFunc = func(ctx context.Context, id string) ([]byte, error) {
-		return q.GetPageSeo(ctx, id)
+		seoStr, err := q.GetPageSeo(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return []byte(seoStr), nil
 	}
 
 	UpdatePageSeoFunc = func(ctx context.Context, seo []byte, id string) error {
 		return q.UpdatePageSeo(ctx, sqlite.UpdatePageSeoParams{
-			Seo: seo,
+			Seo: string(seo),
 			ID:  id,
 		})
 	}
@@ -1562,14 +1566,14 @@ func initSQLite(sqlDB *sql.DB) {
 			Desc:        params.Desc,
 			Slug:        params.Slug,
 			Amount:      amount,
-			Metadata:    params.Metadata,
-			Attribute:   params.Attribute,
+			Metadata:    string(params.Metadata),
+			Attribute:   string(params.Attribute),
 			Digital:     params.Digital,
 			Active:      params.Active,
 			HasVariants: hasVariants,
 			Quantity:    params.Quantity,
 			Sku:         params.SKU,
-			Seo:         params.Seo,
+			Seo:         string(params.Seo),
 		})
 		if err != nil {
 			return Product{}, err
@@ -1583,8 +1587,8 @@ func initSQLite(sqlDB *sql.DB) {
 			Desc:      params.Desc,
 			Slug:      params.Slug,
 			Amount:    params.Amount,
-			Metadata:  params.Metadata,
-			Attribute: params.Attribute,
+			Metadata:  string(params.Metadata),
+			Attribute: string(params.Attribute),
 			Digital:   params.Digital,
 			Active:    params.Active,
 			ID:        params.ID,
@@ -1605,9 +1609,9 @@ func initSQLite(sqlDB *sql.DB) {
 			Quantity:    params.Quantity, // sqlite uses Int64
 			Sku:         params.Sku,
 			HasVariants: params.HasVariants,
-			Metadata:    params.Metadata,
-			Attribute:   params.Attribute,
-			Seo:         params.Seo,
+			Metadata:    string(params.Metadata),
+			Attribute:   string(params.Attribute),
+			Seo:         string(params.Seo),
 			ID:          params.ID,
 		})
 	}
@@ -1653,8 +1657,13 @@ func initSQLite(sqlDB *sql.DB) {
 				Active:        sq.Active,
 			}
 			// SQLite returns interface{} for some fields - need type assertions
+			// Amount can be string, int64, float64, etc.
 			if amountStr, ok := sq.Amount.(string); ok {
 				products[i].Amount = amountStr
+			} else if amountInt, ok := sq.Amount.(int64); ok {
+				products[i].Amount = fmt.Sprintf("%d", amountInt)
+			} else if amountFloat, ok := sq.Amount.(float64); ok {
+				products[i].Amount = fmt.Sprintf("%.0f", amountFloat)
 			}
 			// Convert interface{} to []byte for Image and Variants
 			if imageData, ok := sq.Image.([]byte); ok {
@@ -1696,8 +1705,13 @@ func initSQLite(sqlDB *sql.DB) {
 				Active:        sq.Active,
 			}
 			// SQLite returns interface{} for some fields - need type assertions
+			// Amount can be string, int64, float64, etc.
 			if amountStr, ok := sq.Amount.(string); ok {
 				products[i].Amount = amountStr
+			} else if amountInt, ok := sq.Amount.(int64); ok {
+				products[i].Amount = fmt.Sprintf("%d", amountInt)
+			} else if amountFloat, ok := sq.Amount.(float64); ok {
+				products[i].Amount = fmt.Sprintf("%.0f", amountFloat)
 			}
 			// Convert interface{} to []byte for Image and Variants
 			if imageData, ok := sq.Image.([]byte); ok {
@@ -1731,16 +1745,14 @@ func initSQLite(sqlDB *sql.DB) {
 			Quantity:    sqliteDetail.Quantity,
 			Sku:         sqliteDetail.Sku,
 			HasVariants: sqliteDetail.HasVariants.Bool,
-			Metadata:    sqliteDetail.Metadata,
-			Attribute:   sqliteDetail.Attribute,
-			Seo:         sqliteDetail.Seo,
+			Metadata:    []byte(sqliteDetail.Metadata),
+			Attribute:   []byte(sqliteDetail.Attribute),
+			Seo:         []byte(sqliteDetail.Seo),
 			Digital:     sqliteDetail.Digital,
 			Active:      sqliteDetail.Active,
 		}
 		// Handle interface{} types from SQLite
-		if amountStr, ok := sqliteDetail.Amount.(string); ok {
-			detail.Amount = amountStr
-		}
+		detail.Amount = convertAmount(sqliteDetail.Amount)
 		if createdInt, ok := sqliteDetail.Created.(int64); ok && createdInt != 0 {
 			detail.Created = sql.NullTime{Time: time.Unix(createdInt, 0), Valid: true}
 		}
@@ -1763,16 +1775,14 @@ func initSQLite(sqlDB *sql.DB) {
 			Slug:      sqliteDetail.Slug,
 			Quantity:  sqliteDetail.Quantity,
 			Sku:       sqliteDetail.Sku,
-			Metadata:  sqliteDetail.Metadata,
-			Attribute: sqliteDetail.Attribute,
-			Seo:       sqliteDetail.Seo,
+			Metadata:  []byte(sqliteDetail.Metadata),
+			Attribute: []byte(sqliteDetail.Attribute),
+			Seo:       []byte(sqliteDetail.Seo),
 			Digital:   sqliteDetail.Digital,
 			Active:    sqliteDetail.Active,
 		}
 		// Handle interface{} types from SQLite
-		if amountStr, ok := sqliteDetail.Amount.(string); ok {
-			detail.Amount = amountStr
-		}
+		detail.Amount = convertAmount(sqliteDetail.Amount)
 		if createdInt, ok := sqliteDetail.Created.(int64); ok && createdInt != 0 {
 			detail.Created = sql.NullTime{Time: time.Unix(createdInt, 0), Valid: true}
 		}
