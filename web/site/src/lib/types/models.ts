@@ -53,6 +53,9 @@ export interface CartItem {
   image?: { name: string; ext: string } | null
   variant_id?: string
   variant_name?: string
+  variant_options?: Record<string, string>
+  variant_sku?: string
+  needsDeletion?: boolean  // Frontend-only flag for marking items to delete
 }
 
 export interface Settings {

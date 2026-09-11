@@ -192,13 +192,13 @@
                 class="absolute inset-0 h-full w-full object-cover"
               />
             </div>
-          {:else}
+          {:else if product && product.images}
             <div class="relative h-[400px] overflow-hidden border-4 border-black bg-white sm:h-[500px]">
               <div
                 class="flex h-full w-full transition-transform duration-500 ease-in-out"
                 style="transform: translateX(-{currentSlide * 100}%)"
               >
-                {#each product.images as image (image.id || image.name)}
+                {#each product.images as image (image.name)}
                   <div class="h-full w-full flex-shrink-0">
                     <img
                       src={getProductImageUrl(image, 'md')}

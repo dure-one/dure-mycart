@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/require"
@@ -144,7 +145,9 @@ func TestInstall_WithDatabaseConfig(t *testing.T) {
 			req := httptest.NewRequest("POST", "/api/install", strings.NewReader(tt.payload))
 			req.Header.Set("Content-Type", "application/json")
 
-			resp, err := app.Test(req)
+			// Increase timeout to 10 seconds to allow full migration suite to complete
+			// The Install handler runs db.MigrateWithConfig which can take several seconds
+			resp, err := app.Test(req, fiber.TestConfig{Timeout: 10 * time.Second})
 			require.NoError(t, err)
 			require.Equal(t, tt.wantCode, resp.StatusCode)
 		})

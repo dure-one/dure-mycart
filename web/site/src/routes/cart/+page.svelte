@@ -9,6 +9,7 @@
   import { hasPaymentProviders } from '$lib/utils/payment'
   import { getLocalStorage, setLocalStorage, removeLocalStorage } from '$lib/utils/browser'
   import type { PaymentMethods } from '$lib/types/models'
+  import type { CartCreateResponse, CartValidationResponse, CartValidationError, CorrectedCartItem } from '$lib/types/api'
   import { goto } from '$app/navigation'
   import Overlay from '$lib/components/Overlay.svelte'
   import CartItemCard from '$lib/components/CartItemCard.svelte'
@@ -41,7 +42,7 @@
   let portoneStoreId = $state('')
   let portoneChannelKey = $state('')
   let portoneDebugEnabled = $state(false)
-  let validationErrors = $state<any[]>([])
+  let validationErrors = $state<CartValidationError[]>([])
   let showValidationModal = $state(false)
   let highlightedItems = $state<Set<string>>(new Set())
 
@@ -103,12 +104,13 @@
 
     // Handle validation errors (409 Conflict)
     if (cartCreateRes.status === 409) {
-      if (!cartCreateRes.result?.validation_errors || !cartCreateRes.result?.corrected_cart) {
+      const validationResult = cartCreateRes.result as unknown as CartValidationResponse
+      if (!validationResult?.validation_errors || !validationResult?.corrected_cart) {
         throw new Error('Validation error occurred. Please refresh and try again.')
       }
       handleValidationErrors(
-        cartCreateRes.result.validation_errors,
-        cartCreateRes.result.corrected_cart
+        validationResult.validation_errors,
+        validationResult.corrected_cart
       )
       throw new Error('Cart validation failed')
     }
@@ -191,8 +193,13 @@
     debugLog('Payment request object:', paymentRequest)
 
     // Call PortOne SDK
-    const response = await PortOne.requestPayment(paymentRequest)
+    const response = await PortOne.requestPayment(paymentRequest as any)
     debugLog('PortOne payment response received:', response)
+
+    // Check for payment response
+    if (!response) {
+      throw new Error('Payment SDK returned no response')
+    }
 
     // Check for payment errors
     if (response.code != null) {
@@ -281,7 +288,7 @@
     }
   }
 
-  onMount(async () => {
+  onMount(() => {
     // Always reload cart from localStorage on mount to ensure fresh data
     cartStore.reload()
 
@@ -290,7 +297,7 @@
     // If cart is not free, load payment methods
     // $effect will also handle this, but we load here on initial mount to avoid delay
     if (!isFree && !hasPaymentProviders(payments)) {
-      await loadPaymentMethods().catch(() => {
+      loadPaymentMethods().catch(() => {
         error = 'Failed to load payment methods. Please refresh the page.'
         showOverlay = true
       })
