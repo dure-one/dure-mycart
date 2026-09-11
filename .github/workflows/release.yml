@@ -2,8 +2,8 @@ name: goreleaser
 
 on:
   push:
-    branches:
-      - 'main'
+    # Full releases must run on the tagged commit. A push to main that is not
+    # the tag object fails with: "git tag … was not made against commit …".
     tags:
       - 'v*'
 

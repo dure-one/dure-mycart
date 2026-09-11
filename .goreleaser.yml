@@ -2,6 +2,11 @@ version: 2
 
 before:
   hooks:
+    # docs/swagger/docs.go is gitignored; generate it so the blank import in
+    # cmd/main.go resolves locally. Without this, `go mod tidy` looks the
+    # package up on the module proxy and fails with "no matching versions".
+    - go install github.com/swaggo/swag/cmd/swag@v1.16.6
+    - sh -c '"$(go env GOPATH)/bin/swag" init -g cmd/main.go --output docs/swagger --parseDependency --parseInternal'
     - go mod tidy
     - go mod download
     - sh -c "cd web/admin && bun install --force"
@@ -97,7 +102,9 @@ dockers_v2:
     sbom: true
     flags:
       - '--pull'
-      - '--provenance'
+      # buildx treats --provenance as a string option; without '=', it
+      # consumes the context path and fails with "requires 1 argument".
+      - '--provenance=true'
     labels:
       'io.artifacthub.package.readme-url': 'https://raw.githubusercontent.com/shurco/mycart/main/README.md'
       'io.artifacthub.package.maintainers': '[{"name":"Dmitry Shurco"}]'
