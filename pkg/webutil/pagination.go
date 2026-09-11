@@ -1,6 +1,10 @@
 package webutil
 
-import "github.com/gofiber/fiber/v3"
+import (
+	"math"
+
+	"github.com/gofiber/fiber/v3"
+)
 
 // Pagination describes resolved list-endpoint parameters after clamping to
 // the safe ranges documented below. It is intentionally a plain value type;
@@ -37,6 +41,15 @@ func ParsePagination(c fiber.Ctx) Pagination {
 	}
 	if limit > MaxLimit {
 		limit = MaxLimit
+	}
+
+	// Clamp page to prevent int32 overflow when offset is converted to int32
+	// in database queries (PostgreSQL LIMIT/OFFSET use int32).
+	// Maximum safe offset is math.MaxInt32, so: (page - 1) * limit <= MaxInt32
+	// Solving for page: page <= (MaxInt32 / limit) + 1
+	maxSafePage := (math.MaxInt32 / limit) + 1
+	if page > maxSafePage {
+		page = maxSafePage
 	}
 
 	return Pagination{
