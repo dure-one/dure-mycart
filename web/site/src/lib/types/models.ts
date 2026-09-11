@@ -49,13 +49,13 @@ export interface CartItem {
   name: string
   slug: string
   amount: number
-  quantity: number       // Number of this item in cart (min: 1)
+  quantity: number // Number of this item in cart (min: 1)
   image?: { name: string; ext: string } | null
   variant_id?: string
   variant_name?: string
   variant_options?: Record<string, string>
   variant_sku?: string
-  needsDeletion?: boolean  // Frontend-only flag for marking items to delete
+  needsDeletion?: boolean // Frontend-only flag for marking items to delete
 }
 
 export interface Settings {
@@ -92,7 +92,7 @@ export interface PaymentMethods {
 
 export interface CurrencyTruncationSettings {
   mode: 'none' | 'fixed' | 'flexible'
-  fixed_unit?: string  // e.g., 'K', 'M', '만', '천'
+  fixed_unit?: string // e.g., 'K', 'M', '만', '천'
 }
 
 export interface NumberFormatSettings {
