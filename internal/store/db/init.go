@@ -275,33 +275,27 @@ func logDatabaseInfo(cfg *Config) {
 	}
 }
 
-// Init initializes database connection, runs migrations, and initializes function pointers
-// Single entry point replacing queries.New() + old db.Init() + store.InitStoreWithType()
+// Init initializes database connection, runs migrations, and initializes function pointers.
+// This is the legacy entry point kept for backward compatibility.
+// Behavior change: only runs migrations if database is already installed.
 func Init(migrationsFS embed.FS) error {
-	// 1. Load configuration
-	cfg := loadConfig()
+	// Connect to database
+	if err := Connect(); err != nil {
+		return fmt.Errorf("connect failed: %w", err)
+	}
 
-	// 2. Connect with retry
-	conn, err := connectWithRetry(cfg)
+	// Check if installed
+	installed, err := IsInstalled()
 	if err != nil {
-		return fmt.Errorf("database connection failed: %w", err)
-	}
-	db = conn
-	dbType = cfg.Type
-
-	// Log connection info
-	logDatabaseInfo(cfg)
-
-	// 3. Run migrations
-	if err := runMigrations(db, dbType, migrationsFS); err != nil {
-		db.Close()
-		return fmt.Errorf("migration failed: %w", err)
+		return fmt.Errorf("failed to check installation status: %w", err)
 	}
 
-	// 4. Initialize function pointers
-	if err := initFunctionPointers(db, dbType); err != nil {
-		db.Close()
-		return fmt.Errorf("function pointer init failed: %w", err)
+	// Only run migrations if already installed
+	if installed {
+		if err := Migrate(migrationsFS); err != nil {
+			db.Close()
+			return fmt.Errorf("migration failed: %w", err)
+		}
 	}
 
 	return nil
@@ -388,6 +382,53 @@ func IsInstalled() (bool, error) {
 // This flag is set during Connect() based on IsInstalled() check.
 func InstallRequired() bool {
 	return installRequired
+}
+
+// Migrate runs database migrations on an already-connected database.
+// Requires prior call to Connect(). Returns error if migrations fail.
+func Migrate(migrationsFS embed.FS) error {
+	if db == nil {
+		return fmt.Errorf("database not connected")
+	}
+
+	if err := runMigrations(db, dbType, migrationsFS); err != nil {
+		return fmt.Errorf("migration failed: %w", err)
+	}
+
+	return nil
+}
+
+// MigrateWithConfig connects to database with provided config and runs migrations.
+// This is used by the install handler to migrate with user-selected database config.
+// Closes the connection after migration completes.
+func MigrateWithConfig(cfg *Config, migrationsFS embed.FS) error {
+	// Connect with provided config
+	conn, err := connectWithRetry(cfg)
+	if err != nil {
+		return fmt.Errorf("connect failed: %w", err)
+	}
+	defer conn.Close()
+
+	// Determine database type
+	var migrationDBType string
+	if cfg.Type == "postgres" || cfg.Type == "postgresql" {
+		migrationDBType = "postgres"
+	} else {
+		migrationDBType = "sqlite"
+	}
+
+	// Run migrations
+	if err := runMigrations(conn, migrationDBType, migrationsFS); err != nil {
+		return fmt.Errorf("migration failed: %w", err)
+	}
+
+	return nil
+}
+
+// SetInstalled marks the database as installed.
+// Called by the install handler after successful installation.
+func SetInstalled() {
+	installRequired = false
 }
 
 // Close closes the database connection

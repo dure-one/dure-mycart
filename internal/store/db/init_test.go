@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/shurco/mycart/db/migrations"
 	"github.com/stretchr/testify/require"
 )
 
@@ -109,6 +110,85 @@ func TestIsInstalled(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tt.wantInstalled, installed)
+			}
+		})
+	}
+}
+
+func TestMigrate(t *testing.T) {
+	tests := []struct {
+		name    string
+		setup   func(t *testing.T)
+		wantErr bool
+	}{
+		{
+			name: "runs migrations successfully on empty database",
+			setup: func(t *testing.T) {
+				t.Setenv("DB_TYPE", "sqlite")
+				t.Setenv("SQLITE_PATH", ":memory:")
+				err := Connect()
+				require.NoError(t, err)
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.setup != nil {
+				tt.setup(t)
+			}
+			t.Cleanup(func() {
+				if db != nil {
+					db.Close()
+					db = nil
+				}
+			})
+
+			// Use embedded migrations from db/migrations
+			err := Migrate(migrations.Embed())
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				// Verify goose_db_version table now exists
+				var count int
+				err = db.QueryRow("SELECT COUNT(*) FROM goose_db_version").Scan(&count)
+				require.NoError(t, err)
+				require.Greater(t, count, 0, "goose_db_version should have records after migration")
+			}
+		})
+	}
+}
+
+
+func TestMigrateWithConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  *Config
+		wantErr bool
+	}{
+		{
+			name: "successful migration with SQLite config",
+			config: &Config{
+				Type: "sqlite",
+				SQLite: SQLiteConfig{
+					Path: ":memory:",
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := MigrateWithConfig(tt.config, migrations.Embed())
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
