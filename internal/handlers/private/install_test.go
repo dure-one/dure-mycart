@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/stretchr/testify/require"
 
 	"github.com/shurco/mycart/db/migrations"
 	"github.com/shurco/mycart/internal/store/db"
@@ -71,6 +74,61 @@ func TestInstall(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resp := testutil.DoRequest(t, app, http.MethodPost, "/api/install", tt.body, "")
 			testutil.AssertStatus(t, resp, tt.wantStatus)
+		})
+	}
+}
+
+func TestInstall_WithDatabaseConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		payload  string
+		wantCode int
+	}{
+		{
+			name: "successful installation with sqlite",
+			payload: `{
+				"email": "admin@example.com",
+				"password": "Pass123",
+				"domain": "example.com",
+				"dbType": "sqlite",
+				"sqlitePath": ":memory:"
+			}`,
+			wantCode: 200,
+		},
+		{
+			name: "invalid dbType",
+			payload: `{
+				"email": "admin@example.com",
+				"password": "Pass123",
+				"domain": "example.com",
+				"dbType": "mysql",
+				"sqlitePath": "./data.db"
+			}`,
+			wantCode: 400,
+		},
+		{
+			name: "postgres missing databaseUrl",
+			payload: `{
+				"email": "admin@example.com",
+				"password": "Pass123",
+				"domain": "example.com",
+				"dbType": "postgres"
+			}`,
+			wantCode: 400,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := fiber.New()
+			app.Post("/api/install", Install)
+
+			req := httptest.NewRequest("POST", "/api/install", strings.NewReader(tt.payload))
+			req.Header.Set("Content-Type", "application/json")
+
+			resp, err := app.Test(req)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantCode, resp.StatusCode)
 		})
 	}
 }

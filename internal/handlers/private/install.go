@@ -72,6 +72,9 @@ func Install(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
+	// Reinitialize store with migrated database
+	store.InitStoreWithType(db.DB(), db.Type())
+
 	// Create admin user and initial settings
 	if err := store.Install(c.Context(), request); err != nil {
 		if errors.Is(err, store.ErrAlreadyInstalled) {

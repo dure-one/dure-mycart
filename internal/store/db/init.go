@@ -400,14 +400,29 @@ func Migrate(migrationsFS embed.FS) error {
 
 // MigrateWithConfig connects to database with provided config and runs migrations.
 // This is used by the install handler to migrate with user-selected database config.
-// Closes the connection after migration completes.
+// Updates the global db connection to use the new config.
 func MigrateWithConfig(cfg *Config, migrationsFS embed.FS) error {
+	// Close existing connection if any
+	if db != nil {
+		db.Close()
+	}
+
 	// Connect with provided config
 	conn, err := connectWithRetry(cfg)
 	if err != nil {
 		return fmt.Errorf("connect failed: %w", err)
 	}
-	defer conn.Close()
+
+	// Update global connection
+	db = conn
+	dbType = cfg.Type
+
+	// Initialize function pointers for new connection
+	if err := initFunctionPointers(db, dbType); err != nil {
+		db.Close()
+		db = nil
+		return fmt.Errorf("function pointer init failed: %w", err)
+	}
 
 	// Determine database type
 	var migrationDBType string
