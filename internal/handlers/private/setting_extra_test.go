@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/internal/testutil"
 	"github.com/shurco/mycart/pkg/update"
 )
@@ -56,7 +56,7 @@ func TestVersion_UsesCacheOnSecondCall(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	cached, _ := json.Marshal(&update.Version{CurrentVersion: "v0.0.0-test"})
-	if err := queries.DB().AddSession(ctx, "update", string(cached),
+	if err := store.AddSession(ctx, "update", string(cached),
 		time.Now().Add(time.Hour).Unix()); err != nil {
 		t.Fatalf("seed session: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestVersion_CorruptCacheSurfaces500(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := queries.DB().AddSession(ctx, "update", "not-json",
+	if err := store.AddSession(ctx, "update", "not-json",
 		time.Now().Add(time.Hour).Unix()); err != nil {
 		t.Fatalf("seed session: %v", err)
 	}

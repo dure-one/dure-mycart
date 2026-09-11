@@ -6,27 +6,34 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/shurco/mycart/internal/store/db"
 	_ "modernc.org/sqlite"
 )
 
 func setupTestDB(t *testing.T) *sql.DB {
-	db, err := sql.Open("sqlite", ":memory:")
+	sqlDB, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("Failed to open test database: %v", err)
 	}
 
-	// Create product table
-	_, err = db.Exec(`
+	// Create product table with deleted column for sqlc queries
+	_, err = sqlDB.Exec(`
 		CREATE TABLE product (
 			id TEXT PRIMARY KEY,
-			slug TEXT UNIQUE NOT NULL
+			slug TEXT UNIQUE NOT NULL,
+			deleted BOOLEAN DEFAULT 0
 		)
 	`)
 	if err != nil {
 		t.Fatalf("Failed to create test table: %v", err)
 	}
 
-	return db
+	// Initialize db function pointers with this test database
+	if err := db.InitFromDB(sqlDB, "sqlite"); err != nil {
+		t.Fatalf("Failed to initialize db function pointers: %v", err)
+	}
+
+	return sqlDB
 }
 
 func TestSlugGeneration(t *testing.T) {

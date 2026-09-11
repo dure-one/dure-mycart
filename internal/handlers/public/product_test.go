@@ -23,6 +23,14 @@ func TestProducts(t *testing.T) {
 		{"default list (fixtures have active products)", "", http.StatusOK},
 		{"custom pagination", "?page=1&limit=5", http.StatusOK},
 		{"high page (empty result)", "?page=999", http.StatusOK},
+		{"negative page (clamped to 1)", "?page=-1", http.StatusOK},
+		{"zero page (clamped to 1)", "?page=0", http.StatusOK},
+		{"negative limit (clamped to default)", "?limit=-10", http.StatusOK},
+		{"zero limit (clamped to default)", "?limit=0", http.StatusOK},
+		{"very large limit (clamped to max)", "?limit=9999", http.StatusOK},
+		{"invalid page parameter", "?page=invalid", http.StatusOK},
+		{"invalid limit parameter", "?limit=invalid", http.StatusOK},
+		{"page 2 with limit", "?page=2&limit=3", http.StatusOK},
 	}
 
 	for _, tt := range tests {

@@ -16,9 +16,13 @@
   let email = $state('')
   let password = $state('')
   let domain = $state('')
+  let dbType = $state('sqlite')
+  let databaseUrl = $state('')
+  let sqlitePath = $state('./lc_base/data.db')
   let emailError = $state('')
   let passwordError = $state('')
   let domainError = $state('')
+  let dbError = $state('')
 
   let redirectTimer: ReturnType<typeof setTimeout> | undefined
   onDestroy(() => {
@@ -60,19 +64,44 @@
     return ''
   }
 
+  function validateDatabase() {
+    if (dbType === 'postgres') {
+      if (!databaseUrl) {
+        return t('install.databaseUrlRequired') || 'PostgreSQL connection string required'
+      }
+      if (!databaseUrl.startsWith('postgres://') && !databaseUrl.startsWith('postgresql://')) {
+        return t('install.databaseUrlInvalid') || 'Invalid PostgreSQL connection string'
+      }
+    } else if (dbType === 'sqlite') {
+      if (!sqlitePath) {
+        return t('install.sqlitePathRequired') || 'SQLite database path required'
+      }
+    }
+    return ''
+  }
+
   async function handleSubmit(event?: Event) {
     event?.preventDefault()
 
     emailError = validateEmail(email)
     passwordError = validatePassword(password)
     domainError = validateDomain(domain)
+    dbError = validateDatabase()
 
-    if (emailError || passwordError || domainError) {
+    if (emailError || passwordError || domainError || dbError) {
       return
     }
 
     try {
-      const res = await apiPost(`/api/install`, { email, password, domain })
+      const payload = {
+        email,
+        password,
+        domain,
+        dbType,
+        databaseUrl: dbType === 'postgres' ? databaseUrl : '',
+        sqlitePath: dbType === 'sqlite' ? sqlitePath : ''
+      }
+      const res = await apiPost(`/api/install`, payload)
       if (res?.success) {
         showMessage(t('install.installedSuccessfully'), 'connextSuccess')
         // Redirect to signin page after successful installation
@@ -121,6 +150,44 @@
         bind:value={domain}
         placeholder="example.com"
       />
+
+      <!-- Database Selection -->
+      <div>
+        <label for="dbType" class="block text-sm font-medium text-gray-700 mb-2">
+          {t('install.databaseType') || 'Database Type'}
+        </label>
+        <select
+          id="dbType"
+          bind:value={dbType}
+          class="w-full rounded-lg border-gray-200 p-4 text-sm shadow-sm"
+        >
+          <option value="sqlite">SQLite (Default)</option>
+          <option value="postgres">PostgreSQL</option>
+        </select>
+      </div>
+
+      {#if dbType === 'postgres'}
+        <FormInput
+          id="databaseUrl"
+          type="text"
+          title={t('install.postgresConnection') || 'PostgreSQL Connection String'}
+          ico="database"
+          error={dbError}
+          bind:value={databaseUrl}
+          placeholder="postgresql://user:password@host:5432/database"
+        />
+      {:else}
+        <FormInput
+          id="sqlitePath"
+          type="text"
+          title={t('install.sqlitePath') || 'SQLite Database Path'}
+          ico="folder"
+          error={dbError}
+          bind:value={sqlitePath}
+          placeholder="./lc_base/data.db"
+        />
+      {/if}
+
       <FormButton type="submit" name={t('install.installButton')} color="green" ico="arrow-right" />
     </form>
   </div>

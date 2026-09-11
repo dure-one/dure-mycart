@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/pkg/jwtutil"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/security"
@@ -33,7 +33,6 @@ import (
 const dummyPasswordHash = "$2a$10$uo0yzV.HzLdx6hKO4F/4oOM0UQdmaLmZydgeRg9IDdL0lQjZZmoFq"
 
 func SignIn(c fiber.Ctx) error {
-	db := queries.DB()
 	log := logging.New()
 	request := new(models.SignIn)
 
@@ -47,7 +46,7 @@ func SignIn(c fiber.Ctx) error {
 		return webutil.StatusBadRequest(c, err.Error())
 	}
 
-	passwordHash, err := db.GetPasswordByEmail(c.Context(), request.Email)
+	passwordHash, err := store.GetPasswordByEmail(c.Context(), request.Email)
 	if err != nil {
 		// Unknown email: run the same bcrypt comparison against a dummy hash
 		// and return the same generic error as a wrong password.
@@ -62,7 +61,7 @@ func SignIn(c fiber.Ctx) error {
 	}
 
 	// Generate a new pair of access and refresh tokens.
-	settingJWT, err := queries.GetSettingByGroup[models.JWT](c.Context(), db)
+	settingJWT, err := store.GetSettingByGroupTyped[models.JWT](c.Context())
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
@@ -77,7 +76,7 @@ func SignIn(c fiber.Ctx) error {
 	}
 
 	// Add session record
-	if err := db.AddSession(c.Context(), userID.String(), "admin", expires); err != nil {
+	if err := store.AddSession(c.Context(), userID.String(), "admin", expires); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
@@ -104,10 +103,9 @@ func SignIn(c fiber.Ctx) error {
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/sign/out [post]
 func SignOut(c fiber.Ctx) error {
-	db := queries.DB()
 	log := logging.New()
 
-	settingJWT, err := queries.GetSettingByGroup[models.JWT](c.Context(), db)
+	settingJWT, err := store.GetSettingByGroupTyped[models.JWT](c.Context())
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
@@ -119,7 +117,7 @@ func SignOut(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
-	if err := db.DeleteSession(c.Context(), claims.ID); err != nil {
+	if err := store.DeleteSession(c.Context(), claims.ID); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}

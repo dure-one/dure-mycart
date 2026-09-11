@@ -9,14 +9,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shurco/mycart/db/migrations"
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/migrations"
+	"github.com/shurco/mycart/internal/store"
+	"github.com/shurco/mycart/internal/store/db"
 	"github.com/shurco/mycart/pkg/litepay"
 )
 
 // setupTestDB migrates a fresh database inside a temp working directory so
-// queries.DB() returns a usable instance for SendPaymentHook.
+// db.DB() returns a usable instance for SendPaymentHook.
 func setupTestDB(t *testing.T) {
 	t.Helper()
 	dir := t.TempDir()
@@ -27,9 +28,18 @@ func setupTestDB(t *testing.T) {
 	_ = os.MkdirAll("lc_base", 0o775)
 	t.Cleanup(func() { _ = os.Chdir(prev) })
 
-	if err := queries.New(migrations.Embed()); err != nil {
-		t.Fatalf("queries.New: %v", err)
+	// Connect to database
+	if err := db.Connect(); err != nil {
+		t.Fatalf("db.Connect: %v", err)
 	}
+
+	// Run migrations (required for fresh test databases)
+	if err := db.Migrate(migrations.Embed()); err != nil {
+		t.Fatalf("db.Migrate: %v", err)
+	}
+
+	// Initialize store layer
+	store.InitStore(db.DB())
 }
 
 func TestSendPaymentHook_EmptyURLIsNoop(t *testing.T) {
@@ -53,8 +63,7 @@ func TestSendPaymentHook_DeliversToConfiguredURL(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	db := queries.DB()
-	if err := db.UpdateSettingByGroup(ctx, &models.Webhook{Url: srv.URL}); err != nil {
+	if err := store.UpdateSettingByGroup(ctx, &models.Webhook{Url: srv.URL}); err != nil {
 		t.Fatalf("seed webhook url: %v", err)
 	}
 
@@ -87,7 +96,7 @@ func TestSendPaymentHook_Non2xxLogsAndReturnsNil(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	if err := queries.DB().UpdateSettingByGroup(ctx, &models.Webhook{Url: srv.URL}); err != nil {
+	if err := store.UpdateSettingByGroup(ctx, &models.Webhook{Url: srv.URL}); err != nil {
 		t.Fatalf("seed webhook url: %v", err)
 	}
 
@@ -103,7 +112,7 @@ func TestSendPaymentHook_TransportFailureSwallowed(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	if err := queries.DB().UpdateSettingByGroup(ctx, &models.Webhook{
+	if err := store.UpdateSettingByGroup(ctx, &models.Webhook{
 		Url: "http://127.0.0.1:1/unreachable",
 	}); err != nil {
 		t.Fatalf("seed webhook url: %v", err)

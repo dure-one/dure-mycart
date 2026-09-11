@@ -318,6 +318,8 @@
     "siteName": "사이트 이름",
     "email": "이메일",
     "password": "비밀번호",
+    "databaseType": "데이터베이스 유형",
+    "postgresConnection": "PostgreSQL 연결 문자열",
     "install": "설치"
   },
   "letter": {

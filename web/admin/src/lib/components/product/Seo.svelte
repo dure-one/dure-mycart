@@ -50,7 +50,7 @@
       `/api/_/products/${drawer.product.id}`,
       { seo: seoData },
       true,
-      t('products.failedToSave'),
+      t('products.updated'),
       t('products.failedToSave')
     )
   }

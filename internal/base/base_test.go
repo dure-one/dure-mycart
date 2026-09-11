@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shurco/mycart/migrations"
+	"github.com/shurco/mycart/db/migrations"
 	_ "modernc.org/sqlite"
 )
 

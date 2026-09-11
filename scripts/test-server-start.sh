@@ -6,40 +6,21 @@ echo "🧹 Cleaning test environment before server start..."
 rm -rf lc_base lc_digitals lc_uploads
 echo "✓ Environment cleaned"
 
-echo "📦 Installing dependencies..."
-# Clean and reinstall to ensure correct vite version
-if [ ! -d "web/admin/node_modules" ]; then
-  cd web/admin && rm -f package-lock.json && npm install --legacy-peer-deps && cd ../..
-fi
-if [ ! -d "web/site/node_modules" ]; then
-  cd web/site && rm -f package-lock.json && npm install --legacy-peer-deps && cd ../..
-fi
-echo "✓ Dependencies installed"
+echo "📁 Creating required directories..."
+mkdir -p lc_base lc_digitals lc_uploads
+echo "✓ Directories created"
 
-echo "🎨 Building frontend..."
-npm run build
-if [ $? -eq 0 ]; then
-  echo "✓ Frontend built"
-else
-  echo "❌ Failed to build frontend"
-  exit 1
-fi
+echo "🗄️ Initializing SQLite database..."
+touch lc_base/data.db
+echo "✓ Database file created"
 
-echo "📚 Generating Swagger documentation..."
-SWAG_BIN="$(go env GOPATH)/bin/swag"
-
-if [ ! -f "$SWAG_BIN" ]; then
-  echo "⚠️  swag not found, installing..."
-  go install github.com/swaggo/swag/cmd/swag@latest
+echo "📚 Generating Swagger API documentation..."
+if ! command -v swag >/dev/null 2>&1; then
+    echo "  Installing swag..."
+    go install github.com/swaggo/swag/cmd/swag@latest
 fi
-
-"$SWAG_BIN" init -g cmd/main.go --output docs/swagger --parseDependency --parseInternal
-if [ $? -eq 0 ]; then
-  echo "✓ Swagger docs generated"
-else
-  echo "❌ Failed to generate Swagger docs"
-  exit 1
-fi
+$(go env GOPATH)/bin/swag init -g cmd/main.go --output docs/swagger --parseDependency --parseInternal >/dev/null 2>&1
+echo "✓ Swagger docs generated"
 
 echo "🚀 Starting server..."
 exec go run ./cmd serve

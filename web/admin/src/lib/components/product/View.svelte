@@ -124,6 +124,102 @@
             <div>{item}</div>
           {/each}
         </DetailList>
+        {#if product.has_variants && product.variants && product.variants.length > 0}
+          <DetailList name={t('products.productVariants')}>
+            <!-- Options summary -->
+            <div class="mb-4 rounded-lg bg-gray-50 p-3">
+              <h4 class="mb-2 text-sm font-medium text-gray-700">{t('products.options')}:</h4>
+              {#each product.options || [] as option}
+                <div class="mb-1 text-sm text-gray-600">
+                  <strong class="text-gray-900">{option.name}:</strong> {option.values.map(v => v.value).join(', ')}
+                </div>
+              {/each}
+            </div>
+
+            <!-- Variants table (read-only) -->
+            <div class="mb-2 text-sm font-medium text-gray-700">
+              {t('products.generatedVariants')} ({product.variants.length})
+            </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      {t('products.variant')}
+                    </th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      {t('products.sku')}
+                    </th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      {t('products.priceSurcharge')}
+                    </th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      {t('products.totalPrice')}
+                    </th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      {t('products.quantity')}
+                    </th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      {t('products.active')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                  {#each product.variants as variant}
+                    <tr class:opacity-50={!variant.active}>
+                      <td class="whitespace-nowrap px-3 py-2 text-gray-900">
+                        {Object.entries(variant.option_values).map(([key, value]) => `${key}: ${value}`).join(', ')}
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-2 text-gray-700">
+                        {variant.sku || '-'}
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-2 text-gray-700">
+                        {#if variant.price_surcharge === 0}
+                          <span class="text-gray-400">-</span>
+                        {:else}
+                          {formatCurrencyWithTruncation(
+                            variant.price_surcharge,
+                            drawer.currency || 'USD',
+                            'admin',
+                            paymentSettings?.truncation,
+                            currentLocale,
+                            paymentSettings?.number_format,
+                            paymentSettings?.symbol_display?.admin
+                          )}
+                        {/if}
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-2 text-gray-700">
+                        {#if (product.amount || 0) + variant.price_surcharge === 0}
+                          <span class="font-bold text-green-600">{t('carts.free')}</span>
+                        {:else}
+                          {formatCurrencyWithTruncation(
+                            (product.amount || 0) + variant.price_surcharge,
+                            drawer.currency || 'USD',
+                            'admin',
+                            paymentSettings?.truncation,
+                            currentLocale,
+                            paymentSettings?.number_format,
+                            paymentSettings?.symbol_display?.admin
+                          )}
+                        {/if}
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-2 text-gray-700">
+                        {variant.quantity}
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-2">
+                        <SvgIcon
+                          name={variant.active ? 'eye' : 'eye-slash'}
+                          className="h-4 w-4 {variant.active ? 'text-green-600' : 'text-gray-400'}"
+                          stroke="currentColor"
+                        />
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          </DetailList>
+        {/if}
         <DetailList name={t('common.created')}>{formatDate(product.created)}</DetailList>
         {#if product.updated}
           <DetailList name={t('common.updated')}>{formatDate(product.updated)}</DetailList>

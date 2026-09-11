@@ -9,7 +9,8 @@ import (
 	"testing"
 
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/store"
+	"github.com/shurco/mycart/internal/store/db"
 	"github.com/shurco/mycart/internal/testutil"
 	"github.com/shurco/mycart/pkg/litepay"
 	"github.com/shurco/mycart/pkg/security"
@@ -22,10 +23,10 @@ func seedProductWithDigital(t *testing.T, soldCartID string) (string, string) {
 	t.Helper()
 
 	ctx := context.Background()
-	db := queries.DB()
+	database := db.DB()
 
 	productID := security.RandomString()
-	if _, err := db.ProductQueries.ExecContext(ctx, `
+	if _, err := database.ExecContext(ctx, `
 		INSERT INTO product (id, name, slug, desc, amount, quantity, digital, active, deleted)
 		VALUES (?, 'Guard Product', ?, 'desc', 1000, 1, 'file', 1, 0)
 	`, productID, "guard-"+productID); err != nil {
@@ -33,14 +34,14 @@ func seedProductWithDigital(t *testing.T, soldCartID string) (string, string) {
 	}
 
 	fileID := security.RandomString()
-	if _, err := db.ProductQueries.ExecContext(ctx,
+	if _, err := database.ExecContext(ctx,
 		`INSERT INTO digital_file (id, product_id, name, ext, orig_name) VALUES (?, ?, ?, 'pdf', 'manual.pdf')`,
 		fileID, productID, security.RandomString()+"-uuid"); err != nil {
 		t.Fatalf("insert digital_file: %v", err)
 	}
 
 	if soldCartID != "" {
-		if _, err := db.ProductQueries.ExecContext(ctx,
+		if _, err := database.ExecContext(ctx,
 			`INSERT INTO digital_data (id, product_id, content, cart_id) VALUES (?, ?, 'KEY-001', ?)`,
 			security.RandomString(), productID, soldCartID); err != nil {
 			t.Fatalf("insert digital_data: %v", err)
@@ -55,7 +56,7 @@ func fileUUIDFor(t *testing.T, productID, fileID string) string {
 	t.Helper()
 
 	var name string
-	err := queries.DB().ProductQueries.QueryRowContext(context.Background(),
+	err := db.DB().QueryRowContext(context.Background(),
 		`SELECT name FROM digital_file WHERE id = ? AND product_id = ?`, fileID, productID).Scan(&name)
 	if err != nil {
 		t.Fatalf("load digital file name: %v", err)
@@ -107,12 +108,11 @@ func TestDeleteProduct_SoldDigitalGuard(t *testing.T) {
 	app, cookie, cleanup := testutil.SetupTestApp(t)
 	defer cleanup()
 
-	db := queries.DB()
 	ctx := context.Background()
 
 	// A cart owning purchased keys must exist to satisfy the FK.
 	soldCartID := "soldcart0000001" // len 15
-	if err := db.AddCart(ctx, &models.Cart{
+	if err := store.AddCart(ctx, &models.Cart{
 		Core:          models.Core{ID: soldCartID},
 		Email:         "buyer@example.com",
 		Cart:          []models.CartProduct{},
@@ -134,7 +134,7 @@ func TestDeleteProduct_SoldDigitalGuard(t *testing.T) {
 		testutil.AssertStatus(t, resp, http.StatusBadRequest)
 
 		var exists bool
-		if err := db.ProductQueries.QueryRowContext(ctx,
+		if err := db.DB().QueryRowContext(ctx,
 			`SELECT EXISTS(SELECT 1 FROM product WHERE id = ?)`, soldProductID).Scan(&exists); err != nil {
 			t.Fatalf("check product: %v", err)
 		}
@@ -148,7 +148,7 @@ func TestDeleteProduct_SoldDigitalGuard(t *testing.T) {
 		testutil.AssertStatus(t, resp, http.StatusOK)
 
 		var exists bool
-		if err := db.ProductQueries.QueryRowContext(ctx,
+		if err := db.DB().QueryRowContext(ctx,
 			`SELECT EXISTS(SELECT 1 FROM product WHERE id = ?)`, cleanProductID).Scan(&exists); err != nil {
 			t.Fatalf("check product: %v", err)
 		}

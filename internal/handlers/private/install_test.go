@@ -1,44 +1,47 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
+	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/pressly/goose/v3"
+	"github.com/stretchr/testify/require"
 
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/db/migrations"
+	"github.com/shurco/mycart/internal/store/db"
 	"github.com/shurco/mycart/internal/testutil"
-	"github.com/shurco/mycart/migrations"
-	_ "modernc.org/sqlite"
 )
 
 func setupCleanDB(t *testing.T) (*fiber.App, func()) {
 	t.Helper()
 	dirCleanup := testutil.WithCmdTestDir(t)
 
-	sqlite, err := sql.Open("sqlite", ":memory:?_pragma=foreign_keys(ON)")
-	if err != nil {
-		t.Fatal(err)
-	}
-	sqlite.SetMaxOpenConns(1)
+	// Create required directories
+	_ = os.MkdirAll("lc_base", 0o775)
 
-	if err := goose.SetDialect("sqlite3"); err != nil {
-		t.Fatal(err)
-	}
-	goose.SetBaseFS(migrations.Embed())
-	goose.SetTableName("migrate_db_version")
-	if err := goose.Up(sqlite, "."); err != nil {
-		t.Fatal(err)
+	// Set up environment for SQLite
+	os.Setenv("DB_TYPE", "sqlite")
+	os.Setenv("SQLITE_PATH", ":memory:")
+
+	// Connect to database
+	if err := db.Connect(); err != nil {
+		t.Fatalf("db.Connect: %v", err)
 	}
 
-	queries.NewFromDB(sqlite)
+	// Run migrations (required for fresh test databases)
+	if err := db.Migrate(migrations.Embed()); err != nil {
+		t.Fatalf("db.Migrate: %v", err)
+	}
+
 	app := fiber.New()
 
 	return app, func() {
 		_ = app.Shutdown()
-		_ = sqlite.Close()
+		db.Close()
 		dirCleanup()
 	}
 }
@@ -56,12 +59,12 @@ func TestInstall(t *testing.T) {
 	}{
 		{
 			"invalid email",
-			`{"email":"bad","password":"secret","domain":"example.com"}`,
+			`{"email":"bad","password":"secret","domain":"example.com","dbType":"sqlite","sqlitePath":"lc_base/data.db"}`,
 			http.StatusBadRequest,
 		},
 		{
 			"short password",
-			`{"email":"admin@example.com","password":"12","domain":"example.com"}`,
+			`{"email":"admin@example.com","password":"12","domain":"example.com","dbType":"sqlite","sqlitePath":"lc_base/data.db"}`,
 			http.StatusBadRequest,
 		},
 		{
@@ -71,7 +74,7 @@ func TestInstall(t *testing.T) {
 		},
 		{
 			"valid install (last — mutates DB)",
-			`{"email":"admin@example.com","password":"secret","domain":"example.com"}`,
+			`{"email":"admin@example.com","password":"secret","domain":"example.com","dbType":"sqlite","sqlitePath":"lc_base/data.db"}`,
 			http.StatusOK,
 		},
 	}
@@ -80,6 +83,73 @@ func TestInstall(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resp := testutil.DoRequest(t, app, http.MethodPost, "/api/install", tt.body, "")
 			testutil.AssertStatus(t, resp, tt.wantStatus)
+		})
+	}
+}
+
+func TestInstall_WithDatabaseConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		payload  string
+		wantCode int
+	}{
+		{
+			name: "successful installation with sqlite",
+			payload: `{
+				"email": "admin@example.com",
+				"password": "Pass123",
+				"domain": "example.com",
+				"dbType": "sqlite",
+				"sqlitePath": ":memory:"
+			}`,
+			wantCode: 200,
+		},
+		{
+			name: "invalid dbType",
+			payload: `{
+				"email": "admin@example.com",
+				"password": "Pass123",
+				"domain": "example.com",
+				"dbType": "mysql",
+				"sqlitePath": "./data.db"
+			}`,
+			wantCode: 400,
+		},
+		{
+			name: "postgres missing databaseUrl",
+			payload: `{
+				"email": "admin@example.com",
+				"password": "Pass123",
+				"domain": "example.com",
+				"dbType": "postgres"
+			}`,
+			wantCode: 400,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set up clean environment for each test
+			dirCleanup := testutil.WithCmdTestDir(t)
+			defer dirCleanup()
+
+			// Create required directories
+			_ = os.MkdirAll("lc_base", 0o775)
+
+			// Clean up database connection after test to prevent resource leaks
+			defer db.Close()
+
+			app := fiber.New()
+			app.Post("/api/install", Install)
+
+			req := httptest.NewRequest("POST", "/api/install", strings.NewReader(tt.payload))
+			req.Header.Set("Content-Type", "application/json")
+
+			// Increase timeout to 10 seconds to allow full migration suite to complete
+			// The Install handler runs db.MigrateWithConfig which can take several seconds
+			resp, err := app.Test(req, fiber.TestConfig{Timeout: 10 * time.Second})
+			require.NoError(t, err)
+			require.Equal(t, tt.wantCode, resp.StatusCode)
 		})
 	}
 }

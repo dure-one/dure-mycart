@@ -135,6 +135,8 @@
     "email": "Email",
     "password": "Password",
     "domain": "Domain",
+    "databaseType": "Database Type",
+    "postgresConnection": "PostgreSQL Connection String",
     "installButton": "Install",
     "configureCart": "Configure your shopping cart",
     "emailRequired": "Email is required",

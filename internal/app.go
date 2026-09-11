@@ -9,19 +9,18 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
-	"time"
 
 	"golang.org/x/crypto/acme/autocert"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/static"
 
+	"github.com/shurco/mycart/db/migrations"
 	"github.com/shurco/mycart/internal/middleware"
-	"github.com/shurco/mycart/internal/queries"
 	"github.com/shurco/mycart/internal/routes"
-	"github.com/shurco/mycart/migrations"
+	"github.com/shurco/mycart/internal/store"
+	"github.com/shurco/mycart/internal/store/db"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/webutil"
 )
@@ -45,10 +44,29 @@ func NewApp(httpAddr, httpsAddr string, noSite, appDev bool) error {
 
 	schema, mainAddr := determineSchemaAndAddr(httpAddr, httpsAddr)
 
-	if err := queries.New(migrations.Embed()); err != nil {
-		log.Err(err).Send()
+	// Phase 1: Connect to database without running migrations
+	if err := db.Connect(); err != nil {
+		log.Err(err).Msg("failed to connect to database")
 		return err
 	}
+
+	// Phase 2: Check if installation is required
+	installed, err := db.IsInstalled()
+	if err != nil {
+		log.Err(err).Msg("failed to check installation status")
+		return err
+	}
+
+	// Phase 3: Run migrations if already installed
+	if installed {
+		if err := db.Migrate(migrations.Embed()); err != nil {
+			log.Err(err).Msg("failed to run database migrations")
+			return err
+		}
+	}
+
+	// Initialize store package with database connection and type for transactions
+	store.InitStoreWithType(db.DB(), db.Type())
 
 	app, err := setupFiberApp(noSite)
 	if err != nil {
@@ -306,20 +324,9 @@ func handleShutdown(ctx context.Context, app *fiber.App, idleConnsClosed chan st
 
 // InstallCheck checks the installation status and redirects to the installation page if necessary.
 func InstallCheck(c fiber.Ctx) error {
-	db := queries.DB()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	response, err := db.GetSettingByKey(ctx, "installed")
-	if err != nil {
-		return webutil.StatusInternalServerError(c)
-	}
-
-	install, _ := strconv.ParseBool(fmt.Sprint(response["installed"].Value))
 	path := c.Path()
 
-	if !install {
+	if db.InstallRequired() {
 		if !isInstallPath(path) {
 			if strings.HasPrefix(path, "/api/") {
 				return webutil.StatusBadRequest(c, "application not installed")

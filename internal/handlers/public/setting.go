@@ -4,7 +4,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/webutil"
 )
@@ -31,34 +31,27 @@ func Ping(c fiber.Ctx) error {
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/settings [get]
 func Settings(c fiber.Ctx) error {
-	db := queries.DB()
 	log := logging.New()
 
-	settingMain, err := queries.GetSettingByGroup[models.Main](c.Context(), db)
+	settingMain, err := store.GetSettingByGroupTyped[models.Main](c.Context())
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
 
-	settingSocial, err := queries.GetSettingByGroup[models.Social](c.Context(), db)
+	settingSocial, err := store.GetSettingByGroupTyped[models.Social](c.Context())
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
 
-	settingPayment, err := queries.GetSettingByGroup[models.Payment](c.Context(), db)
+	settingPayment, err := store.GetSettingByGroupTyped[models.Payment](c.Context())
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
 
-	settingDureone, err := queries.GetSettingByGroup[models.Dureone](c.Context(), db)
-	if err != nil {
-		log.ErrorStack(err)
-		return webutil.StatusInternalServerError(c)
-	}
-
-	pages, _, err := db.ListPages(c.Context(), false, 0, 0)
+	pages, _, err := store.ListPages(c.Context(), false, 0, 0)
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
@@ -73,6 +66,5 @@ func Settings(c fiber.Ctx) error {
 		"socials": settingSocial,
 		"pages":   pages,
 		"payment": settingPayment,
-		"dureone": settingDureone,
 	})
 }

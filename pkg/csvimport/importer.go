@@ -15,16 +15,39 @@ import (
 
 // CSVImporter handles CSV import operations
 type CSVImporter struct {
-	db *sql.DB
+	db     *sql.DB
+	dbType string
 }
 
 // NewCSVImporter creates a new CSV importer
-func NewCSVImporter(db *sql.DB) *CSVImporter {
-	return &CSVImporter{db: db}
+func NewCSVImporter(db *sql.DB, dbType string) *CSVImporter {
+	return &CSVImporter{
+		db:     db,
+		dbType: dbType,
+	}
 }
 
 // Required CSV columns
 var requiredColumns = []string{"name", "slug", "amount", "digital"}
+
+// convertPlaceholders converts SQLite-style ? placeholders to PostgreSQL $1, $2, etc.
+func (c *CSVImporter) convertPlaceholders(query string) string {
+	if c.dbType != "postgres" {
+		return query
+	}
+
+	result := ""
+	paramNum := 1
+	for _, char := range query {
+		if char == '?' {
+			result += fmt.Sprintf("$%d", paramNum)
+			paramNum++
+		} else {
+			result += string(char)
+		}
+	}
+	return result
+}
 
 // ValidateAndPreview parses CSV and returns preview without importing
 func (c *CSVImporter) ValidateAndPreview(file io.Reader) (*ImportResult, []models.Product, error) {
@@ -415,7 +438,8 @@ func (c *CSVImporter) parseVariantData(vStr string, options []models.ProductOpti
 // productExists checks if a product with the given slug exists
 func (c *CSVImporter) productExists(ctx context.Context, slug string) (bool, error) {
 	var count int
-	err := c.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM product WHERE slug = ?", slug).Scan(&count)
+	query := c.convertPlaceholders("SELECT COUNT(*) FROM product WHERE slug = ?")
+	err := c.db.QueryRowContext(ctx, query, slug).Scan(&count)
 	return count > 0, err
 }
 
@@ -437,8 +461,8 @@ func (c *CSVImporter) Import(ctx context.Context, products []models.Product) (*I
 			result.Skipped++
 		} else {
 			// Insert product (simplified - would use AddProductWithVariants in production)
-			query := `INSERT INTO product (id, name, slug, desc, amount, quantity, digital, active, deleted)
-			          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			query := c.convertPlaceholders(`INSERT INTO product (id, name, slug, "desc", amount, quantity, digital, active, deleted)
+			          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 			_, err = c.db.ExecContext(ctx, query,
 				product.ID, product.Name, product.Slug, product.Description,
 				product.Amount, product.Quantity, product.Digital.Type, product.Active, false)

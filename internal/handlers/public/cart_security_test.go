@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -13,17 +14,30 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/store"
+	"github.com/shurco/mycart/internal/store/db"
 	"github.com/shurco/mycart/internal/testutil"
+	"github.com/shurco/mycart/pkg/jwtutil"
 	"github.com/shurco/mycart/pkg/litepay"
 )
+
+// verifyCartAmount checks if payment amount and currency match the cart.
+func verifyCartAmount(payment *litepay.Payment, cart *models.Cart) error {
+	if payment.AmountTotal != cart.AmountTotal {
+		return fmt.Errorf("amount mismatch: payment %d vs cart %d", payment.AmountTotal, cart.AmountTotal)
+	}
+	if !strings.EqualFold(payment.Currency, cart.Currency) {
+		return fmt.Errorf("currency mismatch: payment %s vs cart %s", payment.Currency, cart.Currency)
+	}
+	return nil
+}
 
 // seedCart inserts a cart with the given state and returns its ID.
 func seedCart(t *testing.T, paymentID string, status litepay.Status, system litepay.PaymentSystem, amountTotal int) string {
 	t.Helper()
 
 	cartID := "testcart0000001" // len 15
-	err := queries.DB().AddCart(context.Background(), &models.Cart{
+	err := store.AddCart(context.Background(), &models.Cart{
 		Core:          models.Core{ID: cartID},
 		Email:         "buyer@example.com",
 		Cart:          []models.CartProduct{},
@@ -134,11 +148,10 @@ func TestPaymentCallback_InvalidSignatureRejected(t *testing.T) {
 	defer cleanup()
 	app.Post("/cart/payment/callback", PaymentCallback)
 
-	db := queries.DB()
 	ctx := context.Background()
 
 	// SpectroCoin must be active, otherwise the handler short-circuits with 404.
-	if err := db.UpdateSettingByGroup(ctx, &models.Spectrocoin{
+	if err := store.UpdateSettingByGroup(ctx, &models.Spectrocoin{
 		MerchantID: "0f8fad7b-c931-41c4-a111-8b80651c9d01",
 		ProjectID:  "0f8fad7b-c931-41c4-a222-8b80651c9d02",
 		PrivateKey: "unused-for-verification",
@@ -177,7 +190,7 @@ func TestPaymentCallback_InvalidSignatureRejected(t *testing.T) {
 	testutil.AssertStatus(t, resp, http.StatusBadRequest)
 
 	// The forged PAID must NOT have been persisted.
-	cart, err := db.Cart(ctx, cartID)
+	cart, err := store.Cart(ctx, cartID)
 	if err != nil {
 		t.Fatalf("load cart: %v", err)
 	}
@@ -191,7 +204,6 @@ func TestPaymentCancel_TokenRequired(t *testing.T) {
 	defer cleanup()
 	app.Get("/cart/payment/cancel", PaymentCancel)
 
-	db := queries.DB()
 	ctx := context.Background()
 	cartID := seedCart(t, "", litepay.NEW, litepay.STRIPE, 5000)
 
@@ -212,7 +224,7 @@ func TestPaymentCancel_TokenRequired(t *testing.T) {
 			resp := testutil.DoRequest(t, app, http.MethodGet, "/cart/payment/cancel"+tt.params, "", "")
 			testutil.AssertStatus(t, resp, redirects...)
 
-			cart, err := db.Cart(ctx, cartID)
+			cart, err := store.Cart(ctx, cartID)
 			if err != nil {
 				t.Fatalf("load cart: %v", err)
 			}
@@ -228,7 +240,6 @@ func TestPaymentCancel_ValidTokenCancelsCart(t *testing.T) {
 	defer cleanup()
 	app.Get("/cart/payment/cancel", PaymentCancel)
 
-	db := queries.DB()
 	ctx := context.Background()
 	cartID := seedCart(t, "", litepay.NEW, litepay.STRIPE, 5000)
 
@@ -237,7 +248,7 @@ func TestPaymentCancel_ValidTokenCancelsCart(t *testing.T) {
 		"/cart/payment/cancel?cart_id="+cartID+"&payment_system=stripe&cancel_token="+token, "", "")
 	testutil.AssertStatus(t, resp, http.StatusFound, http.StatusSeeOther)
 
-	cart, err := db.Cart(ctx, cartID)
+	cart, err := store.Cart(ctx, cartID)
 	if err != nil {
 		t.Fatalf("load cart: %v", err)
 	}
@@ -255,11 +266,22 @@ func TestPaymentCancel_MissingCartRedirectsWithoutMutation(t *testing.T) {
 	testutil.AssertStatus(t, resp, http.StatusFound, http.StatusSeeOther)
 }
 
+// cancelToken generates a JWT capability token for canceling a cart.
+func cancelToken(secret, cartID string) string {
+	exp := time.Now().Add(time.Hour).Unix()
+	// Use cartID as the JWT "id" claim - this will be verified in the handler
+	token, err := jwtutil.GenerateNewToken(secret, cartID, exp, nil)
+	if err != nil {
+		panic(fmt.Sprintf("failed to generate cancel token: %v", err))
+	}
+	return token
+}
+
 // jwtSecretForCancel returns the fixture JWT secret used by the handler to
 // derive cancel capability tokens.
 func jwtSecretForCancel(t *testing.T) string {
 	t.Helper()
-	settingJWT, err := queries.GetSettingByGroup[models.JWT](context.Background(), queries.DB())
+	settingJWT, err := store.GetSettingByGroupTyped[models.JWT](context.Background())
 	if err != nil {
 		t.Fatalf("load JWT settings: %v", err)
 	}
@@ -280,7 +302,7 @@ func TestCreateCart(t *testing.T) {
 		// fv6c9s9cqzf36sc is a fixture product priced at 2000 cents; the
 		// fixture ships it with quantity=0, so stock some first.
 		ctx := context.Background()
-		if _, err := queries.DB().ProductQueries.ExecContext(ctx,
+		if _, err := db.DB().ExecContext(ctx,
 			`UPDATE product SET quantity = 5 WHERE id = 'fv6c9s9cqzf36sc'`); err != nil {
 			t.Fatalf("stock fixture product: %v", err)
 		}
@@ -313,7 +335,7 @@ func TestCreateCart(t *testing.T) {
 			t.Fatalf("expected 15-char cart_id, got %q", payload.Result.CartID)
 		}
 
-		cart, err := queries.DB().Cart(context.Background(), payload.Result.CartID)
+		cart, err := store.Cart(context.Background(), payload.Result.CartID)
 		if err != nil {
 			t.Fatalf("cart not persisted: %v", err)
 		}

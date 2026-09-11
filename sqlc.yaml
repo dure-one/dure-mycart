@@ -1,0 +1,36 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "db/migrations/postgres"
+    queries: "db/queries/postgres"
+    gen:
+      go:
+        package: "postgres"
+        out: "internal/store/db/postgres"
+        emit_json_tags: true
+        emit_prepared_queries: true
+        emit_interface: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+
+  - engine: "sqlite"
+    schema: "db/schema_sqlite.sql"
+    queries: "db/queries/sqlite"
+    gen:
+      go:
+        package: "sqlite"
+        out: "internal/store/db/sqlite"
+        emit_json_tags: true
+        emit_prepared_queries: true
+        emit_interface: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+        overrides:
+          - column: "product.seo"
+            go_type: "string"
+          - column: "page.seo"
+            go_type: "string"
+          - column: "product.metadata"
+            go_type: "string"
+          - column: "product.attribute"
+            go_type: "string"

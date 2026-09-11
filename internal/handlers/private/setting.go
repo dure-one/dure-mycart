@@ -4,14 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"slices"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/shurco/mycart/internal/mailer"
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/pkg/errors"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/update"
@@ -32,10 +31,9 @@ const versionCacheTTL = 24 * time.Hour
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/_/version [get]
 func Version(c fiber.Ctx) error {
-	db := queries.DB()
 	log := logging.New()
 
-	if cached, err := loadCachedVersion(c.Context(), db); err != nil {
+	if cached, err := loadCachedVersion(c.Context()); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	} else if cached != nil {
@@ -50,7 +48,7 @@ func Version(c fiber.Ctx) error {
 		version.ReleaseURL = release.GetUrl()
 	}
 
-	if err := cacheVersion(c.Context(), db, version); err != nil {
+	if err := cacheVersion(c.Context(), version); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
@@ -69,23 +67,23 @@ func currentVersion() *update.Version {
 }
 
 // loadCachedVersion returns non-nil Version if the value is present in the session cache.
-func loadCachedVersion(ctx context.Context, db *queries.Base) (*update.Version, error) {
-	session, err := db.GetSession(ctx, "update")
+func loadCachedVersion(ctx context.Context) (*update.Version, error) {
+	session, err := store.GetSession(ctx, "update")
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
-	if session == "" {
+	if !session.Value.Valid || session.Value.String == "" {
 		return nil, nil
 	}
 	v := &update.Version{}
-	if err := json.Unmarshal([]byte(session), v); err != nil {
+	if err := json.Unmarshal([]byte(session.Value.String), v); err != nil {
 		return nil, err
 	}
 	return v, nil
 }
 
 // cacheVersion stores the version info in the session cache with a TTL.
-func cacheVersion(ctx context.Context, db *queries.Base, v *update.Version) error {
+func cacheVersion(ctx context.Context, v *update.Version) error {
 	data, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -93,7 +91,7 @@ func cacheVersion(ctx context.Context, db *queries.Base, v *update.Version) erro
 	// AddSession is idempotent for the same key (INSERT OR REPLACE semantics),
 	// so we don't need an explicit DeleteSession here.
 	expires := time.Now().Add(versionCacheTTL).Unix()
-	return db.AddSession(ctx, "update", string(data), expires)
+	return store.AddSession(ctx, "update", string(data), expires)
 }
 
 // GetSetting returns a setting value by key.
@@ -109,7 +107,6 @@ func cacheVersion(ctx context.Context, db *queries.Base, v *update.Version) erro
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/_/settings/{setting_key} [get]
 func GetSetting(c fiber.Ctx) error {
-	db := queries.DB()
 	log := logging.New()
 	settingKey := c.Params("setting_key")
 
@@ -121,9 +118,9 @@ func GetSetting(c fiber.Ctx) error {
 	var section any
 	var err error
 	if model := settingModelFor(settingKey); model != nil {
-		section, err = db.GetSettingByGroup(c.Context(), model)
+		section, err = store.GetSettingByGroup(c.Context(), model)
 	} else {
-		section, err = db.GetSettingByKey(c.Context(), settingKey)
+		section, err = store.GetSettingByKey(c.Context(), settingKey)
 	}
 
 	if err != nil {
@@ -150,33 +147,19 @@ func GetSetting(c fiber.Ctx) error {
 // @Failure      400 {object} webutil.HTTPResponse "Validation error"
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/_/settings/{setting_key} [patch]
-// protectedSettingKeys are raw setting keys that must never be writable via
-// the generic key/value PATCH fallback: flipping them would let an attacker
-// re-open the unauthenticated install endpoint (installed), or rotate the
-// token-signing secret (jwt_secret) for a persistent backdoor.
-var protectedSettingKeys = []string{"installed", "jwt_secret"}
-
-// UpdateSetting updates a setting value by key.
-//
-// @Summary      Update setting
-// @Description  Update a setting group or individual setting by key
-// @Tags         Settings
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        setting_key path string true "Setting key"
-// @Param        request     body object true "Setting value (structure depends on key)"
-// @Success      200 {object} webutil.HTTPResponse "Setting updated"
-// @Failure      400 {object} webutil.HTTPResponse "Validation error"
-// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
-// @Router       /api/_/settings/{setting_key} [patch]
 func UpdateSetting(c fiber.Ctx) error {
-	db := queries.DB()
 	log := logging.New()
 	settingKey := c.Params("setting_key")
 
-	if slices.Contains(protectedSettingKeys, settingKey) {
-		return webutil.StatusBadRequest(c, "setting key is protected")
+	// Protected keys: must never be writable through the generic key/value PATCH fallback.
+	// - `installed`: flipping it re-opens the unauthenticated install endpoint
+	// - `jwt_secret`: rotating it enables token forgery
+	protectedKeys := map[string]bool{
+		"installed":  true,
+		"jwt_secret": true,
+	}
+	if protectedKeys[settingKey] {
+		return webutil.StatusBadRequest(c, "Cannot update protected setting: "+settingKey)
 	}
 
 	var request any
@@ -197,24 +180,10 @@ func UpdateSetting(c fiber.Ctx) error {
 		return webutil.StatusBadRequest(c, err.Error())
 	}
 
-	// Raw key/value writes get their key from the URL path before validation.
-	if settingName, ok := request.(*models.SettingName); ok {
-		settingName.Key = settingKey
-	}
-
-	// Run model validation when the bound struct defines it, so stored
-	// settings always satisfy their declared constraints.
-	if v, ok := request.(interface{ Validate() error }); ok {
-		if err := v.Validate(); err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusBadRequest(c, err.Error())
-		}
-	}
-
 	// Handle the password update separately if that's the case
 	if settingKey == "password" {
 		password := request.(*models.Password)
-		if err := db.UpdatePassword(c.Context(), password); err != nil {
+		if err := store.UpdatePassword(c.Context(), password); err != nil {
 			log.ErrorStack(err)
 			return webutil.StatusInternalServerError(c)
 		}
@@ -222,7 +191,8 @@ func UpdateSetting(c fiber.Ctx) error {
 	}
 
 	if settingName, ok := request.(*models.SettingName); ok {
-		if err := db.UpdateSettingByKey(c.Context(), settingName); err != nil {
+		settingName.Key = settingKey
+		if err := store.UpdateSettingByKey(c.Context(), settingName); err != nil {
 			log.ErrorStack(err)
 			return webutil.StatusInternalServerError(c)
 		}
@@ -230,7 +200,7 @@ func UpdateSetting(c fiber.Ctx) error {
 	}
 
 	// Update setting for all other cases
-	if err := db.UpdateSettingByGroup(c.Context(), request); err != nil {
+	if err := store.UpdateSettingByGroup(c.Context(), request); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}

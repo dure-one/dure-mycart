@@ -9,7 +9,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/internal/testutil"
 	"github.com/shurco/mycart/pkg/jwtutil"
 )
@@ -24,7 +24,7 @@ func TestJWTProtected(t *testing.T) {
 
 	validID := uuid.NewString()
 	exp := time.Now().Add(time.Hour).Unix()
-	if err := queries.DB().AddSession(t.Context(), validID, "admin", exp); err != nil {
+	if err := store.AddSession(t.Context(), validID, "admin", exp); err != nil {
 		t.Fatalf("add session: %v", err)
 	}
 
