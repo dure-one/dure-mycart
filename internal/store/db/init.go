@@ -6,6 +6,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"math"
 	"net/url"
 	"os"
 	"strconv"
@@ -55,6 +56,16 @@ func (c *PostgresConfig) ConnectionString() string {
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s connect_timeout=%d",
 		c.Host, c.Port, c.User, c.Password, c.Database, c.SSLMode, c.ConnectTimeout,
 	)
+}
+
+// safeInt64ToInt32 safely converts an int64 to int32, returning an error if the value
+// is outside the valid int32 range. This prevents integer overflow vulnerabilities.
+func safeInt64ToInt32(value int64, fieldName string) (int32, error) {
+	if value > math.MaxInt32 || value < math.MinInt32 {
+		return 0, fmt.Errorf("%s value %d exceeds int32 range [%d, %d]",
+			fieldName, value, math.MinInt32, math.MaxInt32)
+	}
+	return int32(value), nil
 }
 
 // loadConfig loads database configuration from environment variables
@@ -485,11 +496,8 @@ func InitFromDB(sqlDB *sql.DB, dbTypeName string) error {
 	return initFunctionPointers(sqlDB, dbTypeName)
 }
 
-// initPostgres assigns PostgreSQL sqlc implementations to function pointers
-func initPostgres(sqlDB *sql.DB) {
-	q := postgres.New(sqlDB)
-
-	// Wrap methods that return postgres-specific types
+// initPostgresSettings assigns Settings-related PostgreSQL implementations
+func initPostgresSettings(q *postgres.Queries) {
 	GetSettingByKeyFunc = func(ctx context.Context, key string) (Setting, error) {
 		pgSetting, err := q.GetSettingByKey(ctx, key)
 		if err != nil {
@@ -512,25 +520,6 @@ func initPostgres(sqlDB *sql.DB) {
 		return result, nil
 	}
 
-	GetSessionFunc = func(ctx context.Context, key string) (Session, error) {
-		pgSession, err := q.GetSession(ctx, key)
-		if err != nil {
-			return Session{}, err
-		}
-		return FromPostgresSession(pgSession), nil
-	}
-
-	DeleteSessionFunc = q.DeleteSession
-
-	UpsertSessionFunc = func(ctx context.Context, arg UpsertSessionParams) error {
-		return q.UpsertSession(ctx, postgres.UpsertSessionParams{
-			Key:     arg.Key,
-			Value:   sql.NullString{String: arg.Value, Valid: arg.Value != ""},
-			Expires: sql.NullInt32{Int32: int32(arg.Expires), Valid: true},
-		})
-	}
-
-	// Wrap methods that need parameter type conversion
 	CreateSettingFunc = func(ctx context.Context, arg CreateSettingParams) (Setting, error) {
 		pgParams := postgres.CreateSettingParams{
 			ID:    arg.ID,
@@ -555,32 +544,67 @@ func initPostgres(sqlDB *sql.DB) {
 		}
 		return q.UpdateSetting(ctx, pgParams)
 	}
+}
+
+// initPostgresSessions assigns Sessions-related PostgreSQL implementations
+func initPostgresSessions(q *postgres.Queries) {
+	GetSessionFunc = func(ctx context.Context, key string) (Session, error) {
+		pgSession, err := q.GetSession(ctx, key)
+		if err != nil {
+			return Session{}, err
+		}
+		return FromPostgresSession(pgSession), nil
+	}
+
+	DeleteSessionFunc = q.DeleteSession
+
+	UpsertSessionFunc = func(ctx context.Context, arg UpsertSessionParams) error {
+		return q.UpsertSession(ctx, postgres.UpsertSessionParams{
+			Key:     arg.Key,
+			Value:   sql.NullString{String: arg.Value, Valid: arg.Value != ""},
+			Expires: sql.NullInt32{Int32: int32(arg.Expires), Valid: true},
+		})
+	}
 
 	CreateSessionFunc = func(ctx context.Context, arg CreateSessionParams) error {
+		var expires sql.NullInt32
+		if arg.Expires.Valid {
+			expiresInt32, err := safeInt64ToInt32(arg.Expires.Int64, "session expires")
+			if err != nil {
+				return fmt.Errorf("failed to create session: %w", err)
+			}
+			expires = sql.NullInt32{Int32: expiresInt32, Valid: true}
+		}
+
 		pgParams := postgres.CreateSessionParams{
-			Key:   arg.Key,
-			Value: arg.Value,
-			Expires: sql.NullInt32{
-				Int32: int32(arg.Expires.Int64),
-				Valid: arg.Expires.Valid,
-			},
+			Key:     arg.Key,
+			Value:   arg.Value,
+			Expires: expires,
 		}
 		return q.CreateSession(ctx, pgParams)
 	}
 
 	UpdateSessionFunc = func(ctx context.Context, arg UpdateSessionParams) error {
+		var expires sql.NullInt32
+		if arg.Expires.Valid {
+			expiresInt32, err := safeInt64ToInt32(arg.Expires.Int64, "session expires")
+			if err != nil {
+				return fmt.Errorf("failed to update session: %w", err)
+			}
+			expires = sql.NullInt32{Int32: expiresInt32, Valid: true}
+		}
+
 		pgParams := postgres.UpdateSessionParams{
-			Value: arg.Value,
-			Expires: sql.NullInt32{
-				Int32: int32(arg.Expires.Int64),
-				Valid: arg.Expires.Valid,
-			},
-			Key: arg.Key,
+			Value:   arg.Value,
+			Expires: expires,
+			Key:     arg.Key,
 		}
 		return q.UpdateSession(ctx, pgParams)
 	}
+}
 
-	// Page operations
+// initPostgresPages assigns Pages-related PostgreSQL implementations
+func initPostgresPages(q *postgres.Queries) {
 	GetPageBySlugFunc = func(ctx context.Context, slug string) (Page, error) {
 		pgPage, err := q.GetPageBySlug(ctx, slug)
 		if err != nil {
@@ -671,8 +695,10 @@ func initPostgres(sqlDB *sql.DB) {
 			ID:  id,
 		})
 	}
+}
 
-	// Product operations
+// initPostgresProducts assigns Products-related PostgreSQL implementations
+func initPostgresProducts(q *postgres.Queries) {
 	GetProductByIDFunc = func(ctx context.Context, id string) (Product, error) {
 		pgProduct, err := q.GetProductByID(ctx, id)
 		if err != nil {
@@ -690,10 +716,14 @@ func initPostgres(sqlDB *sql.DB) {
 	}
 
 	CreateProductFunc = func(ctx context.Context, params CreateProductParams) (Product, error) {
-		// Convert Int64 to Int32 for postgres
+		// Convert Int64 to Int32 for postgres with bounds checking
 		var quantity sql.NullInt32
 		if params.Quantity.Valid {
-			quantity = sql.NullInt32{Int32: int32(params.Quantity.Int64), Valid: true}
+			quantityInt32, err := safeInt64ToInt32(params.Quantity.Int64, "product quantity")
+			if err != nil {
+				return Product{}, fmt.Errorf("failed to create product: %w", err)
+			}
+			quantity = sql.NullInt32{Int32: quantityInt32, Valid: true}
 		}
 
 		// Convert bool to NullBool
@@ -740,13 +770,22 @@ func initPostgres(sqlDB *sql.DB) {
 	}
 
 	UpdateProductFullFunc = func(ctx context.Context, params UpdateProductFullParams) error {
+		var quantity sql.NullInt32
+		if params.Quantity.Valid {
+			quantityInt32, err := safeInt64ToInt32(params.Quantity.Int64, "product quantity")
+			if err != nil {
+				return fmt.Errorf("failed to update product: %w", err)
+			}
+			quantity = sql.NullInt32{Int32: quantityInt32, Valid: true}
+		}
+
 		return q.UpdateProductFull(ctx, postgres.UpdateProductFullParams{
 			Name:        params.Name,
 			Brief:       params.Brief,
 			Desc:        params.Desc,
 			Slug:        params.Slug,
 			Amount:      params.Amount,
-			Quantity:    sql.NullInt32{Int32: int32(params.Quantity.Int64), Valid: params.Quantity.Valid},
+			Quantity:    quantity,
 			Sku:         params.Sku,
 			HasVariants: params.HasVariants, // sql.NullBool matches
 			Metadata:    params.Metadata,
@@ -1007,12 +1046,21 @@ func initPostgres(sqlDB *sql.DB) {
 	}
 
 	CreateProductVariantFunc = func(ctx context.Context, params CreateProductVariantParams) (ProductVariant, error) {
+		var quantity sql.NullInt32
+		if params.Quantity.Valid {
+			quantityInt32, err := safeInt64ToInt32(params.Quantity.Int64, "variant quantity")
+			if err != nil {
+				return ProductVariant{}, fmt.Errorf("failed to create product variant: %w", err)
+			}
+			quantity = sql.NullInt32{Int32: quantityInt32, Valid: true}
+		}
+
 		pgVariant, err := q.CreateProductVariant(ctx, postgres.CreateProductVariantParams{
 			ID:             params.ID,
 			ProductID:      params.ProductID,
 			Sku:            params.Sku,
 			PriceSurcharge: params.PriceSurcharge,
-			Quantity:       sql.NullInt32{Int32: int32(params.Quantity.Int64), Valid: params.Quantity.Valid},
+			Quantity:       quantity,
 			OptionValues:   params.OptionValues,
 		})
 		if err != nil {
@@ -1033,10 +1081,19 @@ func initPostgres(sqlDB *sql.DB) {
 	}
 
 	UpdateProductVariantFunc = func(ctx context.Context, params UpdateProductVariantParams) error {
+		var quantity sql.NullInt32
+		if params.Quantity.Valid {
+			quantityInt32, err := safeInt64ToInt32(params.Quantity.Int64, "variant quantity")
+			if err != nil {
+				return fmt.Errorf("failed to update product variant: %w", err)
+			}
+			quantity = sql.NullInt32{Int32: quantityInt32, Valid: true}
+		}
+
 		return q.UpdateProductVariant(ctx, postgres.UpdateProductVariantParams{
 			Sku:            params.Sku,
 			PriceSurcharge: params.PriceSurcharge,
-			Quantity:       sql.NullInt32{Int32: int32(params.Quantity.Int64), Valid: params.Quantity.Valid},
+			Quantity:       quantity,
 			OptionValues:   params.OptionValues,
 			ID:             params.ID,
 			// Note: Active field not updated in PostgreSQL query
@@ -1067,11 +1124,20 @@ func initPostgres(sqlDB *sql.DB) {
 	}
 
 	CreateProductOptionFunc = func(ctx context.Context, params CreateProductOptionParams) (ProductOption, error) {
+		var position sql.NullInt32
+		if params.Position.Valid {
+			positionInt32, err := safeInt64ToInt32(params.Position.Int64, "option position")
+			if err != nil {
+				return ProductOption{}, fmt.Errorf("failed to create product option: %w", err)
+			}
+			position = sql.NullInt32{Int32: positionInt32, Valid: true}
+		}
+
 		pgOption, err := q.CreateProductOption(ctx, postgres.CreateProductOptionParams{
 			ID:        params.ID,
 			Name:      params.Name,
 			ProductID: params.ProductID,
-			Position:  sql.NullInt32{Int32: int32(params.Position.Int64), Valid: params.Position.Valid},
+			Position:  position,
 		})
 		if err != nil {
 			return ProductOption{}, err
@@ -1090,11 +1156,20 @@ func initPostgres(sqlDB *sql.DB) {
 	}
 
 	CreateProductOptionValueFunc = func(ctx context.Context, params CreateProductOptionValueParams) (ProductOptionValue, error) {
+		var position sql.NullInt32
+		if params.Position.Valid {
+			positionInt32, err := safeInt64ToInt32(params.Position.Int64, "option value position")
+			if err != nil {
+				return ProductOptionValue{}, fmt.Errorf("failed to create product option value: %w", err)
+			}
+			position = sql.NullInt32{Int32: positionInt32, Valid: true}
+		}
+
 		pgValue, err := q.CreateProductOptionValue(ctx, postgres.CreateProductOptionValueParams{
 			ID:       params.ID,
 			OptionID: params.OptionID,
 			Value:    params.Value,
-			Position: sql.NullInt32{Int32: int32(params.Position.Int64), Valid: params.Position.Valid},
+			Position: position,
 		})
 		if err != nil {
 			return ProductOptionValue{}, err
@@ -1135,8 +1210,10 @@ func initPostgres(sqlDB *sql.DB) {
 	DeleteProductVariantsByProductFunc = func(ctx context.Context, productID string) error {
 		return q.DeleteProductVariantsByProduct(ctx, productID)
 	}
+}
 
-	// Digital file operations
+// initPostgresDigital assigns Digital-related PostgreSQL implementations
+func initPostgresDigital(q *postgres.Queries) {
 	GetDigitalFileFunc = func(ctx context.Context, id string) (DigitalFile, error) {
 		pgFile, err := q.GetDigitalFile(ctx, id)
 		if err != nil {
@@ -1290,8 +1367,10 @@ func initPostgres(sqlDB *sql.DB) {
 	DeleteDigitalDataByProductFunc = func(ctx context.Context, productID string) error {
 		return q.DeleteDigitalDataByProduct(ctx, productID)
 	}
+}
 
-	// Auth operations
+// initPostgresAuth assigns Auth-related PostgreSQL implementations (users, carts, payments, orders)
+func initPostgresAuth(q *postgres.Queries) {
 	GetUserByEmailFunc = func(ctx context.Context, email string) (User, error) {
 		pgUser, err := q.GetUserByEmail(ctx, email)
 		if err != nil {
@@ -1517,11 +1596,21 @@ func initPostgres(sqlDB *sql.DB) {
 	}
 }
 
-// initSQLite assigns SQLite sqlc implementations to function pointers
-func initSQLite(sqlDB *sql.DB) {
-	q := sqlite.New(sqlDB)
+// initPostgres assigns PostgreSQL sqlc implementations to function pointers
+func initPostgres(sqlDB *sql.DB) {
+	q := postgres.New(sqlDB)
 
-	// Wrap methods that return sqlite-specific types
+	// Initialize operations by group
+	initPostgresSettings(q)
+	initPostgresSessions(q)
+	initPostgresPages(q)
+	initPostgresProducts(q)
+	initPostgresDigital(q)
+	initPostgresAuth(q)
+}
+
+// initSQLiteSettings assigns Settings-related SQLite implementations
+func initSQLiteSettings(q *sqlite.Queries) {
 	GetSettingByKeyFunc = func(ctx context.Context, key string) (Setting, error) {
 		sqliteSetting, err := q.GetSettingByKey(ctx, key)
 		if err != nil {
@@ -1587,7 +1676,10 @@ func initSQLite(sqlDB *sql.DB) {
 		}
 		return q.UpdateSetting(ctx, sqliteParams)
 	}
+}
 
+// initSQLiteSessions assigns Sessions-related SQLite implementations
+func initSQLiteSessions(q *sqlite.Queries) {
 	CreateSessionFunc = func(ctx context.Context, arg CreateSessionParams) error {
 		sqliteParams := sqlite.CreateSessionParams{
 			Key:     arg.Key,
@@ -1605,8 +1697,10 @@ func initSQLite(sqlDB *sql.DB) {
 		}
 		return q.UpdateSession(ctx, sqliteParams)
 	}
+}
 
-	// Page operations
+// initSQLitePages assigns Pages-related SQLite implementations
+func initSQLitePages(q *sqlite.Queries) {
 	GetPageBySlugFunc = func(ctx context.Context, slug string) (Page, error) {
 		sqlitePage, err := q.GetPageBySlug(ctx, slug)
 		if err != nil {
@@ -1701,8 +1795,10 @@ func initSQLite(sqlDB *sql.DB) {
 			ID:  id,
 		})
 	}
+}
 
-	// Product operations
+// initSQLiteProducts assigns Products-related SQLite implementations
+func initSQLiteProducts(q *sqlite.Queries) {
 	GetProductByIDFunc = func(ctx context.Context, id string) (Product, error) {
 		sqliteProduct, err := q.GetProductByID(ctx, id)
 		if err != nil {
@@ -2178,8 +2274,10 @@ func initSQLite(sqlDB *sql.DB) {
 	DeleteProductVariantsByProductFunc = func(ctx context.Context, productID string) error {
 		return q.DeleteProductVariantsByProduct(ctx, productID)
 	}
+}
 
-	// Digital file operations
+// initSQLiteDigital assigns Digital-related SQLite implementations
+func initSQLiteDigital(q *sqlite.Queries) {
 	GetDigitalFileFunc = func(ctx context.Context, id string) (DigitalFile, error) {
 		sqliteFile, err := q.GetDigitalFile(ctx, id)
 		if err != nil {
@@ -2333,8 +2431,10 @@ func initSQLite(sqlDB *sql.DB) {
 	DeleteDigitalDataByProductFunc = func(ctx context.Context, productID string) error {
 		return q.DeleteDigitalDataByProduct(ctx, productID)
 	}
+}
 
-	// Auth operations
+// initSQLiteAuth assigns Auth-related SQLite implementations (users, carts, payments, orders)
+func initSQLiteAuth(q *sqlite.Queries) {
 	GetUserByEmailFunc = func(ctx context.Context, email string) (User, error) {
 		sqliteUser, err := q.GetUserByEmail(ctx, email)
 		if err != nil {
@@ -2574,4 +2674,17 @@ func initSQLite(sqlDB *sql.DB) {
 		}
 		return settings, nil
 	}
+}
+
+// initSQLite assigns SQLite sqlc implementations to function pointers
+func initSQLite(sqlDB *sql.DB) {
+	q := sqlite.New(sqlDB)
+
+	// Initialize operations by group
+	initSQLiteSettings(q)
+	initSQLiteSessions(q)
+	initSQLitePages(q)
+	initSQLiteProducts(q)
+	initSQLiteDigital(q)
+	initSQLiteAuth(q)
 }
