@@ -24,6 +24,7 @@ import (
 var (
 	db     *sql.DB
 	dbType string
+	installRequired bool // Set to true if database is not installed
 )
 
 // Config holds database configuration
@@ -322,6 +323,10 @@ func initFunctionPointers(sqlDB *sql.DB, dbTypeName string) error {
 // Connect establishes database connection without running migrations.
 // It loads config from environment variables, connects with retry logic,
 // and initializes function pointers. Does NOT run migrations.
+// Connect establishes database connection without running migrations.
+// It loads config from environment variables, connects with retry logic,
+// and initializes function pointers. Does NOT run migrations.
+// Sets installRequired flag based on whether database is installed.
 func Connect() error {
 	// Load configuration from env vars
 	cfg := loadConfig()
@@ -343,10 +348,18 @@ func Connect() error {
 		return fmt.Errorf("function pointer init failed: %w", err)
 	}
 
+	// Check if database is installed
+	installed, err := IsInstalled()
+	if err != nil {
+		// Log warning but don't fail - we'll set installRequired=true
+		fmt.Printf("⚠️  Failed to check installation status: %v\n", err)
+		installRequired = true
+	} else {
+		installRequired = !installed
+	}
+
 	return nil
 }
-
-// IsInstalled checks if the database has been installed by checking
 // if the goose_db_version table exists and has at least one record.
 // Returns false if table doesn't exist (not an error condition).
 func IsInstalled() (bool, error) {
@@ -369,6 +382,13 @@ func IsInstalled() (bool, error) {
 	}
 
 	return exists, nil
+
+}
+
+// InstallRequired returns true if the database needs installation.
+// This flag is set during Connect() based on IsInstalled() check.
+func InstallRequired() bool {
+	return installRequired
 }
 
 // Close closes the database connection
