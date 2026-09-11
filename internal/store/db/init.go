@@ -322,11 +322,8 @@ func initFunctionPointers(sqlDB *sql.DB, dbTypeName string) error {
 
 // Connect establishes database connection without running migrations.
 // It loads config from environment variables, connects with retry logic,
-// and initializes function pointers. Does NOT run migrations.
-// Connect establishes database connection without running migrations.
-// It loads config from environment variables, connects with retry logic,
-// and initializes function pointers. Does NOT run migrations.
-// Sets installRequired flag based on whether database is installed.
+// initializes function pointers, and sets installRequired flag based on
+// whether database is installed. Does NOT run migrations.
 func Connect() error {
 	// Load configuration from env vars
 	cfg := loadConfig()
@@ -360,7 +357,9 @@ func Connect() error {
 
 	return nil
 }
-// if the goose_db_version table exists and has at least one record.
+
+// IsInstalled checks if the database is installed by verifying whether
+// the goose_db_version table exists and has at least one record.
 // Returns false if table doesn't exist (not an error condition).
 func IsInstalled() (bool, error) {
 	if db == nil {
