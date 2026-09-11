@@ -131,6 +131,13 @@ func TestMigrate(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "returns error when database not connected",
+			setup: func(t *testing.T) {
+				// Don't connect - leave db == nil
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -179,6 +186,22 @@ func TestMigrateWithConfig(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "successful migration with PostgreSQL config",
+			config: &Config{
+				Type: "postgres",
+				PostgreSQL: PostgresConfig{
+					Host:     "localhost",
+					Port:     5432,
+					User:     "test",
+					Password: "test",
+					Database: "test",
+					SSLMode:  "disable",
+					ConnectTimeout: 5,
+				},
+			},
+			wantErr: false, // Will skip if PostgreSQL not available
+		},
 	}
 
 	for _, tt := range tests {
@@ -188,6 +211,10 @@ func TestMigrateWithConfig(t *testing.T) {
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
+				// For PostgreSQL test, skip if connection fails (not available in test env)
+				if tt.config.Type == "postgres" && err != nil {
+					t.Skipf("PostgreSQL not available in test environment: %v", err)
+				}
 				require.NoError(t, err)
 			}
 		})
