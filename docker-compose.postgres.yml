@@ -1,0 +1,61 @@
+# Docker Compose configuration for myCart with PostgreSQL
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mycart-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=mycart
+      - POSTGRES_USER=mycart
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mycart"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mycart_network
+
+  mycart:
+    image: mycart:latest
+    container_name: mycart
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_TYPE=postgresql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=mycart
+      - DB_USER=mycart
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - DB_SSLMODE=disable
+      - DB_MAX_OPEN_CONNS=25
+      - DB_MAX_IDLE_CONNS=5
+      - DB_CONN_MAX_LIFETIME=300
+    volumes:
+      - ./lc_uploads:/app/lc_uploads
+      - ./lc_digitals:/app/lc_digitals
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mycart_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  mycart_network:
+    driver: bridge

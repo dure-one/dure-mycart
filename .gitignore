@@ -86,6 +86,11 @@ test-results/
 playwright-report/
 .vitest-attachments/
 __screenshots__/
+
+.claude
+.superpowers
+.env
+.idea
 reference/
 
 # VitePress cache
@@ -93,3 +98,7 @@ docs/.vitepress/cache/
 
 # Generated from root README.md
 docs/readme.md
+reference/
+seed_products
+cmd/seed_products/seed_products
+.solidbase

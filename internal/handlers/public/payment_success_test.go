@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/internal/testutil"
 	"github.com/shurco/mycart/pkg/litepay"
 )
@@ -16,10 +16,9 @@ import (
 // end-to-end. Fixtures only ship paid/cancel carts.
 func seedNewCart(t *testing.T, id string, amount int, system litepay.PaymentSystem) {
 	t.Helper()
-	db := queries.DB()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	err := db.AddCart(ctx, &models.Cart{
+	err := store.AddCart(ctx, &models.Cart{
 		Core:          models.Core{ID: id},
 		Email:         "buyer@example.com",
 		AmountTotal:   amount,

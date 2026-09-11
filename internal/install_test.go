@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/store"
 )
 
 func TestInstallAdmin_CreatesAdminAccount(t *testing.T) {
@@ -17,18 +17,24 @@ func TestInstallAdmin_CreatesAdminAccount(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(prev) })
 
+	// Set environment for SQLite (InstallAdmin reads from env via db.Connect)
+	os.Setenv("DB_TYPE", "sqlite")
+	os.Setenv("SQLITE_PATH", "lc_base/data.db")
+
 	ctx := context.Background()
 	install := &models.Install{
-		Email:    "admin@example.com",
-		Password: "secret12",
-		Domain:   "example.com",
+		Email:      "admin@example.com",
+		Password:   "secret12",
+		Domain:     "example.com",
+		DBType:     "sqlite",
+		SQLitePath: "lc_base/data.db",
 	}
 
 	if err := InstallAdmin(ctx, install); err != nil {
 		t.Fatalf("InstallAdmin: %v", err)
 	}
 
-	installed, err := queries.DB().IsInstalled(ctx)
+	installed, err := store.IsInstalled(ctx)
 	if err != nil {
 		t.Fatalf("IsInstalled: %v", err)
 	}

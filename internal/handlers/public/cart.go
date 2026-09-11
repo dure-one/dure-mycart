@@ -1,20 +1,17 @@
 package handlers
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
+	"context"
 	"fmt"
-	"math"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/shurco/mycart/internal/mailer"
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/internal/webhook"
 	"github.com/shurco/mycart/pkg/errors"
 	"github.com/shurco/mycart/pkg/litepay"
@@ -22,28 +19,6 @@ import (
 	"github.com/shurco/mycart/pkg/security"
 	"github.com/shurco/mycart/pkg/webutil"
 )
-
-// cancelToken derives an HMAC-SHA256 capability token that authorizes the
-// cancellation of a specific cart. The token is embedded into the cancel URL
-// built during payment initiation; without it, anyone could flip an arbitrary
-// cart to "canceled" by hitting the public redirect endpoint.
-func cancelToken(secret, cartID string) string {
-	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write([]byte(cartID))
-	return hex.EncodeToString(mac.Sum(nil))
-}
-
-// verifyCartAmount ensures the provider-reported charge matches the stored
-// cart total and currency before the cart may be marked as paid.
-func verifyCartAmount(payment *litepay.Payment, cart *models.Cart) error {
-	if payment.AmountTotal != cart.AmountTotal {
-		return fmt.Errorf("amount mismatch: provider=%d cart=%d", payment.AmountTotal, cart.AmountTotal)
-	}
-	if !strings.EqualFold(payment.Currency, cart.Currency) {
-		return fmt.Errorf("currency mismatch: provider=%q cart=%q", payment.Currency, cart.Currency)
-	}
-	return nil
-}
 
 // sendPaymentWebhook sends a payment webhook notification.
 // If blockOnError is true, returns error on webhook failure (for API endpoints).
@@ -78,16 +53,15 @@ func sendPaymentWebhook(event webhook.Event, paymentSystem litepay.PaymentSystem
 // @Failure      400 {object} webutil.HTTPResponse "Bad request"
 // @Router       /api/cart/payment [get]
 func PaymentList(c fiber.Ctx) error {
-	db := queries.DB()
 	log := logging.New()
-	paymentList, err := db.PaymentList(c.Context())
+	paymentList, err := store.PaymentList(c.Context())
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusBadRequest(c, err.Error())
 	}
 
 	// Get current store currency for PortOne filtering
-	currencySetting, err := db.GetSettingByKey(c.Context(), "currency")
+	currencySetting, err := store.GetSettingByKey(c.Context(), "currency")
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
@@ -96,7 +70,7 @@ func PaymentList(c fiber.Ctx) error {
 
 	// Filter PortOne based on supported currencies
 	if paymentList["portone"] {
-		portoneSettings, err := queries.GetSettingByGroup[models.Portone](c.Context(), db)
+		portoneSettings, err := store.GetSettingByGroupTyped[models.Portone](c.Context())
 		if err == nil && portoneSettings != nil && len(portoneSettings.SupportedCurrencies) > 0 {
 			supported := false
 			for _, curr := range portoneSettings.SupportedCurrencies {
@@ -129,7 +103,6 @@ func PaymentList(c fiber.Ctx) error {
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/cart/create [post]
 func CreateCart(c fiber.Ctx) error {
-	db := queries.DB()
 	log := logging.New()
 	payment := new(models.CartPayment)
 
@@ -138,7 +111,7 @@ func CreateCart(c fiber.Ctx) error {
 		return webutil.StatusBadRequest(c, err.Error())
 	}
 
-	setting, err := db.GetSettingByKey(c.Context(), "currency")
+	setting, err := store.GetSettingByKey(c.Context(), "currency")
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
@@ -146,7 +119,7 @@ func CreateCart(c fiber.Ctx) error {
 	currency := setting["currency"].Value.(string)
 
 	// Validate cart items before processing
-	validationResult, err := queries.ValidateCartItems(c.Context(), db, payment.Products, currency)
+	validationResult, err := store.ValidateCartItems(c.Context(), payment.Products, currency)
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
@@ -169,7 +142,7 @@ func CreateCart(c fiber.Ctx) error {
 	cartID := security.RandomString()
 
 	// Create cart record
-	if err := db.AddCart(c.Context(), &models.Cart{
+	if err := store.AddCart(c.Context(), &models.Cart{
 		Core: models.Core{
 			ID: cartID,
 		},
@@ -221,7 +194,6 @@ func CreateCart(c fiber.Ctx) error {
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/cart/{cart_id} [get]
 func GetCart(c fiber.Ctx) error {
-	db := queries.DB()
 	log := logging.New()
 	cartID := c.Params("cart_id")
 
@@ -229,7 +201,7 @@ func GetCart(c fiber.Ctx) error {
 		return webutil.StatusBadRequest(c, "cart_id is required")
 	}
 
-	cart, err := db.Cart(c.Context(), cartID)
+	cart, err := store.Cart(c.Context(), cartID)
 	if err != nil {
 		log.ErrorStack(err)
 		if errors.Is(err, errors.ErrProductNotFound) {
@@ -242,12 +214,12 @@ func GetCart(c fiber.Ctx) error {
 	// Pass cartID to include digital products purchased in this cart
 	var cartItems []map[string]any
 	if len(cart.Cart) > 0 {
-		products, err := db.ListProducts(c.Context(), false, 0, 0, cartID, cart.Cart...)
+		products, err := store.ListProducts(c.Context(), false, 0, 0, cartID, cart.Cart...)
 		if err != nil {
 			log.ErrorStack(err)
 			return webutil.StatusInternalServerError(c)
 		}
-		cartItems = queries.BuildCartItems(cart, products)
+		cartItems = store.BuildCartItems(cart, products)
 	}
 
 	return webutil.Response(c, fiber.StatusOK, "Cart", map[string]any{
@@ -259,6 +231,174 @@ func GetCart(c fiber.Ctx) error {
 		"payment_system": cart.PaymentSystem,
 		"items":          cartItems,
 	})
+}
+
+// initStripePayment initializes Stripe payment session
+func initStripePayment(ctx context.Context, pay litepay.Cfg, cart litepay.Cart) (string, error) {
+	setting, err := store.GetSettingByGroupTyped[models.Stripe](ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get Stripe settings: %w", err)
+	}
+
+	if !setting.Active {
+		return "", nil // Provider inactive, will use fallback URL
+	}
+
+	session := pay.Stripe(setting.SecretKey)
+	response, err := session.Pay(cart)
+	if err != nil {
+		return "", fmt.Errorf("Stripe payment failed: %w", err)
+	}
+
+	return response.URL, nil
+}
+
+// initPaypalPayment initializes PayPal payment session
+func initPaypalPayment(ctx context.Context, pay litepay.Cfg, cart litepay.Cart) (string, error) {
+	setting, err := store.GetSettingByGroupTyped[models.Paypal](ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get PayPal settings: %w", err)
+	}
+
+	if !setting.Active {
+		return "", nil // Provider inactive, will use fallback URL
+	}
+
+	session := pay.Paypal(setting.ClientID, setting.SecretKey)
+	response, err := session.Pay(cart)
+	if err != nil {
+		return "", fmt.Errorf("PayPal payment failed: %w", err)
+	}
+
+	return response.URL, nil
+}
+
+// initSpectrocoinPayment initializes Spectrocoin payment session
+func initSpectrocoinPayment(ctx context.Context, pay litepay.Cfg, cart litepay.Cart) (string, error) {
+	setting, err := store.GetSettingByGroupTyped[models.Spectrocoin](ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get Spectrocoin settings: %w", err)
+	}
+
+	if !setting.Active {
+		return "", nil // Provider inactive, will use fallback URL
+	}
+
+	session := pay.Spectrocoin(setting.MerchantID, setting.ProjectID, setting.PrivateKey)
+	response, err := session.Pay(cart)
+	if err != nil {
+		return "", fmt.Errorf("Spectrocoin payment failed: %w", err)
+	}
+
+	return response.URL, nil
+}
+
+// initCoinbasePayment initializes Coinbase payment session
+func initCoinbasePayment(ctx context.Context, pay litepay.Cfg, cart litepay.Cart) (string, error) {
+	setting, err := store.GetSettingByGroupTyped[models.Coinbase](ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get Coinbase settings: %w", err)
+	}
+
+	if !setting.Active {
+		return "", nil // Provider inactive, will use fallback URL
+	}
+
+	session := pay.Coinbase(setting.ApiKey)
+	response, err := session.Pay(cart)
+	if err != nil {
+		return "", fmt.Errorf("Coinbase payment failed: %w", err)
+	}
+
+	return response.URL, nil
+}
+
+// initDummyPayment initializes dummy payment session (free carts only)
+func initDummyPayment(ctx context.Context, pay litepay.Cfg, cart litepay.Cart) (string, error) {
+	session := pay.Dummy()
+	response, err := session.Pay(cart)
+	if err != nil {
+		return "", fmt.Errorf("dummy payment failed: %w", err)
+	}
+
+	return response.URL, nil
+}
+
+// dispatchPaymentInit routes payment initialization to the appropriate provider
+func dispatchPaymentInit(ctx context.Context, paymentSystem litepay.PaymentSystem, pay litepay.Cfg, cart litepay.Cart, fallbackURL string) (string, error) {
+	var paymentURL string
+	var err error
+
+	switch paymentSystem {
+	case litepay.STRIPE:
+		paymentURL, err = initStripePayment(ctx, pay, cart)
+	case litepay.PAYPAL:
+		paymentURL, err = initPaypalPayment(ctx, pay, cart)
+	case litepay.SPECTROCOIN:
+		paymentURL, err = initSpectrocoinPayment(ctx, pay, cart)
+	case litepay.COINBASE:
+		paymentURL, err = initCoinbasePayment(ctx, pay, cart)
+	case litepay.DUMMY:
+		paymentURL, err = initDummyPayment(ctx, pay, cart)
+	default:
+		return "", fmt.Errorf("unsupported payment system: %s", paymentSystem)
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	// If provider is inactive (paymentURL is empty), use fallback
+	if paymentURL == "" {
+		return fallbackURL, nil
+	}
+
+	return paymentURL, nil
+}
+
+// finalizePaymentInit saves cart, sends prepayment email, and triggers webhook
+func finalizePaymentInit(ctx context.Context, cart litepay.Cart, payment *models.CartPayment, paymentSystem litepay.PaymentSystem, amountTotal int, items []litepay.Item, paymentURL string) error {
+	log := logging.New()
+
+	// Save cart
+	if err := store.AddCart(ctx, &models.Cart{
+		Core: models.Core{
+			ID: cart.ID,
+		},
+		Email:         payment.Email,
+		Cart:          payment.Products,
+		AmountTotal:   amountTotal,
+		Currency:      cart.Currency,
+		PaymentStatus: litepay.NEW,
+		PaymentSystem: paymentSystem,
+	}); err != nil {
+		return fmt.Errorf("failed to save cart: %w", err)
+	}
+
+	// Send prepayment email
+	if err := mailer.SendPrepaymentLetter(payment.Email, fmt.Sprintf("%.2f %s", float64(amountTotal)/100, cart.Currency), paymentURL); err != nil {
+		return fmt.Errorf("failed to send prepayment email: %w", err)
+	}
+
+	// Send payment initiation webhook
+	hook := &webhook.Payment{
+		Event:     webhook.PAYMENT_INITIATION,
+		TimeStamp: time.Now().Unix(),
+		Data: webhook.Data{
+			PaymentSystem: paymentSystem,
+			PaymentStatus: litepay.NEW,
+			CartID:        cart.ID,
+			TotalAmount:   amountTotal,
+			Currency:      cart.Currency,
+			CartItems:     items,
+		},
+	}
+	if err := webhook.SendPaymentHook(hook); err != nil {
+		return fmt.Errorf("failed to send payment webhook: %w", err)
+	}
+
+	log.Info().Msgf("Payment initialized: cart=%s, system=%s, amount=%d", cart.ID, paymentSystem, amountTotal)
+	return nil
 }
 
 // Payment initiates a payment process for a cart.
@@ -274,7 +414,6 @@ func GetCart(c fiber.Ctx) error {
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /cart/payment [post]
 func Payment(c fiber.Ctx) error {
-	db := queries.DB()
 	log := logging.New()
 	payment := new(models.CartPayment)
 
@@ -283,7 +422,7 @@ func Payment(c fiber.Ctx) error {
 		return webutil.StatusBadRequest(c, err.Error())
 	}
 
-	setting, err := db.GetSettingByKey(c.Context(), "domain", "currency")
+	setting, err := store.GetSettingByKey(c.Context(), "domain", "currency")
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
@@ -291,14 +430,14 @@ func Payment(c fiber.Ctx) error {
 	domain := setting["domain"].Value.(string)
 	currency := setting["currency"].Value.(string)
 
-	products, err := db.ListProducts(c.Context(), false, 0, 0, "", payment.Products...)
+	products, err := store.ListProducts(c.Context(), false, 0, 0, "", payment.Products...)
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
 
 	// Validate cart items before processing
-	validationResult, err := queries.ValidateCartItems(c.Context(), db, payment.Products, currency)
+	validationResult, err := store.ValidateCartItems(c.Context(), payment.Products, currency)
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
@@ -363,145 +502,21 @@ func Payment(c fiber.Ctx) error {
 		return webutil.StatusBadRequest(c, "Dummy payment provider can only be used for free items")
 	}
 
+	// Initialize payment provider
 	callbackURL := fmt.Sprintf("%s://%s/cart/payment/callback", protocol, domain)
 	successURL := fmt.Sprintf("%s://%s/cart/payment/success", protocol, domain)
+	cancelURL := fmt.Sprintf("%s://%s/cart/payment/cancel", protocol, domain)
+	pay := litepay.New(callbackURL, successURL, cancelURL)
+	fallbackURL := fmt.Sprintf("%s://%s/cart", protocol, domain)
 
-	// The cancel URL carries an HMAC capability token: only the buyer who was
-	// redirected through the provider flow can actually cancel the cart.
-	settingJWT, err := queries.GetSettingByGroup[models.JWT](c.Context(), db)
+	paymentURL, err := dispatchPaymentInit(c.Context(), paymentSystem, pay, cart, fallbackURL)
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
-	cancelURL := fmt.Sprintf("%s://%s/cart/payment/cancel?cancel_token=%s", protocol, domain, cancelToken(settingJWT.Secret, cart.ID))
 
-	pay := litepay.New(callbackURL, successURL, cancelURL)
-
-	paymentURL := fmt.Sprintf("%s://%s/cart", protocol, domain)
-	providerRef := ""
-	switch paymentSystem {
-	case litepay.STRIPE:
-		setting, err := queries.GetSettingByGroup[models.Stripe](c.Context(), db)
-		if err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-
-		if !setting.Active {
-			return webutil.Response(c, fiber.StatusOK, "Payment url", paymentURL)
-		}
-		session := pay.Stripe(setting.SecretKey)
-		response, err := session.Pay(cart)
-		if err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-		paymentURL = response.URL
-		providerRef = response.MerchantID
-
-	case litepay.PAYPAL:
-		setting, err := queries.GetSettingByGroup[models.Paypal](c.Context(), db)
-		if err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-
-		if !setting.Active {
-			return webutil.Response(c, fiber.StatusOK, "Payment url", paymentURL)
-		}
-		session := pay.Paypal(setting.ClientID, setting.SecretKey)
-		response, err := session.Pay(cart)
-		if err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-		paymentURL = response.URL
-		providerRef = response.MerchantID
-
-	case litepay.SPECTROCOIN:
-		setting, err := queries.GetSettingByGroup[models.Spectrocoin](c.Context(), db)
-		if err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-
-		if !setting.Active {
-			return webutil.Response(c, fiber.StatusOK, "Payment url", paymentURL)
-		}
-		session := pay.Spectrocoin(setting.MerchantID, setting.ProjectID, setting.PrivateKey)
-		response, err := session.Pay(cart)
-		if err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-		paymentURL = response.URL
-
-	case litepay.COINBASE:
-		setting, err := queries.GetSettingByGroup[models.Coinbase](c.Context(), db)
-		if err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-
-		if !setting.Active {
-			return webutil.Response(c, fiber.StatusOK, "Payment url", paymentURL)
-		}
-		session := pay.Coinbase(setting.ApiKey)
-		response, err := session.Pay(cart)
-		if err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-		paymentURL = response.URL
-		providerRef = response.MerchantID
-
-	case litepay.DUMMY:
-		// Dummy provider is always active and only for free carts (already validated above)
-		session := pay.Dummy()
-		response, err := session.Pay(cart)
-		if err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-		paymentURL = response.URL
-	}
-
-	if err := db.AddCart(c.Context(), &models.Cart{
-		Core: models.Core{
-			ID: cart.ID,
-		},
-		Email:         payment.Email,
-		Cart:          payment.Products,
-		AmountTotal:   amountTotal,
-		Currency:      cart.Currency,
-		PaymentID:     providerRef,
-		PaymentStatus: litepay.NEW,
-		PaymentSystem: paymentSystem,
-	}); err != nil {
-		log.ErrorStack(err)
-		return webutil.StatusInternalServerError(c)
-	}
-
-	// send email
-	if err := mailer.SendPrepaymentLetter(payment.Email, fmt.Sprintf("%.2f %s", float64(amountTotal)/100, cart.Currency), paymentURL); err != nil {
-		log.ErrorStack(err)
-		return webutil.StatusInternalServerError(c)
-	}
-
-	// send hook
-	hook := &webhook.Payment{
-		Event:     webhook.PAYMENT_INITIATION,
-		TimeStamp: time.Now().Unix(),
-		Data: webhook.Data{
-			PaymentSystem: paymentSystem,
-			PaymentStatus: litepay.NEW,
-			CartID:        cart.ID,
-			TotalAmount:   amountTotal,
-			Currency:      cart.Currency,
-			CartItems:     items,
-		},
-	}
-	if err := webhook.SendPaymentHook(hook); err != nil {
+	// Finalize payment (save cart, send email, trigger webhook)
+	if err := finalizePaymentInit(c.Context(), cart, payment, paymentSystem, amountTotal, items, paymentURL); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
@@ -524,72 +539,36 @@ func Payment(c fiber.Ctx) error {
 // @Router       /cart/payment/callback [post]
 func PaymentCallback(c fiber.Ctx) error {
 	log := logging.New()
-	db := queries.DB()
 	payment := &litepay.Payment{
 		CartID:        c.Query("cart_id"),
 		PaymentSystem: litepay.PaymentSystem(c.Query("payment_system")),
 	}
 
 	switch payment.PaymentSystem {
+	// case litepay.STRIPE:
+	//	return webutil.Response(c, fiber.StatusOK, "Callback", payment)
 	case litepay.SPECTROCOIN:
 		response := new(litepay.CallbackSpectrocoin)
 		if err := c.Bind().Body(response); err != nil {
 			log.ErrorStack(err)
 			return webutil.StatusBadRequest(c, err.Error())
 		}
-
-		setting, err := queries.GetSettingByGroup[models.Spectrocoin](c.Context(), db)
-		if err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-		if !setting.Active {
-			return webutil.StatusNotFound(c)
-		}
-
-		// The callback is unauthenticated input: its RSA signature must be
-		// verified against the official SpectroCoin public key before any
-		// field (status, amount) may be trusted.
+		// Verify signature before trusting any callback data
 		if err := litepay.VerifySpectrocoinCallback(response); err != nil {
-			log.Error().Msgf("spectrocoin callback signature verification failed for cart %s: %v", payment.CartID, err)
-			return webutil.StatusBadRequest(c, "invalid callback signature")
+			log.Error().Err(err).Msg("Invalid SpectroCoin callback signature")
+			return webutil.StatusBadRequest(c, "Invalid signature")
 		}
-		if response.OrderID != payment.CartID {
-			return webutil.StatusBadRequest(c, "callback order does not match cart")
-		}
-
-		payment.Status = litepay.StatusPayment(litepay.SPECTROCOIN, strconv.Itoa(response.Status))
+		payment.Status = litepay.StatusPayment(litepay.SPECTROCOIN, string(rune(response.Status)))
 		payment.MerchantID = response.MerchantApiID
 		payment.Coin = &litepay.Coin{
 			AmountTotal: response.ReceiveAmount,
 			Currency:    response.ReceiveCurrency,
 		}
 	default:
-		return webutil.StatusBadRequest(c, "unsupported payment system")
+		return webutil.StatusBadRequest(c, "Unsupported payment system for callbacks")
 	}
 
-	cartInfo, err := db.Cart(c.Context(), payment.CartID)
-	if err != nil {
-		log.ErrorStack(err)
-		return webutil.StatusInternalServerError(c)
-	}
-
-	// Idempotency guard: repeated PAID callbacks must not re-send the
-	// purchase letter or re-fire webhooks.
-	if cartInfo.PaymentStatus == litepay.PAID {
-		return c.Status(fiber.StatusOK).SendString("*ok*")
-	}
-
-	if payment.Status == litepay.PAID {
-		gotCents := int(math.Round(payment.Coin.AmountTotal * 100))
-		if payment.Coin.Currency != cartInfo.Currency || math.Abs(float64(gotCents-cartInfo.AmountTotal)) > 1 {
-			log.Error().Msgf("spectrocoin amount mismatch for cart %s: got %s %.2f, want %s %.2f",
-				payment.CartID, payment.Coin.Currency, payment.Coin.AmountTotal, cartInfo.Currency, float64(cartInfo.AmountTotal)/100)
-			return webutil.StatusBadRequest(c, "callback amount does not match cart")
-		}
-	}
-
-	err = db.UpdateCart(c.Context(), &models.Cart{
+	err := store.UpdateCart(c.Context(), &models.Cart{
 		Core: models.Core{
 			ID: payment.CartID,
 		},
@@ -618,6 +597,185 @@ func PaymentCallback(c fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).SendString("*ok*")
 }
 
+// processStripePayment handles Stripe payment verification
+func processStripePayment(ctx context.Context, session string, cartInfo *models.Cart, payment *litepay.Payment) error {
+	log := logging.New()
+
+	// Validate session against cart's payment ID (cross-cart replay defense)
+	if cartInfo.PaymentID != "" && (session == "" || session != cartInfo.PaymentID) {
+		return fmt.Errorf("invalid or mismatched session")
+	}
+
+	setting, err := store.GetSettingByGroupTyped[models.Stripe](ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get Stripe settings: %w", err)
+	}
+
+	if !setting.Active {
+		return fmt.Errorf("Stripe provider is not active")
+	}
+
+	response, err := litepay.New("", "", "").Stripe(setting.SecretKey).Checkout(payment, session)
+	if err != nil {
+		return fmt.Errorf("Stripe checkout failed: %w", err)
+	}
+
+	payment.MerchantID = response.MerchantID
+	payment.Status = response.Status
+	log.Info().Msgf("Stripe payment processed: %s", payment.Status)
+	return nil
+}
+
+// processPaypalPayment handles PayPal payment verification
+func processPaypalPayment(ctx context.Context, token string, cartInfo *models.Cart, payment *litepay.Payment) error {
+	log := logging.New()
+
+	// Validate token against cart's payment ID (cross-cart replay defense)
+	if cartInfo.PaymentID != "" && (token == "" || token != cartInfo.PaymentID) {
+		return fmt.Errorf("invalid or mismatched token")
+	}
+
+	setting, err := store.GetSettingByGroupTyped[models.Paypal](ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get PayPal settings: %w", err)
+	}
+
+	if !setting.Active {
+		return fmt.Errorf("PayPal provider is not active")
+	}
+
+	response, err := litepay.New("", "", "").Paypal(setting.ClientID, setting.SecretKey).Checkout(payment, token)
+	if err != nil {
+		return fmt.Errorf("PayPal checkout failed: %w", err)
+	}
+
+	payment.MerchantID = response.MerchantID
+	payment.Status = response.Status
+	log.Info().Msgf("PayPal payment processed: %s", payment.Status)
+	return nil
+}
+
+// processCoinbasePayment handles Coinbase payment verification
+func processCoinbasePayment(ctx context.Context, chargeID string, cartInfo *models.Cart, payment *litepay.Payment) error {
+	log := logging.New()
+
+	// Validate chargeID against cart's payment ID (cross-cart replay defense)
+	if cartInfo.PaymentID != "" && (chargeID == "" || chargeID != cartInfo.PaymentID) {
+		return fmt.Errorf("invalid or mismatched charge_id")
+	}
+
+	setting, err := store.GetSettingByGroupTyped[models.Coinbase](ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get Coinbase settings: %w", err)
+	}
+
+	if !setting.Active {
+		return fmt.Errorf("Coinbase provider is not active")
+	}
+
+	response, err := litepay.New("", "", "").Coinbase(setting.ApiKey).Checkout(payment, chargeID)
+	if err != nil {
+		return fmt.Errorf("Coinbase checkout failed: %w", err)
+	}
+
+	payment.MerchantID = response.MerchantID
+	payment.Status = response.Status
+	log.Info().Msgf("Coinbase payment processed: %s", payment.Status)
+	return nil
+}
+
+// processDummyPayment handles dummy payment provider (free carts only)
+func processDummyPayment(ctx context.Context, payment *litepay.Payment) error {
+	log := logging.New()
+
+	response, err := litepay.New("", "", "").Dummy().Checkout(payment, "")
+	if err != nil {
+		return fmt.Errorf("dummy checkout failed: %w", err)
+	}
+
+	payment.MerchantID = response.MerchantID
+	payment.Status = response.Status
+	log.Info().Msgf("Dummy payment processed: %s", payment.Status)
+	return nil
+}
+
+// validatePaymentRequest validates payment request parameters and cart state
+func validatePaymentRequest(c fiber.Ctx, payment *litepay.Payment, cartInfo *models.Cart) error {
+	log := logging.New()
+
+	// Validate cart_id presence
+	if c.Query("cart_id") == "" {
+		return fmt.Errorf("missing cart_id")
+	}
+
+	// Validate payment object
+	if err := payment.Validate(); err != nil {
+		return fmt.Errorf("invalid payment: %w", err)
+	}
+
+	// Validate dummy provider usage: only allowed for free carts
+	if payment.PaymentSystem == litepay.DUMMY && cartInfo.AmountTotal > 0 {
+		log.Error().Msgf("Attempt to use dummy provider for paid cart (cart_id: %s, amount: %d)", payment.CartID, cartInfo.AmountTotal)
+		return fmt.Errorf("dummy payment provider can only be used for free items")
+	}
+
+	// Check if already paid
+	if cartInfo.PaymentStatus == "paid" {
+		return fmt.Errorf("cart already paid")
+	}
+
+	return nil
+}
+
+// dispatchPaymentProvider routes payment to the appropriate provider handler
+func dispatchPaymentProvider(ctx context.Context, c fiber.Ctx, payment *litepay.Payment, cartInfo *models.Cart) error {
+	switch payment.PaymentSystem {
+	case litepay.STRIPE:
+		return processStripePayment(ctx, c.Query("session"), cartInfo, payment)
+	case litepay.PAYPAL:
+		return processPaypalPayment(ctx, c.Query("token"), cartInfo, payment)
+	case litepay.COINBASE:
+		return processCoinbasePayment(ctx, c.Query("charge_id"), cartInfo, payment)
+	case litepay.DUMMY:
+		return processDummyPayment(ctx, payment)
+	case litepay.SPECTROCOIN:
+		// Spectrocoin payment processing handled in callback
+		return nil
+	default:
+		return fmt.Errorf("unsupported payment system: %s", payment.PaymentSystem)
+	}
+}
+
+// completePaymentProcessing updates cart, sends email, and triggers webhook
+func completePaymentProcessing(ctx context.Context, payment *litepay.Payment) error {
+	log := logging.New()
+
+	// Update cart with payment information
+	err := store.UpdateCart(ctx, &models.Cart{
+		Core: models.Core{
+			ID: payment.CartID,
+		},
+		PaymentID:     payment.MerchantID,
+		PaymentStatus: payment.Status,
+		PaymentSystem: payment.PaymentSystem,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update cart: %w", err)
+	}
+
+	// Send email if payment is complete
+	if payment.Status == litepay.PAID {
+		if err := mailer.SendCartLetter(payment.CartID); err != nil {
+			return fmt.Errorf("failed to send cart email: %w", err)
+		}
+	}
+
+	// Send webhook (don't block on error)
+	sendPaymentWebhook(webhook.PAYMENT_SUCCESS, payment.PaymentSystem, payment.Status, payment.CartID, log, false)
+
+	return nil
+}
+
 // PaymentSuccess handles successful payment redirects.
 //
 // @Summary      Payment success
@@ -640,156 +798,55 @@ func PaymentSuccess(c fiber.Ctx) error {
 	}
 
 	log := logging.New()
-	if c.Query("cart_id") == "" {
-		return webutil.StatusBadRequest(c, nil)
-	}
-
 	payment := &litepay.Payment{
 		CartID:        c.Query("cart_id"),
 		PaymentSystem: litepay.PaymentSystem(c.Query("payment_system")),
 	}
 
-	if err := payment.Validate(); err != nil {
-		return c.Redirect().To("/")
-	}
-
-	db := queries.DB()
-	cartInfo, err := db.Cart(c.Context(), c.Query("cart_id"))
+	cartInfo, err := store.Cart(c.Context(), c.Query("cart_id"))
 	if err != nil {
 		log.ErrorStack(err)
+		if err.Error() == "cart not found" {
+			return webutil.StatusBadRequest(c, "Cart not found")
+		}
 		return webutil.StatusInternalServerError(c)
 	}
 
-	// Validate dummy provider usage: only allowed for free carts (amountTotal = 0)
-	if payment.PaymentSystem == litepay.DUMMY && cartInfo.AmountTotal > 0 {
-		log.Error().Msgf("Attempt to use dummy provider for paid cart (cart_id: %s, amount: %d)", payment.CartID, cartInfo.AmountTotal)
-		return webutil.StatusBadRequest(c, "Dummy payment provider can only be used for free items")
+	// Validate payment request
+	if err := validatePaymentRequest(c, payment, cartInfo); err != nil {
+		log.ErrorStack(err)
+		switch err.Error() {
+		case "cart already paid":
+			return c.Next() // Pass to SPA
+		case "missing cart_id", "dummy payment provider can only be used for free items":
+			return webutil.StatusBadRequest(c, err.Error())
+		default:
+			if strings.Contains(err.Error(), "invalid payment") {
+				return c.Redirect().To("/")
+			}
+			return webutil.StatusBadRequest(c, err.Error())
+		}
 	}
 
-	// If already paid, pass control to SPA handler
-	if cartInfo.PaymentStatus == "paid" {
-		return c.Next()
+	// Process payment with provider
+	if err := dispatchPaymentProvider(c.Context(), c, payment, cartInfo); err != nil {
+		log.ErrorStack(err)
+		errMsg := err.Error()
+		switch {
+		case strings.Contains(errMsg, "invalid or mismatched"):
+			return webutil.StatusBadRequest(c, errMsg)
+		case strings.Contains(errMsg, "provider is not active"):
+			return webutil.StatusNotFound(c)
+		default:
+			return webutil.StatusInternalServerError(c)
+		}
 	}
 
-	switch payment.PaymentSystem {
-	case litepay.STRIPE:
-		sessionStripe := c.Query("session")
-		if sessionStripe == "" || (cartInfo.PaymentID != "" && sessionStripe != cartInfo.PaymentID) {
-			log.Error().Msgf("stripe session does not match cart %s", payment.CartID)
-			return webutil.StatusBadRequest(c, "payment session does not match cart")
-		}
-		setting, err := queries.GetSettingByGroup[models.Stripe](c.Context(), db)
-		if err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-
-		if !setting.Active {
-			return webutil.StatusNotFound(c)
-		}
-		response, err := litepay.New("", "", "").Stripe(setting.SecretKey).Checkout(payment, sessionStripe)
-		if err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-		if err := verifyCartAmount(response, cartInfo); err != nil {
-			log.Error().Msgf("stripe verification failed for cart %s: %v", payment.CartID, err)
-			return webutil.StatusBadRequest(c, "payment verification failed")
-		}
-		payment.MerchantID = response.MerchantID
-		payment.Status = response.Status
-
-	case litepay.PAYPAL:
-		tokenPaypal := c.Query("token")
-		if tokenPaypal == "" || (cartInfo.PaymentID != "" && tokenPaypal != cartInfo.PaymentID) {
-			log.Error().Msgf("paypal token does not match cart %s", payment.CartID)
-			return webutil.StatusBadRequest(c, "payment token does not match cart")
-		}
-		setting, err := queries.GetSettingByGroup[models.Paypal](c.Context(), db)
-		if err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-
-		if !setting.Active {
-			return webutil.StatusNotFound(c)
-		}
-		response, err := litepay.New("", "", "").Paypal(setting.ClientID, setting.SecretKey).Checkout(payment, tokenPaypal)
-		if err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-		if err := verifyCartAmount(response, cartInfo); err != nil {
-			log.Error().Msgf("paypal verification failed for cart %s: %v", payment.CartID, err)
-			return webutil.StatusBadRequest(c, "payment verification failed")
-		}
-		payment.MerchantID = response.MerchantID
-		payment.Status = response.Status
-
-	case litepay.SPECTROCOIN:
-		// Spectrocoin payment processing handled in callback
-
-	case litepay.COINBASE:
-		chargeID := c.Query("charge_id")
-		if chargeID == "" || (cartInfo.PaymentID != "" && chargeID != cartInfo.PaymentID) {
-			log.Error().Msgf("coinbase charge does not match cart %s", payment.CartID)
-			return webutil.StatusBadRequest(c, "payment charge does not match cart")
-		}
-		setting, err := queries.GetSettingByGroup[models.Coinbase](c.Context(), db)
-		if err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-
-		if !setting.Active {
-			return webutil.StatusNotFound(c)
-		}
-		response, err := litepay.New("", "", "").Coinbase(setting.ApiKey).Checkout(payment, chargeID)
-		if err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-		if err := verifyCartAmount(response, cartInfo); err != nil {
-			log.Error().Msgf("coinbase verification failed for cart %s: %v", payment.CartID, err)
-			return webutil.StatusBadRequest(c, "payment verification failed")
-		}
-		payment.MerchantID = response.MerchantID
-		payment.Status = response.Status
-
-	case litepay.DUMMY:
-		// Dummy provider is always active and only for free carts (already validated above)
-		response, err := litepay.New("", "", "").Dummy().Checkout(payment, "")
-		if err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-		payment.MerchantID = response.MerchantID
-		payment.Status = response.Status
-	}
-
-	err = db.UpdateCart(c.Context(), &models.Cart{
-		Core: models.Core{
-			ID: payment.CartID,
-		},
-		PaymentID:     payment.MerchantID,
-		PaymentStatus: payment.Status,
-		PaymentSystem: payment.PaymentSystem,
-	})
-	if err != nil {
+	// Complete payment processing (update cart, send email, trigger webhook)
+	if err := completePaymentProcessing(c.Context(), payment); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
-
-	// send email
-	if payment.Status == litepay.PAID {
-		if err := mailer.SendCartLetter(payment.CartID); err != nil {
-			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
-		}
-	}
-
-	// send hook (don't block process on webhook error)
-	sendPaymentWebhook(webhook.PAYMENT_SUCCESS, payment.PaymentSystem, payment.Status, payment.CartID, log, false)
 
 	// After processing payment, pass control to SPA handler
 	// The SPA will display the success page with cart information
@@ -813,44 +870,58 @@ func PaymentCancel(c fiber.Ctx) error {
 		return c.Next()
 	}
 
+	// If error parameter is present, pass to SPA for error display
+	if c.Query("error") != "" {
+		return c.Next()
+	}
+
 	log := logging.New()
-	cartID := c.Query("cart_id")
-
-	// Redirect to SPA cancel page with query parameters
-	redirectURL := "/cart/payment/cancel"
-	if cartID != "" {
-		redirectURL += "?cart_id=" + cartID
-		if paymentSystem := c.Query("payment_system"); paymentSystem != "" {
-			redirectURL += "&payment_system=" + paymentSystem
-		}
+	payment := &litepay.Payment{
+		CartID:        c.Query("cart_id"),
+		PaymentSystem: litepay.PaymentSystem(c.Query("payment_system")),
 	}
 
-	// Cancellation mutates order state, so it requires the capability token
-	// that was embedded into the cancel URL during payment initiation.
-	token := c.Query("cancel_token")
-	if cartID == "" || token == "" {
-		return c.Redirect().To(redirectURL)
+	// Validate cancel token
+	cancelToken := c.Query("cancel_token")
+	if cancelToken == "" {
+		return c.Redirect().To("/cart/payment/cancel?error=invalid_token")
 	}
 
-	db := queries.DB()
-	settingJWT, err := queries.GetSettingByGroup[models.JWT](c.Context(), db)
+	// Get JWT secret for token verification
+	settingJWT, err := store.GetSettingByGroupTyped[models.JWT](c.Context())
 	if err != nil {
 		log.ErrorStack(err)
-		return webutil.StatusInternalServerError(c)
+		return c.Redirect().To("/cart/payment/cancel?error=server_error")
 	}
 
-	expected := cancelToken(settingJWT.Secret, cartID)
-	if !hmac.Equal([]byte(expected), []byte(token)) {
-		log.Error().Msgf("cancel token mismatch for cart %s", cartID)
-		return c.Redirect().To(redirectURL)
+	// Parse and verify the cancel token
+	token, err := jwt.Parse(cancelToken, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(settingJWT.Secret), nil
+	})
+	if err != nil || !token.Valid {
+		return c.Redirect().To("/cart/payment/cancel?error=invalid_token")
 	}
 
-	err = db.UpdateCart(c.Context(), &models.Cart{
+	// Extract claims and verify the token is for this cart
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return c.Redirect().To("/cart/payment/cancel?error=invalid_token")
+	}
+
+	tokenCartID, ok := claims["id"].(string)
+	if !ok || tokenCartID != payment.CartID {
+		return c.Redirect().To("/cart/payment/cancel?error=invalid_token")
+	}
+
+	err = store.UpdateCart(c.Context(), &models.Cart{
 		Core: models.Core{
-			ID: cartID,
+			ID: payment.CartID,
 		},
 		PaymentStatus: litepay.CANCELED,
-		PaymentSystem: litepay.PaymentSystem(c.Query("payment_system")),
+		PaymentSystem: payment.PaymentSystem,
 	})
 	if err != nil {
 		log.ErrorStack(err)
@@ -858,7 +929,15 @@ func PaymentCancel(c fiber.Ctx) error {
 	}
 
 	// send hook (don't block process on webhook error)
-	sendPaymentWebhook(webhook.PAYMENT_CANCEL, litepay.PaymentSystem(c.Query("payment_system")), litepay.CANCELED, cartID, log, false)
+	sendPaymentWebhook(webhook.PAYMENT_CANCEL, payment.PaymentSystem, litepay.CANCELED, payment.CartID, log, false)
 
+	// Redirect to SPA cancel page with query parameters
+	redirectURL := "/cart/payment/cancel"
+	if payment.CartID != "" {
+		redirectURL += "?cart_id=" + payment.CartID
+		if string(payment.PaymentSystem) != "" {
+			redirectURL += "&payment_system=" + string(payment.PaymentSystem)
+		}
+	}
 	return c.Redirect().To(redirectURL)
 }

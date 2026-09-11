@@ -4,7 +4,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	_ "github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/webutil"
 )
@@ -21,12 +21,10 @@ import (
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/products [get]
 func Products(c fiber.Ctx) error {
-	db := queries.DB()
 	log := logging.New()
-
 	p := webutil.ParsePagination(c)
 
-	products, err := db.ListProducts(c.Context(), false, p.Limit, p.Offset, "")
+	products, err := store.ListProducts(c.Context(), false, p.Limit, p.Offset, "")
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
@@ -47,10 +45,9 @@ func Products(c fiber.Ctx) error {
 // @Router       /api/products/{product_id} [get]
 func Product(c fiber.Ctx) error {
 	productID := c.Params("product_id")
-	db := queries.DB()
 	log := logging.New()
 
-	product, err := db.Product(c.Context(), false, productID)
+	product, err := store.Product(c.Context(), false, productID)
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)

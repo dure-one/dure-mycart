@@ -4,7 +4,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	_ "github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/pkg/errors"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/webutil"
@@ -24,9 +24,8 @@ import (
 func Page(c fiber.Ctx) error {
 	pageSlug := c.Params("page_slug")
 	log := logging.New()
-	db := queries.DB()
 
-	page, err := db.Page(c.Context(), pageSlug)
+	page, err := store.Page(c.Context(), pageSlug)
 	if err != nil {
 		if errors.Is(err, errors.ErrPageNotFound) {
 			return webutil.StatusNotFound(c)

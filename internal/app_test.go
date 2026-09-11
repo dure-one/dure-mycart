@@ -9,8 +9,8 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/migrations"
+	"github.com/shurco/mycart/db/migrations"
+	"github.com/shurco/mycart/internal/store/db"
 	"github.com/shurco/mycart/pkg/logging"
 )
 
@@ -112,8 +112,8 @@ func TestInstallCheck_RedirectsWhenNotInstalled(t *testing.T) {
 	}
 	_ = os.MkdirAll("lc_base", 0o775)
 	t.Cleanup(func() { _ = os.Chdir(prev) })
-	if err := queries.New(migrations.Embed()); err != nil {
-		t.Fatalf("queries.New: %v", err)
+	if err := db.Init(migrations.Embed()); err != nil {
+		t.Fatalf("db.Init: %v", err)
 	}
 
 	app := fiber.New()
@@ -171,4 +171,86 @@ func TestInit_CreatesDirsAndDB(t *testing.T) {
 			t.Errorf("expected dir %q: %v", d, err)
 		}
 	}
+}
+
+func TestAppStartup_NotInstalled(t *testing.T) {
+	// Setup: empty in-memory database
+	t.Setenv("DB_TYPE", "sqlite")
+	t.Setenv("SQLITE_PATH", ":memory:")
+
+	// Connect and verify not installed
+	err := db.Connect()
+	if err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+
+	installed, err := db.IsInstalled()
+	if err != nil {
+		t.Fatalf("IsInstalled: %v", err)
+	}
+	if installed {
+		t.Error("fresh database should not be installed")
+	}
+
+	// Verify installRequired flag is set
+	if !db.InstallRequired() {
+		t.Error("installRequired should be true for fresh database")
+	}
+
+	t.Cleanup(func() {
+		db.Close()
+	})
+}
+
+func TestAppStartup_Installed(t *testing.T) {
+	// Setup: database with migrations
+	t.Setenv("DB_TYPE", "sqlite")
+
+	// Use temp file for this test
+	tmpFile, err := os.CreateTemp("", "test-installed-*.db")
+	if err != nil {
+		t.Fatalf("CreateTemp: %v", err)
+	}
+	tmpPath := tmpFile.Name()
+	tmpFile.Close()
+	defer os.Remove(tmpPath)
+
+	t.Setenv("SQLITE_PATH", tmpPath)
+
+	// First: connect and migrate to simulate installed state
+	err = db.Connect()
+	if err != nil {
+		t.Fatalf("Connect (first): %v", err)
+	}
+
+	err = db.Migrate(migrations.Embed())
+	if err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+
+	// Close and reset
+	db.Close()
+
+	// Second: reconnect as if app is restarting
+	err = db.Connect()
+	if err != nil {
+		t.Fatalf("Connect (second): %v", err)
+	}
+
+	installed, err := db.IsInstalled()
+	if err != nil {
+		t.Fatalf("IsInstalled: %v", err)
+	}
+	if !installed {
+		t.Error("database with migrations should be installed")
+	}
+
+	// Verify installRequired flag is not set
+	if db.InstallRequired() {
+		t.Error("installRequired should be false for installed database")
+	}
+
+	t.Cleanup(func() {
+		db.Close()
+	})
 }

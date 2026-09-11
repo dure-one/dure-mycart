@@ -3,6 +3,7 @@ package testutil
 import (
 	"context"
 	"database/sql"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,8 +16,9 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/pressly/goose/v3"
 
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/migrations"
+	"github.com/shurco/mycart/db/migrations"
+	"github.com/shurco/mycart/internal/store"
+	"github.com/shurco/mycart/internal/store/db"
 	"github.com/shurco/mycart/pkg/jwtutil"
 	_ "modernc.org/sqlite"
 )
@@ -42,17 +44,26 @@ func SetupTestDB(t *testing.T) func() {
 
 	dirCleanup := WithCmdTestDir(t)
 
-	sqlite, err := sql.Open("sqlite", ":memory:?_pragma=foreign_keys(ON)")
+	// Use file::memory:?mode=memory&cache=shared to share in-memory DB across connections
+	// Plain :memory: creates separate DB per connection!
+	sqlite, err := sql.Open("sqlite", "file::memory:?mode=memory&cache=shared&_pragma=foreign_keys(ON)")
 	if err != nil {
 		t.Fatalf("open in-memory sqlite: %v", err)
 	}
-	sqlite.SetMaxOpenConns(1)
+	// Allow multiple connections to prevent deadlock with nested queries
+	sqlite.SetMaxOpenConns(5)
 
 	if err := goose.SetDialect("sqlite3"); err != nil {
 		t.Fatalf("set goose dialect: %v", err)
 	}
 
-	goose.SetBaseFS(migrations.Embed())
+	// Extract sqlite subdirectory from embedded filesystem
+	migrationsSubFS, err := fs.Sub(migrations.Embed(), "sqlite")
+	if err != nil {
+		t.Fatalf("access sqlite migrations: %v", err)
+	}
+
+	goose.SetBaseFS(migrationsSubFS)
 	goose.SetTableName("migrate_db_version")
 	if err := goose.Up(sqlite, "."); err != nil {
 		t.Fatalf("run schema migrations: %v", err)
@@ -65,7 +76,11 @@ func SetupTestDB(t *testing.T) func() {
 		t.Fatalf("run fixtures: %v", err)
 	}
 
-	queries.NewFromDB(sqlite)
+	store.InitStore(sqlite)
+
+	if err := db.InitFromDB(sqlite, "sqlite"); err != nil {
+		t.Fatalf("init store function pointers: %v", err)
+	}
 
 	return func() {
 		_ = sqlite.Close()
@@ -88,7 +103,7 @@ func SetupTestApp(t *testing.T) (app *fiber.App, cookie string, cleanup func()) 
 		t.Fatalf("generate jwt: %v", err)
 	}
 
-	if err := queries.DB().AddSession(context.Background(), "test-user-id", "admin", exp); err != nil {
+	if err := store.AddSession(context.Background(), "test-user-id", "admin", exp); err != nil {
 		t.Fatalf("add session: %v", err)
 	}
 

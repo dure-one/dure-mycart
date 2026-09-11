@@ -4,7 +4,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/pkg/errors"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/webutil"
@@ -23,12 +23,11 @@ import (
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/_/pages [get]
 func Pages(c fiber.Ctx) error {
-	db := queries.DB()
 	log := logging.New()
 
 	p := webutil.ParsePagination(c)
 
-	pages, total, err := db.ListPages(c.Context(), true, p.Limit, p.Offset)
+	pages, total, err := store.ListPages(c.Context(), true, p.Limit, p.Offset)
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
@@ -56,10 +55,9 @@ func Pages(c fiber.Ctx) error {
 // @Router       /api/_/pages/{page_id} [get]
 func GetPage(c fiber.Ctx) error {
 	pageID := c.Params("page_id")
-	db := queries.DB()
 	log := logging.New()
 
-	page, err := db.PageByID(c.Context(), pageID)
+	page, err := store.PageByID(c.Context(), pageID)
 	if err != nil {
 		if errors.Is(err, errors.ErrPageNotFound) {
 			return webutil.StatusNotFound(c)
@@ -85,7 +83,6 @@ func GetPage(c fiber.Ctx) error {
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/_/pages [post]
 func AddPage(c fiber.Ctx) error {
-	db := queries.DB()
 	log := logging.New()
 	request := new(models.Page)
 
@@ -94,7 +91,7 @@ func AddPage(c fiber.Ctx) error {
 		return webutil.StatusBadRequest(c, err.Error())
 	}
 
-	page, err := db.AddPage(c.Context(), request)
+	page, err := store.AddPage(c.Context(), request)
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
@@ -119,7 +116,6 @@ func AddPage(c fiber.Ctx) error {
 // @Router       /api/_/pages/{page_id} [patch]
 func UpdatePage(c fiber.Ctx) error {
 	pageID := c.Params("page_id")
-	db := queries.DB()
 	log := logging.New()
 	request := new(models.Page)
 	request.ID = pageID
@@ -129,7 +125,7 @@ func UpdatePage(c fiber.Ctx) error {
 		return webutil.StatusBadRequest(c, err.Error())
 	}
 
-	if err := db.UpdatePage(c.Context(), request); err != nil {
+	if err := store.UpdatePage(c.Context(), request); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
@@ -150,10 +146,9 @@ func UpdatePage(c fiber.Ctx) error {
 // @Router       /api/_/pages/{page_id} [delete]
 func DeletePage(c fiber.Ctx) error {
 	pageID := c.Params("page_id")
-	db := queries.DB()
 	log := logging.New()
 
-	if err := db.DeletePage(c.Context(), pageID); err != nil {
+	if err := store.DeletePage(c.Context(), pageID); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
@@ -176,7 +171,6 @@ func DeletePage(c fiber.Ctx) error {
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/_/pages/{page_id}/content [patch]
 func UpdatePageContent(c fiber.Ctx) error {
-	db := queries.DB()
 	log := logging.New()
 	pageID := c.Params("page_id")
 
@@ -191,7 +185,7 @@ func UpdatePageContent(c fiber.Ctx) error {
 		return webutil.StatusBadRequest(c, err.Error())
 	}
 
-	if err := db.UpdatePageContent(c.Context(), request); err != nil {
+	if err := store.UpdatePageContent(c.Context(), request); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
@@ -212,16 +206,15 @@ func UpdatePageContent(c fiber.Ctx) error {
 // @Router       /api/_/pages/{page_id}/active [patch]
 func UpdatePageActive(c fiber.Ctx) error {
 	pageID := c.Params("page_id")
-	db := queries.DB()
 	log := logging.New()
 
-	if err := db.UpdatePageActive(c.Context(), pageID); err != nil {
+	if err := store.UpdatePageActive(c.Context(), pageID); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
 
 	// Get updated page to return with updated timestamp
-	page, err := db.PageByID(c.Context(), pageID)
+	page, err := store.PageByID(c.Context(), pageID)
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)

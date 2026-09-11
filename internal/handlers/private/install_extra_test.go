@@ -49,7 +49,7 @@ func TestInstallStatus_Installed(t *testing.T) {
 	app.Post("/api/install", Install)
 	app.Get("/api/install/status", InstallStatus)
 
-	body := `{"email":"admin@example.com","password":"secret","domain":"example.com"}`
+	body := `{"email":"admin@example.com","password":"secret","domain":"example.com","dbType":"sqlite","sqlitePath":"lc_base/data.db"}`
 	resp := testutil.DoRequest(t, app, http.MethodPost, "/api/install", body, "")
 	testutil.AssertStatus(t, resp, http.StatusOK)
 

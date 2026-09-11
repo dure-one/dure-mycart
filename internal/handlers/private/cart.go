@@ -3,7 +3,7 @@ package handlers
 import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/shurco/mycart/internal/mailer"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/pkg/errors"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/webutil"
@@ -22,12 +22,11 @@ import (
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/_/carts [get]
 func Carts(c fiber.Ctx) error {
-	db := queries.DB()
 	log := logging.New()
 
 	p := webutil.ParsePagination(c)
 
-	carts, total, err := db.Carts(c.Context(), p.Limit, p.Offset)
+	carts, total, err := store.Carts(c.Context(), p.Limit, p.Offset)
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
@@ -55,7 +54,6 @@ func Carts(c fiber.Ctx) error {
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/_/carts/{cart_id} [get]
 func Cart(c fiber.Ctx) error {
-	db := queries.DB()
 	log := logging.New()
 	cartID := c.Params("cart_id")
 
@@ -63,7 +61,7 @@ func Cart(c fiber.Ctx) error {
 		return webutil.StatusBadRequest(c, "cart_id is required")
 	}
 
-	cart, err := db.Cart(c.Context(), cartID)
+	cart, err := store.Cart(c.Context(), cartID)
 	if err != nil {
 		log.ErrorStack(err)
 		if errors.Is(err, errors.ErrProductNotFound) {
@@ -76,12 +74,12 @@ func Cart(c fiber.Ctx) error {
 	// Pass cartID to include digital products purchased in this cart
 	var cartItems []map[string]any
 	if len(cart.Cart) > 0 {
-		products, err := db.ListProducts(c.Context(), false, 0, 0, cartID, cart.Cart...)
+		products, err := store.ListProducts(c.Context(), false, 0, 0, cartID, cart.Cart...)
 		if err != nil {
 			log.ErrorStack(err)
 			return webutil.StatusInternalServerError(c)
 		}
-		cartItems = queries.BuildCartItems(cart, products)
+		cartItems = store.BuildCartItems(cart, products)
 	}
 
 	return webutil.Response(c, fiber.StatusOK, "Cart", map[string]any{

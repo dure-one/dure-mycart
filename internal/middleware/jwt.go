@@ -13,7 +13,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/pkg/webutil"
 )
 
@@ -52,8 +52,7 @@ func customKeyFunc() jwt.Keyfunc {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		db := queries.DB()
-		settingJWT, err := queries.GetSettingByGroup[models.JWT](ctx, db)
+		settingJWT, err := store.GetSettingByGroupTyped[models.JWT](ctx)
 		if err != nil {
 			if ctx.Err() == context.DeadlineExceeded {
 				return nil, fmt.Errorf("database took too long to respond")
@@ -75,7 +74,7 @@ func customKeyFunc() jwt.Keyfunc {
 		if !ok || sessionID == "" {
 			return nil, fmt.Errorf("token has no session id")
 		}
-		if _, err := db.GetSession(ctx, sessionID); err != nil {
+		if _, err := store.GetSession(ctx, sessionID); err != nil {
 			return nil, fmt.Errorf("session not found or expired")
 		}
 

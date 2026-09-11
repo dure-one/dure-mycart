@@ -9,6 +9,7 @@
   import { hasPaymentProviders } from '$lib/utils/payment'
   import { getLocalStorage, setLocalStorage, removeLocalStorage } from '$lib/utils/browser'
   import type { PaymentMethods } from '$lib/types/models'
+  import type { CartCreateResponse, CartValidationResponse, CartValidationError, CorrectedCartItem } from '$lib/types/api'
   import { goto } from '$app/navigation'
   import Overlay from '$lib/components/Overlay.svelte'
   import CartItemCard from '$lib/components/CartItemCard.svelte'
@@ -41,7 +42,7 @@
   let portoneStoreId = $state('')
   let portoneChannelKey = $state('')
   let portoneDebugEnabled = $state(false)
-  let validationErrors = $state<any[]>([])
+  let validationErrors = $state<CartValidationError[]>([])
   let showValidationModal = $state(false)
   let highlightedItems = $state<Set<string>>(new Set())
 
@@ -103,12 +104,13 @@
 
     // Handle validation errors (409 Conflict)
     if (cartCreateRes.status === 409) {
-      if (!cartCreateRes.result?.validation_errors || !cartCreateRes.result?.corrected_cart) {
+      const validationResult = cartCreateRes.result as unknown as CartValidationResponse
+      if (!validationResult?.validation_errors || !validationResult?.corrected_cart) {
         throw new Error('Validation error occurred. Please refresh and try again.')
       }
       handleValidationErrors(
-        cartCreateRes.result.validation_errors,
-        cartCreateRes.result.corrected_cart
+        validationResult.validation_errors,
+        validationResult.corrected_cart
       )
       throw new Error('Cart validation failed')
     }
@@ -121,7 +123,7 @@
   }
 
   // Verify payment with backend
-  async function verifyPayment(paymentId: string, cartId: string): Promise<boolean> {
+  async function verifyPayment(paymentId: string, cartId: string): Promise<string> {
     const verifyRes = await apiPost('/api/payment/portone/complete', {
       payment_id: paymentId,
       cart_id: cartId
@@ -131,7 +133,8 @@
       throw new Error('Payment verification failed: ' + (verifyRes.message || 'Unknown error'))
     }
 
-    return true
+    // Return cart_id from backend response
+    return verifyRes.result?.cart_id || cartId
   }
 
   // Handle PortOne payment flow
@@ -163,40 +166,54 @@
     debugLog('Cart created with ID:', cartId)
 
     // Prepare and execute payment request.
-    // Currency comes from store settings (backend gates PortOne by
-    // SupportedCurrencies); payMethod is only meaningful for KRW channels —
-    // otherwise the PortOne payment window lets the buyer choose.
+    // Currency comes from store settings (backend gates PortOne by SupportedCurrencies).
+    //
+    // System stores amounts as (value * 100) for all currencies to support cents/pence.
+    // Zero-decimal currencies (KRW, JPY) need to be divided by 100 before sending to PortOne.
+    const currencyUpper = currency.toUpperCase()
+    const zeroDecimalCurrencies = ['KRW', 'JPY', 'VND', 'CLP']
+    const portoneAmount = zeroDecimalCurrencies.includes(currencyUpper)
+      ? Math.round(cartTotal / 100)
+      : cartTotal
+
+    // PortOne SDK v2 requires payMethod as a mandatory discriminated union field.
+    // For KRW, use EASY_PAY (digital wallets); for international currencies, use CARD.
+    const payMethod = currencyUpper === 'KRW' ? 'EASY_PAY' : 'CARD'
+
     const paymentRequest: Record<string, unknown> = {
       storeId: portoneStoreId,
       channelKey: portoneChannelKey,
       paymentId: paymentId,
       orderName: `Order ${cart.length} items`,
-      totalAmount: cartTotal,
-      currency: currency.toUpperCase(),
+      totalAmount: portoneAmount,
+      currency: currencyUpper,
+      payMethod: payMethod,
       customData: { cart_id: cartId }
-    }
-    if (currency.toUpperCase() === 'KRW') {
-      paymentRequest.payMethod = 'EASY_PAY'
     }
     debugLog('Payment request object:', paymentRequest)
 
     // Call PortOne SDK
-    const response = await PortOne.requestPayment(paymentRequest)
+    const response = await PortOne.requestPayment(paymentRequest as any)
     debugLog('PortOne payment response received:', response)
+
+    // Check for payment response
+    if (!response) {
+      throw new Error('Payment SDK returned no response')
+    }
 
     // Check for payment errors
     if (response.code != null) {
       throw new Error(response.message)
     }
 
-    // Verify payment with backend
-    await verifyPayment(response.paymentId, cartId)
+    // Verify payment with backend and get cart_id from response
+    const verifiedCartId = await verifyPayment(response.paymentId, cartId)
 
-    // Clear cart and redirect to success
+    // Clear cart and redirect to success with cart_id
     cartStore.set([])
     removeLocalStorage('email')
     removeLocalStorage('provider')
-    goto('/cart/payment/success')
+    goto(`/cart/payment/success?cart_id=${verifiedCartId}`)
   }
 
   let cart = $derived($cartStore)
@@ -271,7 +288,7 @@
     }
   }
 
-  onMount(async () => {
+  onMount(() => {
     // Always reload cart from localStorage on mount to ensure fresh data
     cartStore.reload()
 
@@ -280,7 +297,7 @@
     // If cart is not free, load payment methods
     // $effect will also handle this, but we load here on initial mount to avoid delay
     if (!isFree && !hasPaymentProviders(payments)) {
-      await loadPaymentMethods().catch(() => {
+      loadPaymentMethods().catch(() => {
         error = 'Failed to load payment methods. Please refresh the page.'
         showOverlay = true
       })

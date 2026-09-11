@@ -7,45 +7,44 @@ import (
 	"time"
 
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/store"
+	"github.com/shurco/mycart/internal/store/db"
 )
 
 // ensureSenderEmail ensures that sender email is set, using user email from Settings as fallback.
-func ensureSenderEmail(ctx context.Context, db *queries.Base, mailSetting *models.Mail) error {
+func ensureSenderEmail(ctx context.Context, mailSetting *models.Mail) error {
 	// If sender email is already configured, no need to do anything
 	if mailSetting.SenderEmail != "" {
 		return nil
 	}
 
 	// Get user email from Settings as fallback
-	userSettings, err := db.GetSettingByKey(ctx, "email")
+	setting, err := db.GetSettingByKeyFunc(ctx, "email")
 	if err != nil {
 		return fmt.Errorf("sender email is not configured and failed to get user email: %w", err)
 	}
 
-	userEmail, ok := userSettings["email"]
-	if !ok || userEmail.Value == nil {
-		return fmt.Errorf("sender email is not configured and user email is not found in settings")
+	// Check if email setting value is valid and non-empty
+	if !setting.Value.Valid {
+		return fmt.Errorf("sender email is not configured and user email is NULL")
 	}
 
-	userEmailStr, ok := userEmail.Value.(string)
-	if !ok || userEmailStr == "" {
+	emailValue := setting.Value.String
+	if emailValue == "" {
 		return fmt.Errorf("sender email is not configured and user email is empty")
 	}
 
 	// Use user email as sender email
-	mailSetting.SenderEmail = userEmailStr
+	mailSetting.SenderEmail = emailValue
 	return nil
 }
 
 // SendTestLetter sends a test email letter to verify SMTP configuration.
 func SendTestLetter(letterName string) error {
-	db := queries.DB()
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	mailSetting, err := queries.GetSettingByGroup[models.Mail](ctx, db)
+	mailSetting, err := store.GetSettingByGroupTyped[models.Mail](ctx)
 	if err != nil {
 		return err
 	}
@@ -56,17 +55,17 @@ func SendTestLetter(letterName string) error {
 	}
 
 	// Ensure sender email is set (use user email as fallback if not configured)
-	if err := ensureSenderEmail(ctx, db, mailSetting); err != nil {
+	if err := ensureSenderEmail(ctx, mailSetting); err != nil {
 		return err
 	}
 
-	settingEmail, err := db.GetSettingByKey(ctx, "email", letterName)
+	emailSetting, err := db.GetSettingByKeyFunc(ctx, "email")
 	if err != nil {
 		return err
 	}
 
 	letter := &models.MessageMail{
-		To: settingEmail["email"].Value.(string),
+		To: emailSetting.Value.String,
 		Letter: models.Letter{
 			Subject: "myCart test smtp settings",
 			Text:    "test message",
@@ -80,8 +79,11 @@ func SendTestLetter(letterName string) error {
 	}
 
 	if letterName != "smtp" {
-		if err := json.Unmarshal([]byte(settingEmail[letterName].Value.(string)), &letter.Letter); err != nil {
-			return err
+		letterSetting, err := db.GetSettingByKeyFunc(ctx, letterName)
+		if err == nil && letterSetting.Value.Valid {
+			if err := json.Unmarshal([]byte(letterSetting.Value.String), &letter.Letter); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -94,12 +96,10 @@ func SendTestLetter(letterName string) error {
 
 // SendPrepaymentLetter sends an email notification before payment is completed.
 func SendPrepaymentLetter(email, amountPayment, paymentURL string) error {
-	db := queries.DB()
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	mailSetting, err := queries.GetSettingByGroup[models.Mail](ctx, db)
+	mailSetting, err := store.GetSettingByGroupTyped[models.Mail](ctx)
 	if err != nil {
 		return err
 	}
@@ -110,13 +110,13 @@ func SendPrepaymentLetter(email, amountPayment, paymentURL string) error {
 		return nil
 	}
 
-	letter, err := db.CartLetterPayment(ctx, email, amountPayment, paymentURL)
+	letter, err := store.CartLetterPayment(ctx, email, amountPayment, paymentURL)
 	if err != nil {
 		return err
 	}
 
 	// Ensure sender email is set (use user email as fallback if not configured)
-	if err := ensureSenderEmail(ctx, db, mailSetting); err != nil {
+	if err := ensureSenderEmail(ctx, mailSetting); err != nil {
 		return err
 	}
 
@@ -129,12 +129,10 @@ func SendPrepaymentLetter(email, amountPayment, paymentURL string) error {
 
 // SendCartLetter sends an email notification after a cart purchase is completed.
 func SendCartLetter(cartID string) error {
-	db := queries.DB()
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	mailSetting, err := queries.GetSettingByGroup[models.Mail](ctx, db)
+	mailSetting, err := store.GetSettingByGroupTyped[models.Mail](ctx)
 	if err != nil {
 		return err
 	}
@@ -145,13 +143,13 @@ func SendCartLetter(cartID string) error {
 		return nil
 	}
 
-	letter, err := db.CartLetterPurchase(ctx, cartID)
+	letter, err := store.CartLetterPurchase(ctx, cartID)
 	if err != nil {
 		return err
 	}
 
 	// Ensure sender email is set (use user email as fallback if not configured)
-	if err := ensureSenderEmail(ctx, db, mailSetting); err != nil {
+	if err := ensureSenderEmail(ctx, mailSetting); err != nil {
 		return err
 	}
 

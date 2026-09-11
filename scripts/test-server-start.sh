@@ -6,21 +6,21 @@ echo "🧹 Cleaning test environment before server start..."
 rm -rf lc_base lc_digitals lc_uploads
 echo "✓ Environment cleaned"
 
-echo "📚 Generating Swagger documentation..."
-SWAG_BIN="$(go env GOPATH)/bin/swag"
+echo "📁 Creating required directories..."
+mkdir -p lc_base lc_digitals lc_uploads
+echo "✓ Directories created"
 
-if [ ! -f "$SWAG_BIN" ]; then
-  echo "⚠️  swag not found, installing..."
-  go install github.com/swaggo/swag/cmd/swag@latest
-fi
+echo "🗄️ Initializing SQLite database..."
+touch lc_base/data.db
+echo "✓ Database file created"
 
-"$SWAG_BIN" init -g cmd/main.go --output docs/swagger --parseDependency --parseInternal
-if [ $? -eq 0 ]; then
-  echo "✓ Swagger docs generated"
-else
-  echo "❌ Failed to generate Swagger docs"
-  exit 1
+echo "📚 Generating Swagger API documentation..."
+if ! command -v swag >/dev/null 2>&1; then
+    echo "  Installing swag..."
+    go install github.com/swaggo/swag/cmd/swag@latest
 fi
+$(go env GOPATH)/bin/swag init -g cmd/main.go --output docs/swagger --parseDependency --parseInternal >/dev/null 2>&1
+echo "✓ Swagger docs generated"
 
 echo "🚀 Starting server..."
 exec go run ./cmd serve

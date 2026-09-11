@@ -1,0 +1,23 @@
+# Docker Compose configuration for myCart with SQLite (default)
+version: '3.8'
+
+services:
+  mycart:
+    image: mycart:latest
+    container_name: mycart
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_TYPE=sqlite
+      - SQLITE_PATH=/data/mycart.db
+    volumes:
+      - ./lc_base:/data
+      - ./lc_uploads:/app/lc_uploads
+      - ./lc_digitals:/app/lc_digitals
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

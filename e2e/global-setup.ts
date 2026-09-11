@@ -79,29 +79,49 @@ async function installStore(baseURL: string) {
     return
   }
 
-  const response = await fetch(`${baseURL}/api/install`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      email: 'admin@example.com',
-      password: 'test1234',
-      domain: 'localhost:8080',
-    }),
-  })
+  console.log('  → Installing store...')
 
-  if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`Installation failed: ${response.status} ${text}`)
+  // Create AbortController with longer timeout for installation
+  // CI environments can be slower, especially during initial setup
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
+
+  try {
+    const response = await fetch(`${baseURL}/api/install`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: 'admin@example.com',
+        password: 'test1234',
+        domain: 'localhost:8080',
+        dbType: 'sqlite',
+        sqlitePath: 'lc_base/data.db',
+      }),
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      const text = await response.text()
+      throw new Error(`Installation failed: ${response.status} ${text}`)
+    }
+
+    const result = await response.json()
+    if (!result.success) {
+      throw new Error(`Installation failed: ${result.message}`)
+    }
+
+    console.log('  ✓ Store installed via API')
+  } catch (error) {
+    clearTimeout(timeoutId)
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Installation timed out after 60 seconds. Check server logs for details.')
+    }
+    throw error
   }
-
-  const result = await response.json()
-  if (!result.success) {
-    throw new Error(`Installation failed: ${result.message}`)
-  }
-
-  console.log('  ✓ Store installed via API')
 }
 
 /**
