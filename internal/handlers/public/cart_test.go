@@ -273,7 +273,7 @@ func TestPaymentSuccess_InvalidPaymentSystem(t *testing.T) {
 	})
 
 	resp := testutil.DoRequest(t, app, http.MethodGet,
-		"/cart/payment/success?cart_id=test123&payment_system=invalid_system",
+		"/cart/payment/success?cart_id=iodz4ibf5h5zmov&payment_system=invalid_system",
 		"", "")
 	testutil.AssertStatus(t, resp, http.StatusOK, http.StatusSeeOther, http.StatusInternalServerError)
 }

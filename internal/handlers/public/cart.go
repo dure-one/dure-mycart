@@ -806,6 +806,9 @@ func PaymentSuccess(c fiber.Ctx) error {
 	cartInfo, err := store.Cart(c.Context(), c.Query("cart_id"))
 	if err != nil {
 		log.ErrorStack(err)
+		if err.Error() == "cart not found" {
+			return webutil.StatusBadRequest(c, "Cart not found")
+		}
 		return webutil.StatusInternalServerError(c)
 	}
 
