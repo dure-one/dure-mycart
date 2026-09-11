@@ -10,7 +10,7 @@ import (
 	"github.com/wenlng/go-captcha/v2/rotate"
 
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/webutil"
 )
@@ -201,7 +201,6 @@ func VerifyCaptcha(c fiber.Ctx) error {
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/sellerinfo [get]
 func GetSellerInfo(c fiber.Ctx) error {
-	db := queries.DB()
 	log := logging.New()
 
 	// Verify access token
@@ -221,7 +220,7 @@ func GetSellerInfo(c fiber.Ctx) error {
 	}
 
 	// Load Dureone settings
-	dureone, err := queries.GetSettingByGroup[models.Dureone](c.Context(), db)
+	dureone, err := store.GetSettingByGroupTyped[models.Dureone](c.Context())
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)

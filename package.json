@@ -1,6 +1,8 @@
 {
   "scripts": {
-    "postinstall": "node scripts/patch-patchright-openbsd.js",
+    "postinstall": "node scripts/patch-patchright-openbsd.js && npm run setup:go",
+    "setup:go": "echo '🐹 Setting up Go dependencies...' && go mod download && go mod tidy && echo '🗄️  Generating sqlc code...' && sqlc generate && echo '✅ Go setup complete'",
+    "setup": "npm install --legacy-peer-deps",
     "build": "cd web/admin && npx vite build && cd ../site && npx vite build",
     "test:e2e": "npm run build && patchright test",
     "test:e2e:nobuild": "patchright test",
