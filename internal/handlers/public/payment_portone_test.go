@@ -26,24 +26,35 @@ func TestValidatePaymentAmount(t *testing.T) {
 		name         string
 		paymentTotal int
 		cartTotal    int
+		currency     string
 		wantErr      bool
 	}{
 		{
-			name:         "valid amount match",
-			paymentTotal: 100000, // 1000 USD in cents
-			cartTotal:    1000,   // Cart total in cents
+			name:         "valid amount match - USD",
+			paymentTotal: 1000,
+			cartTotal:    1000,
+			currency:     "USD",
+			wantErr:      false,
+		},
+		{
+			name:         "valid amount match - KRW (zero-decimal)",
+			paymentTotal: 100,        // PortOne sends 100 won
+			cartTotal:    10000,      // System stores as 100 * 100
+			currency:     "KRW",
 			wantErr:      false,
 		},
 		{
 			name:         "amount mismatch",
-			paymentTotal: 50000,
+			paymentTotal: 500,
 			cartTotal:    1000,
+			currency:     "USD",
 			wantErr:      true,
 		},
 		{
 			name:         "zero amount",
 			paymentTotal: 0,
 			cartTotal:    0,
+			currency:     "USD",
 			wantErr:      false,
 		},
 	}
@@ -51,7 +62,7 @@ func TestValidatePaymentAmount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := validatePaymentAmount(tt.paymentTotal, tt.cartTotal, log)
+			err := validatePaymentAmount(tt.paymentTotal, tt.cartTotal, tt.currency, log)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("validatePaymentAmount() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -353,11 +364,11 @@ func TestCompletePortonePayment(t *testing.T) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(map[string]interface{}{
-				"id":     "pay_valid",
-				"status": "PAID",
+				"id":       "pay_valid",
+				"status":   "PAID",
+				"currency": "KRW", // Currency at top level
 				"amount": map[string]interface{}{
-					"total":    500000, // 5000 cents in payment (5000 * 100)
-					"currency": "KRW",
+					"total": 6300, // Amount in smallest currency unit (cart.AmountTotal = 6300)
 				},
 				"customData": `{"cart_id":"iodz4ibf5h5zmov"}`,
 			})
@@ -446,10 +457,10 @@ func TestPortoneWebhook(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"status":     "PAID",
+				"currency":   "KRW", // Currency at top level
 				"customData": `{"cart_id":"iodz4ibf5h5zmov"}`,
 				"amount": map[string]interface{}{
-					"total":    500000,
-					"currency": "KRW",
+					"total": 6300, // Amount in smallest currency unit (cart.AmountTotal = 6300)
 				},
 			})
 			return

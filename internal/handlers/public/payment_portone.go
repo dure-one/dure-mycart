@@ -72,8 +72,22 @@ func callPortoneAPI(endpoint string, apiSecret string) (*http.Response, error) {
 }
 
 // validatePaymentAmount verifies payment amount matches cart total
-func validatePaymentAmount(paymentTotal int, cartTotal int, log *logging.Log) error {
-	expectedAmount := cartTotal * 100
+// System stores amounts as (value * 100) for all currencies.
+// Zero-decimal currencies (KRW, JPY, etc.) are sent to PortOne divided by 100.
+func validatePaymentAmount(paymentTotal int, cartTotal int, currency string, log *logging.Log) error {
+	// For zero-decimal currencies, divide stored amount by 100 to match PortOne's expected format
+	zeroDecimalCurrencies := map[string]bool{
+		"KRW": true, // Korean Won
+		"JPY": true, // Japanese Yen
+		"VND": true, // Vietnamese Dong
+		"CLP": true, // Chilean Peso
+	}
+
+	expectedAmount := cartTotal
+	if zeroDecimalCurrencies[currency] {
+		expectedAmount = cartTotal / 100
+	}
+
 	if paymentTotal != expectedAmount {
 		log.Error().Msgf("Amount mismatch: expected %d, got %d", expectedAmount, paymentTotal)
 		return fmt.Errorf("amount mismatch")
@@ -164,19 +178,33 @@ func CompletePortonePayment(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
+	// Read body for debugging
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	// Log raw response for debugging
+	log.Debug().Msgf("PortOne API response: %s", string(bodyBytes))
+
 	var payment struct {
-		ID     string `json:"id"`
-		Status string `json:"status"`
-		Amount struct {
-			Total    int    `json:"total"`
-			Currency string `json:"currency"`
+		ID       string `json:"id"`
+		Status   string `json:"status"`
+		Currency string `json:"currency"` // Currency at top level
+		Amount   struct {
+			Total int `json:"total"`
 		} `json:"amount"`
 		CustomData string `json:"customData"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&payment); err != nil {
+	if err := json.Unmarshal(bodyBytes, &payment); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusBadRequest(c, "Failed to decode payment")
 	}
+
+	// Debug log parsed values
+	log.Debug().Msgf("Parsed payment: ID=%s, Status=%s, Total=%d, Currency=%s",
+		payment.ID, payment.Status, payment.Amount.Total, payment.Currency)
 
 	// Verify payment status
 	if payment.Status != "PAID" && payment.Status != "VIRTUAL_ACCOUNT_ISSUED" {
@@ -184,11 +212,11 @@ func CompletePortonePayment(c fiber.Ctx) error {
 	}
 
 	// Validate payment details
-	if err := validatePaymentAmount(payment.Amount.Total, cart.AmountTotal, log); err != nil {
+	if err := validatePaymentAmount(payment.Amount.Total, cart.AmountTotal, cart.Currency, log); err != nil {
 		return webutil.StatusBadRequest(c, err.Error())
 	}
 
-	if err := validatePaymentCurrency(payment.Amount.Currency, cart.Currency, log); err != nil {
+	if err := validatePaymentCurrency(payment.Currency, cart.Currency, log); err != nil {
 		return webutil.StatusBadRequest(c, err.Error())
 	}
 
@@ -206,8 +234,9 @@ func CompletePortonePayment(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
-	return webutil.Response(c, fiber.StatusOK, "Payment verified", map[string]string{
-		"status": payment.Status,
+	return webutil.Response(c, fiber.StatusOK, "Payment verified", map[string]interface{}{
+		"status":  payment.Status,
+		"cart_id": cart.ID,
 	})
 }
 
@@ -289,10 +318,10 @@ func PortoneWebhook(c fiber.Ctx) error {
 
 	var payment struct {
 		Status     string `json:"status"`
+		Currency   string `json:"currency"` // Currency at top level
 		CustomData string `json:"customData"`
 		Amount     struct {
-			Total    int    `json:"total"`
-			Currency string `json:"currency"`
+			Total int `json:"total"`
 		} `json:"amount"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&payment); err != nil {
@@ -316,8 +345,18 @@ func PortoneWebhook(c fiber.Ctx) error {
 	}
 
 	// Verify amount and currency
-	if payment.Amount.Total != int(cart.AmountTotal*100) || payment.Amount.Currency != cart.Currency {
-		log.Error().Msg("Amount/currency mismatch in webhook")
+	// Apply same zero-decimal currency logic as in payment completion
+	zeroDecimalCurrencies := map[string]bool{
+		"KRW": true, "JPY": true, "VND": true, "CLP": true,
+	}
+	expectedAmount := cart.AmountTotal
+	if zeroDecimalCurrencies[cart.Currency] {
+		expectedAmount = cart.AmountTotal / 100
+	}
+
+	if payment.Amount.Total != expectedAmount || payment.Currency != cart.Currency {
+		log.Error().Msgf("Amount/currency mismatch in webhook: expected %d %s, got %d %s",
+			expectedAmount, cart.Currency, payment.Amount.Total, payment.Currency)
 		return c.SendStatus(fiber.StatusOK)
 	}
 

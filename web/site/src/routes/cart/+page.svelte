@@ -121,7 +121,7 @@
   }
 
   // Verify payment with backend
-  async function verifyPayment(paymentId: string, cartId: string): Promise<boolean> {
+  async function verifyPayment(paymentId: string, cartId: string): Promise<string> {
     const verifyRes = await apiPost('/api/payment/portone/complete', {
       payment_id: paymentId,
       cart_id: cartId
@@ -131,7 +131,8 @@
       throw new Error('Payment verification failed: ' + (verifyRes.message || 'Unknown error'))
     }
 
-    return true
+    // Return cart_id from backend response
+    return verifyRes.result?.cart_id || cartId
   }
 
   // Handle PortOne payment flow
@@ -166,16 +167,25 @@
     // Currency comes from store settings (backend gates PortOne by
     // SupportedCurrencies); payMethod is only meaningful for KRW channels —
     // otherwise the PortOne payment window lets the buyer choose.
+    //
+    // System stores amounts as (value * 100) for all currencies to support cents/pence.
+    // Zero-decimal currencies (KRW, JPY) need to be divided by 100 before sending to PortOne.
+    const currencyUpper = currency.toUpperCase()
+    const zeroDecimalCurrencies = ['KRW', 'JPY', 'VND', 'CLP']
+    const portoneAmount = zeroDecimalCurrencies.includes(currencyUpper)
+      ? Math.round(cartTotal / 100)
+      : cartTotal
+
     const paymentRequest: Record<string, unknown> = {
       storeId: portoneStoreId,
       channelKey: portoneChannelKey,
       paymentId: paymentId,
       orderName: `Order ${cart.length} items`,
-      totalAmount: cartTotal,
-      currency: currency.toUpperCase(),
+      totalAmount: portoneAmount,
+      currency: currencyUpper,
       customData: { cart_id: cartId }
     }
-    if (currency.toUpperCase() === 'KRW') {
+    if (currencyUpper === 'KRW') {
       paymentRequest.payMethod = 'EASY_PAY'
     }
     debugLog('Payment request object:', paymentRequest)
@@ -189,14 +199,14 @@
       throw new Error(response.message)
     }
 
-    // Verify payment with backend
-    await verifyPayment(response.paymentId, cartId)
+    // Verify payment with backend and get cart_id from response
+    const verifiedCartId = await verifyPayment(response.paymentId, cartId)
 
-    // Clear cart and redirect to success
+    // Clear cart and redirect to success with cart_id
     cartStore.set([])
     removeLocalStorage('email')
     removeLocalStorage('provider')
-    goto('/cart/payment/success')
+    goto(`/cart/payment/success?cart_id=${verifiedCartId}`)
   }
 
   let cart = $derived($cartStore)
