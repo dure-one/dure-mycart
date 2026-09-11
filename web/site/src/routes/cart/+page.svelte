@@ -166,9 +166,7 @@
     debugLog('Cart created with ID:', cartId)
 
     // Prepare and execute payment request.
-    // Currency comes from store settings (backend gates PortOne by
-    // SupportedCurrencies); payMethod is only meaningful for KRW channels —
-    // otherwise the PortOne payment window lets the buyer choose.
+    // Currency comes from store settings (backend gates PortOne by SupportedCurrencies).
     //
     // System stores amounts as (value * 100) for all currencies to support cents/pence.
     // Zero-decimal currencies (KRW, JPY) need to be divided by 100 before sending to PortOne.
@@ -178,6 +176,10 @@
       ? Math.round(cartTotal / 100)
       : cartTotal
 
+    // PortOne SDK v2 requires payMethod as a mandatory discriminated union field.
+    // For KRW, use EASY_PAY (digital wallets); for international currencies, use CARD.
+    const payMethod = currencyUpper === 'KRW' ? 'EASY_PAY' : 'CARD'
+
     const paymentRequest: Record<string, unknown> = {
       storeId: portoneStoreId,
       channelKey: portoneChannelKey,
@@ -185,10 +187,8 @@
       orderName: `Order ${cart.length} items`,
       totalAmount: portoneAmount,
       currency: currencyUpper,
+      payMethod: payMethod,
       customData: { cart_id: cartId }
-    }
-    if (currencyUpper === 'KRW') {
-      paymentRequest.payMethod = 'EASY_PAY'
     }
     debugLog('Payment request object:', paymentRequest)
 
