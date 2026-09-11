@@ -128,6 +128,16 @@ func TestInstall_WithDatabaseConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Set up clean environment for each test
+			dirCleanup := testutil.WithCmdTestDir(t)
+			defer dirCleanup()
+
+			// Create required directories
+			_ = os.MkdirAll("lc_base", 0o775)
+
+			// Clean up database connection after test to prevent resource leaks
+			defer db.Close()
+
 			app := fiber.New()
 			app.Post("/api/install", Install)
 
