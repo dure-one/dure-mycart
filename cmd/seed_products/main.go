@@ -65,9 +65,7 @@ func main() {
 			Digital:     models.Digital{},
 		}
 
-		// TODO: AddProductWithVariants needs to be re-implemented
-		// Using stub for now
-		if err := store.AddProductStub(ctx, product); err != nil {
+		if _, err := store.AddProductWithVariants(ctx, product); err != nil {
 			log.Printf("Failed to create product %s: %v", product.Name, err)
 			continue
 		}
