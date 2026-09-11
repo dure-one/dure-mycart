@@ -1,9 +1,13 @@
-.PHONY: help dev test test-unit test-integration test-postgres test-all
+.PHONY: help setup deps-check dev test test-unit test-integration test-postgres test-all
 .PHONY: e2e-admin e2e-site e2e-all sqlc migrate-up migrate-down
 .PHONY: build-admin build-site build-all docker-build docker-up docker-down docker-logs docker-test-all
 
 help:
 	@echo "Available targets:"
+	@echo ""
+	@echo "Setup:"
+	@echo "  setup             - Install all prerequisites (npm, go, sqlc) - RUN THIS FIRST on new platforms"
+	@echo "  deps-check        - Verify all dependencies are installed"
 	@echo ""
 	@echo "Development:"
 	@echo "  dev               - Run development server (SQLite, hot reload)"
@@ -35,7 +39,44 @@ help:
 	@echo "  docker-logs       - Show container logs"
 	@echo "  docker-test-all   - Run tests in Docker against both databases"
 
-dev:
+setup:
+	@echo "🔧 Installing prerequisites..."
+	@echo ""
+	@echo "📦 Installing npm dependencies..."
+	@if [ ! -d "node_modules" ] || [ ! -f "node_modules/.bin/patchright" ]; then \
+		npm install --legacy-peer-deps; \
+	else \
+		echo "✓ npm dependencies already installed"; \
+	fi
+	@echo ""
+	@echo "🐹 Installing Go dependencies..."
+	@go mod download
+	@go mod tidy
+	@echo ""
+	@echo "🗄️  Generating sqlc code..."
+	@sqlc generate
+	@echo ""
+	@echo "✅ Setup complete! You can now run 'make dev' or 'make e2e-all'"
+
+deps-check:
+	@echo "🔍 Checking dependencies..."
+	@echo ""
+	@echo -n "Node.js: "
+	@command -v node >/dev/null 2>&1 && node --version || echo "❌ NOT FOUND"
+	@echo -n "npm: "
+	@command -v npm >/dev/null 2>&1 && npm --version || echo "❌ NOT FOUND"
+	@echo -n "Go: "
+	@command -v go >/dev/null 2>&1 && go version || echo "❌ NOT FOUND"
+	@echo -n "sqlc: "
+	@command -v sqlc >/dev/null 2>&1 && sqlc version || echo "❌ NOT FOUND"
+	@echo -n "patchright: "
+	@[ -f "node_modules/.bin/patchright" ] && echo "✓ installed" || echo "❌ NOT FOUND (run 'make setup')"
+	@echo -n "Go modules: "
+	@go list -m >/dev/null 2>&1 && echo "✓ installed" || echo "❌ NOT FOUND (run 'make setup')"
+	@echo -n "sqlc generated: "
+	@[ -d "internal/store/db" ] && echo "✓ generated" || echo "❌ NOT FOUND (run 'make setup')"
+
+dev: setup
 	@echo "Starting development server..."
 	@if [ -f .env ]; then \
 		echo "Loading .env file..."; \
@@ -76,7 +117,7 @@ test-all:
 		TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1; \
 	fi
 
-e2e-all:
+e2e-all: setup
 	@echo "Running admin panel e2e tests..."
 	npm run test:e2e
 
