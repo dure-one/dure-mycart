@@ -176,6 +176,34 @@ func connectWithRetry(cfg *Config) (*sql.DB, error) {
 			return nil, fmt.Errorf("failed to ping database after %d attempts: %w", maxAttempts, err)
 		}
 
+		// Configure SQLite-specific settings
+		if driver == "sqlite" {
+			// Enable WAL mode for better concurrency and performance
+			if _, err := conn.Exec("PRAGMA journal_mode=WAL"); err != nil {
+				conn.Close()
+				return nil, fmt.Errorf("failed to enable WAL mode: %w", err)
+			}
+
+			// Enable foreign key constraints
+			if _, err := conn.Exec("PRAGMA foreign_keys=ON"); err != nil {
+				conn.Close()
+				return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
+			}
+
+			// Set synchronous mode to NORMAL for better performance with WAL
+			// NORMAL is safe with WAL and much faster than FULL
+			if _, err := conn.Exec("PRAGMA synchronous=NORMAL"); err != nil {
+				conn.Close()
+				return nil, fmt.Errorf("failed to set synchronous mode: %w", err)
+			}
+
+			// Set busy timeout to 5 seconds to handle concurrent access
+			if _, err := conn.Exec("PRAGMA busy_timeout=5000"); err != nil {
+				conn.Close()
+				return nil, fmt.Errorf("failed to set busy timeout: %w", err)
+			}
+		}
+
 		// Configure connection pool
 		if cfg.Type == "postgres" || cfg.Type == "postgresql" {
 			conn.SetMaxOpenConns(cfg.PostgreSQL.MaxOpenConns)
@@ -289,6 +317,58 @@ func initFunctionPointers(sqlDB *sql.DB, dbTypeName string) error {
 		return fmt.Errorf("unsupported database type: %s", dbTypeName)
 	}
 	return nil
+}
+
+// Connect establishes database connection without running migrations.
+// It loads config from environment variables, connects with retry logic,
+// and initializes function pointers. Does NOT run migrations.
+func Connect() error {
+	// Load configuration from env vars
+	cfg := loadConfig()
+
+	// Connect with retry logic
+	conn, err := connectWithRetry(cfg)
+	if err != nil {
+		return fmt.Errorf("connect with retry failed: %w", err)
+	}
+	db = conn
+	dbType = cfg.Type
+
+	// Log connection info
+	logDatabaseInfo(cfg)
+
+	// Initialize function pointers
+	if err := initFunctionPointers(db, dbType); err != nil {
+		db.Close()
+		return fmt.Errorf("function pointer init failed: %w", err)
+	}
+
+	return nil
+}
+
+// IsInstalled checks if the database has been installed by checking
+// if the goose_db_version table exists and has at least one record.
+// Returns false if table doesn't exist (not an error condition).
+func IsInstalled() (bool, error) {
+	if db == nil {
+		return false, fmt.Errorf("database not connected")
+	}
+
+	var exists bool
+	query := "SELECT EXISTS (SELECT 1 FROM goose_db_version LIMIT 1)"
+
+	err := db.QueryRow(query).Scan(&exists)
+	if err != nil {
+		// Table doesn't exist - this is not an error, just means not installed
+		// Check if it's a "no such table" error
+		errStr := err.Error()
+		if strings.Contains(errStr, "no such table") || strings.Contains(errStr, "does not exist") {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to check goose_db_version: %w", err)
+	}
+
+	return exists, nil
 }
 
 // Close closes the database connection
