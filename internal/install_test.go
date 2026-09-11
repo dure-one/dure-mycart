@@ -17,6 +17,10 @@ func TestInstallAdmin_CreatesAdminAccount(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(prev) })
 
+	// Set environment for SQLite (InstallAdmin reads from env via db.Connect)
+	os.Setenv("DB_TYPE", "sqlite")
+	os.Setenv("SQLITE_PATH", "lc_base/data.db")
+
 	ctx := context.Background()
 	install := &models.Install{
 		Email:      "admin@example.com",
