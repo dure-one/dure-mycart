@@ -120,6 +120,8 @@
     "email": "邮箱",
     "password": "密码",
     "domain": "域名",
+    "databaseType": "数据库类型",
+    "postgresConnection": "PostgreSQL 连接字符串",
     "installButton": "安装",
     "configureCart": "配置您的购物车",
     "emailRequired": "需要邮箱",
