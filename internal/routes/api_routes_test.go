@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/shurco/mycart/db/migrations"
+	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/internal/store/db"
 )
 
@@ -23,9 +24,19 @@ func routesTestDB(t *testing.T) {
 	}
 	_ = os.MkdirAll("lc_base", 0o775)
 	t.Cleanup(func() { _ = os.Chdir(prev) })
-	if err := db.Init(migrations.Embed()); err != nil {
-		t.Fatalf("db.Init: %v", err)
+
+	// Connect to database
+	if err := db.Connect(); err != nil {
+		t.Fatalf("db.Connect: %v", err)
 	}
+
+	// Run migrations (required for fresh test databases)
+	if err := db.Migrate(migrations.Embed()); err != nil {
+		t.Fatalf("db.Migrate: %v", err)
+	}
+
+	// Initialize store layer
+	store.InitStore(db.DB())
 }
 
 func TestApiPublicRoutes_WiredCorrectly(t *testing.T) {

@@ -48,8 +48,12 @@ func setupSQLiteTest(t *testing.T) context.Context {
 	os.Setenv("DB_TYPE", "sqlite")
 	os.Setenv("SQLITE_PATH", ":memory:")
 
-	// Initialize database (runs migrations and sets up function pointers)
-	err := db.Init(migrations.Embed())
+	// Connect to database
+	err := db.Connect()
+	require.NoError(t, err)
+
+	// Run migrations (required for fresh test databases)
+	err = db.Migrate(migrations.Embed())
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -79,8 +83,12 @@ func setupPostgresTest(t *testing.T) context.Context {
 	os.Setenv("DB_TYPE", "postgres")
 	os.Setenv("DATABASE_URL", connStr)
 
-	// Initialize database (runs migrations and sets up function pointers)
-	err := db.Init(migrations.Embed())
+	// Connect to database
+	err := db.Connect()
+	require.NoError(t, err)
+
+	// Run migrations (ensures schema is up-to-date)
+	err = db.Migrate(migrations.Embed())
 	require.NoError(t, err)
 
 	// Verify connection

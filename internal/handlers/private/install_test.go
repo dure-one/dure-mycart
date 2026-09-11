@@ -19,13 +19,21 @@ func setupCleanDB(t *testing.T) (*fiber.App, func()) {
 	t.Helper()
 	dirCleanup := testutil.WithCmdTestDir(t)
 
+	// Create required directories
+	_ = os.MkdirAll("lc_base", 0o775)
+
 	// Set up environment for SQLite
 	os.Setenv("DB_TYPE", "sqlite")
 	os.Setenv("SQLITE_PATH", ":memory:")
 
-	// Initialize database with migrations
-	if err := db.Init(migrations.Embed()); err != nil {
-		t.Fatal(err)
+	// Connect to database
+	if err := db.Connect(); err != nil {
+		t.Fatalf("db.Connect: %v", err)
+	}
+
+	// Run migrations (required for fresh test databases)
+	if err := db.Migrate(migrations.Embed()); err != nil {
+		t.Fatalf("db.Migrate: %v", err)
 	}
 
 	app := fiber.New()
