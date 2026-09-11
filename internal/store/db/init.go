@@ -1784,18 +1784,19 @@ func initSQLite(sqlDB *sql.DB) {
 			return ProductDetail{}, err
 		}
 		detail := ProductDetail{
-			ID:        sqliteDetail.ID,
-			Name:      sqliteDetail.Name,
-			Brief:     sqliteDetail.Brief,
-			Desc:      sqliteDetail.Desc,
-			Slug:      sqliteDetail.Slug,
-			Quantity:  sqliteDetail.Quantity,
-			Sku:       sqliteDetail.Sku,
-			Metadata:  []byte(sqliteDetail.Metadata),
-			Attribute: []byte(sqliteDetail.Attribute),
-			Seo:       []byte(sqliteDetail.Seo),
-			Digital:   sqliteDetail.Digital,
-			Active:    sqliteDetail.Active,
+			ID:          sqliteDetail.ID,
+			Name:        sqliteDetail.Name,
+			Brief:       sqliteDetail.Brief,
+			Desc:        sqliteDetail.Desc,
+			Slug:        sqliteDetail.Slug,
+			Quantity:    sqliteDetail.Quantity,
+			Sku:         sqliteDetail.Sku,
+			HasVariants: sqliteDetail.HasVariants.Bool,
+			Metadata:    []byte(sqliteDetail.Metadata),
+			Attribute:   []byte(sqliteDetail.Attribute),
+			Seo:         []byte(sqliteDetail.Seo),
+			Digital:     sqliteDetail.Digital,
+			Active:      sqliteDetail.Active,
 		}
 		// Handle interface{} types from SQLite
 		detail.Amount = convertAmount(sqliteDetail.Amount)
