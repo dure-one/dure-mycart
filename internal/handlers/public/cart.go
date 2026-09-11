@@ -725,6 +725,11 @@ func PaymentCancel(c fiber.Ctx) error {
 		return c.Next()
 	}
 
+	// If error parameter is present, pass to SPA for error display
+	if c.Query("error") != "" {
+		return c.Next()
+	}
+
 	log := logging.New()
 	payment := &litepay.Payment{
 		CartID:        c.Query("cart_id"),
