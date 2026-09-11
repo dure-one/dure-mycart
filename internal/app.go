@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"time"
 
 	"golang.org/x/crypto/acme/autocert"
 
@@ -44,10 +43,25 @@ func NewApp(httpAddr, httpsAddr string, noSite, appDev bool) error {
 
 	schema, mainAddr := determineSchemaAndAddr(httpAddr, httpsAddr)
 
-	// Initialize database: connection, migrations, function pointers
-	if err := db.Init(migrations.Embed()); err != nil {
-		log.Err(err).Msg("failed to initialize database")
+	// Phase 1: Connect to database without running migrations
+	if err := db.Connect(); err != nil {
+		log.Err(err).Msg("failed to connect to database")
 		return err
+	}
+
+	// Phase 2: Check if installation is required
+	installed, err := db.IsInstalled()
+	if err != nil {
+		log.Err(err).Msg("failed to check installation status")
+		return err
+	}
+
+	// Phase 3: Run migrations if already installed
+	if installed {
+		if err := db.Migrate(migrations.Embed()); err != nil {
+			log.Err(err).Msg("failed to run database migrations")
+			return err
+		}
 	}
 
 	// Initialize store package with database connection and type for transactions
@@ -235,18 +249,9 @@ func handleShutdown(ctx context.Context, app *fiber.App, idleConnsClosed chan st
 
 // InstallCheck checks the installation status and redirects to the installation page if necessary.
 func InstallCheck(c fiber.Ctx) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	installed, err := store.IsInstalled(ctx)
-	if err != nil {
-		return webutil.StatusInternalServerError(c)
-	}
-
-	install := installed
 	path := c.Path()
 
-	if !install {
+	if db.InstallRequired() {
 		if !isInstallPath(path) {
 			if strings.HasPrefix(path, "/api/") {
 				return webutil.StatusBadRequest(c, "application not installed")
