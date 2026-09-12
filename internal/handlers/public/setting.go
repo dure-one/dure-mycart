@@ -21,10 +21,10 @@ func Ping(c fiber.Ctx) error {
 	return webutil.Response(c, fiber.StatusOK, "Pong", nil)
 }
 
-// Settings returns public settings including main, social, payment, and pages.
+// Settings returns public settings including main, social, payment, dureone, and pages.
 //
 // @Summary      Get public settings
-// @Description  Get site name, domain, currency, social links, and published pages
+// @Description  Get site name, domain, currency, social links, dureone settings, and published pages
 // @Tags         Public
 // @Produce      json
 // @Success      200 {object} webutil.HTTPResponse "Public settings"
@@ -51,6 +51,12 @@ func Settings(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
+	settingDureone, err := store.GetSettingByGroupTyped[models.Dureone](c.Context())
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
 	pages, _, err := store.ListPages(c.Context(), false, 0, 0)
 	if err != nil {
 		log.ErrorStack(err)
@@ -66,5 +72,6 @@ func Settings(c fiber.Ctx) error {
 		"socials": settingSocial,
 		"pages":   pages,
 		"payment": settingPayment,
+		"dureone": settingDureone,
 	})
 }
