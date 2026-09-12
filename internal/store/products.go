@@ -474,11 +474,18 @@ func ProductImages(ctx context.Context, productID string) (*[]models.File, error
 
 	images := make([]models.File, len(dbImages))
 	for i, img := range dbImages {
+		var position *int
+		if img.Position.Valid {
+			pos := int(img.Position.Int64)
+			position = &pos
+		}
+
 		images[i] = models.File{
 			ID:       img.ID,
 			Name:     img.Name,
 			Ext:      img.Ext,
 			OrigName: img.OrigName,
+			Position: position,
 		}
 	}
 
@@ -522,6 +529,7 @@ func ReorderImages(ctx context.Context, productID string, positions []db.UpdateP
 			return fmt.Errorf("update position for image %s: %w", p.ID, err)
 		}
 	}
+
 	return nil
 }
 
@@ -752,14 +760,20 @@ func loadProductImages(ctx context.Context, product *models.Product) error {
 	}
 
 	for _, img := range dbImages {
+		var position *int
+		if img.Position.Valid {
+			pos := int(img.Position.Int64)
+			position = &pos
+		}
+
 		product.Images = append(product.Images, models.File{
 			ID:       img.ID,
 			Name:     img.Name,
 			Ext:      img.Ext,
 			OrigName: img.OrigName,
+			Position: position,
 		})
 	}
-
 	return nil
 }
 

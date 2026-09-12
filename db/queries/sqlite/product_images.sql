@@ -3,7 +3,7 @@ SELECT id, product_id, name, ext, orig_name
 FROM product_image WHERE id = ? LIMIT 1;
 
 -- name: ListProductImages :many
-SELECT id, product_id, name, ext, orig_name
+SELECT id, product_id, name, ext, orig_name, position
 FROM product_image WHERE product_id = ?
 ORDER BY position ASC;
 

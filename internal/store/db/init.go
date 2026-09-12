@@ -982,12 +982,18 @@ func initPostgresProducts(q *postgres.Queries) {
 		}
 		images := make([]ProductImage, len(pgImgs))
 		for i, img := range pgImgs {
+			// Convert postgres Int32 to unified Int64
+			var position sql.NullInt64
+			if img.Position.Valid {
+				position = sql.NullInt64{Int64: int64(img.Position.Int32), Valid: true}
+			}
 			images[i] = ProductImage{
 				ID:        img.ID,
 				ProductID: img.ProductID,
 				Name:      img.Name,
 				Ext:       img.Ext,
 				OrigName:  img.OrigName,
+				Position:  position,
 			}
 		}
 		return images, nil
@@ -2112,6 +2118,7 @@ func initSQLiteProducts(q *sqlite.Queries) {
 				Name:      img.Name,
 				Ext:       img.Ext,
 				OrigName:  img.OrigName,
+				Position:  img.Position, // SQLite already uses Int64
 			}
 		}
 		return images, nil

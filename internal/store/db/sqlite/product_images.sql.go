@@ -166,34 +166,27 @@ func (q *Queries) ListAllProductImages(ctx context.Context) ([]ListAllProductIma
 }
 
 const listProductImages = `-- name: ListProductImages :many
-SELECT id, product_id, name, ext, orig_name
+SELECT id, product_id, name, ext, orig_name, position
 FROM product_image WHERE product_id = ?
 ORDER BY position ASC
 `
 
-type ListProductImagesRow struct {
-	ID        string `json:"id"`
-	ProductID string `json:"product_id"`
-	Name      string `json:"name"`
-	Ext       string `json:"ext"`
-	OrigName  string `json:"orig_name"`
-}
-
-func (q *Queries) ListProductImages(ctx context.Context, productID string) ([]ListProductImagesRow, error) {
+func (q *Queries) ListProductImages(ctx context.Context, productID string) ([]ProductImage, error) {
 	rows, err := q.query(ctx, q.listProductImagesStmt, listProductImages, productID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListProductImagesRow{}
+	items := []ProductImage{}
 	for rows.Next() {
-		var i ListProductImagesRow
+		var i ProductImage
 		if err := rows.Scan(
 			&i.ID,
 			&i.ProductID,
 			&i.Name,
 			&i.Ext,
 			&i.OrigName,
+			&i.Position,
 		); err != nil {
 			return nil, err
 		}

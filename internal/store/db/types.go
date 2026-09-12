@@ -779,6 +779,7 @@ type ProductImage struct {
 	Name      string
 	Ext       string
 	OrigName  string
+	Position  sql.NullInt64
 }
 
 // CreateProductImageParams for creating a product image
@@ -792,9 +793,9 @@ type CreateProductImageParams struct {
 
 // UpdateProductImagePositionParams for updating image position
 type UpdateProductImagePositionParams struct {
-	Position  sql.NullInt64
-	ID        string
-	ProductID string
+	Position  sql.NullInt64 `json:"position"`
+	ID        string        `json:"id"`
+	ProductID string        `json:"product_id"`
 }
 
 // GetProductRepImageBySlugRow represents representative image data

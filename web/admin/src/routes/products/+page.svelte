@@ -304,12 +304,19 @@
     formErrors = {}
     drawerMode = 'edit'
 
+    console.log('[DEBUG openEdit] Loading product:', product.id)
+
     const result = await loadData<Product>(`/api/_/products/${product.id}`, 'Failed to load product')
     if (result) {
+      console.log('[DEBUG openEdit] Loaded product data:', result)
+      console.log('[DEBUG openEdit] Images from API:', result.images)
+
       fullProductData = result
       formData = convertProductToFormData(result)
       amountDisplay = typeof formData.amount === 'string' ? formData.amount : formData.amount.toString()
       productImages = result.images || []
+
+      console.log('[DEBUG openEdit] Set productImages to:', productImages)
       drawerOpen = true
     }
   }
@@ -502,17 +509,46 @@
   async function handleImageReorder(newOrder: Array<{id: string}>) {
     if (!fullProductData) return
 
+    console.log('[DEBUG handleImageReorder] Starting reorder')
+    console.log('[DEBUG handleImageReorder] New order:', newOrder)
+    console.log('[DEBUG handleImageReorder] Product ID:', fullProductData.id)
+
     try {
-      const imageIds = newOrder.map(img => img.id)
-      const res = await apiUpdate(`/api/_/products/${fullProductData.id}/reorder-images`, { image_ids: imageIds })
+      // Backend expects array with sql.NullInt64 format for position
+      const positions = newOrder.map((img, index) => ({
+        id: img.id,
+        position: {
+          Int64: index,
+          Valid: true
+        },
+        product_id: fullProductData.id
+      }))
+
+      console.log('[DEBUG handleImageReorder] Sending positions to API:', positions)
+
+      const response = await fetch(`/api/_/products/${fullProductData.id}/images/reorder`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(positions)
+      })
+
+      const res = await response.json()
+      console.log('[DEBUG handleImageReorder] API response:', res)
+
       if (res.success) {
         // Update local state to match new order
         productImages = newOrder as typeof productImages
+        console.log('[DEBUG handleImageReorder] Updated local productImages:', productImages)
         showMessage(t('products.imagesReordered') || 'Images reordered', 'connextSuccess')
       } else {
+        console.error('[DEBUG handleImageReorder] API returned error:', res.message)
         showMessage(res.message || t('products.failedToReorderImages') || 'Failed to reorder images', 'connextError')
       }
     } catch (error) {
+      console.error('[DEBUG handleImageReorder] Exception:', error)
       showMessage(t('common.networkError'), 'connextError')
     }
   }

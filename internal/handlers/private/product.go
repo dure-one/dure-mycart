@@ -145,6 +145,7 @@ func Product(c fiber.Ctx) error {
 	productID := c.Params("product_id")
 	log := logging.New()
 
+
 	product, err := store.Product(c.Context(), true, productID)
 	if err != nil {
 		log.ErrorStack(err)

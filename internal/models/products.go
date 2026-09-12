@@ -90,6 +90,7 @@ type File struct {
 	Name     string `json:"name"`
 	Ext      string `json:"ext"`
 	OrigName string `json:"orig_name,omitempty"`
+	Position *int   `json:"position,omitempty"`
 }
 
 // Validate is ...
