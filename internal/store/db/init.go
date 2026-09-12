@@ -1023,7 +1023,10 @@ func initPostgresProducts(q *postgres.Queries) {
 
 	UpdateProductImagePositionFunc = func(ctx context.Context, params UpdateProductImagePositionParams) error {
 		return q.UpdateProductImagePosition(ctx, postgres.UpdateProductImagePositionParams{
-			Position:  params.Position,
+			Position: sql.NullInt32{
+				Int32: int32(params.Position.Int64),
+				Valid: params.Position.Valid,
+			},
 			ID:        params.ID,
 			ProductID: params.ProductID,
 		})

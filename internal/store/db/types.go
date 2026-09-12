@@ -790,6 +790,21 @@ type CreateProductImageParams struct {
 	OrigName  string
 }
 
+// UpdateProductImagePositionParams for updating image position
+type UpdateProductImagePositionParams struct {
+	Position  sql.NullInt64
+	ID        string
+	ProductID string
+}
+
+// GetProductRepImageBySlugRow represents representative image data
+type GetProductRepImageBySlugRow struct {
+	ID       string
+	Name     string
+	Ext      string
+	OrigName string
+}
+
 // ProductVariant types
 
 // ProductVariant represents a product variant
