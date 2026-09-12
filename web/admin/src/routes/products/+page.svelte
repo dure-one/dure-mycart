@@ -51,17 +51,6 @@
   let products = $state<Product[]>([])
   let currency = $state('')
   let loading = $state(true)
-
-  // DEBUG: Watch for products array changes
-  $effect(() => {
-    const ids = products.map(p => p.id)
-    const uniqueIds = new Set(ids)
-    if (ids.length !== uniqueIds.size) {
-      console.error('[EFFECT] Duplicate IDs detected in products array!')
-      console.error('IDs:', ids)
-      console.error('Duplicates:', ids.filter((id, i) => ids.indexOf(id) !== i))
-    }
-  })
   let drawerOpen = $state(false)
   let drawerMode = $state<'view' | 'add' | 'edit' | 'seo' | 'digital' | 'csv'>('view')
   let drawerProduct = $state<DrawerProduct | null>(null)
@@ -243,7 +232,6 @@
   })
 
   async function loadProducts(page = currentPage) {
-    console.log(`[loadProducts] Starting - page ${page}`)
     loading = true
     currentPage = page
     const result = await loadData<ProductsResponse>(
@@ -251,15 +239,12 @@
       t('products.failedToLoad')
     )
 
-    console.log('[loadProducts] API response:', result)
-
     if (result) {
       products = sortByDate(result.products || [])
       currency = result.currency || ''
       total = result.total || 0
     }
     loading = false
-    console.log('[loadProducts] Finished')
   }
 
   function handlePageChange(page: number) {
@@ -304,19 +289,12 @@
     formErrors = {}
     drawerMode = 'edit'
 
-    console.log('[DEBUG openEdit] Loading product:', product.id)
-
     const result = await loadData<Product>(`/api/_/products/${product.id}`, 'Failed to load product')
     if (result) {
-      console.log('[DEBUG openEdit] Loaded product data:', result)
-      console.log('[DEBUG openEdit] Images from API:', result.images)
-
       fullProductData = result
       formData = convertProductToFormData(result)
       amountDisplay = typeof formData.amount === 'string' ? formData.amount : formData.amount.toString()
       productImages = result.images || []
-
-      console.log('[DEBUG openEdit] Set productImages to:', productImages)
       drawerOpen = true
     }
   }
@@ -404,12 +382,6 @@
     // Prepare data for submission
     const submitData = prepareSubmitData(formData)
 
-    console.log('=== PRODUCT SAVE DEBUG ===')
-    console.log('has_variants:', submitData.has_variants)
-    console.log('options:', JSON.stringify(submitData.options, null, 2))
-    console.log('variants:', JSON.stringify(submitData.variants, null, 2))
-    console.log('Full submitData:', submitData)
-
     // Submit to API
     const result = await saveData<Product>(
       url,
@@ -418,11 +390,6 @@
       isUpdate ? t('products.updated') : t('products.created'),
       t('products.failedToSave')
     )
-
-    console.log('=== SAVE RESULT ===')
-    console.log('Result has_variants:', result?.has_variants)
-    console.log('Result options:', result?.options)
-    console.log('Result variants:', result?.variants)
 
     // Handle response
     await handleSubmitResponse(result, isUpdate, drawerProduct, updateProductInList, loadProducts, closeDrawer)
@@ -509,10 +476,6 @@
   async function handleImageReorder(newOrder: Array<{id: string}>) {
     if (!fullProductData) return
 
-    console.log('[DEBUG handleImageReorder] Starting reorder')
-    console.log('[DEBUG handleImageReorder] New order:', newOrder)
-    console.log('[DEBUG handleImageReorder] Product ID:', fullProductData.id)
-
     try {
       // Backend expects array with sql.NullInt64 format for position
       const positions = newOrder.map((img, index) => ({
@@ -524,8 +487,6 @@
         product_id: fullProductData.id
       }))
 
-      console.log('[DEBUG handleImageReorder] Sending positions to API:', positions)
-
       const response = await fetch(`/api/_/products/${fullProductData.id}/images/reorder`, {
         method: 'PUT',
         credentials: 'include',
@@ -536,19 +497,15 @@
       })
 
       const res = await response.json()
-      console.log('[DEBUG handleImageReorder] API response:', res)
 
       if (res.success) {
         // Update local state to match new order
         productImages = newOrder as typeof productImages
-        console.log('[DEBUG handleImageReorder] Updated local productImages:', productImages)
         showMessage(t('products.imagesReordered') || 'Images reordered', 'connextSuccess')
       } else {
-        console.error('[DEBUG handleImageReorder] API returned error:', res.message)
         showMessage(res.message || t('products.failedToReorderImages') || 'Failed to reorder images', 'connextError')
       }
     } catch (error) {
-      console.error('[DEBUG handleImageReorder] Exception:', error)
       showMessage(t('common.networkError'), 'connextError')
     }
   }
