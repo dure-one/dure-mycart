@@ -14,6 +14,8 @@ func ApiPublicRoutes(c *fiber.App) {
 	c.Get("/api/settings", handlers.Settings)
 	c.Get("/api/pages/:page_slug", handlers.Page)
 
+	c.Get("/products/:slug.png", handlers.GetProductRepresentativeImage)
+
 	product := c.Group("/api/products")
 	product.Get("/", handlers.Products)
 	product.Get("/:product_id", handlers.Product)
