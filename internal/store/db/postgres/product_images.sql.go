@@ -7,6 +7,7 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createProductImage = `-- name: CreateProductImage :one
@@ -94,6 +95,34 @@ func (q *Queries) GetProductImage(ctx context.Context, id string) (GetProductIma
 	return i, err
 }
 
+const getProductRepImageBySlug = `-- name: GetProductRepImageBySlug :one
+SELECT pi.id, pi.name, pi.ext, pi.orig_name
+FROM product_image pi
+JOIN product p ON pi.product_id = p.id
+WHERE p.slug = $1 AND p.deleted = 0
+ORDER BY pi.position ASC
+LIMIT 1
+`
+
+type GetProductRepImageBySlugRow struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Ext      string `json:"ext"`
+	OrigName string `json:"orig_name"`
+}
+
+func (q *Queries) GetProductRepImageBySlug(ctx context.Context, slug string) (GetProductRepImageBySlugRow, error) {
+	row := q.queryRow(ctx, q.getProductRepImageBySlugStmt, getProductRepImageBySlug, slug)
+	var i GetProductRepImageBySlugRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Ext,
+		&i.OrigName,
+	)
+	return i, err
+}
+
 const listAllProductImages = `-- name: ListAllProductImages :many
 SELECT id, product_id, name, ext, orig_name
 FROM product_image ORDER BY id
@@ -137,34 +166,27 @@ func (q *Queries) ListAllProductImages(ctx context.Context) ([]ListAllProductIma
 }
 
 const listProductImages = `-- name: ListProductImages :many
-SELECT id, product_id, name, ext, orig_name
+SELECT id, product_id, name, ext, orig_name, position
 FROM product_image WHERE product_id = $1
-ORDER BY id
+ORDER BY position ASC
 `
 
-type ListProductImagesRow struct {
-	ID        string `json:"id"`
-	ProductID string `json:"product_id"`
-	Name      string `json:"name"`
-	Ext       string `json:"ext"`
-	OrigName  string `json:"orig_name"`
-}
-
-func (q *Queries) ListProductImages(ctx context.Context, productID string) ([]ListProductImagesRow, error) {
+func (q *Queries) ListProductImages(ctx context.Context, productID string) ([]ProductImage, error) {
 	rows, err := q.query(ctx, q.listProductImagesStmt, listProductImages, productID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListProductImagesRow{}
+	items := []ProductImage{}
 	for rows.Next() {
-		var i ListProductImagesRow
+		var i ProductImage
 		if err := rows.Scan(
 			&i.ID,
 			&i.ProductID,
 			&i.Name,
 			&i.Ext,
 			&i.OrigName,
+			&i.Position,
 		); err != nil {
 			return nil, err
 		}
@@ -177,4 +199,19 @@ func (q *Queries) ListProductImages(ctx context.Context, productID string) ([]Li
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateProductImagePosition = `-- name: UpdateProductImagePosition :exec
+UPDATE product_image SET position = $1 WHERE id = $2 AND product_id = $3
+`
+
+type UpdateProductImagePositionParams struct {
+	Position  sql.NullInt32 `json:"position"`
+	ID        string        `json:"id"`
+	ProductID string        `json:"product_id"`
+}
+
+func (q *Queries) UpdateProductImagePosition(ctx context.Context, arg UpdateProductImagePositionParams) error {
+	_, err := q.exec(ctx, q.updateProductImagePositionStmt, updateProductImagePosition, arg.Position, arg.ID, arg.ProductID)
+	return err
 }

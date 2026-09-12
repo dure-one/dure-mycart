@@ -982,12 +982,18 @@ func initPostgresProducts(q *postgres.Queries) {
 		}
 		images := make([]ProductImage, len(pgImgs))
 		for i, img := range pgImgs {
+			// Convert postgres Int32 to unified Int64
+			var position sql.NullInt64
+			if img.Position.Valid {
+				position = sql.NullInt64{Int64: int64(img.Position.Int32), Valid: true}
+			}
 			images[i] = ProductImage{
 				ID:        img.ID,
 				ProductID: img.ProductID,
 				Name:      img.Name,
 				Ext:       img.Ext,
 				OrigName:  img.OrigName,
+				Position:  position,
 			}
 		}
 		return images, nil
@@ -1019,6 +1025,30 @@ func initPostgresProducts(q *postgres.Queries) {
 
 	DeleteProductImagesFunc = func(ctx context.Context, productID string) error {
 		return q.DeleteProductImages(ctx, productID)
+	}
+
+	UpdateProductImagePositionFunc = func(ctx context.Context, params UpdateProductImagePositionParams) error {
+		return q.UpdateProductImagePosition(ctx, postgres.UpdateProductImagePositionParams{
+			Position: sql.NullInt32{
+				Int32: int32(params.Position.Int64),
+				Valid: params.Position.Valid,
+			},
+			ID:        params.ID,
+			ProductID: params.ProductID,
+		})
+	}
+
+	GetProductRepImageBySlugFunc = func(ctx context.Context, slug string) (GetProductRepImageBySlugRow, error) {
+		pgRow, err := q.GetProductRepImageBySlug(ctx, slug)
+		if err != nil {
+			return GetProductRepImageBySlugRow{}, err
+		}
+		return GetProductRepImageBySlugRow{
+			ID:       pgRow.ID,
+			Name:     pgRow.Name,
+			Ext:      pgRow.Ext,
+			OrigName: pgRow.OrigName,
+		}, nil
 	}
 
 	// Product variant operations
@@ -2088,6 +2118,7 @@ func initSQLiteProducts(q *sqlite.Queries) {
 				Name:      img.Name,
 				Ext:       img.Ext,
 				OrigName:  img.OrigName,
+				Position:  img.Position, // SQLite already uses Int64
 			}
 		}
 		return images, nil
@@ -2119,6 +2150,27 @@ func initSQLiteProducts(q *sqlite.Queries) {
 
 	DeleteProductImagesFunc = func(ctx context.Context, productID string) error {
 		return q.DeleteProductImages(ctx, productID)
+	}
+
+	UpdateProductImagePositionFunc = func(ctx context.Context, params UpdateProductImagePositionParams) error {
+		return q.UpdateProductImagePosition(ctx, sqlite.UpdateProductImagePositionParams{
+			Position:  params.Position,
+			ID:        params.ID,
+			ProductID: params.ProductID,
+		})
+	}
+
+	GetProductRepImageBySlugFunc = func(ctx context.Context, slug string) (GetProductRepImageBySlugRow, error) {
+		sqliteRow, err := q.GetProductRepImageBySlug(ctx, slug)
+		if err != nil {
+			return GetProductRepImageBySlugRow{}, err
+		}
+		return GetProductRepImageBySlugRow{
+			ID:       sqliteRow.ID,
+			Name:     sqliteRow.Name,
+			Ext:      sqliteRow.Ext,
+			OrigName: sqliteRow.OrigName,
+		}, nil
 	}
 
 	// Product variant operations

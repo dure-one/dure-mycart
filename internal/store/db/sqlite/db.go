@@ -207,6 +207,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getProductOptionStmt, err = db.PrepareContext(ctx, getProductOption); err != nil {
 		return nil, fmt.Errorf("error preparing query GetProductOption: %w", err)
 	}
+	if q.getProductRepImageBySlugStmt, err = db.PrepareContext(ctx, getProductRepImageBySlug); err != nil {
+		return nil, fmt.Errorf("error preparing query GetProductRepImageBySlug: %w", err)
+	}
 	if q.getProductWithVariantsStmt, err = db.PrepareContext(ctx, getProductWithVariants); err != nil {
 		return nil, fmt.Errorf("error preparing query GetProductWithVariants: %w", err)
 	}
@@ -359,6 +362,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.updateProductFullStmt, err = db.PrepareContext(ctx, updateProductFull); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateProductFull: %w", err)
+	}
+	if q.updateProductImagePositionStmt, err = db.PrepareContext(ctx, updateProductImagePosition); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateProductImagePosition: %w", err)
 	}
 	if q.updateProductVariantStmt, err = db.PrepareContext(ctx, updateProductVariant); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateProductVariant: %w", err)
@@ -691,6 +697,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getProductOptionStmt: %w", cerr)
 		}
 	}
+	if q.getProductRepImageBySlugStmt != nil {
+		if cerr := q.getProductRepImageBySlugStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getProductRepImageBySlugStmt: %w", cerr)
+		}
+	}
 	if q.getProductWithVariantsStmt != nil {
 		if cerr := q.getProductWithVariantsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getProductWithVariantsStmt: %w", cerr)
@@ -946,6 +957,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing updateProductFullStmt: %w", cerr)
 		}
 	}
+	if q.updateProductImagePositionStmt != nil {
+		if cerr := q.updateProductImagePositionStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateProductImagePositionStmt: %w", cerr)
+		}
+	}
 	if q.updateProductVariantStmt != nil {
 		if cerr := q.updateProductVariantStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateProductVariantStmt: %w", cerr)
@@ -1081,6 +1097,7 @@ type Queries struct {
 	getProductDigitalContentStmt           *sql.Stmt
 	getProductImageStmt                    *sql.Stmt
 	getProductOptionStmt                   *sql.Stmt
+	getProductRepImageBySlugStmt           *sql.Stmt
 	getProductWithVariantsStmt             *sql.Stmt
 	getProductsWithImagesStmt              *sql.Stmt
 	getSessionStmt                         *sql.Stmt
@@ -1132,6 +1149,7 @@ type Queries struct {
 	updateProductStmt                      *sql.Stmt
 	updateProductActiveStmt                *sql.Stmt
 	updateProductFullStmt                  *sql.Stmt
+	updateProductImagePositionStmt         *sql.Stmt
 	updateProductVariantStmt               *sql.Stmt
 	updateSessionStmt                      *sql.Stmt
 	updateSettingStmt                      *sql.Stmt
@@ -1206,6 +1224,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getProductDigitalContentStmt:           q.getProductDigitalContentStmt,
 		getProductImageStmt:                    q.getProductImageStmt,
 		getProductOptionStmt:                   q.getProductOptionStmt,
+		getProductRepImageBySlugStmt:           q.getProductRepImageBySlugStmt,
 		getProductWithVariantsStmt:             q.getProductWithVariantsStmt,
 		getProductsWithImagesStmt:              q.getProductsWithImagesStmt,
 		getSessionStmt:                         q.getSessionStmt,
@@ -1257,6 +1276,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		updateProductStmt:                      q.updateProductStmt,
 		updateProductActiveStmt:                q.updateProductActiveStmt,
 		updateProductFullStmt:                  q.updateProductFullStmt,
+		updateProductImagePositionStmt:         q.updateProductImagePositionStmt,
 		updateProductVariantStmt:               q.updateProductVariantStmt,
 		updateSessionStmt:                      q.updateSessionStmt,
 		updateSettingStmt:                      q.updateSettingStmt,

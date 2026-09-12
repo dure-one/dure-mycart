@@ -145,6 +145,7 @@ func Product(c fiber.Ctx) error {
 	productID := c.Params("product_id")
 	log := logging.New()
 
+
 	product, err := store.Product(c.Context(), true, productID)
 	if err != nil {
 		log.ErrorStack(err)
@@ -369,6 +370,38 @@ func DeleteProductImage(c fiber.Ctx) error {
 	}
 
 	return webutil.Response(c, fiber.StatusOK, "Image deleted", nil)
+}
+
+// ReorderProductImages updates the display order of product images.
+//
+// @Summary      Reorder product images
+// @Description  Update position values for product images
+// @Tags         Products
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        product_id path string true "Product ID"
+// @Param        images body []db.UpdateProductImagePositionParams true "Image positions"
+// @Success      200 {object} webutil.HTTPResponse "Order updated"
+// @Failure      400 {object} webutil.HTTPResponse "Invalid request"
+// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
+// @Router       /api/_/products/{product_id}/images/reorder [put]
+func ReorderProductImages(c fiber.Ctx) error {
+	productID := c.Params("product_id")
+	log := logging.New()
+
+	var positions []db.UpdateProductImagePositionParams
+	if err := c.Bind().Body(&positions); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusBadRequest(c, "invalid request body")
+	}
+
+	if err := store.ReorderImages(c.Context(), productID, positions); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	return webutil.Response(c, fiber.StatusOK, "Image order updated", nil)
 }
 
 // ProductDigital returns digital content for a product.

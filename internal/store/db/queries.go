@@ -61,6 +61,8 @@ var (
 	CreateProductImageFunc func(ctx context.Context, params CreateProductImageParams) (ProductImage, error)
 	DeleteProductImageFunc func(ctx context.Context, id string) error
 	DeleteProductImagesFunc func(ctx context.Context, productID string) error
+	UpdateProductImagePositionFunc func(ctx context.Context, params UpdateProductImagePositionParams) error
+	GetProductRepImageBySlugFunc   func(ctx context.Context, slug string) (GetProductRepImageBySlugRow, error)
 
 	// Product variant operations
 	ListProductVariantsByProductFunc func(ctx context.Context, productID string) ([]ProductVariant, error)

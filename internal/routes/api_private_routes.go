@@ -55,6 +55,7 @@ func ApiPrivateRoutes(c *fiber.App) {
 	product.Get("/:product_id<len(15)>/image", handlers.ProductImages)
 	product.Post("/:product_id<len(15)>/image", handlers.AddProductImage)
 	product.Delete("/:product_id<len(15)>/image/:image_id<len(15)>", handlers.DeleteProductImage)
+	product.Put("/:product_id<len(15)>/images/reorder", handlers.ReorderProductImages)
 
 	// carts
 	carts := c.Group("/api/_/carts", middleware.JWTProtected())
