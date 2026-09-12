@@ -1,15 +1,16 @@
 # Development on BSD Systems (OpenBSD/FreeBSD)
 
-This guide covers BSD-specific setup requirements for developing with Tailwind CSS v4 and Patchright E2E testing.
+This guide covers BSD-specific setup requirements for developing with Tailwind CSS v4, Vite, and Patchright E2E testing.
 
 ## Overview
 
-Tailwind CSS v4 migrated from PostCSS to Rust-based native binaries for better performance. Two native modules are required:
+Several native modules require special handling on OpenBSD/FreeBSD:
 
-- **lightningcss** - CSS parsing, transformation, and minification
-- **@tailwindcss/oxide** - Tailwind CSS v4 core engine
+- **lightningcss** - CSS parsing, transformation, and minification (Rust-based)
+- **@tailwindcss/oxide** - Tailwind CSS v4 core engine (Rust-based)
+- **Vite 8.x** - Uses Rolldown bundler (Rust-based, no OpenBSD support)
 
-These packages don't provide pre-built binaries for OpenBSD/FreeBSD, so they must be built from source.
+Tailwind CSS v4 packages don't provide pre-built binaries for OpenBSD/FreeBSD, so they must be built from source. Vite 8.x is automatically downgraded to 7.x (which uses Rollup instead of Rolldown) on BSD platforms.
 
 ## Prerequisites
 
@@ -136,9 +137,20 @@ node scripts/postinstall-openbsd-natives.js
 
 ## What the Postinstall Script Does
 
-The script (`scripts/postinstall-openbsd-natives.js`) performs two operations:
+The script (`scripts/postinstall-openbsd-natives.js`) performs three operations:
 
-### 1. Copy Native Binaries
+### 1. Downgrade Vite 8.x to 7.x
+
+**Why:** Vite 8.x uses Rolldown (Rust-based bundler) which doesn't support OpenBSD. Vite 7.x uses Rollup (pure JavaScript) which works on all platforms.
+
+**What it does:**
+- Detects if `vite: ^8.x` is in package.json
+- Downgrades to `vite: ^7.3.6` in both `web/admin` and `web/site`
+- Prompts to run `npm install` to apply changes
+
+**Result:** OpenBSD gets compatible Vite 7.x, other platforms keep fast Vite 8.x in their package.json.
+
+### 2. Copy Native Binaries
 
 Copies pre-built binaries from `~/.local/lib/node-native-openbsd/` to:
 
@@ -147,7 +159,7 @@ Copies pre-built binaries from `~/.local/lib/node-native-openbsd/` to:
 - `web/site/node_modules/@tailwindcss/node/node_modules/lightningcss/lightningcss.openbsd-x64.node`
 - `web/site/node_modules/@tailwindcss/oxide/tailwindcss-oxide.openbsd-x64.node`
 
-### 2. Patch JavaScript Loaders
+### 3. Patch JavaScript Loaders
 
 **For @tailwindcss/oxide/index.js:**
 
@@ -218,12 +230,14 @@ cd web/site
 npm run build
 ```
 
-Expected output:
+Expected output (note Vite 7.x on OpenBSD):
 ```
 vite v7.3.6 building ssr environment for production...
 ✓ 305 modules transformed.
 ✓ built in X.XXs
 ```
+
+**Note:** On OpenBSD, you'll see Vite 7.x (uses Rollup). On Linux/macOS/Windows, you'll see Vite 8.x (uses Rolldown).
 
 ## Troubleshooting
 
@@ -271,6 +285,28 @@ node scripts/postinstall-openbsd-natives.js
 npm install --legacy-peer-deps
 node scripts/postinstall-openbsd-natives.js
 ```
+
+### "Unsupported OS: openbsd, architecture: x64" (Rolldown error)
+
+**Error:**
+```
+Error: Cannot find native binding. npm has a bug...
+  cause: Error: Unsupported OS: openbsd, architecture: x64
+```
+
+**Cause:** Vite 8.x uses Rolldown (Rust-based bundler) which doesn't have OpenBSD binaries.
+
+**Solution:**
+```bash
+# Run the postinstall script to downgrade Vite
+node scripts/postinstall-openbsd-natives.js
+
+# Reinstall dependencies with the downgraded version
+cd web/admin && npm install --legacy-peer-deps
+cd ../site && npm install --legacy-peer-deps
+```
+
+**What this does:** Automatically downgrades `vite: ^8.x` to `vite: ^7.3.6` in package.json. Vite 7 uses Rollup (pure JavaScript) instead of Rolldown (native Rust), making it compatible with OpenBSD.
 
 ### Cargo build fails
 
