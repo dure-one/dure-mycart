@@ -18,6 +18,9 @@ metadata:
   name: mycart
   namespace: shop
 spec:
+  # Stays at 1 even on PostgreSQL. The database would allow more, but
+  # ./lc_certs (autocert) is local to the pod, so TLS would have to be
+  # terminated outside the application first.
   replicas: 1
   selector:
     matchLabels:
@@ -32,6 +35,33 @@ spec:
       containers:
       - name: mycart
         image: shurco/mycart:latest
+        # Database. With these unset myCart uses the embedded SQLite database
+        # in /lc_base, which is what an existing installation does. To run on
+        # PostgreSQL instead, create the secret once:
+        #
+        #   kubectl -n shop create secret generic mycart-db \
+        #     --from-literal=driver=postgres \
+        #     --from-literal=dsn='postgres://mycart:PASSWORD@postgres.shop.svc.cluster.local:5432/mycart?sslmode=disable'
+        #
+        # and uncomment the block below here *and* in the mycart-install Job:
+        # the Job installs the cart, so without the same variables it would
+        # install into SQLite while the Deployment serves PostgreSQL.
+        #
+        # myCart adds timezone=UTC to the connection itself and refuses to
+        # start if the session timezone is anything else, so the server's own
+        # timezone does not matter.
+        #
+        # env:
+        #   - name: MYCART_DB_DRIVER
+        #     valueFrom:
+        #       secretKeyRef:
+        #         name: mycart-db
+        #         key: driver
+        #   - name: MYCART_DB_DSN
+        #     valueFrom:
+        #       secretKeyRef:
+        #         name: mycart-db
+        #         key: dsn
         ports:
         - containerPort: 8080
         volumeMounts:
@@ -107,6 +137,33 @@ spec:
       containers:
       - name: mycart-install
         image: shurco/mycart:latest
+        # Database. With these unset myCart uses the embedded SQLite database
+        # in /lc_base, which is what an existing installation does. To run on
+        # PostgreSQL instead, create the secret once:
+        #
+        #   kubectl -n shop create secret generic mycart-db \
+        #     --from-literal=driver=postgres \
+        #     --from-literal=dsn='postgres://mycart:PASSWORD@postgres.shop.svc.cluster.local:5432/mycart?sslmode=disable'
+        #
+        # and uncomment the block below here *and* in the mycart-install Job:
+        # the Job installs the cart, so without the same variables it would
+        # install into SQLite while the Deployment serves PostgreSQL.
+        #
+        # myCart adds timezone=UTC to the connection itself and refuses to
+        # start if the session timezone is anything else, so the server's own
+        # timezone does not matter.
+        #
+        # env:
+        #   - name: MYCART_DB_DRIVER
+        #     valueFrom:
+        #       secretKeyRef:
+        #         name: mycart-db
+        #         key: driver
+        #   - name: MYCART_DB_DSN
+        #     valueFrom:
+        #       secretKeyRef:
+        #         name: mycart-db
+        #         key: dsn
         command:
           - /mycart
           - install

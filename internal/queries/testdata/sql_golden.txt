@@ -1,0 +1,231 @@
+SELECT value FROM setting WHERE key = 'installed'
+---
+SELECT id, key, value FROM setting WHERE key IN (?, ?)
+---
+SELECT id, key, value FROM setting WHERE key IN (?)
+---
+
+			SELECT
+			  product.id,
+				product.name,
+				product.brief,
+				product.slug,
+				product.amount,
+				product.quantity,
+				product.has_variants,
+				product.active,
+				product.digital,
+				(EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = product.id AND digital_data.cart_id IS NULL) OR
+				EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = product.id)) AS digital_filled,
+				(SELECT json_group_array(json_object('id', product_image.id, 'name', product_image.name, 'ext', product_image.ext)) as images FROM product_image WHERE product_id = product.id) as image,
+				(SELECT json_group_array(json_object('id', product_variant.id, 'sku', product_variant.sku, 'quantity', product_variant.quantity, 'price_surcharge', product_variant.price_surcharge, 'option_values', json(product_variant.option_values), 'active', CASE WHEN product_variant.active = 1 THEN json('true') ELSE json('false') END)) FROM product_variant WHERE product_id = product.id) as variants,
+				strftime('%s', created)
+			FROM product
+		 WHERE product.deleted = FALSE  ORDER BY product.created DESC, product.id
+---
+SELECT COUNT(DISTINCT product.id) FROM product WHERE product.deleted = FALSE 
+---
+SELECT id, key, value FROM setting WHERE key IN (?)
+---
+
+			SELECT
+			  product.id,
+				product.name,
+				product.brief,
+				product.slug,
+				product.amount,
+				product.quantity,
+				product.has_variants,
+				product.active,
+				product.digital,
+				(EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = product.id AND digital_data.cart_id IS NULL) OR
+				EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = product.id)) AS digital_filled,
+				(SELECT json_group_array(json_object('id', product_image.id, 'name', product_image.name, 'ext', product_image.ext)) as images FROM product_image WHERE product_id = product.id) as image,
+				(SELECT json_group_array(json_object('id', product_variant.id, 'sku', product_variant.sku, 'quantity', product_variant.quantity, 'price_surcharge', product_variant.price_surcharge, 'option_values', json(product_variant.option_values), 'active', CASE WHEN product_variant.active = 1 THEN json('true') ELSE json('false') END)) FROM product_variant WHERE product_id = product.id AND active = TRUE) as variants,
+				strftime('%s', created)
+			FROM product
+		
+			WHERE product.deleted = FALSE AND (
+				product.active = TRUE
+				OR EXISTS (
+					SELECT 1 FROM digital_data
+					WHERE digital_data.product_id = product.id
+					AND digital_data.cart_id = ?
+				)
+			)
+		 ORDER BY product.created DESC, product.id LIMIT ?
+---
+SELECT COUNT(DISTINCT product.id) FROM product
+			WHERE product.deleted = FALSE AND (
+				product.active = TRUE
+				OR EXISTS (
+					SELECT 1 FROM digital_data
+					WHERE digital_data.product_id = product.id
+					AND digital_data.cart_id = ?
+				)
+			)
+		
+---
+
+			SELECT
+				product.id,
+				product.name,
+				product.brief,
+				product."desc",
+				product.slug,
+				product.amount,
+				product.quantity,
+				product.sku,
+				product.has_variants,
+				product.active,
+				product.metadata,
+				product.attribute,
+				product.digital,
+				product.seo,
+				(SELECT json_group_array(json_object('id', pi.id, 'name', pi.name, 'ext', pi.ext)) FROM product_image pi WHERE pi.product_id = product.id) as images,
+				strftime('%s', product.created),
+				strftime('%s', product.updated)
+	, (EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = product.id AND digital_data.cart_id IS NULL) OR
+				EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = product.id)) AS digital_filled
+			FROM product
+			WHERE product.id = ?
+---
+
+			SELECT
+				product.id,
+				product.name,
+				product.brief,
+				product."desc",
+				product.slug,
+				product.amount,
+				product.quantity,
+				product.sku,
+				product.has_variants,
+				product.active,
+				product.metadata,
+				product.attribute,
+				product.digital,
+				product.seo,
+				(SELECT json_group_array(json_object('id', pi.id, 'name', pi.name, 'ext', pi.ext)) FROM product_image pi WHERE pi.product_id = product.id) as images,
+				strftime('%s', product.created),
+				strftime('%s', product.updated)
+	
+			FROM product
+			WHERE product.slug = ? AND product.deleted = FALSE AND product.active = TRUE
+---
+SELECT id, name, ext FROM product_image WHERE product_id = ?
+---
+
+			SELECT 
+					p.digital,
+					df.id, df.name, df.ext,
+					dd.id, dd.content, dd.cart_id
+			FROM product p
+			LEFT JOIN digital_file df ON p.id = df.product_id
+			LEFT JOIN digital_data dd ON p.id = dd.product_id
+			WHERE p.id = ?
+	
+---
+SELECT id, name, slug, position, active, seo, strftime('%s', created), strftime('%s', updated) FROM page ORDER BY page.position, page.id
+---
+SELECT COUNT(*) FROM page
+---
+SELECT id, name, slug, position, active, seo, strftime('%s', created), strftime('%s', updated) FROM page WHERE active = TRUE ORDER BY page.position, page.id LIMIT ?
+---
+SELECT COUNT(*) FROM page WHERE active = TRUE
+---
+SELECT id, name, content, active, seo FROM page WHERE slug = ?
+---
+SELECT id, name, slug, position, content, active, seo, strftime('%s', created), strftime('%s', updated) FROM page WHERE id = ?
+---
+
+	SELECT
+		id,
+		email,
+		amount_total,
+		currency,
+		payment_id,
+		payment_status,
+		payment_system,
+		strftime('%s', created),
+		strftime('%s', updated)
+	FROM cart
+	ORDER BY created DESC
+ LIMIT ?
+---
+SELECT COUNT(*) FROM cart
+---
+
+	SELECT 
+    id, 
+    email, 
+    cart,
+    amount_total,
+    currency,
+    payment_id,
+    payment_status,
+    payment_system,
+    strftime('%s', created),
+    strftime('%s', updated)
+	FROM cart
+	WHERE id = ?
+	
+---
+
+		INSERT INTO product (
+			id, name, brief, "desc", slug, amount, quantity, sku,
+			has_variants, metadata, attribute, seo, digital, active
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	
+---
+
+			INSERT INTO product_image (id, product_id, name, ext, orig_name, position)
+			VALUES (?, ?, ?, ?, ?, ?)
+		
+---
+
+			INSERT INTO product (
+					id, name, amount, slug, metadata, attribute, brief, "desc", digital,
+					quantity, sku, seo, active
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			RETURNING strftime('%s', created)
+	
+---
+
+		UPDATE product SET
+			name = ?,
+			brief = ?,
+			"desc" = ?,
+			slug = ?,
+			amount = ?,
+			quantity = ?,
+			sku = ?,
+			has_variants = ?,
+			metadata = ?,
+			attribute = ?,
+			seo = ?,
+			updated = CURRENT_TIMESTAMP
+		WHERE id = ?
+	
+---
+DELETE FROM product_option WHERE product_id = ?
+---
+DELETE FROM product_variant WHERE product_id = ?
+---
+UPDATE product SET active = NOT active, updated = CURRENT_TIMESTAMP WHERE id = ?
+---
+UPDATE digital_data SET content = ? WHERE id = ?
+---
+INSERT INTO cart (id, email, cart, amount_total, currency, payment_id, payment_status, payment_system) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+---
+UPDATE cart SET payment_id = ?, payment_status = ?, updated = CURRENT_TIMESTAMP WHERE id = ?
+---
+DELETE FROM session WHERE expires < ? AND key != ?
+---
+INSERT INTO session (key, value, expires) VALUES (?, ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, expires = excluded.expires
+---
+SELECT value FROM session WHERE key = ? AND expires > ?
+---
+UPDATE session SET value = ?, expires = ? WHERE key = ? 
+---
+DELETE FROM session WHERE key = ?

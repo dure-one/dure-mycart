@@ -8,13 +8,20 @@ import (
 	"github.com/gosimple/slug"
 )
 
+// Querier is the database surface SlugService needs. It is declared here, on
+// the consumer side, so this package does not depend on the storage layer and
+// stays usable with any handle that rebinds placeholders for its dialect.
+type Querier interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 // SlugService handles slug generation and uniqueness checking
 type SlugService struct {
-	db *sql.DB
+	db Querier
 }
 
 // NewSlugService creates a new slug service
-func NewSlugService(db *sql.DB) *SlugService {
+func NewSlugService(db Querier) *SlugService {
 	return &SlugService{db: db}
 }
 

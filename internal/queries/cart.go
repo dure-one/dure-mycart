@@ -9,15 +9,16 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/pkg/errors"
 	"github.com/shurco/mycart/pkg/litepay"
 )
 
-// CartQueries is a struct that embeds a pointer to an sql.DB.
-// This allows for direct access to all the methods of sql.DB through CartQueries.
+// CartQueries is a struct that holds a dialect-aware database handle.
+// Calls on DB are automatically rebound for the configured dialect.
 type CartQueries struct {
-	*sql.DB
+	DB *database.Conn
 }
 
 // PaymentList retrieves the status of different payment methods from the database.
@@ -63,7 +64,7 @@ func (q *CartQueries) PaymentList(ctx context.Context) (map[string]bool, error) 
 func (q *CartQueries) Carts(ctx context.Context, limit, offset int) ([]*models.Cart, int, error) {
 	carts := []*models.Cart{}
 
-	query := `
+	query := fmt.Sprintf(`
 	SELECT
 		id,
 		email,
@@ -72,11 +73,11 @@ func (q *CartQueries) Carts(ctx context.Context, limit, offset int) ([]*models.C
 		payment_id,
 		payment_status,
 		payment_system,
-		strftime('%s', created),
-		strftime('%s', updated)
+		%s,
+		%s
 	FROM cart
 	ORDER BY created DESC
-`
+`, q.DB.Dialect().Epoch("created"), q.DB.Dialect().Epoch("updated"))
 
 	// Add pagination
 	var params []any
@@ -140,7 +141,7 @@ func (q *CartQueries) Carts(ctx context.Context, limit, offset int) ([]*models.C
 
 // Cart retrieves a cart from the database using the provided cartId.
 func (q *CartQueries) Cart(ctx context.Context, cartId string) (*models.Cart, error) {
-	query := `
+	query := fmt.Sprintf(`
 	SELECT 
     id, 
     email, 
@@ -150,11 +151,11 @@ func (q *CartQueries) Cart(ctx context.Context, cartId string) (*models.Cart, er
     payment_id,
     payment_status,
     payment_system,
-    strftime('%s', created),
-    strftime('%s', updated)
+    %s,
+    %s
 	FROM cart
 	WHERE id = ?
-	`
+	`, q.DB.Dialect().Epoch("created"), q.DB.Dialect().Epoch("updated"))
 
 	var email, paymentID, cartJSON sql.NullString
 	var created, updated sql.NullInt64
@@ -578,6 +579,7 @@ func validateNonVariantItem(
 		Available: true,
 	}
 }
+
 // AddCart inserts a new cart into the database.
 func (q *CartQueries) AddCart(ctx context.Context, cart *models.Cart) error {
 	byteCart, err := json.Marshal(cart.Cart)
@@ -609,7 +611,7 @@ func (q *CartQueries) UpdateCart(ctx context.Context, cart *models.Cart) error {
 		args = append(args, cart.PaymentStatus)
 	}
 
-	sql.WriteString("updated = datetime('now') WHERE id = ?")
+	sql.WriteString("updated = CURRENT_TIMESTAMP WHERE id = ?")
 	args = append(args, cart.ID)
 
 	_, err := q.DB.ExecContext(ctx, sql.String(), args...)
@@ -618,7 +620,7 @@ func (q *CartQueries) UpdateCart(ctx context.Context, cart *models.Cart) error {
 
 // CartLetterPayment is ...
 func (q *CartQueries) CartLetterPayment(ctx context.Context, email, amountPayment, paymentURL string) (*models.MessageMail, error) {
-	mailLetter, err := db.GetSettingByKey(ctx, "site_name", "mail_letter_payment")
+	mailLetter, err := NewBase(q.DB).GetSettingByKey(ctx, "site_name", "mail_letter_payment")
 	if err != nil {
 		return nil, err
 	}
@@ -646,7 +648,7 @@ func (q *CartQueries) CartLetterPurchase(ctx context.Context, cartID string) (*m
 
 	// Fetch the email, cart information, and 'email' setting in one query.
 	var cartJSON string
-	err := q.QueryRowContext(ctx, `
+	err := q.DB.QueryRowContext(ctx, `
         SELECT email, cart
         FROM cart
         WHERE payment_status = ? AND id = ?
@@ -691,23 +693,9 @@ func (q *CartQueries) CartLetterPurchase(ctx context.Context, cartID string) (*m
 			}
 			files = append(files, productFiles...)
 		case "data":
-			key := models.Data{}
-			err := tx.QueryRowContext(ctx, `SELECT id, content FROM digital_data WHERE cart_id = ? AND product_id = ?`, cartID, cart.ProductID).Scan(&key.ID, &key.Content)
+			key, err := claimDigitalData(ctx, tx, cartID, cart.ProductID)
 			if err != nil {
-				if stderrors.Is(err, sql.ErrNoRows) {
-					err = tx.QueryRowContext(ctx, `SELECT id, content FROM digital_data WHERE cart_id IS NULL AND product_id = ? LIMIT 1`, cart.ProductID).Scan(&key.ID, &key.Content)
-					if err != nil {
-						if stderrors.Is(err, sql.ErrNoRows) {
-							return nil, errors.ErrPageNotFound
-						}
-						return nil, err
-					}
-					if _, err := tx.ExecContext(ctx, `UPDATE digital_data SET cart_id = ? WHERE id = ?`, cartID, key.ID); err != nil {
-						return nil, err
-					}
-				} else {
-					return nil, err
-				}
+				return nil, err
 			}
 			keys = append(keys, key)
 		}
@@ -736,7 +724,7 @@ func (q *CartQueries) CartLetterPurchase(ctx context.Context, cartID string) (*m
 	}
 
 	// Fetch the 'mail_letter_purchase' setting value.
-	mailLetter, err := db.GetSettingByKey(ctx, "email", "mail_letter_purchase")
+	mailLetter, err := NewBase(q.DB).GetSettingByKey(ctx, "email", "mail_letter_purchase")
 	if err != nil {
 		return nil, err
 	}
@@ -753,11 +741,64 @@ func (q *CartQueries) CartLetterPurchase(ctx context.Context, cartID string) (*m
 	return mail, nil
 }
 
+// claimDigitalData hands one unassigned digital_data row to cartID and returns
+// it. Already owning a row makes the call idempotent, so a retried purchase
+// mail keeps its keys.
+//
+// The row is claimed by an UPDATE guarded on `cart_id IS NULL`, and the claim
+// only counts when it reports having changed a row. Reading a candidate and
+// then updating it unconditionally — as this used to do — lets two concurrent
+// purchases pick the same row and hands the same key to both buyers. SQLite hid
+// the race behind `_txlock=immediate`; PostgreSQL does not.
+func claimDigitalData(ctx context.Context, tx *database.Tx, cartID, productID string) (models.Data, error) {
+	// Bounded so that a pathological amount of contention fails loudly instead
+	// of spinning; each lost round is another buyer taking a key, so the loop
+	// makes progress and this is a safety net, not the normal exit.
+	const maxAttempts = 100
+
+	for range maxAttempts {
+		key := models.Data{}
+		err := tx.QueryRowContext(ctx,
+			`SELECT id, content FROM digital_data WHERE cart_id = ? AND product_id = ?`,
+			cartID, productID).Scan(&key.ID, &key.Content)
+		if err == nil {
+			return key, nil
+		}
+		if !stderrors.Is(err, sql.ErrNoRows) {
+			return models.Data{}, err
+		}
+
+		var candidate models.Data
+		err = tx.QueryRowContext(ctx,
+			`SELECT id, content FROM digital_data WHERE cart_id IS NULL AND product_id = ? ORDER BY id LIMIT 1`,
+			productID).Scan(&candidate.ID, &candidate.Content)
+		if err != nil {
+			if stderrors.Is(err, sql.ErrNoRows) {
+				return models.Data{}, errors.ErrPageNotFound
+			}
+			return models.Data{}, err
+		}
+
+		result, err := tx.ExecContext(ctx,
+			`UPDATE digital_data SET cart_id = ? WHERE id = ? AND cart_id IS NULL`,
+			cartID, candidate.ID)
+		if err != nil {
+			return models.Data{}, err
+		}
+
+		if claimed, err := result.RowsAffected(); err == nil && claimed == 1 {
+			return candidate, nil
+		}
+	}
+
+	return models.Data{}, fmt.Errorf("claim digital data for product %s: too much contention", productID)
+}
+
 // scanDigitalFiles loads every digital_file row for a product within the given transaction.
 // Extracted from CartLetterPurchase to avoid a defer-in-loop leak when a cart contains
 // many "file" products (each iteration used to accumulate an open sql.Rows until the
 // enclosing function returned).
-func scanDigitalFiles(ctx context.Context, tx *sql.Tx, productID string) ([]models.File, error) {
+func scanDigitalFiles(ctx context.Context, tx *database.Tx, productID string) ([]models.File, error) {
 	rows, err := tx.QueryContext(ctx, `SELECT id, name, ext, orig_name FROM digital_file WHERE product_id = ?`, productID)
 	if err != nil {
 		return nil, err

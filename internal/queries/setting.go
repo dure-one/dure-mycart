@@ -2,22 +2,22 @@ package queries
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/pkg/errors"
 	"github.com/shurco/mycart/pkg/security"
 	"github.com/shurco/mycart/pkg/strutil"
 )
 
-// SettingQueries wraps a sql.DB connection allowing for easy querying and interaction
+// SettingQueries holds a dialect-aware handle allowing for easy querying and interaction
 // with the database related to application settings.
 type SettingQueries struct {
-	*sql.DB
+	DB *database.Conn
 }
 
 // GroupFieldMap generates a map of fields based on the type of settings.

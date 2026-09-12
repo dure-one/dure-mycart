@@ -18,7 +18,7 @@ CREATE TABLE product_option (
     product_id  TEXT NOT NULL,
     name        TEXT NOT NULL,
     position    INTEGER DEFAULT 0,
-    created     TIMESTAMP DEFAULT (datetime('now')),
+    created     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES product(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_product_option_product_id ON product_option (product_id);
@@ -43,7 +43,7 @@ CREATE TABLE product_variant (
     option_values   TEXT NOT NULL DEFAULT '{}',
     active          BOOLEAN DEFAULT TRUE,
     deleted         BOOLEAN DEFAULT FALSE,
-    created         TIMESTAMP DEFAULT (datetime('now')),
+    created         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated         TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES product(id) ON DELETE CASCADE
 );

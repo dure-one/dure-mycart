@@ -30,13 +30,13 @@ type Product struct {
 
 // Payment represents a payment transaction.
 type Payment struct {
-	PaymentSystem PaymentSystem `json:"provider"`     // Payment provider used
-	MerchantID    string        `json:"merchant_id"`  // Transaction ID from the provider
-	CartID        string        `json:"cart_id"`      // Associated cart ID
-	AmountTotal   int           `json:"amount_total"` // Total amount in smallest currency unit
-	Currency      string        `json:"currency"`     // ISO currency code
-	Status        Status        `json:"status"`       // Current payment status
-	URL           string        `json:"url,omitempty"` // Checkout URL to redirect user (if applicable)
+	PaymentSystem PaymentSystem `json:"provider"`       // Payment provider used
+	MerchantID    string        `json:"merchant_id"`    // Transaction ID from the provider
+	CartID        string        `json:"cart_id"`        // Associated cart ID
+	AmountTotal   int           `json:"amount_total"`   // Total amount in smallest currency unit
+	Currency      string        `json:"currency"`       // ISO currency code
+	Status        Status        `json:"status"`         // Current payment status
+	URL           string        `json:"url,omitempty"`  // Checkout URL to redirect user (if applicable)
 	Coin          *Coin         `json:"coin,omitempty"` // Cryptocurrency payment details (if applicable)
 }
 

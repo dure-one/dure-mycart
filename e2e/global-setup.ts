@@ -1,26 +1,37 @@
 import { FullConfig } from 'patchright'
-import * as fs from 'fs'
-import * as path from 'path'
+
+import { ADMIN_EMAIL, ADMIN_PASSWORD, AdminApi, apiURL, saveSession, signIn, waitForServer } from './utils/api'
 
 /**
  * Playwright Global Setup
  *
  * Runs once before all tests to:
- * 1. Check if clean setup needed (only if server not reusing)
- * 2. Install the store via API (if not already installed)
- * 3. Seed test data (10+ products)
+ * 1. Wait for the server the config started
+ * 2. Install the store (if not already installed)
+ * 3. Establish the admin session the tests share
+ * 4. Seed test data (10+ products)
+ *
+ * The server itself is started by playwright.config.ts, which cleans the
+ * database directory first so every run begins on a fresh store.
  */
 async function globalSetup(config: FullConfig) {
   const baseURL = config.projects[0].use.baseURL || 'http://localhost:8080'
 
-  // Environment is cleaned by test-server-start.sh before server starts
-  // This ensures server opens a fresh database connection
-
   console.log('⏳ Waiting for server to be ready...')
-  await waitForServer(baseURL, 60000)
+  await waitForServer(baseURL)
+  console.log('  ✓ Server is ready')
 
   console.log('📦 Checking installation...')
   await installStore(baseURL)
+
+  console.log('🔑 Establishing the session the tests share...')
+  // Sign-in, installation and payment share a rate limit of ten requests a
+  // minute per address, and the whole suite runs from one address, so the
+  // tests reuse one session instead of each establishing its own. It has to
+  // be a real sign-in: a token left by an earlier run names a database the
+  // server no longer has.
+  saveSession(baseURL, await signIn(baseURL))
+  console.log('  ✓ Session established')
 
   console.log('🌱 Seeding test data...')
   await seedTestData(baseURL)
@@ -29,49 +40,23 @@ async function globalSetup(config: FullConfig) {
 }
 
 /**
- * Remove lc_base/, lc_digitals/, lc_uploads/ directories
+ * The store domain the installation records.
+ *
+ * Payment redirects are built from it, so it has to name the server under
+ * test — a store that believes it lives at localhost:8080 sends the buyer
+ * somewhere else when the suite runs on another port.
  */
-function cleanTestEnvironment() {
-  const dirs = ['lc_base', 'lc_digitals', 'lc_uploads']
-
-  for (const dir of dirs) {
-    const dirPath = path.join(process.cwd(), dir)
-    if (fs.existsSync(dirPath)) {
-      fs.rmSync(dirPath, { recursive: true, force: true })
-      console.log(`  ✓ Removed ${dir}/`)
-    }
-  }
-}
-
-/**
- * Wait for server to be ready
- */
-async function waitForServer(baseURL: string, timeout: number) {
-  const startTime = Date.now()
-
-  while (Date.now() - startTime < timeout) {
-    try {
-      const response = await fetch(`${baseURL}/api/install/status`)
-      if (response.ok) {
-        console.log('  ✓ Server is ready')
-        return
-      }
-    } catch (error) {
-      // Server not ready yet, continue waiting
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 1000))
-  }
-
-  throw new Error('Server did not become ready in time')
+function storeDomain(baseURL: string): string {
+  const { hostname, port } = new URL(baseURL)
+  const host = hostname === '127.0.0.1' ? 'localhost' : hostname
+  return port ? `${host}:${port}` : host
 }
 
 /**
  * Install store via API (matches browser behavior from HAR log)
  */
 async function installStore(baseURL: string) {
-  // Check if already installed
-  const statusResponse = await fetch(`${baseURL}/api/install/status`)
+  const statusResponse = await fetch(apiURL(baseURL, '/api/install/status'))
   const status = await statusResponse.json()
 
   if (status.result?.installed) {
@@ -79,24 +64,24 @@ async function installStore(baseURL: string) {
     return
   }
 
-  const response = await fetch(`${baseURL}/api/install`, {
+  const response = await fetch(apiURL(baseURL, '/api/install'), {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      email: 'admin@example.com',
-      password: 'test1234',
-      domain: 'localhost:8080',
-    }),
+      email: ADMIN_EMAIL,
+      password: ADMIN_PASSWORD,
+      domain: storeDomain(baseURL)
+    })
   })
 
+  const text = await response.text()
   if (!response.ok) {
-    const text = await response.text()
     throw new Error(`Installation failed: ${response.status} ${text}`)
   }
 
-  const result = await response.json()
+  const result = text ? JSON.parse(text) : {}
   if (!result.success) {
     throw new Error(`Installation failed: ${result.message}`)
   }
@@ -105,75 +90,27 @@ async function installStore(baseURL: string) {
 }
 
 /**
- * Login via API and get auth token
- */
-async function loginAndGetToken(baseURL: string): Promise<string> {
-  const response = await fetch(`${baseURL}/api/sign/in`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      email: 'admin@example.com',
-      password: 'test1234',
-    }),
-  })
-
-  if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`Login failed: ${response.status} ${text}`)
-  }
-
-  // Extract Set-Cookie header for token
-  const setCookie = response.headers.get('set-cookie')
-  if (!setCookie) {
-    throw new Error('No token cookie returned from login')
-  }
-
-  // Extract token value from Set-Cookie header
-  const tokenMatch = setCookie.match(/token=([^;]+)/)
-  if (!tokenMatch) {
-    throw new Error('Could not parse token cookie')
-  }
-
-  console.log('  ✓ Logged in successfully')
-  return tokenMatch[1]
-}
-
-/**
  * Seed test data (ensure 10+ active products exist)
  */
 async function seedTestData(baseURL: string) {
-  const token = await loginAndGetToken(baseURL)
+  const admin = await AdminApi.connect(baseURL)
   const productCount = 15
 
-  // Get existing products
-  const listResponse = await fetch(`${baseURL}/api/_/products?limit=100`, {
-    headers: { 'Cookie': `token=${token}` },
-  })
-
-  let existingProducts: any[] = []
-  if (listResponse.ok) {
-    const listResult = await listResponse.json()
-    existingProducts = listResult.result?.products || []
-  }
-
+  const existingProducts = await admin.products(100)
   console.log(`  → Found ${existingProducts.length} existing products`)
 
   const allProductIds: string[] = []
 
-  // Create missing products
   for (let i = 1; i <= productCount; i++) {
     const slug = `test-product-${i}`
-    const existing = existingProducts.find((p: any) => p.slug === slug)
+    const existing = existingProducts.find((p) => p.slug === slug)
 
     if (existing) {
       allProductIds.push(existing.id)
       continue
     }
 
-    // Create new product
-    const product = {
+    const product = await admin.createProduct({
       name: `Test Product ${i}`,
       slug,
       brief: `This is test product ${i} for E2E testing`,
@@ -181,42 +118,21 @@ async function seedTestData(baseURL: string) {
       amount: 999 + i * 100,
       quantity: 100,
       sku: `TEST-${String(i).padStart(3, '0')}`,
-      digital: { type: 'file' },
-    }
-
-    const response = await fetch(`${baseURL}/api/_/products`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': `token=${token}`,
-      },
-      body: JSON.stringify(product),
+      digital: { type: 'file' }
     })
-
-    if (response.ok) {
-      const result = await response.json()
-      if (result.result?.id) {
-        allProductIds.push(result.result.id)
-      }
-    }
+    allProductIds.push(product.id)
   }
 
   console.log(`  ✓ Ensured ${allProductIds.length}/${productCount} products exist`)
 
-  // Enable all products
+  // Enable all products, including the ones that were already there
   let enabledCount = 0
   for (const productId of allProductIds) {
-    const response = await fetch(`${baseURL}/api/_/products/${productId}/active`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': `token=${token}`,
-      },
-      body: JSON.stringify({ active: true }),
-    })
-
-    if (response.ok) {
+    try {
+      await admin.setActive(productId, true)
       enabledCount++
+    } catch {
+      // leave it disabled; the suite only needs ten active products
     }
   }
 

@@ -8,6 +8,7 @@ import (
 
 	mailer "github.com/xhit/go-simple-mail/v2"
 
+	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/queries"
 	"github.com/shurco/mycart/migrations"
@@ -26,7 +27,7 @@ func bootstrapDB(t *testing.T) *queries.Base {
 	_ = os.MkdirAll("lc_base", 0o775)
 	t.Cleanup(func() { _ = os.Chdir(prev) })
 
-	if err := queries.New(migrations.Embed()); err != nil {
+	if err := queries.New(database.Config{Driver: database.DriverSQLite, DSN: database.DefaultSQLiteDSN}, migrations.Embed()); err != nil {
 		t.Fatalf("queries.New: %v", err)
 	}
 	return queries.DB()

@@ -4,7 +4,7 @@ layout: home
 hero:
   name: myCart
   text: Shopping-cart in 1 file
-  tagline: Single-binary e-commerce solution with Go + SQLite + SvelteKit
+  tagline: Single-binary e-commerce solution with Go + SQLite or PostgreSQL + SvelteKit
   actions:
     - theme: brand
       text: Get Started
@@ -23,8 +23,8 @@ features:
     title: Single Binary
     details: Everything embedded - admin panel, storefront, and API in one executable file
   - icon: 🗄️
-    title: SQLite Database
-    details: Embedded database with no external dependencies or setup required
+    title: SQLite or PostgreSQL
+    details: Embedded SQLite by default, with no external dependencies, or a PostgreSQL server — chosen when you install
   - icon: ⚡
     title: Go Backend
     details: Fast, reliable, and easy to deploy backend built with Go 1.26

@@ -11,8 +11,44 @@ permissions:
 
 jobs:
   go:
-    name: Go vet / test / build
+    name: Go vet / test / build (${{ matrix.db }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The suite runs twice: on the embedded SQLite database, which is what
+        # an existing installation uses, and on PostgreSQL, which is what the
+        # portability work has to keep working. Both legs run the same tests;
+        # only testutil's setup differs.
+        db: [sqlite, postgres]
+    services:
+      # Started for both legs — GitHub cannot make a service conditional — and
+      # used by the postgres leg only.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: test
+          # The tests provision their own databases with pgtestdb; this one is
+          # only the connection it administers the server through, and it has
+          # to exist. The user must be able to create databases and roles.
+          POSTGRES_DB: mycart_test
+          # Deliberately not UTC. myCart stores timestamps without a time
+          # zone and the connection pins the session to UTC; on a server whose
+          # default is UTC a missing pin would go unnoticed, while here the
+          # stored dates shift by nine hours and the suite fails.
+          TZ: Asia/Seoul
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DB_DRIVER: ${{ matrix.db }}
+      # Empty on the sqlite leg: a DSN would make the tests that need a real
+      # server run there too.
+      TEST_POSTGRES_DSN: ${{ matrix.db == 'postgres' && 'postgres://postgres:test@localhost:5432/mycart_test?sslmode=disable' || '' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -47,6 +83,14 @@ jobs:
 
       - name: Test
         run: go test ./... -count=1 -race
+
+      # Timestamps are stored without a time zone and read back as unix
+      # seconds, so the process timezone must not reach the data. Running the
+      # suite once under a non-UTC zone is what proves it.
+      - name: Test (TZ=Asia/Seoul)
+        env:
+          TZ: Asia/Seoul
+        run: go test ./internal/... ./pkg/... -count=1
 
       - name: Build
         run: go build ./...
