@@ -551,29 +551,45 @@ func TestExportImportRoundTrip(t *testing.T) {
 	app.Get("/api/_/products/export", ExportProducts)
 	app.Post("/api/_/products", AddProduct)
 
-	// Commas, quotes and pipes in the text are what the escaping exists for.
-	payload := `{
-		"name": "Round Trip, the \"Third\"",
-		"slug": "round-trip",
-		"brief": "Short, with a comma",
-		"description": "Line one\nLine two, with \"quotes\"",
-		"amount": 3300,
-		"quantity": 4,
-		"sku": "SKU,ROOT",
-		"active": true,
-		"has_variants": true,
-		"digital": {"type": "file"},
-		"attributes": ["cotton", "blue"],
-		"options": [
-			{"name": "Size", "values": [{"value": "Small"}, {"value": "Medium"}]},
-			{"name": "Color", "values": [{"value": "Red"}]}
-		],
-		"variants": [
-			{"sku": "RT-S-R", "option_values": {"Size": "Small", "Color": "Red"}, "price_surcharge": 0, "quantity": 10},
-			{"sku": "RT-M-R", "option_values": {"Size": "Medium", "Color": "Red"}, "price_surcharge": 250, "quantity": 5}
-		]
-	}`
-	testutil.AssertStatus(t, testutil.DoRequest(t, app, http.MethodPost, "/api/_/products", payload, ""), http.StatusOK)
+	testutil.AssertStatus(t,
+		testutil.DoRequest(t, app, http.MethodPost, "/api/_/products", roundTripPayload, ""),
+		http.StatusOK)
+
+	found := importExportedProduct(t, app, "round-trip")
+	assertRoundTripProduct(t, found)
+	assertRoundTripOptions(t, found)
+	assertRoundTripVariants(t, found)
+}
+
+// roundTripPayload is a product holding the characters the CSV escaping exists
+// for — commas, quotes and a newline inside a value — plus the two option values
+// and variants the importer has to rebuild from the option_values column.
+const roundTripPayload = `{
+	"name": "Round Trip, the \"Third\"",
+	"slug": "round-trip",
+	"brief": "Short, with a comma",
+	"description": "Line one\nLine two, with \"quotes\"",
+	"amount": 3300,
+	"quantity": 4,
+	"sku": "SKU,ROOT",
+	"active": true,
+	"has_variants": true,
+	"digital": {"type": "file"},
+	"attributes": ["cotton", "blue"],
+	"options": [
+		{"name": "Size", "values": [{"value": "Small"}, {"value": "Medium"}]},
+		{"name": "Color", "values": [{"value": "Red"}]}
+	],
+	"variants": [
+		{"sku": "RT-S-R", "option_values": {"Size": "Small", "Color": "Red"}, "price_surcharge": 0, "quantity": 10},
+		{"sku": "RT-M-R", "option_values": {"Size": "Medium", "Color": "Red"}, "price_surcharge": 250, "quantity": 5}
+	]
+}`
+
+// importExportedProduct exports the shop and parses the result back with the
+// importer the import endpoint uses, returning the row with the given slug.
+func importExportedProduct(t *testing.T, app *fiber.App, slug string) *models.Product {
+	t.Helper()
 
 	resp := testutil.DoRequest(t, app, http.MethodGet, "/api/_/products/export", "", "")
 	exported, err := io.ReadAll(resp.Body)
@@ -583,7 +599,6 @@ func TestExportImportRoundTrip(t *testing.T) {
 	}
 	testutil.AssertStatusCode(t, resp.StatusCode, http.StatusOK)
 
-	// Parse the export with the importer the import endpoint uses.
 	importer := csvimport.NewCSVImporter(queries.DB().ProductQueries.DB)
 	result, products, err := importer.ValidateAndPreview(bytes.NewReader(exported))
 	if err != nil {
@@ -593,16 +608,20 @@ func TestExportImportRoundTrip(t *testing.T) {
 		t.Fatalf("round trip produced errors: %+v", result)
 	}
 
-	var found *models.Product
 	for i := range products {
-		if products[i].Slug == "round-trip" {
-			found = &products[i]
-			break
+		if products[i].Slug == slug {
+			return &products[i]
 		}
 	}
-	if found == nil {
-		t.Fatalf("the exported CSV does not contain the product; rows: %d", result.TotalRows)
-	}
+	t.Fatalf("the exported CSV does not contain %q; rows: %d", slug, result.TotalRows)
+	return nil
+}
+
+// assertRoundTripProduct checks the fields the CSV escaping is there to protect:
+// a name with a comma and a quote in it, text with both, a number, and the
+// attribute list the export joins on a pipe.
+func assertRoundTripProduct(t *testing.T, found *models.Product) {
+	t.Helper()
 
 	if found.Name != `Round Trip, the "Third"` {
 		t.Errorf("name = %q, want the original with commas and quotes", found.Name)
@@ -616,10 +635,16 @@ func TestExportImportRoundTrip(t *testing.T) {
 	if got := strings.Join(found.Attributes, "|"); got != "cotton|blue" {
 		t.Errorf("attributes = %q, want cotton|blue", got)
 	}
-
 	if !found.HasVariants {
 		t.Fatal("the product came back without variants")
 	}
+}
+
+// assertRoundTripOptions checks the option tree the importer rebuilds from the
+// options column: two options, the first of them with two values.
+func assertRoundTripOptions(t *testing.T, found *models.Product) {
+	t.Helper()
+
 	if len(found.Options) != 2 {
 		t.Fatalf("options = %+v, want two", found.Options)
 	}
@@ -629,6 +654,14 @@ func TestExportImportRoundTrip(t *testing.T) {
 	if found.Options[1].Name != "Color" {
 		t.Errorf("second option = %+v, want Color", found.Options[1])
 	}
+}
+
+// assertRoundTripVariants indexes the variants by sku, the way a shop talks about
+// them, and checks that each one kept the surcharge, the stock and the option
+// values the export wrote.
+func assertRoundTripVariants(t *testing.T, found *models.Product) {
+	t.Helper()
+
 	if len(found.Variants) != 2 {
 		t.Fatalf("variants = %+v, want two", found.Variants)
 	}
@@ -637,6 +670,7 @@ func TestExportImportRoundTrip(t *testing.T) {
 	for _, v := range found.Variants {
 		bySKU[v.SKU] = v
 	}
+
 	small, ok := bySKU["RT-S-R"]
 	if !ok {
 		t.Fatalf("variant RT-S-R is missing from %+v", bySKU)
@@ -647,6 +681,7 @@ func TestExportImportRoundTrip(t *testing.T) {
 	if small.OptionValues["Size"] != "Small" || small.OptionValues["Color"] != "Red" {
 		t.Errorf("variant RT-S-R option values = %+v", small.OptionValues)
 	}
+
 	medium, ok := bySKU["RT-M-R"]
 	if !ok {
 		t.Fatalf("variant RT-M-R is missing from %+v", bySKU)

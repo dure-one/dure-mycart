@@ -50,7 +50,47 @@ func TestDigitalKeysAreClaimedOnce(t *testing.T) {
 		carts[i] = seedPaidCart(t, productID)
 	}
 
-	// Release every goroutine at once so the transactions really overlap.
+	keys := purchaseAllAtOnce(t, ctx, db, carts)
+
+	if len(keys) != buyers {
+		t.Fatalf("collected %d keys, want %d: %v", len(keys), buyers, keys)
+	}
+
+	seen := map[string]bool{}
+	for _, key := range keys {
+		if seen[key] {
+			t.Fatalf("key %s was handed to two buyers: %v", key, keys)
+		}
+		seen[key] = true
+	}
+
+	// The claimed rows are the other half of the invariant: every key handed
+	// out belongs to exactly one cart, and no key is left unclaimed.
+	if claimed := countClaimedKeys(t, ctx, db, productID); claimed != buyers {
+		t.Errorf("%d keys claimed, want %d", claimed, buyers)
+	}
+
+	// A retried mail must return the keys the buyer already owns rather than
+	// claiming fresh ones.
+	again, err := db.CartLetterPurchase(ctx, carts[0])
+	if err != nil {
+		t.Fatalf("repeat purchase: %v", err)
+	}
+	if !strings.Contains(again.Data["Purchases"], "1: ") {
+		t.Errorf("repeat purchase lost its key: %q", again.Data["Purchases"])
+	}
+	if claimed := countClaimedKeys(t, ctx, db, productID); claimed != buyers {
+		t.Errorf("a repeated purchase claimed another key: %d claimed, want %d", claimed, buyers)
+	}
+}
+
+// purchaseAllAtOnce releases a purchase for every cart at the same instant, so
+// the transactions really overlap, and returns the keys the buyers were handed.
+// A purchase that fails fails the test: a race that only shows up as a lost
+// error is not the race this test is looking for.
+func purchaseAllAtOnce(t *testing.T, ctx context.Context, db *queries.Base, carts []string) []string {
+	t.Helper()
+
 	var (
 		wg      sync.WaitGroup
 		start   = make(chan struct{})
@@ -88,47 +128,22 @@ func TestDigitalKeysAreClaimedOnce(t *testing.T) {
 	if failure != nil {
 		t.Fatalf("concurrent purchases failed: %v", failure)
 	}
-	if len(keys) != buyers {
-		t.Fatalf("collected %d keys, want %d: %v", len(keys), buyers, keys)
-	}
+	return keys
+}
 
-	seen := map[string]bool{}
-	for _, key := range keys {
-		if seen[key] {
-			t.Fatalf("key %s was handed to two buyers: %v", key, keys)
-		}
-		seen[key] = true
-	}
+// countClaimedKeys counts the digital keys of a product that some cart owns, the
+// other side of the same invariant: no key is claimed twice and none is left
+// unclaimed.
+func countClaimedKeys(t *testing.T, ctx context.Context, db *queries.Base, productID string) int {
+	t.Helper()
 
-	// The claimed rows are the other half of the invariant: every key handed
-	// out belongs to exactly one cart, and no key is left unclaimed.
 	var claimed int
 	if err := db.CartQueries.DB.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM digital_data WHERE product_id = ? AND cart_id IS NOT NULL`,
 		productID).Scan(&claimed); err != nil {
 		t.Fatalf("count claimed keys: %v", err)
 	}
-	if claimed != buyers {
-		t.Errorf("%d keys claimed, want %d", claimed, buyers)
-	}
-
-	// A retried mail must return the keys the buyer already owns rather than
-	// claiming fresh ones.
-	again, err := db.CartLetterPurchase(ctx, carts[0])
-	if err != nil {
-		t.Fatalf("repeat purchase: %v", err)
-	}
-	if !strings.Contains(again.Data["Purchases"], "1: ") {
-		t.Errorf("repeat purchase lost its key: %q", again.Data["Purchases"])
-	}
-	if err := db.CartQueries.DB.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM digital_data WHERE product_id = ? AND cart_id IS NOT NULL`,
-		productID).Scan(&claimed); err != nil {
-		t.Fatalf("count claimed keys after retry: %v", err)
-	}
-	if claimed != buyers {
-		t.Errorf("a repeated purchase claimed another key: %d claimed, want %d", claimed, buyers)
-	}
+	return claimed
 }
 
 // seedDigitalProduct inserts a sellable product of the given digital type and

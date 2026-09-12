@@ -68,60 +68,14 @@ func Load(ctx context.Context, dsn string, r io.Reader, opts LoadOptions) (*Mani
 	}
 
 	manifest := &Manifest{Header: header}
-	loaded := map[string]bool{}
-	var trailer *Trailer
-
-	for {
-		// A read that returns nothing is the end of the file, or a file that
-		// stopped arriving; there is no third case.
-		line, readErr := in.ReadString('\n')
-		if line == "" {
-			if readErr != nil && !errors.Is(readErr, io.EOF) {
-				return nil, fmt.Errorf("read the dump: %w", readErr)
-			}
-			break
-		}
-
-		text := strings.TrimSpace(line)
-		switch {
-		case text == "":
-			// Blank lines between sections are harmless.
-		case strings.HasPrefix(text, "--"):
-			if t, ok := parseTrailer(text); ok {
-				trailer = t
-			}
-		case hasPrefixFold(text, "COPY"):
-			stat, err := loadSection(ctx, tx, in, text, target, loaded)
-			if err != nil {
-				return nil, err
-			}
-			manifest.Tables = append(manifest.Tables, stat)
-			manifest.Rows += stat.Rows
-		default:
-			return nil, fmt.Errorf("this is not a myCart dump: unexpected line %s", quoteLine(text))
-		}
-
-		if readErr != nil && !errors.Is(readErr, io.EOF) {
-			return nil, fmt.Errorf("read the dump: %w", readErr)
-		}
-	}
-
-	if len(manifest.Tables) == 0 {
-		return nil, errors.New("the dump carries no tables")
-	}
-	// The summary is written last. A file without one lost its end somewhere
-	// between the machine that wrote it and this one.
-	if trailer == nil {
-		return nil, errors.New("the dump has no summary at the end: the file is incomplete")
-	}
-	if err := checkTrailer(trailer, manifest); err != nil {
+	trailer, loaded, err := readSections(ctx, tx, in, target, manifest)
+	if err != nil {
 		return nil, err
 	}
+	manifest.Absent = tablesMissingFrom(target, loaded)
 
-	for _, name := range target {
-		if !loaded[name] {
-			manifest.Absent = append(manifest.Absent, name)
-		}
+	if err := checkDumpEnd(trailer, manifest); err != nil {
+		return nil, err
 	}
 
 	if err := verifyRows(ctx, tx, manifest.Tables); err != nil {
@@ -134,6 +88,98 @@ func Load(ctx context.Context, dsn string, r io.Reader, opts LoadOptions) (*Mani
 	committed = true
 
 	return manifest, nil
+}
+
+// readSections reads the body of a dump into tx, one section at a time, and
+// reports the summary the file ends with plus the tables it actually carried.
+func readSections(ctx context.Context, tx pgx.Tx, in *bufio.Reader, target []string,
+	manifest *Manifest) (*Trailer, map[string]bool, error) {
+	loaded := map[string]bool{}
+	var trailer *Trailer
+
+	for {
+		// A read that returns nothing is the end of the file, or a file that
+		// stopped arriving; there is no third case.
+		line, readErr := in.ReadString('\n')
+		if line == "" {
+			if err := readFailure(readErr); err != nil {
+				return nil, nil, err
+			}
+			break
+		}
+
+		next, err := readSectionLine(ctx, tx, in, line, target, loaded, manifest, trailer)
+		if err != nil {
+			return nil, nil, err
+		}
+		trailer = next
+		if err := readFailure(readErr); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	return trailer, loaded, nil
+}
+
+// readSectionLine consumes one line of the dump body: a blank line, the closing
+// summary, or the COPY header that starts a section. It returns the summary in
+// force afterwards, which is the one it was given unless this line carried a new
+// one.
+func readSectionLine(ctx context.Context, tx pgx.Tx, in *bufio.Reader, line string, target []string,
+	loaded map[string]bool, manifest *Manifest, trailer *Trailer) (*Trailer, error) {
+	text := strings.TrimSpace(line)
+	switch {
+	case text == "":
+		// Blank lines between sections are harmless.
+	case strings.HasPrefix(text, "--"):
+		if t, ok := parseTrailer(text); ok {
+			trailer = t
+		}
+	case hasPrefixFold(text, "COPY"):
+		stat, err := loadSection(ctx, tx, in, text, target, loaded)
+		if err != nil {
+			return nil, err
+		}
+		manifest.Tables = append(manifest.Tables, stat)
+		manifest.Rows += stat.Rows
+	default:
+		return nil, fmt.Errorf("this is not a myCart dump: unexpected line %s", quoteLine(text))
+	}
+	return trailer, nil
+}
+
+// readFailure turns the error a read of the next line came back with into the
+// error a load reports, or nil when the read was fine or simply hit the end.
+func readFailure(err error) error {
+	if err != nil && !errors.Is(err, io.EOF) {
+		return fmt.Errorf("read the dump: %w", err)
+	}
+	return nil
+}
+
+// tablesMissingFrom names the tables a dump did not carry, in the order the
+// target lists them.
+func tablesMissingFrom(target []string, loaded map[string]bool) []string {
+	var absent []string
+	for _, name := range target {
+		if !loaded[name] {
+			absent = append(absent, name)
+		}
+	}
+	return absent
+}
+
+// checkDumpEnd refuses a dump that carries no tables or lost its summary: the
+// trailer is written last, so a file without one stopped arriving somewhere
+// between the machine that wrote it and this one.
+func checkDumpEnd(trailer *Trailer, manifest *Manifest) error {
+	if len(manifest.Tables) == 0 {
+		return errors.New("the dump carries no tables")
+	}
+	if trailer == nil {
+		return errors.New("the dump has no summary at the end: the file is incomplete")
+	}
+	return checkTrailer(trailer, manifest)
 }
 
 // checkTarget reports the tables a load would replace, and refuses the cases it

@@ -237,136 +237,188 @@ func TestPayment(t *testing.T) {
 	// proof that the handler returns before it touches the database or the mail
 	// server.
 	t.Run("inactive providers send the buyer back to the site", func(t *testing.T) {
-		for _, provider := range []string{"stripe", "paypal", "spectrocoin", "coinbase"} {
-			t.Run(provider, func(t *testing.T) {
-				before := countCarts(t)
-
-				body := `{"provider":"` + provider + `","email":"buyer@example.com","products":[]}`
-				status, env, raw := readEnvelope(t, testutil.DoRequest(t, app, http.MethodPost, "/cart/payment", body, ""))
-				if status != http.StatusOK {
-					t.Fatalf("status = %d, want 200; body: %s", status, raw)
-				}
-				if got := resultString(t, env); got != "http://site.com/cart" {
-					t.Errorf("payment url = %q, want the site cart page", got)
-				}
-				if after := countCarts(t); after != before {
-					t.Errorf("cart count went from %d to %d; an inactive provider must not create a cart", before, after)
-				}
-			})
-		}
+		assertInactiveProvidersAreNotContacted(t, app)
 	})
 
 	t.Run("dummy provider completes a free cart", func(t *testing.T) {
-		silenceSMTP(t)
-		hooks := captureWebhooks(t)
-
-		body := `{"provider":"dummy","email":"buyer@example.com","products":[]}`
-		status, env, raw := readEnvelope(t, testutil.DoRequest(t, app, http.MethodPost, "/cart/payment", body, ""))
-		if status != http.StatusOK {
-			t.Fatalf("status = %d, want 200; body: %s", status, raw)
-		}
-
-		var payload struct {
-			URL string `json:"url"`
-		}
-		if err := json.Unmarshal(env.Result, &payload); err != nil {
-			t.Fatalf("result is not a payment url object: %s (%v)", env.Result, err)
-		}
-		url := payload.URL
-		if !strings.HasPrefix(url, "http://site.com/cart/payment/success?") {
-			t.Fatalf("payment url = %q, want a redirect to the success page", url)
-		}
-		if !strings.Contains(url, "payment_system=dummy") {
-			t.Errorf("payment url = %q, want it to name the provider", url)
-		}
-
-		// The cart id in the redirect URL is the one that must now exist.
-		cartID := url[strings.Index(url, "cart_id=")+len("cart_id="):]
-		if len(cartID) != 15 {
-			t.Fatalf("cart id %q is not 15 characters", cartID)
-		}
-
-		cart, err := queries.DB().Cart(context.Background(), cartID)
-		if err != nil {
-			t.Fatalf("cart not persisted: %v", err)
-		}
-		if cart.Email != "buyer@example.com" {
-			t.Errorf("email = %q, want buyer@example.com", cart.Email)
-		}
-		if cart.AmountTotal != 0 || cart.Currency != "USD" {
-			t.Errorf("cart amount = %d %s, want 0 USD", cart.AmountTotal, cart.Currency)
-		}
-		if cart.PaymentStatus != litepay.NEW {
-			t.Errorf("payment status = %q, want %q: nothing has been paid yet", cart.PaymentStatus, litepay.NEW)
-		}
-		if cart.PaymentSystem != litepay.DUMMY {
-			t.Errorf("payment system = %q, want %q", cart.PaymentSystem, litepay.DUMMY)
-		}
-
-		event := hooks.expectEvent(t, webhook.PAYMENT_INITIATION)
-		if event.Data.CartID != cartID {
-			t.Errorf("webhook cart id = %q, want %q", event.Data.CartID, cartID)
-		}
-		if event.Data.PaymentSystem != litepay.DUMMY || event.Data.PaymentStatus != litepay.NEW {
-			t.Errorf("webhook data = %+v, want a dummy payment in the new state", event.Data)
-		}
-		if event.Data.Currency != "USD" {
-			t.Errorf("webhook currency = %q, want USD", event.Data.Currency)
-		}
+		assertDummyCompletesAFreeCart(t, app)
 	})
 
 	t.Run("dummy provider is refused for a cart that costs money", func(t *testing.T) {
-		silenceSMTP(t)
-
-		// The fixture product ships with no stock, and a quantity of 0 is
-		// itself a validation error, so stock it first.
-		if _, err := queries.DB().ProductQueries.DB.ExecContext(context.Background(),
-			`UPDATE product SET quantity = 5 WHERE id = 'fv6c9s9cqzf36sc'`); err != nil {
-			t.Fatalf("stock fixture product: %v", err)
-		}
-
-		body := `{"provider":"dummy","email":"buyer@example.com","products":[{"id":"fv6c9s9cqzf36sc","quantity":1,"unit_price":2000}]}`
-		status, env, raw := readEnvelope(t, testutil.DoRequest(t, app, http.MethodPost, "/cart/payment", body, ""))
-		if status != http.StatusBadRequest {
-			t.Fatalf("status = %d, want 400; body: %s", status, raw)
-		}
-		if !strings.Contains(env.reason(), "Dummy payment provider") {
-			t.Errorf("reason = %q, want it to explain that the dummy is for free items", env.reason())
-		}
+		assertDummyIsRefusedForACartThatCostsMoney(t, app)
 	})
 
 	t.Run("an out-of-stock cart is reported to the buyer", func(t *testing.T) {
-		silenceSMTP(t)
-
-		// Back to no stock: the previous subtest stocked this product.
-		if _, err := queries.DB().ProductQueries.DB.ExecContext(context.Background(),
-			`UPDATE product SET quantity = 0 WHERE id = 'fv6c9s9cqzf36sc'`); err != nil {
-			t.Fatalf("clear fixture product stock: %v", err)
-		}
-
-		// A quantity of 0 is what the validator rejects.
-		body := `{"provider":"dummy","email":"buyer@example.com","products":[{"id":"fv6c9s9cqzf36sc","quantity":1,"unit_price":2000}]}`
-		status, _, raw := readEnvelope(t, testutil.DoRequest(t, app, http.MethodPost, "/cart/payment", body, ""))
-		if status != http.StatusConflict {
-			t.Fatalf("status = %d, want 409; body: %s", status, raw)
-		}
-
-		var payload struct {
-			Result struct {
-				Errors         []models.CartValidationError `json:"validation_errors"`
-				CorrectedItems []models.CorrectedCartItem   `json:"corrected_cart"`
-			} `json:"result"`
-		}
-		if err := json.Unmarshal(raw, &payload); err != nil {
-			t.Fatalf("decode response %s: %v", raw, err)
-		}
-		if len(payload.Result.Errors) != 1 {
-			t.Fatalf("errors = %+v, want exactly one", payload.Result.Errors)
-		}
-		if len(payload.Result.CorrectedItems) != 1 {
-			t.Errorf("corrected cart = %+v, want the corrected item", payload.Result.CorrectedItems)
-		}
+		assertAnOutOfStockCartIsReported(t, app)
 	})
+}
+
+// assertInactiveProvidersAreNotContacted walks the providers the fixtures leave
+// switched off. Each has to answer with the site's cart page, and none of them
+// may leave a cart behind: the handler must return before it writes anything.
+func assertInactiveProvidersAreNotContacted(t *testing.T, app *fiber.App) {
+	t.Helper()
+
+	for _, provider := range []string{"stripe", "paypal", "spectrocoin", "coinbase"} {
+		t.Run(provider, func(t *testing.T) {
+			before := countCarts(t)
+
+			body := `{"provider":"` + provider + `","email":"buyer@example.com","products":[]}`
+			status, env, raw := readEnvelope(t, testutil.DoRequest(t, app, http.MethodPost, "/cart/payment", body, ""))
+			if status != http.StatusOK {
+				t.Fatalf("status = %d, want 200; body: %s", status, raw)
+			}
+			if got := resultString(t, env); got != "http://site.com/cart" {
+				t.Errorf("payment url = %q, want the site cart page", got)
+			}
+			if after := countCarts(t); after != before {
+				t.Errorf("cart count went from %d to %d; an inactive provider must not create a cart", before, after)
+			}
+		})
+	}
+}
+
+// assertDummyCompletesAFreeCart pays for a cart that costs nothing and checks
+// both halves of what the buyer gets: the redirect to the success page, and the
+// cart the redirect names, which has to be in the database already.
+func assertDummyCompletesAFreeCart(t *testing.T, app *fiber.App) {
+	t.Helper()
+
+	silenceSMTP(t)
+	hooks := captureWebhooks(t)
+
+	body := `{"provider":"dummy","email":"buyer@example.com","products":[]}`
+	status, env, raw := readEnvelope(t, testutil.DoRequest(t, app, http.MethodPost, "/cart/payment", body, ""))
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", status, raw)
+	}
+
+	var payload struct {
+		URL string `json:"url"`
+	}
+	if err := json.Unmarshal(env.Result, &payload); err != nil {
+		t.Fatalf("result is not a payment url object: %s (%v)", env.Result, err)
+	}
+	url := payload.URL
+	if !strings.HasPrefix(url, "http://site.com/cart/payment/success?") {
+		t.Fatalf("payment url = %q, want a redirect to the success page", url)
+	}
+	if !strings.Contains(url, "payment_system=dummy") {
+		t.Errorf("payment url = %q, want it to name the provider", url)
+	}
+
+	// The cart id in the redirect URL is the one that must now exist.
+	cartID := url[strings.Index(url, "cart_id=")+len("cart_id="):]
+	if len(cartID) != 15 {
+		t.Fatalf("cart id %q is not 15 characters", cartID)
+	}
+
+	assertFreeCartWasStored(t, cartID)
+	assertPaymentInitiationWasAnnounced(t, hooks, cartID)
+}
+
+// assertFreeCartWasStored checks the cart the dummy provider's redirect names:
+// the buyer, a total of nothing, and the states that say nothing has been paid
+// yet.
+func assertFreeCartWasStored(t *testing.T, cartID string) {
+	t.Helper()
+
+	cart, err := queries.DB().Cart(context.Background(), cartID)
+	if err != nil {
+		t.Fatalf("cart not persisted: %v", err)
+	}
+	if cart.Email != "buyer@example.com" {
+		t.Errorf("email = %q, want buyer@example.com", cart.Email)
+	}
+	if cart.AmountTotal != 0 || cart.Currency != "USD" {
+		t.Errorf("cart amount = %d %s, want 0 USD", cart.AmountTotal, cart.Currency)
+	}
+	if cart.PaymentStatus != litepay.NEW {
+		t.Errorf("payment status = %q, want %q: nothing has been paid yet", cart.PaymentStatus, litepay.NEW)
+	}
+	if cart.PaymentSystem != litepay.DUMMY {
+		t.Errorf("payment system = %q, want %q", cart.PaymentSystem, litepay.DUMMY)
+	}
+}
+
+// assertPaymentInitiationWasAnnounced checks the webhook the shop's backend is
+// told about: one initiation for this cart, naming the provider and the amount.
+func assertPaymentInitiationWasAnnounced(t *testing.T, hooks *webhookRecorder, cartID string) {
+	t.Helper()
+
+	event := hooks.expectEvent(t, webhook.PAYMENT_INITIATION)
+	if event.Data.CartID != cartID {
+		t.Errorf("webhook cart id = %q, want %q", event.Data.CartID, cartID)
+	}
+	if event.Data.PaymentSystem != litepay.DUMMY || event.Data.PaymentStatus != litepay.NEW {
+		t.Errorf("webhook data = %+v, want a dummy payment in the new state", event.Data)
+	}
+	if event.Data.Currency != "USD" {
+		t.Errorf("webhook currency = %q, want USD", event.Data.Currency)
+	}
+}
+
+// assertDummyIsRefusedForACartThatCostsMoney checks the other side of the dummy
+// provider's contract: it stands in for money that never changes hands, so a
+// cart the shop can charge for has to be refused rather than paid.
+func assertDummyIsRefusedForACartThatCostsMoney(t *testing.T, app *fiber.App) {
+	t.Helper()
+
+	silenceSMTP(t)
+
+	// The fixture product ships with no stock, and a quantity of 0 is
+	// itself a validation error, so stock it first.
+	if _, err := queries.DB().ProductQueries.DB.ExecContext(context.Background(),
+		`UPDATE product SET quantity = 5 WHERE id = 'fv6c9s9cqzf36sc'`); err != nil {
+		t.Fatalf("stock fixture product: %v", err)
+	}
+
+	body := `{"provider":"dummy","email":"buyer@example.com","products":[{"id":"fv6c9s9cqzf36sc","quantity":1,"unit_price":2000}]}`
+	status, env, raw := readEnvelope(t, testutil.DoRequest(t, app, http.MethodPost, "/cart/payment", body, ""))
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body: %s", status, raw)
+	}
+	if !strings.Contains(env.reason(), "Dummy payment provider") {
+		t.Errorf("reason = %q, want it to explain that the dummy is for free items", env.reason())
+	}
+}
+
+// assertAnOutOfStockCartIsReported checks what the buyer is told when the cart
+// cannot be honoured: a conflict carrying the corrections, so the storefront can
+// show what it would have to change.
+func assertAnOutOfStockCartIsReported(t *testing.T, app *fiber.App) {
+	t.Helper()
+
+	silenceSMTP(t)
+
+	// Back to no stock: the previous subtest stocked this product.
+	if _, err := queries.DB().ProductQueries.DB.ExecContext(context.Background(),
+		`UPDATE product SET quantity = 0 WHERE id = 'fv6c9s9cqzf36sc'`); err != nil {
+		t.Fatalf("clear fixture product stock: %v", err)
+	}
+
+	// A quantity of 0 is what the validator rejects.
+	body := `{"provider":"dummy","email":"buyer@example.com","products":[{"id":"fv6c9s9cqzf36sc","quantity":1,"unit_price":2000}]}`
+	status, _, raw := readEnvelope(t, testutil.DoRequest(t, app, http.MethodPost, "/cart/payment", body, ""))
+	if status != http.StatusConflict {
+		t.Fatalf("status = %d, want 409; body: %s", status, raw)
+	}
+
+	var payload struct {
+		Result struct {
+			Errors         []models.CartValidationError `json:"validation_errors"`
+			CorrectedItems []models.CorrectedCartItem   `json:"corrected_cart"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		t.Fatalf("decode response %s: %v", raw, err)
+	}
+	if len(payload.Result.Errors) != 1 {
+		t.Fatalf("errors = %+v, want exactly one", payload.Result.Errors)
+	}
+	if len(payload.Result.CorrectedItems) != 1 {
+		t.Errorf("corrected cart = %+v, want the corrected item", payload.Result.CorrectedItems)
+	}
 }
 
 // seedFreeCart inserts the free cart the dummy provider is allowed to pay for.

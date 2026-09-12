@@ -142,27 +142,6 @@ func TestParseOptionDefinitions(t *testing.T) {
 		}
 	})
 
-	t.Run("a fourth option is rejected", func(t *testing.T) {
-		_, err := imp.parseOptionDefinitions("[A:1][B:2][C:3][D:4]")
-		if err == nil || !strings.Contains(err.Error(), "maximum 3 options") {
-			t.Errorf("error = %v", err)
-		}
-	})
-
-	t.Run("unmatched brackets are rejected", func(t *testing.T) {
-		_, err := imp.parseOptionDefinitions("[Size:S")
-		if err == nil || !strings.Contains(err.Error(), "unmatched brackets") {
-			t.Errorf("error = %v", err)
-		}
-	})
-
-	t.Run("no options at all is rejected", func(t *testing.T) {
-		_, err := imp.parseOptionDefinitions("no brackets here")
-		if err == nil || !strings.Contains(err.Error(), "no valid options") {
-			t.Errorf("error = %v", err)
-		}
-	})
-
 	t.Run("text before the first bracket is ignored", func(t *testing.T) {
 		got, err := imp.parseOptionDefinitions("junk [Size:S] trailing")
 		if err != nil {
@@ -172,6 +151,32 @@ func TestParseOptionDefinitions(t *testing.T) {
 			t.Errorf("got %+v", got)
 		}
 	})
+}
+
+func TestParseOptionDefinitionsRejects(t *testing.T) {
+	imp := NewCSVImporter(nil)
+
+	// Each input the parser has to refuse, with the text its error must carry:
+	// an error a caller cannot tell apart from another one is not much of an
+	// error.
+	cases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{name: "a fourth option", input: "[A:1][B:2][C:3][D:4]", want: "maximum 3 options"},
+		{name: "unmatched brackets", input: "[Size:S", want: "unmatched brackets"},
+		{name: "no options at all", input: "no brackets here", want: "no valid options"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := imp.parseOptionDefinitions(c.input)
+			if err == nil || !strings.Contains(err.Error(), c.want) {
+				t.Errorf("parseOptionDefinitions(%q) error = %v, want it to mention %q", c.input, err, c.want)
+			}
+		})
+	}
 }
 
 func TestParseVariantData(t *testing.T) {

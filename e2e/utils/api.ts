@@ -215,12 +215,15 @@ export class AdminApi {
     return new AdminApi(baseURL, await sessionToken(baseURL))
   }
 
-  private async request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-    const response = await fetch(apiURL(this.baseURL, path), {
+  private async request<T>(path: string, method: string, body?: unknown): Promise<T> {
+    const init: RequestInit = {
       method,
-      headers: { 'Content-Type': 'application/json', Cookie: `token=${this.token}` },
-      body: body === undefined ? undefined : JSON.stringify(body)
-    })
+      headers: { 'Content-Type': 'application/json', Cookie: `token=${this.token}` }
+    }
+    if (body !== undefined) {
+      init.body = JSON.stringify(body)
+    }
+    const response = await fetch(apiURL(this.baseURL, path), init)
     const text = await response.text()
     if (!response.ok) {
       throw new Error(`${method} ${path} failed: ${response.status} ${text}`)
@@ -240,12 +243,12 @@ export class AdminApi {
   }
 
   async products(limit = 100): Promise<Product[]> {
-    const page = await this.request<{ products: Product[] }>(`/api/_/products?limit=${limit}`)
+    const page = await this.request<{ products: Product[] }>(`/api/_/products?limit=${limit}`, 'GET')
     return page.products ?? []
   }
 
   async getProduct(id: string): Promise<Product> {
-    return this.request<Product>(`/api/_/products/${id}`)
+    return this.request<Product>(`/api/_/products/${id}`, 'GET')
   }
 
   /**
@@ -271,7 +274,7 @@ export class AdminApi {
   }
 
   async carts(limit = 50): Promise<CartSummary[]> {
-    const page = await this.request<{ carts: CartSummary[] }>(`/api/_/carts?limit=${limit}`)
+    const page = await this.request<{ carts: CartSummary[] }>(`/api/_/carts?limit=${limit}`, 'GET')
     return page.carts ?? []
   }
 

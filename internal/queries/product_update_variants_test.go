@@ -1,6 +1,7 @@
 package queries
 
 import (
+	"context"
 	"testing"
 
 	"github.com/shurco/mycart/internal/models"
@@ -121,20 +122,26 @@ func TestUpdateProduct_ReplacesTheVariantTree(t *testing.T) {
 		t.Errorf("product_variant.option_values = %q, want the map the admin submitted", storedJSON)
 	}
 
-	// The replaced rows are gone from the tables, not just from the query:
-	// a stale option would keep showing up in the admin form.
-	var orphanOptions, orphanVariants int
+	assertVariantTreeWasReplaced(t, db, ctx, product.ID)
+}
+
+// assertVariantTreeWasReplaced counts the option and variant rows that are left
+// for a product. The replaced ones have to be gone from the tables, not just
+// from the query: a stale option would keep showing up in the admin form.
+func assertVariantTreeWasReplaced(t *testing.T, db *Base, ctx context.Context, productID string) {
+	t.Helper()
+
+	var options, variants int
 	if err := db.conn.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM product_option WHERE product_id = ?`, product.ID).Scan(&orphanOptions); err != nil {
+		`SELECT COUNT(*) FROM product_option WHERE product_id = ?`, productID).Scan(&options); err != nil {
 		t.Fatalf("count options: %v", err)
 	}
 	if err := db.conn.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM product_variant WHERE product_id = ?`, product.ID).Scan(&orphanVariants); err != nil {
+		`SELECT COUNT(*) FROM product_variant WHERE product_id = ?`, productID).Scan(&variants); err != nil {
 		t.Fatalf("count variants: %v", err)
 	}
-	if orphanOptions != 1 || orphanVariants != 1 {
-		t.Errorf("after the update there are %d options and %d variants, want 1 and 1",
-			orphanOptions, orphanVariants)
+	if options != 1 || variants != 1 {
+		t.Errorf("after the update there are %d options and %d variants, want 1 and 1", options, variants)
 	}
 }
 

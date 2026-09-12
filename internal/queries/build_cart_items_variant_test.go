@@ -83,8 +83,15 @@ func TestBuildCartItems_Variants(t *testing.T) {
 		t.Errorf("amount = %v, want the base price, with the surcharge reported separately", items[0]["amount"])
 	}
 
-	// An empty variant id is not a variant: the line is the product itself, and
-	// is keyed like one.
+	assertEmptyVariantIDIsNotAVariant(t, items)
+}
+
+// assertEmptyVariantIDIsNotAVariant checks the deleted-variant line, the one
+// whose variant id is an empty string. It stands for the product itself, so it
+// has to be keyed and priced like a plain line.
+func assertEmptyVariantIDIsNotAVariant(t *testing.T, items []map[string]any) {
+	t.Helper()
+
 	if items[2]["id"] != "p1" {
 		t.Errorf("id = %v, want the product id for an empty variant id", items[2]["id"])
 	}

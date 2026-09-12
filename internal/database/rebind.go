@@ -22,43 +22,13 @@ func rebindDollar(query string) string {
 
 		switch {
 		case c == '\'' || c == '"' || c == '`':
-			// Quoted region: copy verbatim. A doubled quote is an escaped
-			// quote, not the end of the region.
-			b.WriteByte(c)
-			for i++; i < len(query); i++ {
-				b.WriteByte(query[i])
-				if query[i] != c {
-					continue
-				}
-				if i+1 < len(query) && query[i+1] == c {
-					i++
-					b.WriteByte(query[i])
-					continue
-				}
-				break
-			}
+			i = copyQuoted(&b, query, i)
 
-		case c == '-' && i+1 < len(query) && query[i+1] == '-':
-			// Line comment.
-			for ; i < len(query) && query[i] != '\n'; i++ {
-				b.WriteByte(query[i])
-			}
-			if i < len(query) {
-				b.WriteByte(query[i])
-			}
+		case strings.HasPrefix(query[i:], "--"):
+			i = copyLineComment(&b, query, i)
 
-		case c == '/' && i+1 < len(query) && query[i+1] == '*':
-			// Block comment.
-			b.WriteString("/*")
-			i += 2
-			for i < len(query) && !(query[i] == '*' && i+1 < len(query) && query[i+1] == '/') {
-				b.WriteByte(query[i])
-				i++
-			}
-			if i < len(query) {
-				b.WriteString("*/")
-				i++
-			}
+		case strings.HasPrefix(query[i:], "/*"):
+			i = copyBlockComment(&b, query, i)
 
 		case c == '?':
 			n++
@@ -71,4 +41,56 @@ func rebindDollar(query string) string {
 	}
 
 	return b.String()
+}
+
+// copyQuoted copies verbatim the quoted region that opens at query[i] — a string
+// literal, a quoted identifier, or a backtick-quoted one — and returns the index
+// of its closing quote. A doubled quote is an escaped quote and does not end the
+// region.
+func copyQuoted(b *strings.Builder, query string, i int) int {
+	quote := query[i]
+	b.WriteByte(quote)
+
+	for i++; i < len(query); i++ {
+		b.WriteByte(query[i])
+		if query[i] != quote {
+			continue
+		}
+		if i+1 < len(query) && query[i+1] == quote {
+			i++
+			b.WriteByte(query[i])
+			continue
+		}
+		break
+	}
+
+	return i
+}
+
+// copyLineComment copies the `--` comment that starts at query[i], up to and
+// including the newline that ends it, and returns the index it stopped at.
+func copyLineComment(b *strings.Builder, query string, i int) int {
+	for ; i < len(query) && query[i] != '\n'; i++ {
+		b.WriteByte(query[i])
+	}
+	if i < len(query) {
+		b.WriteByte(query[i])
+	}
+	return i
+}
+
+// copyBlockComment copies the `/* ... */` comment that starts at query[i] and
+// returns the index of the slash that closes it.
+func copyBlockComment(b *strings.Builder, query string, i int) int {
+	b.WriteString("/*")
+	i += 2
+	for i < len(query) && !(query[i] == '*' && i+1 < len(query) && query[i+1] == '/') {
+		b.WriteByte(query[i])
+		i++
+	}
+	if i < len(query) {
+		b.WriteString("*/")
+		i++
+	}
+	return i
 }

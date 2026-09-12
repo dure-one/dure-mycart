@@ -159,23 +159,7 @@ func TestInstallDBTest(t *testing.T) {
 	})
 
 	t.Run("sqlite file is created on demand", func(t *testing.T) {
-		fresh := filepath.Join(t.TempDir(), "fresh.db")
-		code, env := postJSON(t, app, "/api/install/db/test",
-			`{"driver":"sqlite","dsn":"`+fresh+`"}`)
-		if code != http.StatusOK {
-			t.Fatalf("status = %d, body %s", code, env.detail())
-		}
-		result := decodeResult[installDatabaseTestResult](t, env)
-		if !result.OK {
-			t.Error("ok = false")
-		}
-		if result.Driver != database.DriverSQLite {
-			t.Errorf("driver = %q, want sqlite", result.Driver)
-		}
-		// Nothing is installed there yet, which is what the wizard warns about.
-		if result.HasExistingSchema {
-			t.Error("has_existing_schema = true for a database that did not exist")
-		}
+		assertFreshSQLiteIsCreatedOnDemand(t, app)
 	})
 
 	t.Run("existing schema is reported", func(t *testing.T) {
@@ -217,20 +201,7 @@ func TestInstallDBTest(t *testing.T) {
 	})
 
 	t.Run("unreachable server is reported without echoing the address", func(t *testing.T) {
-		code, env := postJSON(t, app, "/api/install/db/test",
-			`{"driver":"postgres","dsn":"postgres://someone:hunter2@127.0.0.1:1/cart?sslmode=disable"}`)
-		if code != http.StatusBadRequest {
-			t.Fatalf("status = %d, want 400", code)
-		}
-		detail := env.detail()
-		if !strings.Contains(detail, "not reachable") {
-			t.Errorf("message = %q", detail)
-		}
-		for _, secret := range []string{"hunter2", "someone", "127.0.0.1", "/cart"} {
-			if strings.Contains(detail, secret) {
-				t.Errorf("message %q leaks %q to an unauthenticated caller", detail, secret)
-			}
-		}
+		assertUnreachableServerIsRedacted(t, app)
 	})
 
 	t.Run("refused once installed", func(t *testing.T) {
@@ -248,6 +219,54 @@ func TestInstallDBTest(t *testing.T) {
 			t.Errorf("message = %q", env.detail())
 		}
 	})
+}
+
+// assertFreshSQLiteIsCreatedOnDemand drives the wizard's test button at a file
+// that does not exist yet: the probe has to create it, and to report that there
+// is no schema in it.
+func assertFreshSQLiteIsCreatedOnDemand(t *testing.T, app *fiber.App) {
+	t.Helper()
+
+	fresh := filepath.Join(t.TempDir(), "fresh.db")
+	code, env := postJSON(t, app, "/api/install/db/test",
+		`{"driver":"sqlite","dsn":"`+fresh+`"}`)
+	if code != http.StatusOK {
+		t.Fatalf("status = %d, body %s", code, env.detail())
+	}
+	result := decodeResult[installDatabaseTestResult](t, env)
+	if !result.OK {
+		t.Error("ok = false")
+	}
+	if result.Driver != database.DriverSQLite {
+		t.Errorf("driver = %q, want sqlite", result.Driver)
+	}
+	// Nothing is installed there yet, which is what the wizard warns about.
+	if result.HasExistingSchema {
+		t.Error("has_existing_schema = true for a database that did not exist")
+	}
+}
+
+// assertUnreachableServerIsRedacted points the wizard at a server that is not
+// there and checks the answer: it has to say the server could not be reached
+// without echoing back any part of the connection string, which the wizard
+// would then show to an unauthenticated caller.
+func assertUnreachableServerIsRedacted(t *testing.T, app *fiber.App) {
+	t.Helper()
+
+	code, env := postJSON(t, app, "/api/install/db/test",
+		`{"driver":"postgres","dsn":"postgres://someone:hunter2@127.0.0.1:1/cart?sslmode=disable"}`)
+	if code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", code)
+	}
+	detail := env.detail()
+	if !strings.Contains(detail, "not reachable") {
+		t.Errorf("message = %q", detail)
+	}
+	for _, secret := range []string{"hunter2", "someone", "127.0.0.1", "/cart"} {
+		if strings.Contains(detail, secret) {
+			t.Errorf("message %q leaks %q to an unauthenticated caller", detail, secret)
+		}
+	}
 }
 
 // TestInstallDBTestPostgres exercises the test-connection button against a real

@@ -1,6 +1,7 @@
 package queries
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -13,6 +14,76 @@ import (
 // images, attributes, metadata, SEO, variants and their option values. This
 // walks a product through it with every one of those fields populated.
 func TestProduct_AssemblesEveryPart(t *testing.T) {
+	db, ctx, product, image := seedCompleteProduct(t)
+
+	// Private: looked up by id, and it reports whether digital content is there.
+	got, err := db.Product(ctx, true, product.ID)
+	if err != nil {
+		t.Fatalf("Product(private): %v", err)
+	}
+	assertProductRow(t, got, product)
+	assertProductSubqueries(t, got, image)
+	assertProductVariants(t, got)
+
+	// No digital rows exist yet, so the admin is told the product has none.
+	if got.Digital.Filled {
+		t.Error("digital.filled is true although the product has no digital content")
+	}
+
+	if _, err := db.AddDigitalFile(ctx, product.ID, "feedface", "pdf", "manual.pdf"); err != nil {
+		t.Fatalf("AddDigitalFile: %v", err)
+	}
+	got, err = db.Product(ctx, true, product.ID)
+	if err != nil {
+		t.Fatalf("Product(private) after adding a file: %v", err)
+	}
+	if !got.Digital.Filled {
+		t.Error("digital.filled is false although the product has a digital file")
+	}
+}
+
+// TestProduct_PublicLookupGoesBySlug covers the other half of the same query.
+// The storefront reaches a product by slug rather than by id, sees only the
+// active ones, and is not told about the shop's digital inventory.
+func TestProduct_PublicLookupGoesBySlug(t *testing.T) {
+	db, ctx, product, _ := seedCompleteProduct(t)
+
+	if _, err := db.Product(ctx, false, product.Slug); err == nil {
+		t.Error("an inactive product was served to the storefront")
+	}
+	if err := db.UpdateActive(ctx, product.ID); err != nil {
+		t.Fatalf("UpdateActive: %v", err)
+	}
+
+	pub, err := db.Product(ctx, false, product.Slug)
+	if err != nil {
+		t.Fatalf("Product(public): %v", err)
+	}
+	if pub.ID != product.ID {
+		t.Errorf("public lookup returned %q, want %q", pub.ID, product.ID)
+	}
+	if !pub.Active {
+		t.Error("the storefront was served the product as inactive")
+	}
+	// digital.filled is a private-only field: the public query does not compute
+	// it, so the storefront is not told about the shop's digital inventory.
+	if pub.Digital.Filled {
+		t.Error("the public query computed digital.filled")
+	}
+
+	if _, err := db.Product(ctx, false, "no-such-slug"); err == nil {
+		t.Error("an unknown slug was served")
+	} else if !strings.Contains(err.Error(), "not found") && err.Error() != "product not found" {
+		t.Errorf("unexpected error for an unknown slug: %v", err)
+	}
+}
+
+// seedCompleteProduct writes a product carrying every part the admin form owns —
+// options, variants, an image and the columns only the form sends — and hands
+// back the connection, the context and the image alongside it.
+func seedCompleteProduct(t *testing.T) (*Base, context.Context, *models.Product, *models.File) {
+	t.Helper()
+
 	db, ctx := bootstrap(t)
 
 	product := &models.Product{
@@ -78,17 +149,30 @@ func TestProduct_AssemblesEveryPart(t *testing.T) {
 		t.Fatalf("AddImage: %v", err)
 	}
 
-	// Private: looked up by id, and it reports whether digital content is there.
-	got, err := db.Product(ctx, true, product.ID)
-	if err != nil {
-		t.Fatalf("Product(private): %v", err)
+	return db, ctx, product, image
+}
+
+// assertProductRow checks the columns Product() reads straight off the product
+// row.
+func assertProductRow(t *testing.T, got, want *models.Product) {
+	t.Helper()
+
+	if got.Quantity != want.Quantity {
+		t.Errorf("quantity = %d, want %d", got.Quantity, want.Quantity)
 	}
-	if got.Quantity != product.Quantity {
-		t.Errorf("quantity = %d, want %d", got.Quantity, product.Quantity)
+	if got.SKU != want.SKU {
+		t.Errorf("sku = %q, want %q", got.SKU, want.SKU)
 	}
-	if got.SKU != product.SKU {
-		t.Errorf("sku = %q, want %q", got.SKU, product.SKU)
+	if !got.HasVariants {
+		t.Error("has_variants was not read back")
 	}
+}
+
+// assertProductSubqueries checks the parts Product() collects with a subquery or
+// a join: images, metadata, attributes and SEO.
+func assertProductSubqueries(t *testing.T, got *models.Product, image *models.File) {
+	t.Helper()
+
 	// The images subquery carries what a url needs — id, name and extension —
 	// and not the uploader's original filename.
 	if len(got.Images) != 1 || got.Images[0].ID != image.ID ||
@@ -104,9 +188,14 @@ func TestProduct_AssemblesEveryPart(t *testing.T) {
 	if got.Seo == nil || got.Seo.Title != "Complete" || got.Seo.Keywords != "product" {
 		t.Errorf("seo = %+v", got.Seo)
 	}
-	if !got.HasVariants {
-		t.Error("has_variants was not read back")
-	}
+}
+
+// assertProductVariants checks the option tree and the variants themselves, both
+// of which Product() reads with a query of their own and joins back onto the
+// product.
+func assertProductVariants(t *testing.T, got *models.Product) {
+	t.Helper()
+
 	if len(got.Options) != 1 || got.Options[0].Name != "Size" {
 		t.Fatalf("options = %+v", got.Options)
 	}
@@ -127,50 +216,5 @@ func TestProduct_AssemblesEveryPart(t *testing.T) {
 	}
 	if !seenSurcharge {
 		t.Errorf("the second variant is missing or wrong: %+v", got.Variants)
-	}
-	// No digital rows exist yet, so the admin is told the product has none.
-	if got.Digital.Filled {
-		t.Error("digital.filled is true although the product has no digital content")
-	}
-
-	if _, err := db.AddDigitalFile(ctx, product.ID, "feedface", "pdf", "manual.pdf"); err != nil {
-		t.Fatalf("AddDigitalFile: %v", err)
-	}
-	got, err = db.Product(ctx, true, product.ID)
-	if err != nil {
-		t.Fatalf("Product(private) after adding a file: %v", err)
-	}
-	if !got.Digital.Filled {
-		t.Error("digital.filled is false although the product has a digital file")
-	}
-
-	// The public lookup is by slug, and only sees an active, undeleted product.
-	if _, err := db.Product(ctx, false, product.Slug); err == nil {
-		t.Error("an inactive product was served to the storefront")
-	}
-	if err := db.UpdateActive(ctx, product.ID); err != nil {
-		t.Fatalf("UpdateActive: %v", err)
-	}
-
-	pub, err := db.Product(ctx, false, product.Slug)
-	if err != nil {
-		t.Fatalf("Product(public): %v", err)
-	}
-	if pub.ID != product.ID {
-		t.Errorf("public lookup returned %q, want %q", pub.ID, product.ID)
-	}
-	if !pub.Active {
-		t.Error("the storefront was served the product as inactive")
-	}
-	// digital.filled is a private-only field: the public query does not compute
-	// it, so the storefront is not told about the shop's digital inventory.
-	if pub.Digital.Filled {
-		t.Error("the public query computed digital.filled")
-	}
-
-	if _, err := db.Product(ctx, false, "no-such-slug"); err == nil {
-		t.Error("an unknown slug was served")
-	} else if !strings.Contains(err.Error(), "not found") && err.Error() != "product not found" {
-		t.Errorf("unexpected error for an unknown slug: %v", err)
 	}
 }
