@@ -1,6 +1,11 @@
 package handlers
 
 import (
+	"database/sql"
+	"errors"
+	"fmt"
+
+	"github.com/disintegration/imaging"
 	"github.com/gofiber/fiber/v3"
 
 	_ "github.com/shurco/mycart/internal/models"
@@ -54,4 +59,62 @@ func Product(c fiber.Ctx) error {
 	}
 
 	return webutil.Response(c, fiber.StatusOK, "Product info", product)
+}
+
+// GetProductRepresentativeImage serves the first product image as PNG.
+// Converts JPEG to PNG on-the-fly if needed.
+//
+// @Summary      Get product representative image
+// @Description  Serves first product image (by position) as PNG with JPEG conversion
+// @Tags         Public
+// @Produce      png
+// @Param        slug path string true "Product slug"
+// @Success      200 {file} image/png "Product image"
+// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
+// @Router       /products/{slug}.png [get]
+func GetProductRepresentativeImage(c fiber.Ctx) error {
+	slug := c.Params("slug")
+	log := logging.New()
+
+	image, err := store.GetProductRepImage(c.Context(), slug)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Serve placeholder
+			placeholderPath := "./cmd/lc_uploads/product-placeholder.png"
+			c.Set("Content-Type", "image/png")
+			return c.SendFile(placeholderPath)
+		}
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	filePath := fmt.Sprintf("./cmd/lc_uploads/%s.%s", image.Name, image.Ext)
+
+	// If already PNG, serve directly
+	if image.Ext == "png" {
+		c.Set("Content-Type", "image/png")
+		c.Set("Cache-Control", "public, max-age=3600")
+		return c.SendFile(filePath)
+	}
+
+	// Convert JPEG to PNG
+	if image.Ext == "jpg" || image.Ext == "jpeg" {
+		src, err := imaging.Open(filePath)
+		if err != nil {
+			log.ErrorStack(err)
+			return webutil.StatusInternalServerError(c)
+		}
+
+		c.Set("Content-Type", "image/png")
+		c.Set("Cache-Control", "public, max-age=3600")
+
+		if err := imaging.Encode(c.Response().BodyWriter(), src, imaging.PNG); err != nil {
+			log.ErrorStack(err)
+			return webutil.StatusInternalServerError(c)
+		}
+		return nil
+	}
+
+	// Unsupported format, serve as-is
+	return c.SendFile(filePath)
 }

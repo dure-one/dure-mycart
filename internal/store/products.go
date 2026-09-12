@@ -474,11 +474,18 @@ func ProductImages(ctx context.Context, productID string) (*[]models.File, error
 
 	images := make([]models.File, len(dbImages))
 	for i, img := range dbImages {
+		var position *int
+		if img.Position.Valid {
+			pos := int(img.Position.Int64)
+			position = &pos
+		}
+
 		images[i] = models.File{
 			ID:       img.ID,
 			Name:     img.Name,
 			Ext:      img.Ext,
 			OrigName: img.OrigName,
+			Position: position,
 		}
 	}
 
@@ -513,6 +520,31 @@ func DeleteImage(ctx context.Context, productID, imageID string) error {
 	// Note: sqlc-generated DeleteProductImage only takes imageID, not productID
 	// The original query verified product_id for safety, but the generated version doesn't
 	return db.DeleteProductImageFunc(ctx, imageID)
+}
+
+// ReorderImages updates position values for product images
+func ReorderImages(ctx context.Context, productID string, positions []db.UpdateProductImagePositionParams) error {
+	for _, p := range positions {
+		if err := db.UpdateProductImagePositionFunc(ctx, p); err != nil {
+			return fmt.Errorf("update position for image %s: %w", p.ID, err)
+		}
+	}
+
+	return nil
+}
+
+// GetProductRepImage retrieves the first image (by position) for a product slug
+func GetProductRepImage(ctx context.Context, slug string) (*models.File, error) {
+	row, err := db.GetProductRepImageBySlugFunc(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	return &models.File{
+		ID:       row.ID,
+		Name:     row.Name,
+		Ext:      row.Ext,
+		OrigName: row.OrigName,
+	}, nil
 }
 
 // ProductDigital retrieves digital content for a product
@@ -728,14 +760,20 @@ func loadProductImages(ctx context.Context, product *models.Product) error {
 	}
 
 	for _, img := range dbImages {
+		var position *int
+		if img.Position.Valid {
+			pos := int(img.Position.Int64)
+			position = &pos
+		}
+
 		product.Images = append(product.Images, models.File{
 			ID:       img.ID,
 			Name:     img.Name,
 			Ext:      img.Ext,
 			OrigName: img.OrigName,
+			Position: position,
 		})
 	}
-
 	return nil
 }
 

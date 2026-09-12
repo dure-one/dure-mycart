@@ -13,6 +13,7 @@
   import FormTextarea from '$lib/components/form/Textarea.svelte'
   import Editor from '$lib/components/Editor.svelte'
   import Upload from '$lib/components/form/Upload.svelte'
+  import SortableImage from '$lib/components/SortableImage.svelte'
   import SvgIcon from '$lib/components/SvgIcon.svelte'
   import Pagination from '$lib/components/Pagination.svelte'
   import { loadData, saveData, deleteData, toggleActive as toggleActiveApi } from '$lib/utils/apiHelpers'
@@ -303,12 +304,19 @@
     formErrors = {}
     drawerMode = 'edit'
 
+    console.log('[DEBUG openEdit] Loading product:', product.id)
+
     const result = await loadData<Product>(`/api/_/products/${product.id}`, 'Failed to load product')
     if (result) {
+      console.log('[DEBUG openEdit] Loaded product data:', result)
+      console.log('[DEBUG openEdit] Images from API:', result.images)
+
       fullProductData = result
       formData = convertProductToFormData(result)
       amountDisplay = typeof formData.amount === 'string' ? formData.amount : formData.amount.toString()
       productImages = result.images || []
+
+      console.log('[DEBUG openEdit] Set productImages to:', productImages)
       drawerOpen = true
     }
   }
@@ -498,6 +506,53 @@
     }
   }
 
+  async function handleImageReorder(newOrder: Array<{id: string}>) {
+    if (!fullProductData) return
+
+    console.log('[DEBUG handleImageReorder] Starting reorder')
+    console.log('[DEBUG handleImageReorder] New order:', newOrder)
+    console.log('[DEBUG handleImageReorder] Product ID:', fullProductData.id)
+
+    try {
+      // Backend expects array with sql.NullInt64 format for position
+      const positions = newOrder.map((img, index) => ({
+        id: img.id,
+        position: {
+          Int64: index,
+          Valid: true
+        },
+        product_id: fullProductData.id
+      }))
+
+      console.log('[DEBUG handleImageReorder] Sending positions to API:', positions)
+
+      const response = await fetch(`/api/_/products/${fullProductData.id}/images/reorder`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(positions)
+      })
+
+      const res = await response.json()
+      console.log('[DEBUG handleImageReorder] API response:', res)
+
+      if (res.success) {
+        // Update local state to match new order
+        productImages = newOrder as typeof productImages
+        console.log('[DEBUG handleImageReorder] Updated local productImages:', productImages)
+        showMessage(t('products.imagesReordered') || 'Images reordered', 'connextSuccess')
+      } else {
+        console.error('[DEBUG handleImageReorder] API returned error:', res.message)
+        showMessage(res.message || t('products.failedToReorderImages') || 'Failed to reorder images', 'connextError')
+      }
+    } catch (error) {
+      console.error('[DEBUG handleImageReorder] Exception:', error)
+      showMessage(t('common.networkError'), 'connextError')
+    }
+  }
+
   async function handleDelete(product: Product, index: number) {
     if (!confirmDelete('product', product.name)) {
       return
@@ -595,14 +650,21 @@
           <tr class:opacity-30={!product.active} data-testid="product-row">
             <td>
               {#if product.images && product.images.length > 0}
-                <a href="/uploads/{product.images[0].name}.{product.images[0].ext}" target="_blank">
-                  <img
-                    style="width: 100%; max-width: 80px"
-                    src="/uploads/{product.images[0].name}_sm.{product.images[0].ext}"
-                    alt={product.name}
-                    loading="lazy"
-                  />
-                </a>
+                <div class="relative inline-block">
+                  <a href="/uploads/{product.images[0].name}.{product.images[0].ext}" target="_blank">
+                    <img
+                      style="width: 100%; max-width: 80px"
+                      src="/uploads/{product.images[0].name}_sm.{product.images[0].ext}"
+                      alt={product.name}
+                      loading="lazy"
+                    />
+                  </a>
+                  {#if product.images.length > 1}
+                    <span class="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                      +{product.images.length - 1}
+                    </span>
+                  {/if}
+                </div>
               {:else}
                 <img style="width: 100%; max-width: 80px" src="/assets/img/noimage.png" alt="" loading="lazy" />
               {/if}
@@ -882,30 +944,13 @@
               {#if drawerMode === 'edit' && fullProductData}
                 <hr />
                 <p class="font-semibold">{t('products.images')}</p>
+                <p class="text-sm text-gray-600 mb-2">Drag to reorder • First image is the representative image</p>
                 {#if productImages && productImages.length > 0}
-                  <div class="grid grid-cols-4 content-start gap-4">
-                    {#each productImages as image, index (image.id || index)}
-                      <div class="relative" style="width: 100%; max-width: 150px">
-                        <a href="/uploads/{image.name}.{image.ext}" target="_blank">
-                          <img src="/uploads/{image.name}_sm.{image.ext}" alt="" />
-                        </a>
-                        <div
-                          role="button"
-                          tabindex="0"
-                          class="absolute end-4 top-4 cursor-pointer bg-white p-2"
-                          onclick={() => deleteProductImage(index)}
-                          onkeydown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault()
-                              deleteProductImage(index)
-                            }
-                          }}
-                        >
-                          <SvgIcon name="trash" className="h-5 w-5" stroke="currentColor" />
-                        </div>
-                      </div>
-                    {/each}
-                  </div>
+                  <SortableImage
+                    images={productImages}
+                    onReorder={handleImageReorder}
+                    onDelete={deleteProductImage}
+                  />
                 {/if}
                 <Upload
                   section="image"

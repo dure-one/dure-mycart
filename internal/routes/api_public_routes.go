@@ -14,10 +14,7 @@ func ApiPublicRoutes(c *fiber.App) {
 	c.Get("/api/settings", handlers.Settings)
 	c.Get("/api/pages/:page_slug", handlers.Page)
 
-	// Seller info with captcha protection
-	c.Get("/api/sellerinfo/captcha", handlers.GenerateCaptcha)
-	c.Post("/api/sellerinfo/verify", handlers.VerifyCaptcha)
-	c.Get("/api/sellerinfo", handlers.GetSellerInfo)
+	c.Get("/products/:slug.png", handlers.GetProductRepresentativeImage)
 
 	product := c.Group("/api/products")
 	product.Get("/", handlers.Products)
