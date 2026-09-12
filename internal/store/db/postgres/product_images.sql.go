@@ -168,7 +168,7 @@ func (q *Queries) ListAllProductImages(ctx context.Context) ([]ListAllProductIma
 const listProductImages = `-- name: ListProductImages :many
 SELECT id, product_id, name, ext, orig_name
 FROM product_image WHERE product_id = $1
-ORDER BY id
+ORDER BY position ASC
 `
 
 type ListProductImagesRow struct {

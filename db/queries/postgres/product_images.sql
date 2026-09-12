@@ -5,7 +5,7 @@ FROM product_image WHERE id = $1 LIMIT 1;
 -- name: ListProductImages :many
 SELECT id, product_id, name, ext, orig_name
 FROM product_image WHERE product_id = $1
-ORDER BY id;
+ORDER BY position ASC;
 
 -- name: CreateProductImage :one
 INSERT INTO product_image (id, product_id, name, ext, orig_name)
