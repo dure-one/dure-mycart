@@ -20,7 +20,7 @@ func setupTestDB(t *testing.T) *sql.DB {
 			id TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
 			slug TEXT UNIQUE NOT NULL,
-			desc TEXT,
+			"desc" TEXT,
 			amount NUMERIC,
 			quantity INTEGER DEFAULT 0,
 			digital TEXT,

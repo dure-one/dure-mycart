@@ -2,15 +2,15 @@ package queries
 
 import (
 	"context"
-	"database/sql"
 
+	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/pkg/errors"
 )
 
-// AuthQueries is a struct that embeds *sql.DB to provide database functionality.
+// AuthQueries is a struct that holds a dialect-aware database handle to provide database functionality.
 // This structure can be used to create methods that will execute SQL queries related to authentication.
 type AuthQueries struct {
-	*sql.DB
+	DB *database.Conn
 }
 
 // GetPasswordByEmail retrieves the password for a user by their email.

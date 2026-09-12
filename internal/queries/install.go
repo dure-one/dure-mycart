@@ -2,10 +2,10 @@ package queries
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"strconv"
 
+	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/pkg/security"
 )
@@ -23,11 +23,11 @@ func (q *InstallQueries) IsInstalled(ctx context.Context) (bool, error) {
 	return installed, nil
 }
 
-// InstallQueries is a struct that embeds a pointer to an sql.DB.
-// This allows for the struct to have all the methods of sql.DB,
+// InstallQueries is a struct that holds a dialect-aware database handle.
+// This allows the struct to perform database operations directly.
 // enabling it to perform database operations directly.
 type InstallQueries struct {
-	*sql.DB
+	DB *database.Conn
 }
 
 // Install performs the installation process for the cart system.

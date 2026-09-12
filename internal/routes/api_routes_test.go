@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
+	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/queries"
 	"github.com/shurco/mycart/migrations"
 )
@@ -23,7 +24,7 @@ func routesTestDB(t *testing.T) {
 	}
 	_ = os.MkdirAll("lc_base", 0o775)
 	t.Cleanup(func() { _ = os.Chdir(prev) })
-	if err := queries.New(migrations.Embed()); err != nil {
+	if err := queries.New(database.Config{Driver: database.DriverSQLite, DSN: database.DefaultSQLiteDSN}, migrations.Embed()); err != nil {
 		t.Fatalf("queries.New: %v", err)
 	}
 }

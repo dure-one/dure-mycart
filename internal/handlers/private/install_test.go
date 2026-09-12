@@ -1,45 +1,25 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"testing"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/pressly/goose/v3"
 
-	"github.com/shurco/mycart/internal/queries"
 	"github.com/shurco/mycart/internal/testutil"
-	"github.com/shurco/mycart/migrations"
-	_ "modernc.org/sqlite"
 )
 
+// setupCleanDB returns a Fiber app backed by a migrated but uninstalled
+// database, so the install endpoint starts from first-run state.
 func setupCleanDB(t *testing.T) (*fiber.App, func()) {
 	t.Helper()
-	dirCleanup := testutil.WithCmdTestDir(t)
 
-	sqlite, err := sql.Open("sqlite", ":memory:?_pragma=foreign_keys(ON)")
-	if err != nil {
-		t.Fatal(err)
-	}
-	sqlite.SetMaxOpenConns(1)
-
-	if err := goose.SetDialect("sqlite3"); err != nil {
-		t.Fatal(err)
-	}
-	goose.SetBaseFS(migrations.Embed())
-	goose.SetTableName("migrate_db_version")
-	if err := goose.Up(sqlite, "."); err != nil {
-		t.Fatal(err)
-	}
-
-	queries.NewFromDB(sqlite)
+	dbCleanup := testutil.SetupCleanDB(t)
 	app := fiber.New()
 
 	return app, func() {
 		_ = app.Shutdown()
-		_ = sqlite.Close()
-		dirCleanup()
+		dbCleanup()
 	}
 }
 

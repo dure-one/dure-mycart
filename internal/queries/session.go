@@ -17,19 +17,23 @@ func (q *SettingQueries) GetSession(ctx context.Context, key string) (string, er
 	return value, nil
 }
 
-// AddSession upserts a session record by key. Using INSERT OR REPLACE makes callers
-// idempotent: they can write to the same key repeatedly (e.g. to refresh a TTL-cached
-// value) without first deleting the previous row.
+// AddSession upserts a session record by key. The ON CONFLICT clause makes
+// callers idempotent: they can write to the same key repeatedly (e.g. to
+// refresh a TTL-cached value) without first deleting the previous row.
 //
 // Expired rows are swept opportunistically on every write so the table does
-// not grow without bound.
+// not grow without bound. The sweep cutoff is a Go parameter rather than an
+// engine-specific expression for "now".
 func (q *SettingQueries) AddSession(ctx context.Context, key, value string, expires int64) error {
+	now := time.Now().Unix()
 	if _, err := q.DB.ExecContext(ctx,
-		`DELETE FROM session WHERE expires < strftime('%s','now') AND key != ?`, key); err != nil {
+		`DELETE FROM session WHERE expires < ? AND key != ?`, now, key); err != nil {
 		return err
 	}
 
-	_, err := q.DB.ExecContext(ctx, `INSERT OR REPLACE INTO session (key, value, expires) VALUES (?, ?, ?)`, key, value, expires)
+	_, err := q.DB.ExecContext(ctx,
+		`INSERT INTO session (key, value, expires) VALUES (?, ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, expires = excluded.expires`,
+		key, value, expires)
 	return err
 }
 
