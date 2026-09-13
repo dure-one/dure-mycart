@@ -1,6 +1,7 @@
 export * from './api'
 export * from './message'
 export * from './costFormat'
+export * from './customer'
 export * from './formatDate'
 export * from './apiHelpers'
 export * from './settingsHelpers'

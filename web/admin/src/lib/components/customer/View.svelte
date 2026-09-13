@@ -1,14 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import {
-    Badge,
-    DetailList,
-    DrawerFooter,
-    DrawerHeader,
-    FormButton,
-    PageState
-  } from '$lib/components'
-  import { apiUpdate, formatDate, confirmAction, showMessage } from '$lib/utils'
+  import { Badge, DetailList, DrawerFooter, DrawerHeader, FormButton, PageState } from '$lib/components'
+  import { accountState, apiUpdate, formatDate, confirmAction, showMessage } from '$lib/utils'
   import { deleteData, handleApiCall, loadData } from '$lib/utils/apiHelpers'
   import { formatCurrencyWithTruncation } from '$lib/utils/currency'
   import type { Cart, CustomerSummary } from '$lib/types/models'
@@ -33,10 +26,13 @@
   let loading = $state(true)
   let busy = $state(false)
 
-  // The account status is read straight off the row. The list behind the drawer
-  // is reloaded after every change and hands down the row it got back, so the
+  // The row the list handed down. It is reloaded after every change, so the
   // drawer shows what the server says rather than a copy that could disagree
   // with the table the operator is looking at.
+  //
+  // The badge below reads the account state from the same helper the list's
+  // column does, so the row and the drawer cannot word it differently.
+  let account = $derived(accountState(customer))
 
   // A password is issued exactly once and never written down anywhere, so it
   // lives here until the drawer closes — which is the whole point: this is the
@@ -147,7 +143,26 @@
 </script>
 
 <div>
-  <DrawerHeader title={t('customers.accountDetails')} />
+  <DrawerHeader title={t('customers.accountDetails')}>
+    {#snippet actions()}
+      {#if customer.registered}
+        <FormButton
+          variant={customer.active ? 'danger' : 'secondary'}
+          size="sm"
+          name={customer.active ? t('customers.block') : t('customers.unblock')}
+          disabled={busy}
+          onclick={toggleActive}
+        />
+        <FormButton
+          variant="secondary"
+          size="sm"
+          name={t('customers.resetPassword')}
+          disabled={busy}
+          onclick={resetPassword}
+        />
+      {/if}
+    {/snippet}
+  </DrawerHeader>
 
   <div class="flow-root">
     <dl class="-my-3 mt-2 divide-y divide-gray-100 text-sm">
@@ -159,24 +174,12 @@
         <DetailList name={t('customers.name')}>{customer.name}</DetailList>
       {/if}
 
-      <DetailList name={t('customers.registered')}>
-        {#if customer.registered}
-          <Badge variant="success">{t('customers.registeredYes')}</Badge>
-        {:else}
-          <Badge variant="neutral">{t('customers.registeredNo')}</Badge>
-        {/if}
+      <DetailList name={t('customers.account')}>
+        <Badge variant={account.variant}>{t(account.labelKey)}</Badge>
       </DetailList>
 
-      {#if customer.registered}
-        <DetailList name={t('customers.active')}>
-          <Badge variant={customer.active ? 'success' : 'danger'}>
-            {customer.active ? t('customers.activeYes') : t('customers.activeNo')}
-          </Badge>
-        </DetailList>
-
-        {#if customer.created}
-          <DetailList name={t('customers.accountCreated')}>{formatDate(customer.created)}</DetailList>
-        {/if}
+      {#if customer.registered && customer.created}
+        <DetailList name={t('customers.accountCreated')}>{formatDate(customer.created)}</DetailList>
       {/if}
 
       <DetailList name={t('customers.purchases')}>{customer.purchases}</DetailList>
@@ -188,82 +191,63 @@
       {#if customer.last_order}
         <DetailList name={t('customers.lastOrder')}>{formatDate(customer.last_order)}</DetailList>
       {/if}
+
+      <DetailList name={t('customers.ordersSection')} fullWidth={true}>
+        {#if loading}
+          <PageState kind="loading" />
+        {:else if carts.length === 0}
+          <PageState kind="empty" message={t('customers.noOrders')} />
+        {:else}
+          <div class="table-wrap">
+            <table class="table-plain">
+              <thead>
+                <tr>
+                  <th>{t('customers.date')}</th>
+                  <th class="text-right">{t('customers.amount')}</th>
+                  <th>{t('customers.status')}</th>
+                  <th>{t('customers.payment')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each carts as cart (cart.id)}
+                  <tr>
+                    <td>{formatDate(cart.created)}</td>
+                    <td class="text-right">{money(cart.amount_total, cart.currency)}</td>
+                    <td>
+                      <Badge variant={statusVariant(cart.payment_status)}>
+                        {cart.payment_status || '-'}
+                      </Badge>
+                    </td>
+                    <td>{cart.payment_system || '-'}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+      </DetailList>
     </dl>
   </div>
 
+  {#if !customer.registered}
+    <div class="notice notice-info mt-5">
+      {t('customers.guestHint')}
+    </div>
+  {/if}
+
   {#if issuedPassword}
-    <div class="mt-6 rounded border border-amber-300 bg-amber-50 p-4">
-      <div class="text-sm font-medium text-gray-900">{t('customers.passwordIssued')}</div>
+    <div class="notice notice-warning mt-5">
+      <p class="text-sm font-medium">{t('customers.passwordIssued')}</p>
       <div class="mt-2 flex items-center gap-3">
         <code class="grow rounded bg-white px-3 py-2 font-mono text-sm">{issuedPassword}</code>
         <FormButton variant="secondary" size="sm" name={t('customers.copy')} onclick={copyPassword} />
       </div>
-      <p class="mt-2 text-xs text-gray-600">{t('customers.passwordIssuedHint')}</p>
+      <p class="mt-2 text-xs">{t('customers.passwordIssuedHint')}</p>
     </div>
   {/if}
-
-  {#if customer.registered}
-    <div class="mt-6 flex flex-wrap gap-2 border-t border-gray-200 pt-6">
-      <FormButton
-        variant={customer.active ? 'danger' : 'secondary'}
-        size="sm"
-        name={customer.active ? t('customers.block') : t('customers.unblock')}
-        disabled={busy}
-        onclick={toggleActive}
-      />
-      <FormButton
-        variant="secondary"
-        size="sm"
-        name={t('customers.resetPassword')}
-        disabled={busy}
-        onclick={resetPassword}
-      />
-    </div>
-  {:else}
-    <p class="mt-6 border-t border-gray-200 pt-6 text-sm text-gray-500">
-      {t('customers.guestHint')}
-    </p>
-  {/if}
-
-  <div class="mt-6">
-    <div class="mb-3 font-medium text-gray-900">{t('customers.ordersSection')}</div>
-
-    {#if loading}
-      <PageState kind="loading" />
-    {:else if carts.length === 0}
-      <PageState kind="empty" message={t('customers.noOrders')} />
-    {:else}
-      <div class="table-wrap">
-        <table class="table-plain">
-          <thead>
-            <tr>
-              <th>{t('customers.date')}</th>
-              <th class="text-right">{t('customers.amount')}</th>
-              <th>{t('customers.status')}</th>
-              <th>{t('customers.payment')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each carts as cart (cart.id)}
-              <tr>
-                <td>{formatDate(cart.created)}</td>
-                <td class="text-right">{money(cart.amount_total, cart.currency)}</td>
-                <td>
-                  <Badge variant={statusVariant(cart.payment_status)}>
-                    {cart.payment_status || '-'}
-                  </Badge>
-                </td>
-                <td>{cart.payment_system || '-'}</td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-    {/if}
-  </div>
 
   <DrawerFooter
-    onclose={onclose}
+    {onclose}
     ondelete={customer.registered ? deleteAccount : undefined}
     deleteLabel={t('customers.deleteAccount')}
   />

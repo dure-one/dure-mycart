@@ -5,7 +5,7 @@
   import CustomerView from '$lib/components/customer/View.svelte'
   import Pagination from '$lib/components/Pagination.svelte'
   import { Badge, Chip, ChipGroup, FormInput, PageHeader, PageState } from '$lib/components'
-  import { formatDate } from '$lib/utils'
+  import { accountState, formatDate } from '$lib/utils'
   import { loadData } from '$lib/utils/apiHelpers'
   import { formatCurrencyWithTruncation } from '$lib/utils/currency'
   import { createDelayedReset } from '$lib/utils/delayedReset'
@@ -109,21 +109,6 @@
       })
     }
   }
-
-  // One column carries both facts the operator needs about a row, because they
-  // are one question in practice: is there an account here, and is it open?
-  // "Guest" is the row where neither answer applies and no action exists.
-  function accountState(customer: CustomerSummary): {
-    label: string
-    variant: 'success' | 'danger' | 'neutral'
-  } {
-    if (!customer.registered) {
-      return { label: t('customers.guest'), variant: 'neutral' }
-    }
-    return customer.active
-      ? { label: t('customers.activeYes'), variant: 'success' }
-      : { label: t('customers.activeNo'), variant: 'danger' }
-  }
 </script>
 
 <Main>
@@ -132,19 +117,17 @@
   {#if loading}
     <PageState kind="loading" />
   {:else}
-    <div class="flex flex-wrap items-center gap-4 pb-6">
+    <div class="mb-5 flex flex-wrap items-center gap-4">
       <div class="w-full sm:w-72">
         <FormInput
           id="customer-search"
           ico="user-group"
-          title={t('customers.search')}
-          label={t('customers.searchLabel')}
-          placeholder={t('customers.searchPlaceholder')}
+          title={t('customers.searchLabel')}
           bind:value={search}
           oninput={onSearchInput}
         />
       </div>
-      <ChipGroup class="pt-5">
+      <ChipGroup>
         <Chip active={!registeredOnly} onclick={() => setRegisteredOnly(false)}>
           {t('customers.all')}
         </Chip>
@@ -163,6 +146,11 @@
             <tr>
               <th>{t('customers.email')}</th>
               <th>{t('customers.name')}</th>
+              <!-- One column carries both facts the operator needs about a row,
+                   because they are one question in practice: is there an account
+                   here, and is it open? "Guest" is the row where neither answer
+                   applies. The badge comes from `accountState`, shared with the
+                   drawer, so the row and the drawer word it the same way. -->
               <th class="w-40">{t('customers.account')}</th>
               <th class="w-32 text-right">{t('customers.purchases')}</th>
               <th class="w-40 text-right">{t('customers.spent')}</th>
@@ -171,12 +159,13 @@
           </thead>
           <tbody>
             {#each customers as customer (customer.email)}
-              {@const state = accountState(customer)}
+              {@const account = accountState(customer)}
+
               <tr class="cursor-pointer hover:bg-gray-50" onclick={() => openCustomer(customer)}>
                 <td>{customer.email}</td>
                 <td>{customer.name || '-'}</td>
                 <td>
-                  <Badge variant={state.variant}>{state.label}</Badge>
+                  <Badge variant={account.variant}>{t(account.labelKey)}</Badge>
                 </td>
                 <td class="text-right">{customer.purchases}</td>
                 <td class="text-right">
@@ -204,11 +193,7 @@
       </div>
 
       {#if total > 0}
-        <Pagination
-          currentPage={currentPage}
-          totalPages={Math.ceil(total / limit)}
-          onPageChange={loadCustomers}
-        />
+        <Pagination {currentPage} totalPages={Math.ceil(total / limit)} onPageChange={loadCustomers} />
       {/if}
     {/if}
   {/if}
@@ -221,11 +206,7 @@
            drawer again: the password issued for the previous one, and the
            status it held, must not carry over. -->
       {#key drawerCustomer.email}
-        <CustomerView
-          customer={drawerCustomer}
-          onclose={closeDrawer}
-          onchanged={() => loadCustomers()}
-        />
+        <CustomerView customer={drawerCustomer} onclose={closeDrawer} onchanged={() => loadCustomers()} />
       {/key}
     {/if}
   </Drawer>
