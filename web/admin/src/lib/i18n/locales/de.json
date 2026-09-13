@@ -124,7 +124,6 @@
   },
   "branding": {
     "title": "Marke",
-    "marks": "Shop-Marken",
     "logo": "Logo",
     "logoDesc": "Wird im Kopfbereich des Shops gezeichnet. PNG oder JPEG, einige hundert Pixel breit — die Datei wird unverändert verwendet, also vorher skalieren.",
     "favicon": "Favicon",

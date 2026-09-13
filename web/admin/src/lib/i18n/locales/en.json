@@ -124,7 +124,6 @@
   },
   "branding": {
     "title": "Branding",
-    "marks": "Shop marks",
     "logo": "Logo",
     "logoDesc": "Drawn in the storefront header. PNG or JPEG, a few hundred pixels wide — the file is used as it is, so scale it before uploading.",
     "favicon": "Favicon",

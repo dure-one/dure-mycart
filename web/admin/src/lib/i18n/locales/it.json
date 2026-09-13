@@ -124,7 +124,6 @@
   },
   "branding": {
     "title": "Marchio",
-    "marks": "Marchi del negozio",
     "logo": "Logo",
     "logoDesc": "Disegnato nell'intestazione del negozio. PNG o JPEG, qualche centinaio di pixel di larghezza — il file viene usato così com'è, quindi ridimensionalo prima di caricarlo.",
     "favicon": "Favicon",

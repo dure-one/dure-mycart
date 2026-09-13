@@ -124,7 +124,6 @@
   },
   "branding": {
     "title": "Image de marque",
-    "marks": "Marques de la boutique",
     "logo": "Logo",
     "logoDesc": "Dessiné dans l'en-tête de la boutique. PNG ou JPEG, quelques centaines de pixels de large — le fichier est utilisé tel quel, redimensionnez-le avant de l'envoyer.",
     "favicon": "Favicon",

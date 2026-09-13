@@ -124,7 +124,6 @@
   },
   "branding": {
     "title": "Marca",
-    "marks": "Marcas de la tienda",
     "logo": "Logotipo",
     "logoDesc": "Se dibuja en la cabecera de la tienda. PNG o JPEG, de unos cientos de píxeles de ancho — el archivo se usa tal cual, así que escálalo antes de subirlo.",
     "favicon": "Favicon",
