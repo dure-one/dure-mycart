@@ -193,4 +193,50 @@ describe('Cart Store', () => {
       expect(parsed[0]).toEqual(item)
     })
   })
+
+  describe('one copy of a download', () => {
+    const download: CartItem = {
+      id: 'guide',
+      name: 'A Guide',
+      slug: 'a-guide',
+      amount: 2400,
+      quantity: 1,
+      image: null,
+      digital: { type: 'file' }
+    }
+
+    it('should hold one copy however many were asked for', () => {
+      cartStore.add({ ...download, quantity: 3 })
+
+      expect(get(cartStore)[0].quantity).toBe(1)
+    })
+
+    it('should not accumulate a second copy', () => {
+      cartStore.add(download)
+      cartStore.add(download)
+
+      expect(get(cartStore)[0].quantity).toBe(1)
+    })
+
+    it('should not step past one copy', () => {
+      cartStore.add(download)
+      cartStore.incrementQuantity(download.id, undefined)
+
+      expect(get(cartStore)[0].quantity).toBe(1)
+    })
+
+    it('should not be set to more than one copy', () => {
+      cartStore.add(download)
+      cartStore.updateQuantity(download.id, undefined, 5)
+
+      expect(get(cartStore)[0].quantity).toBe(1)
+    })
+
+    it('should leave a licence key with the number it was given', () => {
+      cartStore.add({ ...download, id: 'keys', digital: { type: 'data' }, quantity: 3 })
+      cartStore.incrementQuantity('keys', undefined)
+
+      expect(get(cartStore)[0].quantity).toBe(4)
+    })
+  })
 })

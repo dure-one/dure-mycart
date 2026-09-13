@@ -4,6 +4,7 @@
 
 import { cartStore } from '$lib/stores/cart'
 import type { Product, CartItem, ProductVariant } from '$lib/types/models'
+import { chargesStock } from '$lib/utils/digital'
 
 /**
  * Toggles product in cart (adds or removes)
@@ -45,15 +46,18 @@ export function toggleCartItem(
           .join(', ')
       : undefined
 
+    // One copy of a download. The shop stores a single file and hands the same
+    // bytes to every buyer, so a second copy is the same file charged twice.
     const cartItem: CartItem = {
       id: product.id,
       name: product.name,
       slug: product.slug,
       amount: finalAmount,
-      quantity: quantity,
+      quantity: chargesStock(product) ? quantity : 1,
       image,
       variant_id: selectedVariant?.id,
-      variant_name: variantName
+      variant_name: variantName,
+      digital: product.digital
     }
 
     cartStore.add(cartItem)

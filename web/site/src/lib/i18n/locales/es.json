@@ -85,6 +85,9 @@
     "selectOptions": "ELEGIR OPCIONES",
     "details": "DETALLES",
     "quantity": "CANTIDAD",
+    "download": "DESCARGA",
+    "downloadDelivery": "No se envía nada. Recibirás el enlace de descarga por correo en cuanto se confirme el pago.",
+    "downloadInAccount": "La descarga también queda en tu cuenta, para que puedas repetirla cuando quieras.",
     "variant": "variante",
     "variants": "variantes"
   },

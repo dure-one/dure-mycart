@@ -494,6 +494,23 @@ func chargesStock(product *models.Product) bool {
 	return product.Digital.Type != models.DigitalFile
 }
 
+// orderableQuantity is the most copies of one item an order may hold.
+//
+// A download is one copy. The shop stores a single file and hands the same
+// bytes to every buyer, so a second copy is the same file charged twice: the
+// buyer is not getting anything the shop would have to produce. Everything
+// else is limited by the stock it keeps.
+//
+// This is the other half of the same rule. `chargesStock` stops the shop from
+// refusing a download it cannot run out of; this stops it from selling more
+// copies of one than there are copies to sell.
+func orderableQuantity(stock int, product *models.Product) int {
+	if !chargesStock(product) {
+		return 1
+	}
+	return stock
+}
+
 // validateVariantItem validates a cart item with a variant
 func validateVariantItem(
 	index int,
@@ -580,14 +597,15 @@ func validateVariantItem(
 	}
 
 	// Check quantity availability
-	if chargesStock(product) && requested.Quantity > variant.Quantity {
+	orderable := orderableQuantity(variant.Quantity, product)
+	if requested.Quantity > orderable {
 		return &models.CartValidationError{
 			ItemIndex:          index,
 			ProductID:          requested.ProductID,
 			VariantID:          requested.VariantID,
 			ErrorType:          "quantity_unavailable",
 			RequestedQty:       requested.Quantity,
-			AvailableQty:       variant.Quantity,
+			AvailableQty:       orderable,
 			RequestedUnitPrice: currentUnitPrice,
 			CurrentUnitPrice:   currentUnitPrice,
 			RequestedTotal:     requested.Quantity * currentUnitPrice,
@@ -642,14 +660,15 @@ func validateNonVariantItem(
 	}
 
 	// Check quantity availability
-	if chargesStock(product) && requested.Quantity > product.Quantity {
+	orderable := orderableQuantity(product.Quantity, product)
+	if requested.Quantity > orderable {
 		return &models.CartValidationError{
 			ItemIndex:          index,
 			ProductID:          requested.ProductID,
 			VariantID:          nil,
 			ErrorType:          "quantity_unavailable",
 			RequestedQty:       requested.Quantity,
-			AvailableQty:       product.Quantity,
+			AvailableQty:       orderable,
 			RequestedUnitPrice: currentUnitPrice,
 			CurrentUnitPrice:   currentUnitPrice,
 			RequestedTotal:     requested.Quantity * currentUnitPrice,

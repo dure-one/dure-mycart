@@ -23,6 +23,16 @@ export interface ProductVariant {
   active: boolean
 }
 
+/**
+ * How a product is delivered.
+ *
+ * The public payload carries the type and nothing else: the names of the files
+ * and the licence keys behind them are not the storefront's to know.
+ */
+export interface Digital {
+  type: string
+}
+
 export interface Product {
   id: string
   name: string
@@ -36,6 +46,7 @@ export interface Product {
   attributes?: string[]
   options?: ProductOption[]
   variants?: ProductVariant[]
+  digital?: Digital
   seo?: {
     title?: string
     keywords?: string
@@ -53,6 +64,11 @@ export interface CartItem {
   image?: { name: string; ext: string } | null
   variant_id?: string
   variant_name?: string
+  // What the line is, carried from the product so a cart that outlives the tab
+  // still knows whether it holds a download. Items put in a cart before this
+  // was stored have none, and are read as goods the shop ships — which is what
+  // they were shown as when they were added.
+  digital?: Digital
 }
 
 export interface Settings {

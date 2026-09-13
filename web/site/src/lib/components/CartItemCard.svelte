@@ -5,6 +5,7 @@
   import { settingsStore } from '$lib/stores/settings'
   import { getProductImageUrl } from '$lib/utils/imageUrl'
   import { translate, locale } from '$lib/i18n'
+  import { chargesStock } from '$lib/utils/digital'
   import QuantityInput from './QuantityInput.svelte'
 
   // Reactive translation function
@@ -84,13 +85,16 @@
 
   <!-- Quantity Controls -->
   <div class="flex flex-shrink-0 items-center gap-3">
-    <QuantityInput
-      quantity={item.quantity}
-      onIncrement={handleIncrement}
-      onDecrement={handleDecrement}
-      onChange={handleChange}
-      disabled={needsDeletion}
-    />
+    <!-- A download is one copy, so there is no quantity to step through. -->
+    {#if chargesStock(item)}
+      <QuantityInput
+        quantity={item.quantity}
+        onIncrement={handleIncrement}
+        onDecrement={handleDecrement}
+        onChange={handleChange}
+        disabled={needsDeletion}
+      />
+    {/if}
 
     <button
       onclick={handleRemove}

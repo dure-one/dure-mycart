@@ -85,6 +85,9 @@
     "selectOptions": "SELECT OPTIONS",
     "details": "DETAILS",
     "quantity": "QUANTITY",
+    "download": "DOWNLOAD",
+    "downloadDelivery": "Nothing is shipped. The download link is sent to your email address as soon as the payment goes through.",
+    "downloadInAccount": "It is also kept in your account, so you can download it again at any time.",
     "variant": "variant",
     "variants": "variants"
   },

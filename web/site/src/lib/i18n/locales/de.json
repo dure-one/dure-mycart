@@ -85,6 +85,9 @@
     "selectOptions": "OPTIONEN WÄHLEN",
     "details": "DETAILS",
     "quantity": "MENGE",
+    "download": "DOWNLOAD",
+    "downloadDelivery": "Es wird nichts verschickt. Den Download-Link bekommst du per E-Mail, sobald die Zahlung eingegangen ist.",
+    "downloadInAccount": "Der Download bleibt auch in deinem Konto, du kannst ihn jederzeit erneut herunterladen.",
     "variant": "Variante",
     "variants": "Varianten"
   },

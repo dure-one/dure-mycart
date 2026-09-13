@@ -85,6 +85,9 @@
     "selectOptions": "选择选项",
     "details": "详情",
     "quantity": "数量",
+    "download": "下载",
+    "downloadDelivery": "不会寄送实物。付款完成后，下载链接会发送到你的邮箱。",
+    "downloadInAccount": "下载链接也会保存在你的账户中，随时可以重新下载。",
     "variant": "款式",
     "variants": "款式"
   },

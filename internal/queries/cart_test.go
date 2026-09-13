@@ -228,6 +228,10 @@ func TestValidateCartItems_Success(t *testing.T) {
 	db, ctx := bootstrap(t)
 
 	// Create test product
+	//
+	// The stock is really stock and the test is about a cart that passes every
+	// check, so the product is a licence-key one: an order of five is a check a
+	// file product can no longer reach — see orderableQuantity.
 	product := &models.Product{
 		Core:     models.Core{ID: "test-prod-1"},
 		Name:     "Test Product",
@@ -235,7 +239,7 @@ func TestValidateCartItems_Success(t *testing.T) {
 		Quantity: 10,
 		Active:   true,
 		Slug:     "test-product",
-		Digital:  models.Digital{Type: "file"},
+		Digital:  models.Digital{Type: models.DigitalData},
 	}
 	if _, err := db.AddProduct(ctx, product); err != nil {
 		t.Fatalf("AddProduct failed: %v", err)
@@ -374,7 +378,9 @@ func TestValidateCartItems_VariantWithInactiveParent(t *testing.T) {
 		Quantity:    0,     // Parent has no quantity (variants have the stock)
 		Active:      false, // PARENT IS INACTIVE
 		HasVariants: true,
-		Digital:     models.Digital{Type: "file"},
+		// Licence keys, because the count here is stock that a variant can sell
+		// two of: a file product is one copy whatever its quantity says.
+		Digital: models.Digital{Type: models.DigitalData},
 		Options: []models.ProductOption{
 			{
 				ID:        "opt-size",
@@ -710,5 +716,75 @@ func TestValidateCartItems_LicenceKeyStillChargesStock(t *testing.T) {
 	}
 	if len(result.Errors) != 1 || result.Errors[0].ErrorType != "quantity_unavailable" {
 		t.Errorf("errors = %+v, want one quantity_unavailable", result.Errors)
+	}
+}
+
+// TestValidateCartItems_FileIsOneCopy is the other half of the rule above.
+//
+// A download that cannot run out is still one download. The shop stores a
+// single file and hands the same bytes to every buyer, so a quantity of two is
+// the same file charged twice — the buyer pays for a second copy that does not
+// exist and could not be told apart from the first if it did.
+func TestValidateCartItems_FileIsOneCopy(t *testing.T) {
+	db, ctx := bootstrap(t)
+
+	product := &models.Product{
+		Core:     models.Core{ID: "guide-one-copy"},
+		Name:     "Coastal Walks",
+		Amount:   2400,
+		Quantity: 0,
+		Active:   true,
+		Slug:     "coastal-walks",
+		Digital:  models.Digital{Type: models.DigitalFile},
+	}
+	addTestProduct(t, db, ctx, product)
+
+	result, err := ValidateCartItems(ctx, db, []models.CartProduct{
+		{ProductID: product.ID, Quantity: 2},
+	}, "USD")
+	if err != nil {
+		t.Fatalf("ValidateCartItems error: %v", err)
+	}
+
+	if result.Valid {
+		t.Fatal("two copies of a download were allowed")
+	}
+	if len(result.Errors) != 1 || result.Errors[0].ErrorType != "quantity_unavailable" {
+		t.Errorf("errors = %+v, want one quantity_unavailable", result.Errors)
+	}
+	if len(result.CorrectedItems) != 1 || result.CorrectedItems[0].Available {
+		t.Errorf("corrected items = %+v, want one unavailable item", result.CorrectedItems)
+	}
+}
+
+// TestValidateCartItems_LicenceKeysAreSoldInNumbers is what keeps the rule
+// above from being read as "a digital product is one copy": a licence key is
+// drawn from a pile the operator counts, and a buyer may take several at once.
+func TestValidateCartItems_LicenceKeysAreSoldInNumbers(t *testing.T) {
+	db, ctx := bootstrap(t)
+
+	product := &models.Product{
+		Core:     models.Core{ID: "keys-plenty"},
+		Name:     "Licence Keys, Ten",
+		Amount:   900,
+		Quantity: 10,
+		Active:   true,
+		Slug:     "licence-keys-ten",
+		Digital:  models.Digital{Type: models.DigitalData},
+	}
+	addTestProduct(t, db, ctx, product)
+
+	result, err := ValidateCartItems(ctx, db, []models.CartProduct{
+		{ProductID: product.ID, Quantity: 3},
+	}, "USD")
+	if err != nil {
+		t.Fatalf("ValidateCartItems error: %v", err)
+	}
+
+	if !result.Valid {
+		t.Fatalf("three of ten licence keys were refused: %v", result.Errors)
+	}
+	if result.CorrectedItems[0].Quantity != 3 {
+		t.Errorf("corrected quantity = %d, want 3", result.CorrectedItems[0].Quantity)
 	}
 }
