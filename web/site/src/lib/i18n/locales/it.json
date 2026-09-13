@@ -1,0 +1,131 @@
+{
+  "common": {
+    "loading": "CARICAMENTO...",
+    "poweredBy": "Realizzato con myCart",
+    "backToHome": "TORNA ALLA HOME"
+  },
+  "languages": {
+    "en": "English",
+    "zh": "中文",
+    "ko": "한국어",
+    "fr": "Français",
+    "es": "Español",
+    "de": "Deutsch",
+    "it": "Italiano",
+    "be": "Беларуская"
+  },
+  "header": {
+    "cart": "CARRELLO",
+    "language": "Lingua"
+  },
+  "footer": {
+    "follow": "Seguici:",
+    "allRightsReserved": "Tutti i diritti riservati",
+    "poweredBy": "Realizzato con myCart"
+  },
+  "home": {
+    "products": "PRODOTTI",
+    "noProductsFound": "NESSUN PRODOTTO TROVATO",
+    "loading": "CARICAMENTO..."
+  },
+  "cart": {
+    "yourCart": "IL TUO CARRELLO",
+    "inYourCart": "NEL TUO CARRELLO",
+    "cartIsEmpty": "IL CARRELLO È VUOTO",
+    "emptyMessage": "Il tuo carrello è vuoto. Aggiungi prodotti per continuare lo shopping.",
+    "goToHome": "VAI ALLA HOME",
+    "itemsCount": "ARTICOLI ({{count}})",
+    "total": "TOTALE",
+    "enterEmail": "INSERISCI L'EMAIL",
+    "emailFreeDescription": "Inserisci l'indirizzo email a cui verrà inviato l'articolo.",
+    "emailPaidDescription": "Inserisci l'indirizzo email a cui verrà inviato l'articolo dopo il pagamento. Scegli anche il sistema di pagamento.",
+    "emailPlaceholder": "EMAIL@ESEMPIO.COM",
+    "selectPaymentSystem": "SCEGLI IL SISTEMA DI PAGAMENTO",
+    "stripe": "Stripe",
+    "stripeDescription": "Sistema di pagamento diffuso per carte e altri metodi",
+    "paypal": "PayPal",
+    "paypalDescription": "Sistema di pagamento per carte e fondi dell'account PayPal",
+    "portone": "PortOne",
+    "portoneDescription": "Carta di credito, conto virtuale e pagamento mobile",
+    "spectrocoin": "Spectrocoin",
+    "spectrocoinDescription": "Sistema di pagamento che consente pagamenti in criptovaluta",
+    "coinbase": "Coinbase Commerce",
+    "coinbaseDescription": "Sistema di pagamento per pagamenti in criptovaluta (Bitcoin, Ethereum, ecc.)",
+    "getForFree": "OTTIENI GRATIS",
+    "checkout": "PAGA",
+    "noPaymentSystems": "NESSUN SISTEMA DI PAGAMENTO DISPONIBILE. CONTATTA L'AMMINISTRATORE.",
+    "selectPaymentError": "Seleziona un sistema di pagamento",
+    "selectPaymentErrorPaid": "Seleziona un sistema di pagamento per gli articoli a pagamento",
+    "remove": "RIMUOVI",
+    "removeItem": "Rimuovi articolo",
+    "validation_errors_title": "Alcuni articoli richiedono la tua attenzione",
+    "out_of_stock": "Questo articolo non è più disponibile",
+    "please_remove": "Rimuovilo per continuare",
+    "price_updated": "Il prezzo è stato aggiornato",
+    "review_cart": "Controlla il carrello",
+    "quantity_unavailable": "Quantità richiesta non disponibile"
+  },
+  "product": {
+    "addToCart": "AGGIUNGI AL CARRELLO",
+    "addToCartShort": "AGGIUNGI",
+    "add": "AGGIUNGI",
+    "removeFromCart": "RIMUOVI DAL CARRELLO",
+    "removeFromCartShort": "RIMUOVI",
+    "remove": "RIMUOVI",
+    "free": "GRATIS",
+    "new": "NUOVO",
+    "description": "DESCRIZIONE",
+    "previousImage": "Immagine precedente",
+    "nextImage": "Immagine successiva",
+    "selectedVariant": "SELEZIONATO",
+    "inStock": "DISPONIBILE",
+    "outOfStock": "NON DISPONIBILE",
+    "variantNotAvailable": "QUESTA COMBINAZIONE NON È DISPONIBILE",
+    "selectOptions": "SCEGLI LE OPZIONI",
+    "details": "DETTAGLI",
+    "quantity": "QUANTITÀ",
+    "variant": "variante",
+    "variants": "varianti"
+  },
+  "error": {
+    "notFound": "Pagina non trovata",
+    "notFoundTitle": "NON TROVATA",
+    "notFoundMessage": "La pagina che cerchi non esiste o è stata spostata.",
+    "errorOccurred": "Si è verificato un errore",
+    "checkUrl": "Controlla se ci sono errori di battitura nell'URL oppure torna alla home per sfogliare i nostri prodotti.",
+    "errorTitle": "ERRORE",
+    "contactAdmin": "Riprova tra poco; se l'errore persiste, contatta l'amministratore."
+  },
+  "payment": {
+    "success": {
+      "title": "PAGAMENTO RIUSCITO!",
+      "message": "Grazie per l'acquisto. Il tuo ordine è stato elaborato correttamente.",
+      "orderDetails": "DETTAGLI DELL'ORDINE",
+      "quantity": "Quantità:",
+      "each": "cadauno",
+      "redirecting": "Reindirizzamento alla home page tra pochi secondi...",
+      "cartIdMissing": "Manca l'ID del carrello",
+      "loadFailed": "Impossibile caricare le informazioni del carrello"
+    },
+    "cancel": {
+      "title": "PAGAMENTO ANNULLATO",
+      "message": "Il tuo pagamento è stato annullato. Puoi tornare al carrello per riprovare.",
+      "returnToCart": "TORNA AL CARRELLO"
+    },
+    "failed": "Pagamento non riuscito"
+  },
+  "pagination": {
+    "previous": "Precedente",
+    "next": "Successivo"
+  },
+  "overlay": {
+    "close": "CHIUDI"
+  },
+  "cookies": {
+    "title": "CONSENSO AI COOKIE",
+    "description": "Utilizziamo i cookie per migliorare la tua esperienza di navigazione e analizzare il traffico del sito. Cliccando su «Accetta», acconsenti al nostro uso dei cookie. ",
+    "privacyLink": "Scopri di più nella nostra Informativa sulla privacy",
+    "accept": "ACCETTA",
+    "reject": "RIFIUTA"
+  }
+}

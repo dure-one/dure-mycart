@@ -1,17 +1,52 @@
 import { writable, derived, get } from 'svelte/store'
-import zh from './locales/zh.json'
 import en from './locales/en.json'
+import zh from './locales/zh.json'
 import ko from './locales/ko.json'
+import fr from './locales/fr.json'
+import es from './locales/es.json'
+import de from './locales/de.json'
+import it from './locales/it.json'
+import be from './locales/be.json'
 
-export type Locale = 'zh' | 'en' | 'ko'
+export type Locale = 'en' | 'zh' | 'ko' | 'fr' | 'es' | 'de' | 'it' | 'be'
 
 const translations: Record<Locale, any> = {
-  zh,
   en,
-  ko
+  zh,
+  ko,
+  fr,
+  es,
+  de,
+  it,
+  be
 }
 
+// Order the pickers offer the locales in, and the name each locale calls
+// itself — a language list reads the same whichever language is active.
+const localeNames: Record<Locale, string> = {
+  en: 'English',
+  zh: '中文',
+  ko: '한국어',
+  fr: 'Français',
+  es: 'Español',
+  de: 'Deutsch',
+  it: 'Italiano',
+  be: 'Беларуская'
+}
+
+const localeOrder = Object.keys(localeNames) as Locale[]
+
 const defaultLocale: Locale = 'en'
+
+function isLocale(value: unknown): value is Locale {
+  return typeof value === 'string' && value in localeNames
+}
+
+function syncDocumentLanguage(localeValue: Locale) {
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = localeValue
+  }
+}
 
 // Store for current locale
 function createLocaleStore() {
@@ -19,9 +54,10 @@ function createLocaleStore() {
 
   // Load locale from localStorage on initialization
   if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('locale') as Locale
-    if (saved && (saved === 'zh' || saved === 'en' || saved === 'ko')) {
+    const saved = localStorage.getItem('locale')
+    if (isLocale(saved)) {
       set(saved)
+      syncDocumentLanguage(saved)
     }
   }
 
@@ -29,6 +65,7 @@ function createLocaleStore() {
     subscribe,
     set: (locale: Locale) => {
       set(locale)
+      syncDocumentLanguage(locale)
       if (typeof window !== 'undefined') {
         localStorage.setItem('locale', locale)
       }
@@ -88,34 +125,10 @@ export const translate = derived(locale, (currentLocale) => {
   }
 })
 
-// List of available locales with localized names
-export function getAvailableLocales(currentLocale: Locale): Array<{ code: Locale; name: string }> {
-  const localeNames: Record<Locale, Record<Locale, string>> = {
-    en: {
-      en: 'English',
-      zh: '中文',
-      ko: '한국어'
-    },
-    zh: {
-      en: 'English',
-      zh: '中文',
-      ko: '한국어'
-    },
-    ko: {
-      en: 'English',
-      zh: '中文',
-      ko: '한국어'
-    }
-  }
-  
-  return [
-    { code: 'en', name: localeNames[currentLocale].en },
-    { code: 'zh', name: localeNames[currentLocale].zh },
-    { code: 'ko', name: localeNames[currentLocale].ko }
-  ]
+// List of available locales with their native names
+export function getAvailableLocales(): Array<{ code: Locale; name: string }> {
+  return localeOrder.map((code) => ({ code, name: localeNames[code] }))
 }
 
-// Derived store for available locales with localized names
-export const availableLocales = derived(locale, (currentLocale) => {
-  return getAvailableLocales(currentLocale)
-})
+// Derived store for available locales
+export const availableLocales = derived(locale, () => getAvailableLocales())
