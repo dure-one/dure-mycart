@@ -18,6 +18,11 @@ func ApiPublicRoutes(c *fiber.App) {
 	product.Get("/", handlers.Products)
 	product.Get("/:product_id", handlers.Product)
 
+	// Every route below is driven by the cabinet's session cookie, so it is the
+	// cross-site check that has to come first — the earlier it runs, the smaller
+	// the surface a forged request can reach.
+	c.Use("/api/customer/", middleware.CSRFProtect())
+
 	// Storefront customer cabinet. The whole group is gated on the account
 	// setting, so an installation that does not want it answers 404 here
 	// exactly as it would if these routes were never registered — while a

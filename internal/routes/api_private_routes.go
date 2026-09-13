@@ -9,6 +9,12 @@ import (
 
 // ApiPrivateRoutes sets up private API routes that require authentication.
 func ApiPrivateRoutes(c *fiber.App) {
+	// Both session-cookie surfaces of the admin: the panel's own API and the
+	// sign-in endpoints. Registered before the routes for the same reason
+	// middleware always is — a handler that answers first never reaches it.
+	c.Use("/api/_/", middleware.CSRFProtect())
+	c.Use("/api/sign/", middleware.CSRFProtect())
+
 	c.Get("/api/install/status", handlers.InstallStatus)
 	c.Post("/api/install", middleware.AuthLimiter(), handlers.Install)
 	c.Post("/api/install/db/test", middleware.AuthLimiter(), handlers.InstallDBTest)

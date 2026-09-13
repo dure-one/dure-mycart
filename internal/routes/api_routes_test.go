@@ -128,6 +128,63 @@ func TestApiPublicRoutes_CustomerRoutesAreGuarded(t *testing.T) {
 	}
 }
 
+// TestCSRFProtect_MountedOnSessionSurfaces checks where the cross-site check
+// was mounted, which is not something the middleware's own tests can see: a
+// guard that is written correctly and never reached protects nothing.
+//
+// The two cases at the end matter as much as the ones before them. The payment
+// callbacks are posted by the providers' own pages, so a check that reached
+// them would refuse every payment that came back.
+func TestCSRFProtect_MountedOnSessionSurfaces(t *testing.T) {
+	routesTestDB(t)
+
+	app := fiber.New()
+	ApiPrivateRoutes(app)
+	ApiPublicRoutes(app)
+
+	const evil = "https://evil.example"
+
+	guarded := []struct {
+		method string
+		path   string
+	}{
+		{http.MethodPost, "/api/customer/signin"},
+		{http.MethodPost, "/api/customer/signup"},
+		{http.MethodPost, "/api/customer/signout"},
+		{http.MethodPost, "/api/sign/in"},
+		{http.MethodPost, "/api/sign/out"},
+		{http.MethodPatch, "/api/_/settings/account"},
+		{http.MethodPatch, "/api/_/products/abcdefghijklmno/active"},
+		{http.MethodDelete, "/api/_/customers/abcdefghijklmno"},
+	}
+
+	for _, r := range guarded {
+		req := httptest.NewRequest(r.method, r.path, nil)
+		req.Header.Set("Origin", evil)
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("%s %s: %v", r.method, r.path, err)
+		}
+		if resp.StatusCode != http.StatusForbidden {
+			t.Errorf("%s %s from %s = %d, want 403", r.method, r.path, evil, resp.StatusCode)
+		}
+	}
+
+	// The provider callbacks are posted by the provider's page, so the Origin
+	// they carry is theirs and always will be.
+	for _, path := range []string{"/cart/payment/callback"} {
+		req := httptest.NewRequest(http.MethodPost, path, nil)
+		req.Header.Set("Origin", "https://provider.example")
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("POST %s: %v", path, err)
+		}
+		if resp.StatusCode == http.StatusForbidden {
+			t.Errorf("POST %s from the provider = 403, want the provider's request to be left alone", path)
+		}
+	}
+}
+
 func TestApiPrivateRoutes_WiredWithAuthGuard(t *testing.T) {
 	routesTestDB(t)
 
