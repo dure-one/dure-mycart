@@ -402,6 +402,9 @@
     "h3": "Título 3",
     "bulletlist": "Lista con viñetas",
     "orderedList": "Lista numerada",
-    "blockquote": "Cita"
+    "blockquote": "Cita",
+    "toolbar": "Formato de texto",
+    "horizontalRule": "Separador",
+    "clearFormatting": "Borrar formato"
   }
 }

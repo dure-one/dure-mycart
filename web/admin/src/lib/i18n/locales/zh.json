@@ -402,6 +402,9 @@
     "h3": "标题 3",
     "bulletlist": "项目符号列表",
     "orderedList": "编号列表",
-    "blockquote": "引用"
+    "blockquote": "引用",
+    "toolbar": "文本格式",
+    "horizontalRule": "分隔线",
+    "clearFormatting": "清除格式"
   }
 }

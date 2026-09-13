@@ -89,16 +89,54 @@ img {
   @apply border-red-200 bg-red-50 text-red-700;
 }
 
-.editor {
-  @apply rounded bg-gray-200 px-2 pt-2 pb-0.5;
+/*
+ * Formatted content. The editor writes it and the product view reads the same
+ * HTML back, so the shapes live with the rest of the shared appearance rather
+ * than inside the editor: a route that renders a description without mounting
+ * the editor still renders it correctly.
+ */
+.tiptap > * + * {
+  @apply mt-3;
 }
 
-.editor button {
-  @apply mr-1 hover:bg-white hover:text-gray-700;
+.tiptap ul {
+  @apply list-disc ps-6;
 }
 
-.editor button svg {
-  @apply m-1.5 h-5 w-5;
+.tiptap ol {
+  @apply list-decimal ps-6;
+}
+
+.tiptap li + li {
+  @apply mt-1;
+}
+
+.tiptap blockquote {
+  @apply border-s-2 border-gray-300 ps-4 text-gray-600 italic;
+}
+
+.tiptap hr {
+  @apply my-6 border-0 border-t-2 border-gray-200;
+}
+
+.tiptap code {
+  @apply rounded bg-gray-100 px-1 py-0.5 font-mono text-[0.85em];
+}
+
+.tiptap pre {
+  @apply my-3 overflow-x-auto rounded bg-gray-900 p-3;
+}
+
+.tiptap pre code {
+  @apply bg-transparent p-0 text-white;
+}
+
+/*
+ * The placeholder TipTap leaves on the first, empty paragraph of the editor.
+ */
+.tiptap p.is-editor-empty:first-child::before {
+  @apply pointer-events-none float-left h-0 text-gray-400;
+  content: attr(data-placeholder);
 }
 
 hr {

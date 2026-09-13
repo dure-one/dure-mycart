@@ -104,7 +104,7 @@ Import **only** from the barrel: `import { PageHeader, FormButton } from '$lib/c
 | `PageState` | `py-8 text-center` blocks | `kind: 'loading'\|'empty'\|'error'`, `message?` |
 | `Section` | `<hr>` + `<h2>` + spacing | `title`, children |
 | `ChipGroup` / `Chip` | language, letters, providers, symbol rows | `Chip` renders a real `<button>`: `active`, `onclick`, children |
-| `IconButton` | 19 `<SvgIcon role="button">` | `ico`, `label` (required → `aria-label`), `variant: 'default'\|'danger'`, `disabled`, `onclick` |
+| `IconButton` | 19 `<SvgIcon role="button">` | `ico`, `label` (required → `aria-label` and tooltip), `variant: 'default'\|'danger'`, `active?: boolean` (a toggle that stays on: chip's `bg-green-200 text-green-900` plus `aria-pressed`), `disabled`, `onclick` |
 | `ActionLink` | `cursor-pointer text-red-700` spans | real `<button>`, `variant: 'default'\|'danger'`, `onclick` |
 | `DrawerHeader` | drawer title markup | `title`, snippet `actions` |
 | `DrawerFooter` | drawer action row | `onclose`, `submitLabel`, `ondelete?`, `deleteLabel?` |

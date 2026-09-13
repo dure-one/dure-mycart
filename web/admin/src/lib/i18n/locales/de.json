@@ -402,6 +402,9 @@
     "h3": "Überschrift 3",
     "bulletlist": "Aufzählungsliste",
     "orderedList": "Nummerierte Liste",
-    "blockquote": "Zitat"
+    "blockquote": "Zitat",
+    "toolbar": "Textformatierung",
+    "horizontalRule": "Trennlinie",
+    "clearFormatting": "Formatierung entfernen"
   }
 }

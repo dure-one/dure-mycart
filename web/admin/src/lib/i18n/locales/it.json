@@ -402,6 +402,9 @@
     "h3": "Titolo 3",
     "bulletlist": "Elenco puntato",
     "orderedList": "Elenco numerato",
-    "blockquote": "Citazione"
+    "blockquote": "Citazione",
+    "toolbar": "Formattazione del testo",
+    "horizontalRule": "Separatore",
+    "clearFormatting": "Rimuovi formattazione"
   }
 }
