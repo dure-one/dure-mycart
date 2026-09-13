@@ -49,6 +49,7 @@
     "webhookSettings": "Webhook Settings",
     "mailSettings": "Mail",
     "customer": "Customers",
+    "branding": "Branding",
     "customerSettings": "Customer accounts",
     "customerCabinet": "Customer cabinet",
     "customerCabinetEnabled": "Enable customer accounts",
@@ -120,6 +121,22 @@
     "otherUrl": "Other (URL)",
     "paymentProviders": "Payment Providers",
     "displaySettings": "Display Settings"
+  },
+  "branding": {
+    "title": "Branding",
+    "marks": "Shop marks",
+    "logo": "Logo",
+    "logoDesc": "Drawn in the storefront header. PNG or JPEG, a few hundred pixels wide — the file is used as it is, so scale it before uploading.",
+    "favicon": "Favicon",
+    "faviconDesc": "The icon the browser shows for the shop. A square PNG, 512×512 or so.",
+    "tagline": "Tagline",
+    "taglineDesc": "Printed beside the logo. Leave it empty to show the mark alone.",
+    "logoUploaded": "Logo uploaded",
+    "logoRemoved": "Logo removed",
+    "logoRemoveFailed": "Failed to remove the logo",
+    "faviconUploaded": "Favicon uploaded",
+    "faviconRemoved": "Favicon removed",
+    "faviconRemoveFailed": "Failed to remove the favicon"
   },
   "auth": {
     "login": "Login",

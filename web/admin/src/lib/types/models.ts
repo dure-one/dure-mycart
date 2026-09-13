@@ -99,6 +99,19 @@ export interface Cart {
  * whether there is an account behind the row at all — `id` is empty, and no
  * account-level action is offered, when there is not.
  */
+/**
+ * The shop's own marks, as the settings API holds them.
+ *
+ * Each of the first two is the name of a file in lc_uploads, not an address:
+ * the storefront builds "/uploads/<name>" from it, and an empty string means
+ * the mark the build shipped with is still in use.
+ */
+export interface Branding {
+  logo: string
+  favicon: string
+  tagline: string
+}
+
 export interface CustomerSummary {
   id: string
   email: string

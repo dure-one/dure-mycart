@@ -49,6 +49,7 @@
     "webhookSettings": "Impostazioni webhook",
     "mailSettings": "Email",
     "customer": "Clienti",
+    "branding": "Marchio",
     "customerSettings": "Account cliente",
     "customerCabinet": "Area cliente",
     "customerCabinetEnabled": "Attiva gli account cliente",
@@ -120,6 +121,22 @@
     "otherUrl": "Altro (URL)",
     "paymentProviders": "Provider di pagamento",
     "displaySettings": "Impostazioni di visualizzazione"
+  },
+  "branding": {
+    "title": "Marchio",
+    "marks": "Marchi del negozio",
+    "logo": "Logo",
+    "logoDesc": "Disegnato nell'intestazione del negozio. PNG o JPEG, qualche centinaio di pixel di larghezza — il file viene usato così com'è, quindi ridimensionalo prima di caricarlo.",
+    "favicon": "Favicon",
+    "faviconDesc": "L'icona che il browser mostra per il negozio. Un PNG quadrato, circa 512×512.",
+    "tagline": "Slogan",
+    "taglineDesc": "Stampato accanto al logo. Lascia vuoto per mostrare solo il marchio.",
+    "logoUploaded": "Logo caricato",
+    "logoRemoved": "Logo rimosso",
+    "logoRemoveFailed": "Impossibile rimuovere il logo",
+    "faviconUploaded": "Favicon caricata",
+    "faviconRemoved": "Favicon rimossa",
+    "faviconRemoveFailed": "Impossibile rimuovere la favicon"
   },
   "auth": {
     "login": "Accedi",

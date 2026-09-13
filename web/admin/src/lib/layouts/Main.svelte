@@ -83,6 +83,7 @@
           meta: { ico: 'webhook', title: () => t('settings.webhook') }
         },
         { name: 'settingsAccount', path: `${base}/settings/account`, meta: { ico: 'user', title: () => t('settings.customer') } },
+        { name: 'settingsBranding', path: `${base}/settings/branding`, meta: { ico: 'pencil', title: () => t('settings.branding') } },
         { name: 'settingsSocials', path: `${base}/settings/socials`, meta: { ico: 'user-group', title: () => t('settings.social') } },
         { name: 'settingsMail', path: `${base}/settings/mail`, meta: { ico: 'at-symbol', title: () => t('settings.mail') } }
       ]

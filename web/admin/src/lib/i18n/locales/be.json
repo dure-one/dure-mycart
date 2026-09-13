@@ -49,6 +49,7 @@
     "webhookSettings": "Налады webhook",
     "mailSettings": "Пошта",
     "customer": "Кліенты",
+    "branding": "Брэнд",
     "customerSettings": "Акаўнты кліентаў",
     "customerCabinet": "Кабінет кліента",
     "customerCabinetEnabled": "Уключыць акаўнты кліентаў",
@@ -120,6 +121,22 @@
     "otherUrl": "Іншае (URL)",
     "paymentProviders": "Правайдэры аплаты",
     "displaySettings": "Налады адлюстравання"
+  },
+  "branding": {
+    "title": "Брэнд",
+    "marks": "Знакі крамы",
+    "logo": "Лагатып",
+    "logoDesc": "Малюецца ў шапцы крамы. PNG або JPEG, некалькі сотняў пікселяў у шырыню — файл выкарыстоўваецца як ёсць, таму зменшыце яго перад загрузкай.",
+    "favicon": "Фавікон",
+    "faviconDesc": "Значок, які браўзер паказвае для крамы. Квадратны PNG, прыкладна 512×512.",
+    "tagline": "Слоган",
+    "taglineDesc": "Друкуецца побач з лагатыпам. Пакіньце пустым, каб паказаць толькі знак.",
+    "logoUploaded": "Лагатып загружаны",
+    "logoRemoved": "Лагатып выдалены",
+    "logoRemoveFailed": "Не ўдалося выдаліць лагатып",
+    "faviconUploaded": "Фавікон загружаны",
+    "faviconRemoved": "Фавікон выдалены",
+    "faviconRemoveFailed": "Не ўдалося выдаліць фавікон"
   },
   "auth": {
     "login": "Уваход",

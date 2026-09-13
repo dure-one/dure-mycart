@@ -49,6 +49,7 @@
     "webhookSettings": "Webhook 设置",
     "mailSettings": "邮件",
     "customer": "客户",
+    "branding": "品牌",
     "customerSettings": "客户账户",
     "customerCabinet": "客户中心",
     "customerCabinetEnabled": "启用客户账户",
@@ -120,6 +121,22 @@
     "otherUrl": "其他 (URL)",
     "paymentProviders": "支付提供商",
     "displaySettings": "显示设置"
+  },
+  "branding": {
+    "title": "品牌",
+    "marks": "店铺标识",
+    "logo": "标志",
+    "logoDesc": "绘制在店铺页眉中。PNG 或 JPEG，宽度几百像素——文件按原样使用，请先调整尺寸再上传。",
+    "favicon": "网站图标",
+    "faviconDesc": "浏览器为店铺显示的图标。方形 PNG，约 512×512。",
+    "tagline": "标语",
+    "taglineDesc": "显示在标志旁边。留空则只显示标识。",
+    "logoUploaded": "标志已上传",
+    "logoRemoved": "标志已删除",
+    "logoRemoveFailed": "无法删除标志",
+    "faviconUploaded": "网站图标已上传",
+    "faviconRemoved": "网站图标已删除",
+    "faviconRemoveFailed": "无法删除网站图标"
   },
   "auth": {
     "login": "登录",

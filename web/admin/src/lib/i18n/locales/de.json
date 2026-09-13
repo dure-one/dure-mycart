@@ -49,6 +49,7 @@
     "webhookSettings": "Webhook-Einstellungen",
     "mailSettings": "E-Mail",
     "customer": "Kunden",
+    "branding": "Marke",
     "customerSettings": "Kundenkonten",
     "customerCabinet": "Kundenbereich",
     "customerCabinetEnabled": "Kundenkonten aktivieren",
@@ -120,6 +121,22 @@
     "otherUrl": "Sonstiges (URL)",
     "paymentProviders": "Zahlungsanbieter",
     "displaySettings": "Anzeigeeinstellungen"
+  },
+  "branding": {
+    "title": "Marke",
+    "marks": "Shop-Marken",
+    "logo": "Logo",
+    "logoDesc": "Wird im Kopfbereich des Shops gezeichnet. PNG oder JPEG, einige hundert Pixel breit — die Datei wird unverändert verwendet, also vorher skalieren.",
+    "favicon": "Favicon",
+    "faviconDesc": "Das Symbol, das der Browser für den Shop zeigt. Ein quadratisches PNG, etwa 512×512.",
+    "tagline": "Slogan",
+    "taglineDesc": "Wird neben dem Logo ausgegeben. Leer lassen, um nur die Marke zu zeigen.",
+    "logoUploaded": "Logo hochgeladen",
+    "logoRemoved": "Logo entfernt",
+    "logoRemoveFailed": "Logo konnte nicht entfernt werden",
+    "faviconUploaded": "Favicon hochgeladen",
+    "faviconRemoved": "Favicon entfernt",
+    "faviconRemoveFailed": "Favicon konnte nicht entfernt werden"
   },
   "auth": {
     "login": "Anmelden",
