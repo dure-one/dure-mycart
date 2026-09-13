@@ -20,7 +20,14 @@
     "networkError": "네트워크 오류",
     "failedToLoadData": "데이터 로드 실패",
     "failedToSaveData": "데이터 저장 실패",
-    "footer": "푸터"
+    "footer": "푸터",
+    "preview": "미리보기",
+    "fileUploaded": "파일 업로드됨",
+    "pageNotFound": "페이지를 찾을 수 없습니다",
+    "addRecord": "레코드 추가",
+    "home": "홈",
+    "signOut": "로그아웃",
+    "viewRelease": "릴리스 정보 보기"
   },
   "menu": {
     "products": "상품",
@@ -29,7 +36,8 @@
     "settings": "설정"
   },
   "form": {
-    "pleaseSelect": "선택하세요"
+    "pleaseSelect": "선택하세요",
+    "uploadLabel": "파일 업로드"
   },
   "settings": {
     "title": "설정",
@@ -97,7 +105,8 @@
     "adminPanel": "관리자 패널",
     "storefront": "상점",
     "priceDisplay": "가격 표시",
-    "paymentProviders": "결제 제공업체"
+    "paymentProviders": "결제 제공업체",
+    "displaySettings": "표시 설정"
   },
   "payment": {
     "stripe": "Stripe",
@@ -118,7 +127,16 @@
       "currencyWarning": "통화 불일치 경고",
       "currencyWarningDesc": "상점 기본 통화가 {{currency}}이지만, PortOne은 KRW만 지원합니다. 결제 설정에서 상점 통화를 업데이트하세요.",
       "pgSupportInfo": "현재 PortOne PG는 카카오페이 간편결제만 지원합니다."
-    }
+    },
+    "priceDisplay": "가격 표시",
+    "currencyRequired": "통화는 필수입니다",
+    "currencyMustBeOneOf": "통화는 다음 중 하나여야 합니다: {{list}}",
+    "currencySaved": "통화 저장됨",
+    "truncationSaved": "가격 표시 설정 저장됨",
+    "numberFormatSaved": "숫자 형식 저장됨",
+    "symbolDisplaySaved": "기호 표시 저장됨",
+    "failedToLoadSettings": "결제 설정 로드 실패",
+    "apiKey": "API 키"
   },
   "digital": {
     "addData": "데이터 추가",
@@ -129,7 +147,8 @@
     "digitalType": "디지털 {{type}}",
     "fileDescription": "사용자가 구매하는 상품입니다. 결제 후 구매자에게 전송될 파일을 업로드하세요. 파일은 결제 시 제공된 이메일 주소로 전송됩니다.",
     "dataDescription": "판매하려는 디지털 상품을 입력하세요. 라이선스 키와 같은 고유한 항목일 수 있습니다.",
-    "digitalFile": "디지털 파일"
+    "digitalFile": "디지털 파일",
+    "failedToLoadContent": "디지털 콘텐츠 로드 실패"
   },
   "products": {
     "title": "상품",
@@ -221,7 +240,12 @@
       "optionalFields": "선택 필드",
       "variantFields": "변형 필드",
       "variantNote": "변형 형식: [옵션:값1;값2]=>변형데이터|변형데이터 (예: [Size:S;M;L]=>S,0,10,SKU-S|M,500,20,SKU-M)"
-    }
+    },
+    "optionNameNumbered": "옵션 {{index}} 이름",
+    "optionValueNumbered": "옵션 {{index}} 값 {{value}}",
+    "selectDigitalType": "디지털 유형 선택",
+    "toggleActive": "활성 상태 전환",
+    "optionNameExists": "옵션 이름 \"{{name}}\"이(가) 이미 존재합니다. 고유한 이름을 사용하세요."
   },
   "pages": {
     "title": "페이지",
@@ -245,7 +269,8 @@
     "failedToUpdatePage": "페이지 업데이트 실패",
     "seoTitle": "제목",
     "seoKeywords": "키워드",
-    "seoDescription": "설명"
+    "seoDescription": "설명",
+    "toggleActive": "활성 상태 전환"
   },
   "carts": {
     "title": "장바구니",
@@ -286,7 +311,8 @@
     "quantityColumn": "수량",
     "subtotalColumn": "소계",
     "mailSentSuccessfully": "메일 전송 성공",
-    "failedToSendMailMessage": "메일 전송 실패"
+    "failedToSendMailMessage": "메일 전송 실패",
+    "sendMail": "메일 발송"
   },
   "auth": {
     "login": "로그인",
@@ -336,5 +362,19 @@
     "email": "유효한 이메일을 입력하세요",
     "minLength": "최소 {{length}}자 이상이어야 합니다",
     "maxLength": "최대 {{length}}자까지 가능합니다"
+  },
+  "editor": {
+    "undo": "실행 취소",
+    "redo": "다시 실행",
+    "bold": "굵게",
+    "italic": "기울임꼴",
+    "strike": "취소선",
+    "paragraph": "단락",
+    "h1": "제목 1",
+    "h2": "제목 2",
+    "h3": "제목 3",
+    "bulletlist": "글머리 기호 목록",
+    "orderedList": "번호 매기기 목록",
+    "blockquote": "인용"
   }
 }

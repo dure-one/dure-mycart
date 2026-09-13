@@ -1,8 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import Main from '$lib/layouts/Main.svelte'
-  import FormButton from '$lib/components/form/Button.svelte'
-  import FormInput from '$lib/components/form/Input.svelte'
+  import { Chip, ChipGroup, FormButton, FormInput, PageHeader, PageState, Section } from '$lib/components'
   import { loadSettings, saveSettings } from '$lib/utils/settingsHelpers'
   import { validators, validateFields } from '$lib/utils/validation'
   import { translate, locale, availableLocales, type Locale } from '$lib/i18n'
@@ -34,8 +33,7 @@
     loading = false
   })
 
-  async function handleSubmit(event: SubmitEvent) {
-    event.preventDefault()
+  async function handleSubmit() {
     formErrors = validateFields(formData, [
       { field: 'site_name', ...validators.minLength(6, t('settings.siteNameMinLength')) },
       { field: 'domain', ...validators.required(t('settings.domainRequired')) },
@@ -55,12 +53,12 @@
 </script>
 
 <Main>
-  <h1 class="mb-5">{t('settings.mainSettings')}</h1>
+  <PageHeader title={t('settings.mainSettings')} />
 
   {#if loading}
-    <div class="py-8 text-center">{t('common.loading')}</div>
+    <PageState kind="loading" />
   {:else}
-    <form onsubmit={handleSubmit} class="max-w-2xl space-y-4">
+    <form onsubmit={(e) => { e.preventDefault(); handleSubmit() }} class="max-w-2xl space-y-4">
       <FormInput
         id="site_name"
         title={t('settings.siteName')}
@@ -68,7 +66,13 @@
         error={formErrors.site_name}
         ico="home"
       />
-      <FormInput id="domain" title={t('settings.domain')} bind:value={formData.domain} error={formErrors.domain} ico="link" />
+      <FormInput
+        id="domain"
+        title={t('settings.domain')}
+        bind:value={formData.domain}
+        error={formErrors.domain}
+        ico="link"
+      />
       <FormInput
         id="email"
         type="email"
@@ -78,32 +82,16 @@
         ico="at-symbol"
       />
       <div class="pt-4">
-        <FormButton type="submit" name={t('common.save')} color="green" />
+        <FormButton type="submit" name={t('common.save')} variant="primary" />
       </div>
     </form>
 
-    <hr class="mt-5" />
-
-    <div class="mt-5">
-      <h2 class="mb-5">{t('settings.language')}</h2>
-      <div class="flex">
-        {#each locales as loc, index}
-          <div
-            class="cursor-pointer rounded p-2 {currentLocale === loc.code ? 'bg-green-200' : 'bg-gray-200'} {index > 0 ? 'ml-5' : ''}"
-            onclick={() => switchLocale(loc.code)}
-            role="button"
-            tabindex="0"
-            onkeydown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                switchLocale(loc.code)
-              }
-            }}
-          >
-            {loc.name}
-          </div>
+    <Section title={t('settings.language')}>
+      <ChipGroup>
+        {#each locales as loc}
+          <Chip active={currentLocale === loc.code} onclick={() => switchLocale(loc.code)}>{loc.name}</Chip>
         {/each}
-      </div>
-    </div>
+      </ChipGroup>
+    </Section>
   {/if}
 </Main>

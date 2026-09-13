@@ -4,6 +4,10 @@
   import StarterKit from '@tiptap/starter-kit'
   import Placeholder from '@tiptap/extension-placeholder'
   import SvgIcon from './SvgIcon.svelte'
+  import { translate } from '$lib/i18n'
+
+  // Reactive translation function
+  let t = $derived($translate)
 
   interface Props {
     modelValue?: string
@@ -105,6 +109,8 @@
   <div class="editor">
     {#each editorActions as action (action.name)}
       <button
+        type="button"
+        aria-label={t(`editor.${action.name}`)}
         onclick={() => performEditorAction(action.method, action.activeCondition.options)}
         disabled={canPerformEditorAction(action.method)}
         class={action.stroke

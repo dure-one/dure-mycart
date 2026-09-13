@@ -2,7 +2,7 @@
   import FormSelect from './form/Select.svelte'
   import { getCurrencyPattern, getUnitLabel } from '$lib/config/currencyUnits'
   import { formatCurrency, formatCurrencyWithTruncation } from '$lib/utils/currency'
-  import { locale } from '$lib/i18n'
+  import { translate, locale } from '$lib/i18n'
   import type { CurrencyTruncationSettings, TruncationSettings, NumberFormatSettings } from '$lib/types/models'
 
   interface Props {
@@ -14,6 +14,9 @@
   }
 
   let { currency, context, value, onChange, numberFormat }: Props = $props()
+
+  // Reactive translation function
+  let t = $derived($translate)
 
   let currentLocale = $derived($locale)
   let pattern = $derived(getCurrencyPattern(currency))
@@ -84,17 +87,17 @@
   })
 </script>
 
-<div class="mb-4 max-w-2xl">
+<div>
   <FormSelect
     id="{context}-{currency}-mode"
-    title="Price Display"
+    title={t('payment.priceDisplay')}
     options={combinedOptions()}
     bind:value={selectedOptionValue}
   />
 
   {#if value.mode !== 'none'}
     <div class="mt-2 text-sm text-gray-600">
-      Preview: {previewBefore} → {previewAfter()}
+      {t('common.preview')}: {previewBefore} → {previewAfter()}
     </div>
   {/if}
 </div>

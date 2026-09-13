@@ -27,7 +27,7 @@
 </script>
 
 <div>
-  <label for={id} class={error ? 'border-red-500' : ''}>
+  <label for={id} class="input-shell {error ? 'border-red-500' : ''}">
     <textarea {id} bind:value {rows} class="form-textarea field peer" placeholder={computedPlaceholder} onfocusout={onfocusout}
     ></textarea>
     {#if title}

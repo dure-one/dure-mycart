@@ -31,7 +31,7 @@
 </script>
 
 <div>
-  <label for={id} class={error ? 'border-red-500' : ''}>
+  <label for={id} class="input-shell {error ? 'border-red-500' : ''}">
     <select {id} bind:value class="form-select field peer">
       <option value="" disabled>{t('form.pleaseSelect')}</option>
       {#each optionList as option (option.key)}

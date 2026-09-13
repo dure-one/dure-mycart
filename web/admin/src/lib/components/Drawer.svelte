@@ -67,13 +67,6 @@
     }, ANIMATION_MS)
   }
 
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault()
-      closeDrawer(event as unknown as MouseEvent)
-    }
-  }
-
   onDestroy(() => {
     clearTimer(hideTimer)
     clearTimer(closeTimer)
@@ -88,11 +81,8 @@
         ? 'opacity-50'
         : 'opacity-0'}"
       style="transition-duration: 200ms"
-      role="button"
-      tabindex="0"
-      aria-label="Close drawer"
+      role="presentation"
       onclick={closeDrawer}
-      onkeydown={handleKeydown}
     ></div>
 
     <div

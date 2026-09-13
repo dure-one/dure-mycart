@@ -41,7 +41,6 @@
       rangeWithDots.push(totalPages)
     }
 
-    console.log('[Pagination] getVisiblePages called:', { currentPage, totalPages, result: rangeWithDots })
     return rangeWithDots
   }
 </script>

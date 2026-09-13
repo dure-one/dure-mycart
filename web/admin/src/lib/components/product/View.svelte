@@ -1,8 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import FormButton from '../form/Button.svelte'
-  import DetailList from '../DetailList.svelte'
-  import SvgIcon from '../SvgIcon.svelte'
+  import { DetailList, DrawerFooter, DrawerHeader, IconButton, PageState } from '$lib/components'
   import { formatDate } from '$lib/utils'
   import { formatCurrencyWithTruncation } from '$lib/utils/currency'
   import { loadData } from '$lib/utils/apiHelpers'
@@ -73,26 +71,16 @@
 </script>
 
 <div>
-  <div class="pb-8">
-    <div class="flex items-center">
-      <div class="pr-3">
-        <h1>{t('products.viewProduct')} {product?.name || t('products.title')}</h1>
-      </div>
-      <div>
-        {#if product}
-          <SvgIcon
-            name={product.active ? 'eye' : 'eye-slash'}
-            className="h-5 w-5 cursor-pointer"
-            onclick={active}
-            stroke="currentColor"
-          />
-        {/if}
-      </div>
-    </div>
-  </div>
+  <DrawerHeader title={`${t('products.viewProduct')} ${product?.name || ''}`}>
+    {#snippet actions()}
+      {#if product}
+        <IconButton ico={product.active ? 'eye' : 'eye-slash'} label={t('products.active')} onclick={active} />
+      {/if}
+    {/snippet}
+  </DrawerHeader>
 
   {#if loading}
-    <div class="py-8 text-center">{t('common.loading')}</div>
+    <PageState kind="loading" />
   {:else if product}
     <div class="flow-root">
       <dl class="-my-3 mt-2 divide-y divide-gray-100 text-sm">
@@ -150,10 +138,8 @@
       </dl>
     </div>
   {:else}
-    <div class="py-8 text-center text-gray-500">{t('products.failedToLoadProduct')}</div>
+    <PageState kind="error" message={t('products.failedToLoadProduct')} />
   {/if}
 
-  <div class="pt-5">
-    <FormButton type="button" name={t('common.close')} color="green" onclick={close} />
-  </div>
+  <DrawerFooter onclose={close} />
 </div>

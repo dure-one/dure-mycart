@@ -4,7 +4,6 @@
   import { DEFAULT_BUTTON_NAME } from '$lib/constants/ui'
 
   interface Props {
-    color?: string
     variant?: 'primary' | 'secondary' | 'danger'
     size?: 'sm' | 'md' | 'lg'
     name?: string
@@ -17,7 +16,6 @@
   }
 
   let {
-    color,
     variant = 'primary',
     size = 'md',
     name = DEFAULT_BUTTON_NAME,
@@ -29,17 +27,8 @@
     children
   }: Props = $props()
 
-  const COLOR_CLASSES: Record<string, string[]> = {
-    gray: ['bg-gray-600', 'bg-gray-500'],
-    gray_lite: ['bg-gray-400', 'bg-gray-300'],
-    green: ['bg-green-600', 'bg-green-500'],
-    yellow: ['bg-yellow-600', 'bg-yellow-500'],
-    red: ['bg-red-600', 'bg-red-500'],
-    cyan: ['bg-cyan-600', 'bg-cyan-500']
-  }
-
   const VARIANT_CLASSES: Record<string, string> = {
-    primary: 'bg-blue-600 hover:bg-blue-700 text-white',
+    primary: 'bg-green-600 hover:bg-green-700 text-white',
     secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-800 border border-gray-300',
     danger: 'bg-red-600 hover:bg-red-700 text-white'
   }
@@ -50,17 +39,13 @@
     lg: 'px-10 py-3 text-base'
   }
 
-  let colorClasses = $derived(
-    color && COLOR_CLASSES[color]
-      ? `${COLOR_CLASSES[color][0]} active:${COLOR_CLASSES[color][1]}`
-      : VARIANT_CLASSES[variant]
-  )
+  let variantClasses = $derived(VARIANT_CLASSES[variant] ?? VARIANT_CLASSES.primary)
   let sizeClasses = $derived(SIZE_CLASSES[size])
   let icoClasses = $derived(ico ? 'focus:outline-none focus:ring' : '')
 </script>
 
 <button
-  class="group relative inline-flex cursor-pointer items-center overflow-hidden rounded font-medium {colorClasses} {sizeClasses} {icoClasses} {className} disabled:opacity-50 disabled:cursor-not-allowed"
+  class="group relative inline-flex cursor-pointer items-center overflow-hidden rounded font-medium {variantClasses} {sizeClasses} {icoClasses} {className} disabled:opacity-50 disabled:cursor-not-allowed"
   {type}
   {disabled}
   onclick={onclick}

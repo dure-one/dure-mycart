@@ -1,8 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import FormButton from '../form/Button.svelte'
-  import DetailList from '../DetailList.svelte'
-  import SvgIcon from '../SvgIcon.svelte'
+  import { DetailList, DrawerFooter, DrawerHeader, PageState } from '$lib/components'
   import { costFormat, formatDate, STRIPE_DASHBOARD_URL } from '$lib/utils'
   import { formatCurrencyWithTruncation } from '$lib/utils/currency'
   import { loadData } from '$lib/utils/apiHelpers'
@@ -82,24 +80,18 @@
 </script>
 
 <div>
-  <div class="pb-8">
-    <div class="flex items-center">
-      <div class="pr-3">
-        <h1>{t('carts.cartDetails')}</h1>
-      </div>
-    </div>
-  </div>
+  <DrawerHeader title={t('carts.cartDetails')} />
 
   {#if loading}
-    <div class="py-8 text-center">{t('common.loading')}</div>
+    <PageState kind="loading" />
   {:else if cart}
     <div class="flow-root">
       <dl class="-my-3 mt-2 divide-y divide-gray-100 text-sm">
         <DetailList name={t('carts.cartId')}>{cart.id}</DetailList>
-        
+
         <DetailList name={t('carts.customerEmail')}>
           {#if cart.email}
-            <a href="mailto:{cart.email}" class="text-blue-600 hover:underline">{cart.email}</a>
+            <a href="mailto:{cart.email}" class="a-link">{cart.email}</a>
           {:else}
             <span class="text-gray-400">-</span>
           {/if}
@@ -112,7 +104,7 @@
             <a
               href="{STRIPE_DASHBOARD_URL}/{cart.payment_id}"
               target="_blank"
-              class="text-blue-600 hover:underline"
+              class="a-link"
             >
               {formatCurrencyWithTruncation(
                 cart.amount_total,
@@ -151,7 +143,7 @@
               <a
                 href="{STRIPE_DASHBOARD_URL}/{cart.payment_id}"
                 target="_blank"
-                class="text-blue-600 hover:underline"
+                class="a-link"
               >
                 {cart.payment_id}
               </a>
@@ -162,44 +154,34 @@
         {/if}
 
         <DetailList name={t('common.created')}>{formatDate(cart.created)}</DetailList>
-        
+
         {#if cart.updated}
           <DetailList name={t('common.updated')}>{formatDate(cart.updated)}</DetailList>
         {/if}
 
         {#if cart.items && cart.items.length > 0}
           <DetailList name={t('carts.items')} grid={false} fullWidth={true}>
-            <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+            <div class="table-wrap">
+              <table class="table-plain">
+                <thead>
                   <tr>
-                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('carts.productName')}
-                    </th>
-                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('carts.variantColumn')}
-                    </th>
-                    <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('carts.priceColumn')}
-                    </th>
-                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('carts.quantityColumn')}
-                    </th>
-                    <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('carts.subtotalColumn')}
-                    </th>
+                    <th>{t('carts.productName')}</th>
+                    <th>{t('carts.variantColumn')}</th>
+                    <th class="text-right">{t('carts.priceColumn')}</th>
+                    <th class="text-center">{t('carts.quantityColumn')}</th>
+                    <th class="text-right">{t('carts.subtotalColumn')}</th>
                   </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody>
                   {#each cart.items as item (item.id)}
                     {@const unitPrice = item.amount + (item.variant_price_surcharge || 0)}
                     {@const subtotal = unitPrice * item.quantity}
                     <tr>
-                      <td class="px-3 py-4 whitespace-nowrap">
+                      <td class="whitespace-nowrap">
                         <div class="font-medium text-gray-900">{item.name}</div>
                         <div class="text-sm text-gray-500">{item.slug}</div>
                       </td>
-                      <td class="px-3 py-4">
+                      <td>
                         {#if item.variant_options && Object.keys(item.variant_options).length > 0}
                           <div class="text-sm text-gray-700">
                             {#each Object.entries(item.variant_options) as [key, value]}
@@ -210,7 +192,7 @@
                           <span class="text-sm text-gray-400">-</span>
                         {/if}
                       </td>
-                      <td class="px-3 py-4 whitespace-nowrap text-right text-sm text-gray-700">
+                      <td class="whitespace-nowrap text-right text-sm text-gray-700">
                         {formatCurrencyWithTruncation(
                           unitPrice,
                           cart.currency || 'USD',
@@ -221,10 +203,10 @@
                           paymentSettings?.symbol_display?.admin
                         )}
                       </td>
-                      <td class="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-700">
+                      <td class="whitespace-nowrap text-center text-sm text-gray-700">
                         {item.quantity}
                       </td>
-                      <td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
+                      <td class="whitespace-nowrap text-right text-sm font-medium text-gray-900">
                         {formatCurrencyWithTruncation(
                           subtotal,
                           cart.currency || 'USD',
@@ -240,10 +222,10 @@
                 </tbody>
                 <tfoot class="bg-gray-50">
                   <tr>
-                    <td colspan="4" class="px-3 py-4 text-right font-bold text-gray-900">
+                    <td colspan="4" class="text-right font-bold text-gray-900">
                       {t('carts.totalAmount')}
                     </td>
-                    <td class="px-3 py-4 whitespace-nowrap text-right text-base font-bold text-gray-900">
+                    <td class="whitespace-nowrap text-right text-base font-bold text-gray-900">
                       {formatCurrencyWithTruncation(
                         cart.items.reduce((sum, item) => {
                           const unitPrice = item.amount + (item.variant_price_surcharge || 0)
@@ -270,10 +252,8 @@
       </dl>
     </div>
   {:else}
-    <div class="py-8 text-center text-gray-500">{t('carts.failedToLoadCart')}</div>
+    <PageState kind="error" message={t('carts.failedToLoadCart')} />
   {/if}
 
-  <div class="pt-5">
-    <FormButton type="button" name={t('common.close')} color="green" onclick={close} />
-  </div>
+  <DrawerFooter onclose={close} />
 </div>

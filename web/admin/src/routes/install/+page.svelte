@@ -143,9 +143,7 @@
     return ''
   }
 
-  async function handleSubmit(event?: Event) {
-    event?.preventDefault()
-
+  async function handleSubmit() {
     emailError = validateEmail(email)
     passwordError = validatePassword(password)
     domainError = validateDomain(domain)
@@ -202,12 +200,12 @@
 </script>
 
 <Blank>
-  <div class="mx-auto max-w-screen-xl px-4 py-16 sm:px-6 lg:px-8">
-    <div class="mx-auto max-w-lg text-center">
-      <h1 class="text-2xl font-bold sm:text-3xl">🛒 {t('install.title')} myCart</h1>
-      <p class="mt-4 text-gray-600">{t('install.configureCart')}</p>
+  <div class="content-center">
+    <div class="header">
+      <h1>🛒 {t('install.title')} myCart</h1>
+      <p>{t('install.configureCart')}</p>
     </div>
-    <form onsubmit={(e) => handleSubmit(e)} class="mx-auto mt-8 mb-0 max-w-md space-y-4">
+    <form onsubmit={(e) => { e.preventDefault(); handleSubmit() }} class="mx-auto mt-8 mb-0 max-w-md space-y-4">
       <FormInput id="email" type="email" title={t('install.email')} ico="at-symbol" error={emailError} bind:value={email} />
       <FormInput
         id="password"
@@ -227,11 +225,11 @@
         placeholder="example.com"
       />
 
-      <fieldset class="space-y-4 rounded-lg border border-gray-200 p-4">
-        <legend class="px-2 text-sm font-semibold text-gray-700">{t('install.database')}</legend>
+      <fieldset class="space-y-4 rounded border border-gray-200 p-4">
+        <legend class="px-2"><h3>{t('install.database')}</h3></legend>
 
         {#if locked}
-          <p class="text-sm text-gray-600">
+          <p class="text-gray-500">
             {t('install.databaseLocked')}
             <code class="ml-1 break-all text-xs">{lockedSummary}</code>
           </p>
@@ -266,17 +264,17 @@
             {/if}
 
             {#if dbError}
-              <span class="block text-sm text-red-500">{dbError}</span>
+              <span class="error text-red-500">{dbError}</span>
             {/if}
 
-            <button
+            <FormButton
               type="button"
-              onclick={handleTestConnection}
+              variant="secondary"
+              name={testing ? t('install.testingConnection') : t('install.testConnection')}
               disabled={testing}
-              class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              {testing ? t('install.testingConnection') : t('install.testConnection')}
-            </button>
+              class="w-full"
+              onclick={handleTestConnection}
+            />
           {/if}
         {/if}
       </fieldset>
@@ -284,7 +282,7 @@
       <FormButton
         type="submit"
         name={t('install.installButton')}
-        color="green"
+        variant="primary"
         ico="arrow-right"
         disabled={!installableNow}
       />
