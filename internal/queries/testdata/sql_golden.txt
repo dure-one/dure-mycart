@@ -134,7 +134,7 @@ SELECT id, name, slug, position, active, seo, strftime('%s', created), strftime(
 ---
 SELECT COUNT(*) FROM page WHERE active = TRUE
 ---
-SELECT id, name, content, active, seo FROM page WHERE slug = ?
+SELECT id, name, content, active, seo FROM page WHERE slug = ? AND active = TRUE
 ---
 SELECT id, name, slug, position, content, active, seo, strftime('%s', created), strftime('%s', updated) FROM page WHERE id = ?
 ---
