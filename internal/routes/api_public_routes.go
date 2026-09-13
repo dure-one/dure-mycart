@@ -16,7 +16,9 @@ func ApiPublicRoutes(c *fiber.App) {
 
 	product := c.Group("/api/products")
 	product.Get("/", handlers.Products)
-	product.Get("/:product_id", handlers.Product)
+	// Addressed by slug: the storefront links to /products/<slug>, and the
+	// public query matches on it.
+	product.Get("/:product_slug", handlers.Product)
 
 	// Every route below is driven by the cabinet's session cookie, so it is the
 	// cross-site check that has to come first — the earlier it runs, the smaller
