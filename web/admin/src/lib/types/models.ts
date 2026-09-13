@@ -55,6 +55,8 @@ export interface Product {
     name: string
     ext: string
     orig_name: string
+    position: number
+    is_representative: boolean
   }>
   options?: ProductOption[]
   variants?: ProductVariant[]
