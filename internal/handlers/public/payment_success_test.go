@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gofiber/fiber/v3"
+
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/queries"
 	"github.com/shurco/mycart/internal/testutil"
@@ -124,4 +126,44 @@ func TestPaymentSuccess_InvalidSystemRedirects(t *testing.T) {
 		http.StatusNotFound,
 		http.StatusInternalServerError,
 	)
+}
+
+// breakSMTP points the mail settings at a port nothing listens on, so a letter
+// fails the way it fails in a shop whose mail server is down. The settings have
+// to name a host, a port, a user and a password before the mailer tries at all:
+// an empty one is read as "this shop sends no mail" and skipped in silence.
+func breakSMTP(t *testing.T) {
+	t.Helper()
+
+	setSetting(t, "smtp_host", "127.0.0.1")
+	setSetting(t, "smtp_port", "1")
+	setSetting(t, "smtp_username", "user")
+	setSetting(t, "smtp_password", "password")
+}
+
+// TestPaymentSuccess_SurvivesAFailedLetter checks what the buyer sees when the
+// shop cannot send the letter. The money has changed hands by the time this page
+// runs, so a server error here takes the confirmation away from someone who has
+// paid and puts nothing back; the guide's delivery is the shop's to retry, and
+// the cabinet shows it in the meantime.
+func TestPaymentSuccess_SurvivesAFailedLetter(t *testing.T) {
+	app, _, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	seedNewCart(t, "newcrt12345abcd", 0, litepay.DUMMY)
+	breakSMTP(t)
+
+	// The page behind the handler stands in for the SPA the storefront serves:
+	// reaching it is what "the buyer was shown their order" means here.
+	app.Get("/cart/payment/success", PaymentSuccess, func(c fiber.Ctx) error {
+		return c.SendString("success page")
+	})
+
+	resp := testutil.DoRequest(t, app, http.MethodGet,
+		"/cart/payment/success?cart_id=newcrt12345abcd&payment_system=dummy", "", "")
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200: a failed letter must not fail the page", resp.StatusCode)
+	}
 }
