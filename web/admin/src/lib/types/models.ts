@@ -26,6 +26,8 @@ export interface ProductVariant {
     name: string
     ext: string
     orig_name: string
+    position: number
+    is_representative: boolean
   }>
 }
 

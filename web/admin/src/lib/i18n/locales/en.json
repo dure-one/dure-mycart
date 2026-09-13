@@ -194,6 +194,10 @@
     "tooManyVariants": "Warning: Maximum 100 variants allowed",
     "created": "Product created successfully",
     "updated": "Product updated successfully",
+    "imagesReordered": "Images reordered successfully",
+    "failedToReorderImages": "Failed to reorder images",
+    "representativeSet": "Representative image set successfully",
+    "failedToSetRepresentative": "Failed to set representative image",
     "csv": {
       "exportProducts": "Export Products",
       "exportDescription": "Download all products as CSV file",

@@ -15,6 +15,7 @@
   import Upload from '$lib/components/form/Upload.svelte'
   import SvgIcon from '$lib/components/SvgIcon.svelte'
   import Pagination from '$lib/components/Pagination.svelte'
+  import SortableImage from '$lib/components/SortableImage.svelte'
   import { loadData, saveData, deleteData, toggleActive as toggleActiveApi } from '$lib/utils/apiHelpers'
   import { costFormat, formatPrice, formatDate, sortByDate, confirmDelete, showMessage } from '$lib/utils'
   import { formatCurrencyWithTruncation } from '$lib/utils/currency'
@@ -561,6 +562,61 @@
       loadProducts()
     }
   }
+
+  async function handleImageReorder(updates: Array<{ imageId: string; position: number }>) {
+    if (!fullProductData) return
+
+    try {
+      const res = await fetch(`/api/_/products/${fullProductData.id}/images/reorder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates })
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        showMessage(data.message || t('products.failedToReorderImages'), 'connextError')
+        return
+      }
+
+      showMessage(t('products.imagesReordered'), 'connextSuccess')
+
+      // Refetch product data to get updated positions
+      const updatedProduct = await loadData<Product>(`/api/_/products/${fullProductData.id}`, 'Failed to load product')
+      if (updatedProduct) {
+        productImages = updatedProduct.images || []
+      }
+    } catch (error) {
+      showMessage(t('common.networkError'), 'connextError')
+    }
+  }
+
+  async function handleSetRepresentative(imageId: string) {
+    if (!fullProductData) return
+
+    try {
+      const res = await fetch(`/api/_/products/${fullProductData.id}/images/${imageId}/representative`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        showMessage(data.message || t('products.failedToSetRepresentative'), 'connextError')
+        return
+      }
+
+      showMessage(t('products.representativeSet'), 'connextSuccess')
+
+      // Refetch product data to get updated representative status
+      const updatedProduct = await loadData<Product>(`/api/_/products/${fullProductData.id}`, 'Failed to load product')
+      if (updatedProduct) {
+        productImages = updatedProduct.images || []
+      }
+    } catch (error) {
+      showMessage(t('common.networkError'), 'connextError')
+    }
+  }
 </script>
 
 <Main>
@@ -883,29 +939,16 @@
                 <hr />
                 <p class="font-semibold">{t('products.images')}</p>
                 {#if productImages && productImages.length > 0}
-                  <div class="grid grid-cols-4 content-start gap-4">
-                    {#each productImages as image, index (image.id || index)}
-                      <div class="relative" style="width: 100%; max-width: 150px">
-                        <a href="/uploads/{image.name}.{image.ext}" target="_blank">
-                          <img src="/uploads/{image.name}_sm.{image.ext}" alt="" />
-                        </a>
-                        <div
-                          role="button"
-                          tabindex="0"
-                          class="absolute end-4 top-4 cursor-pointer bg-white p-2"
-                          onclick={() => deleteProductImage(index)}
-                          onkeydown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault()
-                              deleteProductImage(index)
-                            }
-                          }}
-                        >
-                          <SvgIcon name="trash" className="h-5 w-5" stroke="currentColor" />
-                        </div>
-                      </div>
-                    {/each}
-                  </div>
+                  <SortableImage
+                    images={productImages.map(img => ({
+                      id: img.id,
+                      url: `/uploads/${img.name}_sm.${img.ext}`,
+                      position: img.position || 0,
+                      is_representative: img.is_representative || false
+                    }))}
+                    onReorder={handleImageReorder}
+                    onSetRepresentative={handleSetRepresentative}
+                  />
                 {/if}
                 <Upload
                   section="image"
