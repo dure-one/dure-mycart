@@ -68,10 +68,22 @@ export interface Settings {
   // feature existed carries no such key; the storefront treats a missing one as
   // off, so an old payload cannot grow a link to a cabinet that is not there.
   account?: AccountSettings
+  // The shop's own marks. Optional for the same reason as the cabinet switch:
+  // a payload cached before this existed carries no such key, and the
+  // storefront falls back to the mark the build shipped with.
+  branding?: BrandingSettings
 }
 
 export interface AccountSettings {
   enabled: boolean
+}
+
+export interface BrandingSettings {
+  /** Address of the uploaded logo, or an empty string when there is none. */
+  logo: string
+  /** Address of the uploaded favicon, or an empty string when there is none. */
+  favicon: string
+  tagline: string
 }
 
 export interface Customer {

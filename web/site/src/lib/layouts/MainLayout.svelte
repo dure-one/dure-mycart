@@ -5,7 +5,7 @@
   import CookieConsent from '$lib/components/CookieConsent.svelte'
   import { settingsStore } from '$lib/stores/settings'
   import { apiGet } from '$lib/utils/api'
-  import { updateSEOTags } from '$lib/utils/seo'
+  import { updateFavicon, updateSEOTags } from '$lib/utils/seo'
   import { isBrowser } from '$lib/utils/browser'
   import { page } from '$app/state'
   import { onMount } from 'svelte'
@@ -60,6 +60,10 @@
     const cached = settingsStore.loadFromCache()
     if (cached) {
       settingsStore.set(cached)
+      // The icon is set from the cached copy too: the tab is painted before the
+      // live settings arrive, and a shop that has uploaded one should not show
+      // the built-in icon for that moment.
+      updateFavicon(cached.branding?.favicon ?? '')
     } else {
       showOverlay = true
     }
@@ -73,6 +77,7 @@
       if (res.result.main?.site_name) {
         updateSEOTags({ title: res.result.main.site_name })
       }
+      updateFavicon(res.result.branding?.favicon ?? '')
     } else if (!cached) {
       error = res.message || 'Failed to load settings'
     }
