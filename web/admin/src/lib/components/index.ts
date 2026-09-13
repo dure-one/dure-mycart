@@ -13,6 +13,7 @@ export { default as DetailList } from './DetailList.svelte'
 export { default as Drawer } from './Drawer.svelte'
 export { default as Editor } from './Editor.svelte'
 export { default as Pagination } from './Pagination.svelte'
+export { default as SortableImage } from './SortableImage.svelte'
 export { default as SvgIcon } from './SvgIcon.svelte'
 
 // Product components
