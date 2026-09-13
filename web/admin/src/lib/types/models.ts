@@ -91,6 +91,28 @@ export interface Cart {
   updated?: string
 }
 
+/**
+ * One row of the customer list.
+ *
+ * A row is keyed by email rather than by account: most buyers check out as
+ * guests, so the address is what identifies them. `registered` is what says
+ * whether there is an account behind the row at all — `id` is empty, and no
+ * account-level action is offered, when there is not.
+ */
+export interface CustomerSummary {
+  id: string
+  email: string
+  name?: string
+  active: boolean
+  registered: boolean
+  purchases: number
+  spent: number
+  currency: string
+  last_order?: number
+  created?: number
+  updated?: number
+}
+
 export interface CartItem {
   id: string
   name: string

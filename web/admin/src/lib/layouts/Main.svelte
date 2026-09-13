@@ -66,6 +66,7 @@
   let mainMenu = $derived([
     { name: 'products', path: `${base}/products`, meta: { ico: 'cube', label: () => t('menu.products') } },
     { name: 'carts', path: `${base}/carts`, meta: { ico: 'cart', label: () => t('menu.carts') } },
+    { name: 'customers', path: `${base}/customers`, meta: { ico: 'user-group', label: () => t('menu.customers') } },
     { name: 'pages', path: `${base}/pages`, meta: { ico: 'docs', label: () => t('menu.pages') } },
     { name: 'settings', path: `${base}/settings`, meta: { ico: 'booth', divider: true, label: () => t('menu.settings') } }
   ])
@@ -81,6 +82,7 @@
           path: `${base}/settings/webhook`,
           meta: { ico: 'webhook', title: () => t('settings.webhook') }
         },
+        { name: 'settingsAccount', path: `${base}/settings/account`, meta: { ico: 'user', title: () => t('settings.customer') } },
         { name: 'settingsSocials', path: `${base}/settings/socials`, meta: { ico: 'user-group', title: () => t('settings.social') } },
         { name: 'settingsMail', path: `${base}/settings/mail`, meta: { ico: 'at-symbol', title: () => t('settings.mail') } }
       ]
