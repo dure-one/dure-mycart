@@ -1,0 +1,131 @@
+{
+  "common": {
+    "loading": "ЗАГРУЗКА...",
+    "poweredBy": "Працуе на myCart",
+    "backToHome": "ВЯРНУЦЦА НА ГАЛОЎНУЮ"
+  },
+  "languages": {
+    "en": "English",
+    "zh": "中文",
+    "ko": "한국어",
+    "fr": "Français",
+    "es": "Español",
+    "de": "Deutsch",
+    "it": "Italiano",
+    "be": "Беларуская"
+  },
+  "header": {
+    "cart": "КОШЫК",
+    "language": "Мова"
+  },
+  "footer": {
+    "follow": "Сачыце за намі:",
+    "allRightsReserved": "Усе правы абаронены",
+    "poweredBy": "Працуе на myCart"
+  },
+  "home": {
+    "products": "ТАВАРЫ",
+    "noProductsFound": "ТАВАРЫ НЕ ЗНОЙДЗЕНЫ",
+    "loading": "ЗАГРУЗКА..."
+  },
+  "cart": {
+    "yourCart": "ВАШ КОШЫК",
+    "inYourCart": "У ВАШЫМ КОШЫКУ",
+    "cartIsEmpty": "КОШЫК ПУСТЫ",
+    "emptyMessage": "Ваш кошык пусты. Дадайце тавары, каб працягнуць пакупкі.",
+    "goToHome": "НА ГАЛОЎНУЮ",
+    "itemsCount": "ПАЗІЦЫІ ({{count}})",
+    "total": "РАЗАМ",
+    "enterEmail": "УВЯДЗІЦЕ ПОШТУ",
+    "emailFreeDescription": "Увядзіце адрас электроннай пошты, на які будзе адпраўлены тавар.",
+    "emailPaidDescription": "Увядзіце адрас электроннай пошты, на які будзе адпраўлены тавар пасля аплаты. Таксама выберыце сістэму аплаты.",
+    "emailPlaceholder": "EMAIL@PRYKLAD.COM",
+    "selectPaymentSystem": "ВЫБРАЦЬ СІСТЭМУ АПЛАТЫ",
+    "stripe": "Stripe",
+    "stripeDescription": "Папулярная сістэма аплаты для картак і іншых метадаў",
+    "paypal": "PayPal",
+    "paypalDescription": "Сістэма аплаты для картак і сродкаў на рахунку PayPal",
+    "portone": "PortOne",
+    "portoneDescription": "Крэдытная картка, віртуальны рахунак і мабільная аплата",
+    "spectrocoin": "Spectrocoin",
+    "spectrocoinDescription": "Сістэма аплаты, якая дазваляе плаціць крыптавалютай",
+    "coinbase": "Coinbase Commerce",
+    "coinbaseDescription": "Сістэма аплаты для разлікаў крыптавалютай (Bitcoin, Ethereum і інш.)",
+    "getForFree": "АТРЫМАЦЬ БЯСПЛАТНА",
+    "checkout": "АПЛАЦІЦЬ",
+    "noPaymentSystems": "НЯМА ДАСТУПНЫХ СІСТЭМ АПЛАТЫ. ЗВЯРНІЦЕСЯ ДА АДМІНІСТРАТАРА.",
+    "selectPaymentError": "Выберыце сістэму аплаты",
+    "selectPaymentErrorPaid": "Выберыце сістэму аплаты для платных пазіцый",
+    "remove": "ПРЫБРАЦЬ",
+    "removeItem": "Прыбраць пазіцыю",
+    "validation_errors_title": "Некаторыя пазіцыі патрабуюць увагі",
+    "out_of_stock": "Гэты тавар больш не даступны",
+    "please_remove": "Прыбярыце яго, каб працягнуць",
+    "price_updated": "Цана была абноўлена",
+    "review_cart": "Праверыць кошык",
+    "quantity_unavailable": "Запытаная колькасць недаступная"
+  },
+  "product": {
+    "addToCart": "ДАДАЦЬ У КОШЫК",
+    "addToCartShort": "ДАДАЦЬ",
+    "add": "ДАДАЦЬ",
+    "removeFromCart": "ПРЫБРАЦЬ З КОШЫКА",
+    "removeFromCartShort": "ПРЫБРАЦЬ",
+    "remove": "ПРЫБРАЦЬ",
+    "free": "БЯСПЛАТНА",
+    "new": "НОВЫ",
+    "description": "АПІСАННЕ",
+    "previousImage": "Папярэдняя выява",
+    "nextImage": "Наступная выява",
+    "selectedVariant": "ВЫБРАНА",
+    "inStock": "У НАЯЎНАСЦІ",
+    "outOfStock": "НЯМА Ў НАЯЎНАСЦІ",
+    "variantNotAvailable": "ГЭТАЯ КАМБІНАЦЫЯ НЕДАСТУПНАЯ",
+    "selectOptions": "ВЫБРАЦЬ ПАРАМЕТРЫ",
+    "details": "ДЭТАЛІ",
+    "quantity": "КОЛЬКАСЦЬ",
+    "variant": "варыянт",
+    "variants": "варыянты"
+  },
+  "error": {
+    "notFound": "Старонка не знойдзена",
+    "notFoundTitle": "НЕ ЗНОЙДЗЕНА",
+    "notFoundMessage": "Старонка, якую вы шукаеце, не існуе або была перанесена.",
+    "errorOccurred": "Адбылася памылка",
+    "checkUrl": "Праверце URL на памылкі або вярніцеся на галоўную старонку, каб прагледзець нашы тавары.",
+    "errorTitle": "ПАМЫЛКА",
+    "contactAdmin": "Паспрабуйце яшчэ раз праз некаторы час; калі памылка не знікне — звярніцеся да адміністратара."
+  },
+  "payment": {
+    "success": {
+      "title": "АПЛАТА ПАСПЯХОВАЯ!",
+      "message": "Дзякуй за пакупку. Ваша замова была паспяхова апрацавана.",
+      "orderDetails": "ДЭТАЛІ ЗАМОВЫ",
+      "quantity": "Колькасць:",
+      "each": "за штуку",
+      "redirecting": "Перанакіраванне на галоўную старонку праз некалькі секунд...",
+      "cartIdMissing": "ID кошыка адсутнічае",
+      "loadFailed": "Не ўдалося загрузіць інфармацыю пра кошык"
+    },
+    "cancel": {
+      "title": "АПЛАТА СКАСАВАНА",
+      "message": "Ваша аплата была скасавана. Вы можаце вярнуцца ў кошык і паспрабаваць зноў.",
+      "returnToCart": "ВЯРНУЦЦА Ў КОШЫК"
+    },
+    "failed": "Аплата не ўдалася"
+  },
+  "pagination": {
+    "previous": "Папярэдняя",
+    "next": "Наступная"
+  },
+  "overlay": {
+    "close": "ЗАКРЫЦЬ"
+  },
+  "cookies": {
+    "title": "ЗГОДА НА COOKIES",
+    "description": "Мы выкарыстоўваем cookies, каб палепшыць ваш досвед прагляду і аналізаваць трафік сайта. Націснуўшы «Прыняць», вы згаджаецеся на выкарыстанне cookies. ",
+    "privacyLink": "Даведайцеся больш у нашай Палітыцы прыватнасці",
+    "accept": "ПРЫНЯЦЬ",
+    "reject": "АДХІЛІЦЬ"
+  }
+}

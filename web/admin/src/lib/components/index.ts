@@ -24,6 +24,7 @@ export { default as DrawerFooter } from './DrawerFooter.svelte'
 export { default as DrawerHeader } from './DrawerHeader.svelte'
 export { default as Editor } from './Editor.svelte'
 export { default as IconButton } from './IconButton.svelte'
+export { default as LanguageSelect } from './LanguageSelect.svelte'
 export { default as Pagination } from './Pagination.svelte'
 export { default as SvgIcon } from './SvgIcon.svelte'
 

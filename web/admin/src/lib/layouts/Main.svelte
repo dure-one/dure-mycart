@@ -7,6 +7,7 @@
   import { paymentSettingsStore } from '$lib/stores/payment'
   import { apiGet, apiPost } from '$lib/utils/api'
   import SvgIcon from '$lib/components/SvgIcon.svelte'
+  import LanguageSelect from '$lib/components/LanguageSelect.svelte'
   import { translate } from '$lib/i18n'
   import type { PaymentSettings } from '$lib/types/models'
 
@@ -178,7 +179,9 @@
     </div>
 
     <div class="sticky right-0 bottom-0 left-0 flex h-12 border-t border-t-gray-200 bg-zinc-50">
-      <div class="flex-none"></div>
+      <div class="flex flex-none items-center ps-1">
+        <LanguageSelect />
+      </div>
       <div class="grow"></div>
       <button
         type="button"

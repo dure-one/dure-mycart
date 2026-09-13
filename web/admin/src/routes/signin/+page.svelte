@@ -7,6 +7,7 @@
   import FormButton from '$lib/components/form/Button.svelte'
   import { apiPost, apiGet } from '$lib/utils/api'
   import { showMessage } from '$lib/utils/message'
+  import LanguageSelect from '$lib/components/LanguageSelect.svelte'
   import { translate } from '$lib/i18n'
 
   // Reactive translation function
@@ -75,8 +76,21 @@
     <div class="header">
       <h1>👨‍🎨 {t('auth.adminSignIn')}</h1>
     </div>
-    <form onsubmit={(e) => { e.preventDefault(); handleSubmit() }} class="mx-auto mt-8 mb-0 max-w-md space-y-4">
-      <FormInput id="email" type="email" title={t('auth.email')} ico="at-symbol" error={emailError} bind:value={email} />
+    <form
+      onsubmit={(e) => {
+        e.preventDefault()
+        handleSubmit()
+      }}
+      class="mx-auto mt-8 mb-0 max-w-md space-y-4"
+    >
+      <FormInput
+        id="email"
+        type="email"
+        title={t('auth.email')}
+        ico="at-symbol"
+        error={emailError}
+        bind:value={email}
+      />
       <FormInput
         id="password"
         type="password"
@@ -85,7 +99,13 @@
         error={passwordError}
         bind:value={password}
       />
-      <FormButton type="submit" name={t('auth.login')} variant="primary" ico="arrow-right" />
+      <!-- The picker shares the row with the submit action: someone who lands
+           here in a language they cannot read has to be able to change it
+           before signing in, and it is found where the eye already is. -->
+      <div class="flex items-center justify-between gap-4">
+        <FormButton type="submit" name={t('auth.login')} variant="primary" ico="arrow-right" />
+        <LanguageSelect />
+      </div>
     </form>
   </div>
 </Blank>

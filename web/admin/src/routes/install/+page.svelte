@@ -10,6 +10,7 @@
   import FormButton from '$lib/components/form/Button.svelte'
   import { apiGet, apiPost } from '$lib/utils/api'
   import { showMessage } from '$lib/utils/message'
+  import LanguageSelect from '$lib/components/LanguageSelect.svelte'
   import { translate } from '$lib/i18n'
 
   // Reactive translation function
@@ -205,8 +206,21 @@
       <h1>🛒 {t('install.title')} myCart</h1>
       <p>{t('install.configureCart')}</p>
     </div>
-    <form onsubmit={(e) => { e.preventDefault(); handleSubmit() }} class="mx-auto mt-8 mb-0 max-w-md space-y-4">
-      <FormInput id="email" type="email" title={t('install.email')} ico="at-symbol" error={emailError} bind:value={email} />
+    <form
+      onsubmit={(e) => {
+        e.preventDefault()
+        handleSubmit()
+      }}
+      class="mx-auto mt-8 mb-0 max-w-md space-y-4"
+    >
+      <FormInput
+        id="email"
+        type="email"
+        title={t('install.email')}
+        ico="at-symbol"
+        error={emailError}
+        bind:value={email}
+      />
       <FormInput
         id="password"
         type="password"
@@ -231,7 +245,7 @@
         {#if locked}
           <p class="text-gray-500">
             {t('install.databaseLocked')}
-            <code class="ml-1 break-all text-xs">{lockedSummary}</code>
+            <code class="ml-1 text-xs break-all">{lockedSummary}</code>
           </p>
         {:else}
           <FormSelect
@@ -257,10 +271,28 @@
             {:else}
               <FormInput id="pg-host" type="text" title={t('install.host')} ico="server" bind:value={pgHost} />
               <FormInput id="pg-port" type="text" title={t('install.port')} ico="hashtag" bind:value={pgPort} />
-              <FormInput id="pg-database" type="text" title={t('install.databaseName')} ico="circle-stack" bind:value={pgDatabase} />
+              <FormInput
+                id="pg-database"
+                type="text"
+                title={t('install.databaseName')}
+                ico="circle-stack"
+                bind:value={pgDatabase}
+              />
               <FormInput id="pg-user" type="text" title={t('install.user')} ico="user" bind:value={pgUser} />
-              <FormInput id="pg-password" type="password" title={t('install.dbPassword')} ico="lock-closed" bind:value={pgPassword} />
-              <FormSelect id="pg-sslmode" title={t('install.sslMode')} ico="shield-check" options={sslModes} bind:value={pgSSLMode} />
+              <FormInput
+                id="pg-password"
+                type="password"
+                title={t('install.dbPassword')}
+                ico="lock-closed"
+                bind:value={pgPassword}
+              />
+              <FormSelect
+                id="pg-sslmode"
+                title={t('install.sslMode')}
+                ico="shield-check"
+                options={sslModes}
+                bind:value={pgSSLMode}
+              />
             {/if}
 
             {#if dbError}
@@ -279,13 +311,18 @@
         {/if}
       </fieldset>
 
-      <FormButton
-        type="submit"
-        name={t('install.installButton')}
-        variant="primary"
-        ico="arrow-right"
-        disabled={!installableNow}
-      />
+      <!-- Same reason and same place as on the sign-in page: setup is exactly
+           where someone may be facing a language they cannot read. -->
+      <div class="flex items-center justify-between gap-4">
+        <FormButton
+          type="submit"
+          name={t('install.installButton')}
+          variant="primary"
+          ico="arrow-right"
+          disabled={!installableNow}
+        />
+        <LanguageSelect />
+      </div>
     </form>
   </div>
 </Blank>

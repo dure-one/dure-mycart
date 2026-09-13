@@ -27,6 +27,9 @@ export default defineConfig({
     }
   },
   resolve: {
+    // Without the browser condition Svelte resolves to its server build and
+    // component tests cannot mount anything.
+    conditions: ['browser'],
     alias: {
       $lib: '/src/lib',
       '$lib/*': '/src/lib/*'
