@@ -45,7 +45,7 @@
 </script>
 
 <div>
-  <label for={id} class={error ? 'border-red-500' : ''} style={labelStyle}>
+  <label for={id} class="input-shell {error ? 'border-red-500' : ''}" style={labelStyle}>
     <input
       {type}
       {id}

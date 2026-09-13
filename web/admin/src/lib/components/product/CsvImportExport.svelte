@@ -1,8 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import FormButton from '../form/Button.svelte'
-  import SvgIcon from '../SvgIcon.svelte'
-  import Alert from '../Alert.svelte'
+  import { Alert, FormButton, SvgIcon } from '$lib/components'
   import { translate } from '$lib/i18n'
   import { showMessage } from '$lib/utils'
 
@@ -53,9 +51,8 @@
       } else {
         showMessage(data.message || t('products.csv.previewFailed'), 'connextError')
       }
-    } catch (error) {
+    } catch {
       showMessage(t('products.csv.previewFailed'), 'connextError')
-      console.error('Preview error:', error)
     } finally {
       importing = false
     }
@@ -93,9 +90,8 @@
       } else {
         showMessage(data.message || t('products.csv.importFailed'), 'connextError')
       }
-    } catch (error) {
+    } catch {
       showMessage(t('products.csv.importFailed'), 'connextError')
-      console.error('Import error:', error)
     } finally {
       importing = false
     }
@@ -122,9 +118,8 @@
       } else {
         showMessage(t('products.csv.exportFailed'), 'connextError')
       }
-    } catch (error) {
+    } catch {
       showMessage(t('products.csv.exportFailed'), 'connextError')
-      console.error('Export error:', error)
     } finally {
       exporting = false
     }
@@ -136,7 +131,7 @@
   <div class="rounded-lg border border-gray-200 bg-white p-6">
     <div class="mb-4 flex items-center justify-between">
       <div>
-        <h3 class="text-lg font-semibold text-gray-900">{t('products.csv.exportProducts')}</h3>
+        <h2>{t('products.csv.exportProducts')}</h2>
         <p class="text-sm text-gray-500">{t('products.csv.exportDescription')}</p>
       </div>
       <FormButton
@@ -154,24 +149,15 @@
   <!-- Import Section -->
   <div class="rounded-lg border border-gray-200 bg-white p-6">
     <div class="mb-4">
-      <h3 class="text-lg font-semibold text-gray-900">{t('products.csv.importProducts')}</h3>
+      <h2>{t('products.csv.importProducts')}</h2>
       <p class="text-sm text-gray-500">{t('products.csv.importDescription')}</p>
     </div>
 
     <div class="mb-4">
-      <label
-        for="csv-file-input"
-        class="mb-2 block text-sm font-medium text-gray-700"
-      >
+      <label for="csv-file-input" class="mb-2 block text-sm font-medium text-gray-700">
         {t('products.csv.selectFile')}
       </label>
-      <input
-        id="csv-file-input"
-        type="file"
-        accept=".csv"
-        onchange={handleFileSelect}
-        class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500"
-      />
+      <input id="csv-file-input" type="file" accept=".csv" onchange={handleFileSelect} class="block w-full" />
     </div>
 
     {#if selectedFile}
@@ -199,7 +185,9 @@
     <!-- Preview Results -->
     {#if showPreview && previewResult}
       <div class="mt-4 rounded-lg bg-gray-50 p-4">
-        <h4 class="mb-3 font-semibold text-gray-900">{t('products.csv.previewResults')}</h4>
+        <div class="mb-3">
+          <h3>{t('products.csv.previewResults')}</h3>
+        </div>
 
         <div class="mb-4 grid grid-cols-2 gap-4 md:grid-cols-4">
           <div class="rounded bg-white p-3">
@@ -211,7 +199,7 @@
             <div class="text-xs text-gray-500">{t('products.csv.toAdd')}</div>
           </div>
           <div class="rounded bg-white p-3">
-            <div class="text-2xl font-bold text-blue-600">{previewResult.to_update}</div>
+            <div class="text-2xl font-bold text-gray-900">{previewResult.to_update}</div>
             <div class="text-xs text-gray-500">{t('products.csv.toUpdate')}</div>
           </div>
           <div class="rounded bg-white p-3">
@@ -222,9 +210,9 @@
 
         {#if previewResult.errors && previewResult.errors.length > 0}
           <div class="mt-4">
-            <h5 class="mb-2 font-semibold text-red-600">{t('products.csv.validationErrors')}</h5>
+            <p class="mb-2 font-semibold text-red-600">{t('products.csv.validationErrors')}</p>
             <div class="max-h-60 space-y-2 overflow-y-auto">
-              {#each previewResult.errors as error}
+              {#each previewResult.errors as error, index (index)}
                 <Alert type="error">
                   <strong>{t('products.csv.line')} {error.line}:</strong> {error.message}
                 </Alert>
@@ -243,12 +231,12 @@
   </div>
 
   <!-- Format Documentation -->
-  <div class="rounded-lg border border-gray-200 bg-blue-50 p-6">
-    <h3 class="mb-3 flex items-center text-sm font-semibold text-blue-900">
-      <SvgIcon name="docs" className="mr-2 h-5 w-5" />
-      {t('products.csv.formatGuide')}
-    </h3>
-    <div class="space-y-2 text-sm text-blue-800">
+  <div class="rounded-lg border border-gray-200 bg-gray-50 p-6">
+    <div class="mb-3 flex items-center gap-2">
+      <SvgIcon name="docs" className="h-5 w-5" />
+      <h2>{t('products.csv.formatGuide')}</h2>
+    </div>
+    <div class="space-y-2">
       <p><strong>{t('products.csv.requiredFields')}:</strong> name, slug, amount, digital</p>
       <p><strong>{t('products.csv.optionalFields')}:</strong> brief, description, images, attributes, quantity, sku, active</p>
       <p><strong>{t('products.csv.variantFields')}:</strong> variants</p>

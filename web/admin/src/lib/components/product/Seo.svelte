@@ -1,8 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import FormButton from '../form/Button.svelte'
-  import FormInput from '../form/Input.svelte'
-  import FormTextarea from '../form/Textarea.svelte'
+  import { DrawerFooter, DrawerHeader, FormInput, FormTextarea } from '$lib/components'
   import { loadData, saveData } from '$lib/utils/apiHelpers'
   import type { Product } from '$lib/types/models'
   import { translate } from '$lib/i18n'
@@ -44,8 +42,7 @@
     }
   }
 
-  async function handleSubmit(event: SubmitEvent) {
-    event.preventDefault()
+  async function handleSubmit() {
     await saveData<Product>(
       `/api/_/products/${drawer.product.id}`,
       { seo: seoData },
@@ -61,15 +58,9 @@
 </script>
 
 <div>
-  <div class="pb-8">
-    <div class="flex items-center">
-      <div class="pr-3">
-        <h1>SEO</h1>
-      </div>
-    </div>
-  </div>
+  <DrawerHeader title={t('products.seo')} />
 
-  <form onsubmit={handleSubmit}>
+  <form onsubmit={(e) => { e.preventDefault(); handleSubmit() }}>
     <div class="flow-root">
       <dl class="mx-auto -my-3 mt-2 mb-0 space-y-4 text-sm">
         <FormInput id="seo-title" title={t('pages.seoTitle')} bind:value={seoData.title} ico="glob-alt" />
@@ -79,14 +70,6 @@
       </dl>
     </div>
 
-    <div class="pt-8">
-      <div class="flex">
-        <div class="flex-none">
-          <FormButton type="submit" name={t('common.save')} color="green" />
-          <FormButton type="button" name={t('common.close')} color="gray" onclick={close} />
-        </div>
-        <div class="grow"></div>
-      </div>
-    </div>
+    <DrawerFooter submitLabel={t('common.save')} onclose={close} />
   </form>
 </div>

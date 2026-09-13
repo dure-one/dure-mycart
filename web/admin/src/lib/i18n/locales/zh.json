@@ -19,7 +19,14 @@
     "operationFailed": "操作失败",
     "networkError": "网络错误",
     "failedToLoadData": "加载数据失败",
-    "failedToSaveData": "保存数据失败"
+    "failedToSaveData": "保存数据失败",
+    "preview": "预览",
+    "fileUploaded": "文件已上传",
+    "pageNotFound": "页面未找到",
+    "addRecord": "添加记录",
+    "home": "首页",
+    "signOut": "退出登录",
+    "viewRelease": "查看版本信息"
   },
   "menu": {
     "products": "商品",
@@ -101,7 +108,9 @@
     "dribbble": "Dribbble",
     "github": "GitHub",
     "youtube": "YouTube",
-    "otherUrl": "其他 (URL)"
+    "otherUrl": "其他 (URL)",
+    "paymentProviders": "支付提供商",
+    "displaySettings": "显示设置"
   },
   "auth": {
     "login": "登录",
@@ -240,7 +249,12 @@
       "optionalFields": "可选字段",
       "variantFields": "变体字段",
       "variantNote": "变体格式：[选项:值1;值2]=>变体数据|变体数据 (例如：[Size:S;M;L]=>S,0,10,SKU-S|M,500,20,SKU-M)"
-    }
+    },
+    "optionNameNumbered": "选项 {{index}} 名称",
+    "optionValueNumbered": "选项 {{index}} 值 {{value}}",
+    "selectDigitalType": "选择数字类型",
+    "toggleActive": "切换激活状态",
+    "optionNameExists": "选项名称“{{name}}”已存在。请使用唯一名称。"
   },
   "carts": {
     "title": "购物车",
@@ -275,7 +289,8 @@
     "quantityColumn": "数量",
     "subtotalColumn": "小计",
     "mailSentSuccessfully": "邮件发送成功",
-    "failedToSendMailMessage": "发送邮件失败"
+    "failedToSendMailMessage": "发送邮件失败",
+    "sendMail": "发送邮件"
   },
   "pages": {
     "title": "页面",
@@ -299,7 +314,8 @@
     "failedToUpdatePage": "更新页面失败",
     "seoTitle": "标题",
     "seoKeywords": "关键词",
-    "seoDescription": "描述"
+    "seoDescription": "描述",
+    "toggleActive": "切换激活状态"
   },
   "payment": {
     "stripe": "Stripe",
@@ -322,10 +338,20 @@
     "projectId": "项目 ID",
     "privateKey": "私钥",
     "failedToLoad": "加载设置失败",
-    "failedToSave": "保存设置失败"
+    "failedToSave": "保存设置失败",
+    "priceDisplay": "价格显示",
+    "currencyRequired": "货币为必填项",
+    "currencyMustBeOneOf": "货币必须是以下之一：{{list}}",
+    "currencySaved": "货币已保存",
+    "truncationSaved": "价格显示设置已保存",
+    "numberFormatSaved": "数字格式已保存",
+    "symbolDisplaySaved": "符号显示已保存",
+    "failedToLoadSettings": "加载支付设置失败",
+    "apiKey": "API 密钥"
   },
   "form": {
-    "pleaseSelect": "请选择"
+    "pleaseSelect": "请选择",
+    "uploadLabel": "上传文件"
   },
   "pagination": {
     "previous": "上一页",
@@ -347,7 +373,8 @@
     "sold": "已售出",
     "digitalType": "数字{{type}}",
     "fileDescription": "这是用户购买的产品。上传将在付款后发送给买家的文件，发送到结账时提供的电子邮件地址。",
-    "dataDescription": "输入您打算销售的数字产品。它可以是唯一项目，例如许可证密钥。"
+    "dataDescription": "输入您打算销售的数字产品。它可以是唯一项目，例如许可证密钥。",
+    "failedToLoadContent": "加载数字内容失败"
   },
   "letter": {
     "updateLetter": "更新邮件",
@@ -362,5 +389,19 @@
     "paymentLink": "支付链接",
     "purchases": "购买",
     "adminEmail": "管理员邮箱"
+  },
+  "editor": {
+    "undo": "撤销",
+    "redo": "重做",
+    "bold": "粗体",
+    "italic": "斜体",
+    "strike": "删除线",
+    "paragraph": "段落",
+    "h1": "标题 1",
+    "h2": "标题 2",
+    "h3": "标题 3",
+    "bulletlist": "项目符号列表",
+    "orderedList": "编号列表",
+    "blockquote": "引用"
   }
 }

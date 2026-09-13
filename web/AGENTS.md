@@ -43,9 +43,17 @@ sizes minimal. Shared utilities are **copied**, not imported — see
 
 ### Styling
 
-- TailwindCSS v4. Global styles live in `src/app.css`.
+- TailwindCSS v4. The entry is `admin/src/assets/app.css`, which imports
+  `main.css` (typography, form shells, links, notices) and `table.css`
+  (tables). Shared appearance lives in those classes, not in repeated
+  utility strings.
 - No inline CSS-in-JS. Prefer utility classes; use `<style>` blocks for
   one-off animations that Tailwind cannot express.
+- **Working in `admin/`? Read [`admin/DESIGN.md`](admin/DESIGN.md) first.**
+  It is the normative contract for the panel's single accent, typography
+  scale, page shell, component inventory and the frozen Playwright
+  selectors. A page or element that departs from it is a bug, not a
+  variation.
 
 ### Build
 

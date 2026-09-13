@@ -25,3 +25,20 @@ table {
     }
   }
 }
+
+/* Horizontal scroll container every table is wrapped in. */
+.table-wrap {
+  @apply overflow-x-auto;
+}
+
+/* A table whose rows are not clickable — e.g. a read-only drawer table. */
+table.table-plain {
+  tbody tr {
+    @apply cursor-default;
+  }
+
+  tbody tr:hover,
+  tbody tr:active {
+    @apply bg-transparent;
+  }
+}

@@ -17,7 +17,7 @@
   let emailError = $state('')
   let passwordError = $state('')
 
-  function validateEmail(value) {
+  function validateEmail(value: string) {
     if (!value) {
       return t('auth.emailRequired')
     }
@@ -27,7 +27,7 @@
     return ''
   }
 
-  function validatePassword(value) {
+  function validatePassword(value: string) {
     if (!value) {
       return t('auth.passwordRequired')
     }
@@ -37,9 +37,7 @@
     return ''
   }
 
-  async function handleSubmit(event?: Event) {
-    event?.preventDefault()
-
+  async function handleSubmit() {
     emailError = validateEmail(email)
     passwordError = validatePassword(password)
 
@@ -73,11 +71,11 @@
 </script>
 
 <Blank>
-  <div class="mx-auto max-w-screen-xl px-4 py-16 sm:px-6 lg:px-8">
-    <div class="mx-auto max-w-lg text-center">
-      <h1 class="text-2xl font-bold sm:text-3xl">👨‍🎨 {t('auth.adminSignIn')}</h1>
+  <div class="content-center">
+    <div class="header">
+      <h1>👨‍🎨 {t('auth.adminSignIn')}</h1>
     </div>
-    <form onsubmit={(e) => handleSubmit(e)} class="mx-auto mt-8 mb-0 max-w-md space-y-4">
+    <form onsubmit={(e) => { e.preventDefault(); handleSubmit() }} class="mx-auto mt-8 mb-0 max-w-md space-y-4">
       <FormInput id="email" type="email" title={t('auth.email')} ico="at-symbol" error={emailError} bind:value={email} />
       <FormInput
         id="password"
@@ -87,7 +85,7 @@
         error={passwordError}
         bind:value={password}
       />
-      <FormButton type="submit" name={t('auth.login')} color="green" ico="arrow-right" />
+      <FormButton type="submit" name={t('auth.login')} variant="primary" ico="arrow-right" />
     </form>
   </div>
 </Blank>
