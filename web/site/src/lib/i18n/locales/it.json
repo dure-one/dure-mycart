@@ -16,7 +16,8 @@
   },
   "header": {
     "cart": "CARRELLO",
-    "language": "Lingua"
+    "language": "Lingua",
+    "account": "I MIEI ACQUISTI"
   },
   "footer": {
     "follow": "Seguici:",
@@ -86,6 +87,38 @@
     "quantity": "QUANTITÀ",
     "variant": "variante",
     "variants": "varianti"
+  },
+  "account": {
+    "signIn": "ACCEDI",
+    "signUp": "REGISTRATI",
+    "signOut": "ESCI",
+    "signInTitle": "ACCEDI",
+    "signInSubtitle": "Accedi per raggiungere le guide che hai acquistato.",
+    "signUpTitle": "CREA UN ACCOUNT",
+    "signUpSubtitle": "Un account raccoglie tutto ciò che acquisti.",
+    "email": "E-MAIL",
+    "emailPlaceholder": "EMAIL@EXAMPLE.COM",
+    "password": "PASSWORD",
+    "passwordHint": "ALMENO 8 CARATTERI",
+    "name": "NOME (FACOLTATIVO)",
+    "namePlaceholder": "IL TUO NOME",
+    "noAccount": "NON HAI ANCORA UN ACCOUNT?",
+    "haveAccount": "HAI GIÀ UN ACCOUNT?",
+    "created": "ACCOUNT CREATO. ACCEDI E IL TUO ORDINE SARÀ LÌ.",
+    "signedInAs": "ACCESSO COME",
+    "emptyTitle": "NESSUN ACQUISTO PER ORA",
+    "emptyMessage": "Le guide che acquisti compariranno qui, pronte da scaricare.",
+    "goToShop": "VAI AL NEGOZIO",
+    "order": "ORDINE",
+    "quantity": "Q.TÀ",
+    "download": "SCARICA",
+    "keys": "LE TUE CHIAVI",
+    "copy": "COPIA",
+    "copied": "COPIATO",
+    "failed": "IMPOSSIBILE CARICARE I TUOI ACQUISTI. RIPROVA PIÙ TARDI.",
+    "unavailable": "L'AREA ACCOUNT NON È DISPONIBILE SU QUESTO SITO.",
+    "invalidEmail": "INSERISCI UN INDIRIZZO E-MAIL VALIDO",
+    "shortPassword": "LA PASSWORD DEVE AVERE ALMENO 8 CARATTERI"
   },
   "error": {
     "notFound": "Pagina non trovata",

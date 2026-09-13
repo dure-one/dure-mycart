@@ -16,7 +16,8 @@
   },
   "header": {
     "cart": "PANIER",
-    "language": "Langue"
+    "language": "Langue",
+    "account": "MES ACHATS"
   },
   "footer": {
     "follow": "Suivez-nous :",
@@ -86,6 +87,38 @@
     "quantity": "QUANTITÉ",
     "variant": "variante",
     "variants": "variantes"
+  },
+  "account": {
+    "signIn": "SE CONNECTER",
+    "signUp": "S'INSCRIRE",
+    "signOut": "SE DÉCONNECTER",
+    "signInTitle": "SE CONNECTER",
+    "signInSubtitle": "Connectez-vous pour accéder aux guides que vous avez achetés.",
+    "signUpTitle": "CRÉER UN COMPTE",
+    "signUpSubtitle": "Un compte rassemble tout ce que vous achetez.",
+    "email": "E-MAIL",
+    "emailPlaceholder": "EMAIL@EXAMPLE.COM",
+    "password": "MOT DE PASSE",
+    "passwordHint": "AU MOINS 8 CARACTÈRES",
+    "name": "NOM (FACULTATIF)",
+    "namePlaceholder": "VOTRE NOM",
+    "noAccount": "PAS ENCORE DE COMPTE ?",
+    "haveAccount": "VOUS AVEZ DÉJÀ UN COMPTE ?",
+    "created": "COMPTE CRÉÉ. CONNECTEZ-VOUS, VOTRE COMMANDE Y SERA.",
+    "signedInAs": "CONNECTÉ EN TANT QUE",
+    "emptyTitle": "AUCUN ACHAT POUR LE MOMENT",
+    "emptyMessage": "Les guides que vous achetez apparaîtront ici, prêts à télécharger.",
+    "goToShop": "ALLER À LA BOUTIQUE",
+    "order": "COMMANDE",
+    "quantity": "QTÉ",
+    "download": "TÉLÉCHARGER",
+    "keys": "VOS CLÉS",
+    "copy": "COPIER",
+    "copied": "COPIÉ",
+    "failed": "IMPOSSIBLE DE CHARGER VOS ACHATS. RÉESSAYEZ PLUS TARD.",
+    "unavailable": "L'ESPACE COMPTE N'EST PAS DISPONIBLE SUR CE SITE.",
+    "invalidEmail": "SAISISSEZ UNE ADRESSE E-MAIL VALIDE",
+    "shortPassword": "LE MOT DE PASSE DOIT CONTENIR AU MOINS 8 CARACTÈRES"
   },
   "error": {
     "notFound": "Page introuvable",

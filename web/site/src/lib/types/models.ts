@@ -64,6 +64,45 @@ export interface Settings {
   socials: Record<string, string>
   pages: Page[]
   payment?: PaymentSettings
+  // The cabinet switch. Optional because a settings payload cached before the
+  // feature existed carries no such key; the storefront treats a missing one as
+  // off, so an old payload cannot grow a link to a cabinet that is not there.
+  account?: AccountSettings
+}
+
+export interface AccountSettings {
+  enabled: boolean
+}
+
+export interface Customer {
+  id: string
+  email: string
+  name?: string
+}
+
+export interface CustomerPurchaseFile {
+  id: string
+  orig_name: string
+}
+
+export interface CustomerPurchaseItem {
+  product_id: string
+  name: string
+  slug: string
+  quantity: number
+  // "file", "data", "api" or absent. Files come with the first, codes with the
+  // second, and an api product is delivered outside the cabinet.
+  digital?: string
+  files?: CustomerPurchaseFile[]
+  codes?: string[]
+}
+
+export interface CustomerPurchase {
+  id: string
+  created: number
+  amount_total: number
+  currency: string
+  items?: CustomerPurchaseItem[]
 }
 
 export interface Page {

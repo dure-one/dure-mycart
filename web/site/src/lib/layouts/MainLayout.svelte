@@ -52,25 +52,31 @@
   onMount(async () => {
     if (!isBrowser()) return
 
-    let cached = settingsStore.loadFromCache()
-    if (!cached) {
-      showOverlay = true
-      const res = await apiGet('/api/settings')
-      if (res.success && res.result) {
-        settingsStore.set(res.result)
-        settingsStore.saveToCache(res.result)
-
-        // Update meta tags
-        if (res.result.main?.site_name) {
-          updateSEOTags({ title: res.result.main.site_name })
-        }
-      } else {
-        error = res.message || 'Failed to load settings'
-      }
-      showOverlay = false
-    } else {
+    // The cache is a first paint, not an answer. It is up to five minutes old,
+    // and the shop's settings are not only presentation: the cabinet switch
+    // rides with them, and a buyer who keeps a stale copy keeps being offered a
+    // cabinet the operator has turned off. So the cached copy is painted at
+    // once and the live one always follows, replacing it.
+    const cached = settingsStore.loadFromCache()
+    if (cached) {
       settingsStore.set(cached)
+    } else {
+      showOverlay = true
     }
+
+    const res = await apiGet('/api/settings')
+    if (res.success && res.result) {
+      settingsStore.set(res.result)
+      settingsStore.saveToCache(res.result)
+
+      // Update meta tags
+      if (res.result.main?.site_name) {
+        updateSEOTags({ title: res.result.main.site_name })
+      }
+    } else if (!cached) {
+      error = res.message || 'Failed to load settings'
+    }
+    showOverlay = false
   })
 
   function closeOverlay() {
@@ -93,7 +99,7 @@
       <Footer />
     </footer>
   {/if}
-  <Overlay show={showOverlay} error={error} onClose={closeOverlay} />
+  <Overlay show={showOverlay} {error} onClose={closeOverlay} />
   {#if !isErrorPage}
     <CookieConsent />
   {/if}

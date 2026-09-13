@@ -16,7 +16,8 @@
   },
   "header": {
     "cart": "WARENKORB",
-    "language": "Sprache"
+    "language": "Sprache",
+    "account": "MEINE KÄUFE"
   },
   "footer": {
     "follow": "Folgen Sie uns:",
@@ -86,6 +87,38 @@
     "quantity": "MENGE",
     "variant": "Variante",
     "variants": "Varianten"
+  },
+  "account": {
+    "signIn": "ANMELDEN",
+    "signUp": "REGISTRIEREN",
+    "signOut": "ABMELDEN",
+    "signInTitle": "ANMELDEN",
+    "signInSubtitle": "Melde dich an, um auf die gekauften Guides zuzugreifen.",
+    "signUpTitle": "KONTO ERSTELLEN",
+    "signUpSubtitle": "Ein Konto bündelt alles, was du kaufst.",
+    "email": "E-MAIL",
+    "emailPlaceholder": "EMAIL@EXAMPLE.COM",
+    "password": "PASSWORT",
+    "passwordHint": "MINDESTENS 8 ZEICHEN",
+    "name": "NAME (OPTIONAL)",
+    "namePlaceholder": "DEIN NAME",
+    "noAccount": "NOCH KEIN KONTO?",
+    "haveAccount": "SCHON EIN KONTO?",
+    "created": "KONTO ERSTELLT. MELDE DICH AN, DANN STEHT DEINE BESTELLUNG BEREIT.",
+    "signedInAs": "ANGEMELDET ALS",
+    "emptyTitle": "NOCH KEINE KÄUFE",
+    "emptyMessage": "Die gekauften Guides erscheinen hier und stehen zum Download bereit.",
+    "goToShop": "ZUM SHOP",
+    "order": "BESTELLUNG",
+    "quantity": "MENGE",
+    "download": "HERUNTERLADEN",
+    "keys": "DEINE SCHLÜSSEL",
+    "copy": "KOPIEREN",
+    "copied": "KOPIERT",
+    "failed": "DEINE KÄUFE KONNTEN NICHT GELADEN WERDEN. VERSUCHE ES SPÄTER ERNEUT.",
+    "unavailable": "DER KONTOBEREICH IST AUF DIESER SEITE NICHT VERFÜGBAR.",
+    "invalidEmail": "GIB EINE GÜLTIGE E-MAIL-ADRESSE EIN",
+    "shortPassword": "DAS PASSWORT MUSS MINDESTENS 8 ZEICHEN HABEN"
   },
   "error": {
     "notFound": "Seite nicht gefunden",

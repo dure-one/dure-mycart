@@ -16,7 +16,8 @@
   },
   "header": {
     "cart": "CART",
-    "language": "Language"
+    "language": "Language",
+    "account": "MY PURCHASES"
   },
   "footer": {
     "follow": "Follow:",
@@ -86,6 +87,38 @@
     "quantity": "QUANTITY",
     "variant": "variant",
     "variants": "variants"
+  },
+  "account": {
+    "signIn": "SIGN IN",
+    "signUp": "SIGN UP",
+    "signOut": "SIGN OUT",
+    "signInTitle": "SIGN IN",
+    "signInSubtitle": "Sign in to reach the guides you bought.",
+    "signUpTitle": "CREATE AN ACCOUNT",
+    "signUpSubtitle": "An account keeps everything you buy in one place.",
+    "email": "EMAIL",
+    "emailPlaceholder": "EMAIL@EXAMPLE.COM",
+    "password": "PASSWORD",
+    "passwordHint": "AT LEAST 8 CHARACTERS",
+    "name": "NAME (OPTIONAL)",
+    "namePlaceholder": "YOUR NAME",
+    "noAccount": "NO ACCOUNT YET?",
+    "haveAccount": "ALREADY HAVE AN ACCOUNT?",
+    "created": "ACCOUNT CREATED. SIGN IN AND YOUR ORDER WILL BE THERE.",
+    "signedInAs": "SIGNED IN AS",
+    "emptyTitle": "NO PURCHASES YET",
+    "emptyMessage": "The guides you buy will appear here, ready to download.",
+    "goToShop": "GO TO SHOP",
+    "order": "ORDER",
+    "quantity": "QTY",
+    "download": "DOWNLOAD",
+    "keys": "YOUR KEYS",
+    "copy": "COPY",
+    "copied": "COPIED",
+    "failed": "COULD NOT LOAD YOUR PURCHASES. PLEASE TRY AGAIN.",
+    "unavailable": "THE ACCOUNT AREA IS NOT AVAILABLE ON THIS SITE.",
+    "invalidEmail": "ENTER A VALID EMAIL ADDRESS",
+    "shortPassword": "THE PASSWORD MUST BE AT LEAST 8 CHARACTERS"
   },
   "error": {
     "notFound": "Page not found",

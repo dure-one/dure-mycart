@@ -16,7 +16,8 @@
   },
   "header": {
     "cart": "购物车",
-    "language": "语言"
+    "language": "语言",
+    "account": "我的购买"
   },
   "footer": {
     "follow": "关注：",
@@ -86,6 +87,38 @@
     "quantity": "数量",
     "variant": "款式",
     "variants": "款式"
+  },
+  "account": {
+    "signIn": "登录",
+    "signUp": "注册",
+    "signOut": "退出登录",
+    "signInTitle": "登录",
+    "signInSubtitle": "登录即可获取你购买的指南。",
+    "signUpTitle": "创建账户",
+    "signUpSubtitle": "账户会把你购买的内容集中保存。",
+    "email": "电子邮箱",
+    "emailPlaceholder": "EMAIL@EXAMPLE.COM",
+    "password": "密码",
+    "passwordHint": "至少 8 个字符",
+    "name": "姓名（可选）",
+    "namePlaceholder": "你的姓名",
+    "noAccount": "还没有账户？",
+    "haveAccount": "已经有账户？",
+    "created": "账户已创建。请登录，你的订单就在里面。",
+    "signedInAs": "已登录",
+    "emptyTitle": "暂无购买",
+    "emptyMessage": "你购买的指南会显示在这里，可随时下载。",
+    "goToShop": "去商店",
+    "order": "订单",
+    "quantity": "数量",
+    "download": "下载",
+    "keys": "你的密钥",
+    "copy": "复制",
+    "copied": "已复制",
+    "failed": "无法加载你的购买记录，请稍后再试。",
+    "unavailable": "本站未提供账户功能。",
+    "invalidEmail": "请输入有效的电子邮箱地址",
+    "shortPassword": "密码至少需要 8 个字符"
   },
   "error": {
     "notFound": "页面未找到",

@@ -16,7 +16,8 @@
   },
   "header": {
     "cart": "CARRITO",
-    "language": "Idioma"
+    "language": "Idioma",
+    "account": "MIS COMPRAS"
   },
   "footer": {
     "follow": "Síguenos:",
@@ -86,6 +87,38 @@
     "quantity": "CANTIDAD",
     "variant": "variante",
     "variants": "variantes"
+  },
+  "account": {
+    "signIn": "INICIAR SESIÓN",
+    "signUp": "CREAR CUENTA",
+    "signOut": "CERRAR SESIÓN",
+    "signInTitle": "INICIAR SESIÓN",
+    "signInSubtitle": "Inicia sesión para acceder a las guías que compraste.",
+    "signUpTitle": "CREAR CUENTA",
+    "signUpSubtitle": "Una cuenta reúne todo lo que compras.",
+    "email": "CORREO ELECTRÓNICO",
+    "emailPlaceholder": "EMAIL@EXAMPLE.COM",
+    "password": "CONTRASEÑA",
+    "passwordHint": "AL MENOS 8 CARACTERES",
+    "name": "NOMBRE (OPCIONAL)",
+    "namePlaceholder": "TU NOMBRE",
+    "noAccount": "¿AÚN NO TIENES CUENTA?",
+    "haveAccount": "¿YA TIENES CUENTA?",
+    "created": "CUENTA CREADA. INICIA SESIÓN Y TU PEDIDO ESTARÁ AHÍ.",
+    "signedInAs": "SESIÓN INICIADA COMO",
+    "emptyTitle": "AÚN NO HAY COMPRAS",
+    "emptyMessage": "Las guías que compres aparecerán aquí, listas para descargar.",
+    "goToShop": "IR A LA TIENDA",
+    "order": "PEDIDO",
+    "quantity": "CANT.",
+    "download": "DESCARGAR",
+    "keys": "TUS CLAVES",
+    "copy": "COPIAR",
+    "copied": "COPIADO",
+    "failed": "NO SE PUDIERON CARGAR TUS COMPRAS. INTÉNTALO DE NUEVO.",
+    "unavailable": "EL ÁREA DE CUENTA NO ESTÁ DISPONIBLE EN ESTE SITIO.",
+    "invalidEmail": "INTRODUCE UN CORREO ELECTRÓNICO VÁLIDO",
+    "shortPassword": "LA CONTRASEÑA DEBE TENER AL MENOS 8 CARACTERES"
   },
   "error": {
     "notFound": "Página no encontrada",
