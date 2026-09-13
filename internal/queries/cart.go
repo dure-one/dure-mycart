@@ -478,6 +478,22 @@ func validateCartItem(
 	return validateNonVariantItem(index, requested, product)
 }
 
+// chargesStock reports whether a product can run out.
+//
+// A digital file cannot: the shop stores one file and serves the same bytes to
+// every buyer, so `quantity` on such a product is not stock. Reading it as stock
+// is what made a shop unable to sell the thing it sells most — a guide left at
+// the quantity the panel's form offers by default, which is zero, was answered
+// with "quantity unavailable" at every checkout.
+//
+// Everything else keeps the count it has always been checked against. A licence
+// key is stock in the literal sense: each buyer takes one unclaimed row out of
+// digital_data, and the operator's number is what stops the shop from promising
+// more keys than it holds.
+func chargesStock(product *models.Product) bool {
+	return product.Digital.Type != models.DigitalFile
+}
+
 // validateVariantItem validates a cart item with a variant
 func validateVariantItem(
 	index int,
@@ -564,7 +580,7 @@ func validateVariantItem(
 	}
 
 	// Check quantity availability
-	if requested.Quantity > variant.Quantity {
+	if chargesStock(product) && requested.Quantity > variant.Quantity {
 		return &models.CartValidationError{
 			ItemIndex:          index,
 			ProductID:          requested.ProductID,
@@ -626,7 +642,7 @@ func validateNonVariantItem(
 	}
 
 	// Check quantity availability
-	if requested.Quantity > product.Quantity {
+	if chargesStock(product) && requested.Quantity > product.Quantity {
 		return &models.CartValidationError{
 			ItemIndex:          index,
 			ProductID:          requested.ProductID,

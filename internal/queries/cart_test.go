@@ -1,6 +1,7 @@
 package queries
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -274,7 +275,9 @@ func TestValidateCartItems_Success(t *testing.T) {
 func TestValidateCartItems_QuantityUnavailable(t *testing.T) {
 	db, ctx := bootstrap(t)
 
-	// Create product with limited quantity
+	// A product whose count is really stock. It is a licence-key product rather
+	// than a file because a file has nothing to run out of — see chargesStock —
+	// and this test is about the ceiling, not about which products have one.
 	product := &models.Product{
 		Core:     models.Core{ID: "test-prod-2"},
 		Name:     "Limited Product",
@@ -282,7 +285,7 @@ func TestValidateCartItems_QuantityUnavailable(t *testing.T) {
 		Quantity: 3,
 		Active:   true,
 		Slug:     "limited-product",
-		Digital:  models.Digital{Type: "file"},
+		Digital:  models.Digital{Type: models.DigitalData},
 	}
 	if _, err := db.AddProduct(ctx, product); err != nil {
 		t.Fatalf("AddProduct failed: %v", err)
@@ -583,5 +586,129 @@ func TestValidateCartItems_PriceChanged(t *testing.T) {
 
 	if result.Errors[0].CurrentUnitPrice != 5000 {
 		t.Errorf("Expected current price 5000, got %d", result.Errors[0].CurrentUnitPrice)
+	}
+}
+
+// addTestProduct seeds one active product and returns it.
+func addTestProduct(t *testing.T, db *Base, ctx context.Context, product *models.Product) {
+	t.Helper()
+
+	if _, err := db.AddProduct(ctx, product); err != nil {
+		t.Fatalf("AddProduct failed: %v", err)
+	}
+}
+
+// TestValidateCartItems_FileProductIsNotOutOfStock covers the shape a shop
+// actually sells: a guide is one file served to every buyer, so it has no
+// stock, and the panel's form offers zero as the quantity. Reading that zero as
+// stock made every checkout of a guide fail with "quantity unavailable".
+func TestValidateCartItems_FileProductIsNotOutOfStock(t *testing.T) {
+	db, ctx := bootstrap(t)
+
+	product := &models.Product{
+		Core:     models.Core{ID: "guide-zero-stock"},
+		Name:     "Amalfi Coast Guide",
+		Amount:   2400,
+		Quantity: 0,
+		Active:   true,
+		Slug:     "amalfi-coast-guide",
+		Digital:  models.Digital{Type: models.DigitalFile},
+	}
+	addTestProduct(t, db, ctx, product)
+
+	result, err := ValidateCartItems(ctx, db, []models.CartProduct{
+		{ProductID: product.ID, Quantity: 1},
+	}, "USD")
+	if err != nil {
+		t.Fatalf("ValidateCartItems error: %v", err)
+	}
+
+	if !result.Valid {
+		t.Fatalf("a file with no stock was refused: %v", result.Errors)
+	}
+	if !result.CorrectedItems[0].Available {
+		t.Error("a file with no stock came back unavailable")
+	}
+}
+
+// TestValidateCartItems_FileVariantIsNotOutOfStock is the same rule where the
+// stock sits on the variant: a shop that offers a guide per region still has
+// nothing to run out of.
+func TestValidateCartItems_FileVariantIsNotOutOfStock(t *testing.T) {
+	db, ctx := bootstrap(t)
+
+	variantID := "var-north"
+	product := &models.Product{
+		Core:        models.Core{ID: "guide-variant-zero"},
+		Name:        "Regional Guide",
+		Slug:        "regional-guide",
+		Amount:      1800,
+		Quantity:    0,
+		Active:      true,
+		HasVariants: true,
+		Digital:     models.Digital{Type: models.DigitalFile},
+		Options: []models.ProductOption{{
+			ID:        "opt-region",
+			ProductID: "guide-variant-zero",
+			Name:      "Region",
+			Values: []models.ProductOptionValue{
+				{ID: "val-north", Value: "North", Position: 0},
+			},
+		}},
+		Variants: []models.ProductVariant{{
+			ID:           variantID,
+			ProductID:    "guide-variant-zero",
+			SKU:          "GUIDE-N",
+			OptionValues: map[string]string{"Region": "North"},
+			Quantity:     0,
+			Active:       true,
+		}},
+	}
+	if _, err := db.AddProductWithVariants(ctx, product); err != nil {
+		t.Fatalf("AddProductWithVariants failed: %v", err)
+	}
+
+	result, err := ValidateCartItems(ctx, db, []models.CartProduct{
+		{ProductID: product.ID, VariantID: &variantID, Quantity: 1},
+	}, "USD")
+	if err != nil {
+		t.Fatalf("ValidateCartItems error: %v", err)
+	}
+
+	if !result.Valid {
+		t.Fatalf("a file variant with no stock was refused: %v", result.Errors)
+	}
+}
+
+// TestValidateCartItems_LicenceKeyStillChargesStock is the other side of the
+// rule: a licence key is drawn from a finite pile, one per buyer, so its count
+// is stock and stays enforced. Without this the widening above would have
+// turned "no keys left" into a purchase that the claim later fails to fill.
+func TestValidateCartItems_LicenceKeyStillChargesStock(t *testing.T) {
+	db, ctx := bootstrap(t)
+
+	product := &models.Product{
+		Core:     models.Core{ID: "keys-zero-stock"},
+		Name:     "Licence Key Product",
+		Amount:   900,
+		Quantity: 0,
+		Active:   true,
+		Slug:     "licence-key-product",
+		Digital:  models.Digital{Type: models.DigitalData},
+	}
+	addTestProduct(t, db, ctx, product)
+
+	result, err := ValidateCartItems(ctx, db, []models.CartProduct{
+		{ProductID: product.ID, Quantity: 1},
+	}, "USD")
+	if err != nil {
+		t.Fatalf("ValidateCartItems error: %v", err)
+	}
+
+	if result.Valid {
+		t.Fatal("a licence-key product with no keys was allowed to sell")
+	}
+	if len(result.Errors) != 1 || result.Errors[0].ErrorType != "quantity_unavailable" {
+		t.Errorf("errors = %+v, want one quantity_unavailable", result.Errors)
 	}
 }

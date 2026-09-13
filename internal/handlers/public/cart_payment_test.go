@@ -386,19 +386,25 @@ func assertDummyIsRefusedForACartThatCostsMoney(t *testing.T, app *fiber.App) {
 // assertAnOutOfStockCartIsReported checks what the buyer is told when the cart
 // cannot be honoured: a conflict carrying the corrections, so the storefront can
 // show what it would have to change.
+//
+// The product is a licence-key one rather than a fixture, because a fixture
+// file is not something a shop can run out of — the same bytes go to every
+// buyer — and this test is about the message for a product that has none left.
 func assertAnOutOfStockCartIsReported(t *testing.T, app *fiber.App) {
 	t.Helper()
 
 	silenceSMTP(t)
 
-	// Back to no stock: the previous subtest stocked this product.
-	if _, err := queries.DB().ProductQueries.DB.ExecContext(context.Background(),
-		`UPDATE product SET quantity = 0 WHERE id = 'fv6c9s9cqzf36sc'`); err != nil {
-		t.Fatalf("clear fixture product stock: %v", err)
+	const keyProductID = "keysgone0000001"
+	if _, err := queries.DB().ProductQueries.DB.ExecContext(context.Background(), `
+		INSERT INTO product (id, name, slug, "desc", amount, quantity, digital, active, deleted)
+		VALUES (?, 'Licence Keys, None Left', 'licence-keys-none-left', '<p>keys</p>', 500, 0, 'data', TRUE, FALSE)`,
+		keyProductID); err != nil {
+		t.Fatalf("seed the licence-key product: %v", err)
 	}
 
 	// A quantity of 0 is what the validator rejects.
-	body := `{"provider":"dummy","email":"buyer@example.com","products":[{"id":"fv6c9s9cqzf36sc","quantity":1,"unit_price":2000}]}`
+	body := `{"provider":"dummy","email":"buyer@example.com","products":[{"id":"` + keyProductID + `","quantity":1,"unit_price":500}]}`
 	status, _, raw := readEnvelope(t, testutil.DoRequest(t, app, http.MethodPost, "/cart/payment", body, ""))
 	if status != http.StatusConflict {
 		t.Fatalf("status = %d, want 409; body: %s", status, raw)
