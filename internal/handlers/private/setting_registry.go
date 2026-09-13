@@ -31,6 +31,7 @@ var settingRegistry = map[string]settingFactory{
 	"coinbase":    func() any { return &models.Coinbase{} },
 	"dummy":       func() any { return &models.Dummy{} },
 	"mail":        func() any { return &models.Mail{} },
+	"account":     func() any { return &models.Account{} },
 }
 
 // settingModelFor returns a fresh zero-valued model for the given key, or

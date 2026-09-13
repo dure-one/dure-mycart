@@ -13,7 +13,7 @@ import (
 var db atomic.Pointer[Base]
 
 // Base aggregates the query groups for settings, authentication, installation,
-// pages, products and carts.
+// pages, products, carts and storefront customers.
 //
 // Every group shares one handle, so the whole application always talks to the
 // same database in the same dialect.
@@ -26,18 +26,20 @@ type Base struct {
 	PageQueries
 	ProductQueries
 	CartQueries
+	CustomerQueries
 }
 
 // NewBase wires every query group to conn.
 func NewBase(conn *database.Conn) *Base {
 	return &Base{
-		conn:           conn,
-		AuthQueries:    AuthQueries{DB: conn},
-		InstallQueries: InstallQueries{DB: conn},
-		SettingQueries: SettingQueries{DB: conn},
-		PageQueries:    PageQueries{DB: conn},
-		ProductQueries: ProductQueries{DB: conn},
-		CartQueries:    CartQueries{DB: conn},
+		conn:            conn,
+		AuthQueries:     AuthQueries{DB: conn},
+		InstallQueries:  InstallQueries{DB: conn},
+		SettingQueries:  SettingQueries{DB: conn},
+		PageQueries:     PageQueries{DB: conn},
+		ProductQueries:  ProductQueries{DB: conn},
+		CartQueries:     CartQueries{DB: conn},
+		CustomerQueries: CustomerQueries{DB: conn},
 	}
 }
 

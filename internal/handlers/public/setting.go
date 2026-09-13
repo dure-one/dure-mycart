@@ -58,6 +58,12 @@ func Settings(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
+	settingAccount, err := queries.GetSettingByGroup[models.Account](c.Context(), db)
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
 	return webutil.Response(c, fiber.StatusOK, "Settings", map[string]any{
 		"main": map[string]string{
 			"site_name": settingMain.SiteName,
@@ -67,5 +73,12 @@ func Settings(c fiber.Ctx) error {
 		"socials": settingSocial,
 		"pages":   pages,
 		"payment": settingPayment,
+		// Only the switch leaves the server. The same group also holds the
+		// signing key for cabinet sessions, and the storefront has no business
+		// knowing it — the response is built from the named field rather than
+		// from the struct for exactly that reason.
+		"account": map[string]any{
+			"enabled": settingAccount.Enabled,
+		},
 	})
 }

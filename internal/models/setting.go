@@ -390,3 +390,27 @@ func (v MessageMail) Validate() error {
 		validation.Field(&v.To, is.Email),
 	)
 }
+
+// Account holds the storefront customer-cabinet settings.
+//
+// The cabinet is off on a fresh installation (see the account_enabled row in
+// migrations/20260913000000_customer_account.sql) so that a shop that only
+// needs a guest checkout is not handed a sign-in form it never asked for.
+// The signing key for storefront sessions is deliberately not a field here.
+// GroupFieldMap is what the admin read/save path walks: a field would be
+// written back on every save, so an operator toggling the cabinet on would
+// blank a key they were never shown, invalidating every signed-in customer.
+// queries.CustomerQueries.AccountSecret owns that key instead.
+type Account struct {
+	Enabled bool `json:"enabled"`
+	// ExpireHours is how long a cabinet session lasts. Zero falls back to
+	// queries.DefaultAccountExpireHours.
+	ExpireHours int `json:"expire_hours"`
+}
+
+// Validate is ...
+func (v Account) Validate() error {
+	return validation.ValidateStruct(&v,
+		validation.Field(&v.ExpireHours, validation.Min(0), validation.Max(8760)),
+	)
+}

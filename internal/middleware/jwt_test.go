@@ -24,7 +24,8 @@ func TestJWTProtected(t *testing.T) {
 
 	validID := uuid.NewString()
 	exp := time.Now().Add(time.Hour).Unix()
-	if err := queries.DB().AddSession(t.Context(), validID, "admin", exp); err != nil {
+	if err := queries.DB().AddSession(t.Context(), validID,
+		queries.SessionValue(queries.SessionRoleAdmin, ""), exp); err != nil {
 		t.Fatalf("add session: %v", err)
 	}
 

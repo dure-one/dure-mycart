@@ -102,6 +102,15 @@ func (q *SettingQueries) GroupFieldMap(settings any) map[string]any {
 			"smtp_password":     &s.SMTP.Password,
 			"smtp_encryption":   &s.SMTP.Encryption,
 		}
+	case *models.Account:
+		// account_jwt_secret is not here on purpose: this map is what the admin
+		// settings read and save walks, and a key an operator never sees must
+		// not be rewritten with an empty value on every save. AccountSecret
+		// owns that row.
+		return map[string]any{
+			"account_enabled":          &s.Enabled,
+			"account_jwt_expire_hours": &s.ExpireHours,
+		}
 	default:
 		return nil
 	}
