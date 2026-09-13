@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/migrations"
 )
@@ -16,7 +17,7 @@ func bootstrap(t *testing.T) (*Base, context.Context) {
 	t.Helper()
 	cleanup := withTempBase(t)
 	t.Cleanup(cleanup)
-	if err := New(migrations.Embed()); err != nil {
+	if err := New(database.Config{Driver: database.DriverSQLite, DSN: database.DefaultSQLiteDSN}, migrations.Embed()); err != nil {
 		t.Fatalf("init queries: %v", err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

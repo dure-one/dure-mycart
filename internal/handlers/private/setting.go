@@ -90,8 +90,8 @@ func cacheVersion(ctx context.Context, db *queries.Base, v *update.Version) erro
 	if err != nil {
 		return err
 	}
-	// AddSession is idempotent for the same key (INSERT OR REPLACE semantics),
-	// so we don't need an explicit DeleteSession here.
+	// AddSession is idempotent for the same key (INSERT … ON CONFLICT … DO
+	// UPDATE), so we don't need an explicit DeleteSession here.
 	expires := time.Now().Add(versionCacheTTL).Unix()
 	return db.AddSession(ctx, "update", string(data), expires)
 }

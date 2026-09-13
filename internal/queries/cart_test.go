@@ -108,7 +108,8 @@ func TestCartLetterPurchase_CartNotFound(t *testing.T) {
 	}
 }
 
-func TestCartLetterPurchase_HappyPath_DataType(t *testing.T) {	db, ctx := bootstrap(t)
+func TestCartLetterPurchase_HappyPath_DataType(t *testing.T) {
+	db, ctx := bootstrap(t)
 
 	p, err := db.AddProduct(ctx, validProductInput())
 	if err != nil {
@@ -239,13 +240,8 @@ func TestValidateCartItems_Success(t *testing.T) {
 		t.Fatalf("AddProduct failed: %v", err)
 	}
 
-	// Activate product and set quantity
-	if err := db.UpdateActive(ctx, product.ID); err != nil {
-		t.Fatalf("UpdateActive failed: %v", err)
-	}
-	if _, err := db.ProductQueries.DB.ExecContext(ctx, "UPDATE product SET quantity = ? WHERE id = ?", 10, product.ID); err != nil {
-		t.Fatalf("Update quantity failed: %v", err)
-	}
+	// AddProduct stores the stock and the active flag with the row, so there
+	// is nothing left to patch in afterwards.
 
 	// Verify product is queryable
 	testList, err := db.ListProducts(ctx, false, 0, 0, "", models.CartProduct{ProductID: product.ID, Quantity: 1})
@@ -292,13 +288,8 @@ func TestValidateCartItems_QuantityUnavailable(t *testing.T) {
 		t.Fatalf("AddProduct failed: %v", err)
 	}
 
-	// Activate product and set quantity
-	if err := db.UpdateActive(ctx, product.ID); err != nil {
-		t.Fatalf("UpdateActive failed: %v", err)
-	}
-	if _, err := db.ProductQueries.DB.ExecContext(ctx, "UPDATE product SET quantity = ? WHERE id = ?", 3, product.ID); err != nil {
-		t.Fatalf("Update quantity failed: %v", err)
-	}
+	// AddProduct stores the stock and the active flag with the row, so there
+	// is nothing left to patch in afterwards.
 
 	// Verify product is queryable
 	testList, err := db.ListProducts(ctx, false, 0, 0, "", models.CartProduct{ProductID: product.ID, Quantity: 1})
@@ -550,13 +541,8 @@ func TestValidateCartItems_PriceChanged(t *testing.T) {
 		t.Fatalf("AddProduct failed: %v", err)
 	}
 
-	// Activate product and set quantity
-	if err := db.UpdateActive(ctx, createdProduct.ID); err != nil {
-		t.Fatalf("UpdateActive failed: %v", err)
-	}
-	if _, err := db.ProductQueries.DB.ExecContext(ctx, "UPDATE product SET quantity = ? WHERE id = ?", 10, createdProduct.ID); err != nil {
-		t.Fatalf("Update quantity failed: %v", err)
-	}
+	// AddProduct stores the stock and the active flag with the row, so there
+	// is nothing left to patch in afterwards.
 
 	// Verify product is queryable
 	testList, err := db.ListProducts(ctx, true, 0, 0, "", models.CartProduct{ProductID: createdProduct.ID, Quantity: 1})

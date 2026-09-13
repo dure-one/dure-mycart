@@ -4,17 +4,19 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 
+	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/pkg/errors"
 	"github.com/shurco/mycart/pkg/security"
 )
 
-// PageQueries is a struct that embeds a pointer to an sql.DB.
+// PageQueries is a struct that holds a dialect-aware database handle.
 // This allows for direct access to database methods on the PageQueries struct,
-// effectively extending it with all the methods of *sql.DB.
+// calls on it are automatically rebound for the configured dialect.
 type PageQueries struct {
-	*sql.DB
+	DB *database.Conn
 }
 
 // IsPage checks if a page with the given slug exists in the database.
@@ -31,9 +33,10 @@ func (q *PageQueries) IsPage(ctx context.Context, slug string) bool {
 func (q *PageQueries) ListPages(ctx context.Context, private bool, limit, offset int, idList ...string) ([]models.Page, int, error) {
 	pages := []models.Page{}
 
-	query := `SELECT id, name, slug, position, active, seo, strftime('%s', created), strftime('%s', updated) FROM page`
+	query := fmt.Sprintf(`SELECT id, name, slug, position, active, seo, %s, %s FROM page`,
+		q.DB.Dialect().Epoch("created"), q.DB.Dialect().Epoch("updated"))
 	if !private {
-		query = query + ` WHERE active = 1`
+		query = query + ` WHERE active = TRUE`
 	}
 
 	// Deterministic ordering is required before LIMIT/OFFSET so paginated
@@ -93,7 +96,7 @@ func (q *PageQueries) ListPages(ctx context.Context, private bool, limit, offset
 	// Count total records
 	countQuery := `SELECT COUNT(*) FROM page`
 	if !private {
-		countQuery += ` WHERE active = 1`
+		countQuery += ` WHERE active = TRUE`
 	}
 	var total int
 	err = q.DB.QueryRowContext(ctx, countQuery).Scan(&total)
@@ -136,7 +139,8 @@ func (q *PageQueries) PageByID(ctx context.Context, id string) (*models.Page, er
 
 	var content, seo sql.NullString
 	var updated sql.NullInt64
-	query := `SELECT id, name, slug, position, content, active, seo, strftime('%s', created), strftime('%s', updated) FROM page WHERE id = ?`
+	query := fmt.Sprintf(`SELECT id, name, slug, position, content, active, seo, %s, %s FROM page WHERE id = ?`,
+		q.DB.Dialect().Epoch("created"), q.DB.Dialect().Epoch("updated"))
 	err := q.DB.QueryRowContext(ctx, query, id).Scan(&page.ID, &page.Name, &page.Slug, &page.Position, &content, &page.Active, &seo, &page.Created, &updated)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -167,7 +171,8 @@ func (q *PageQueries) AddPage(ctx context.Context, page *models.Page) (*models.P
 	page.ID = security.RandomString()
 	page.Active = false
 
-	query := `INSERT INTO page (id, name, slug, position) VALUES (?, ?, ?, ?) RETURNING strftime('%s', created)`
+	query := fmt.Sprintf(`INSERT INTO page (id, name, slug, position) VALUES (?, ?, ?, ?) RETURNING %s`,
+		q.DB.Dialect().Epoch("created"))
 	stmt, err := q.DB.PrepareContext(ctx, query)
 	if err != nil {
 		return nil, err
@@ -228,7 +233,7 @@ func (q *PageQueries) UpdatePage(ctx context.Context, page *models.Page) error {
 		return err
 	}
 
-	query := `UPDATE page SET name = ?, slug = ?, position = ?, content = ?, seo = ?, updated = datetime('now') WHERE id = ?`
+	query := `UPDATE page SET name = ?, slug = ?, position = ?, content = ?, seo = ?, updated = CURRENT_TIMESTAMP WHERE id = ?`
 	_, err = q.DB.ExecContext(ctx, query, name, slug, position, contentValue, seo, page.ID)
 	return err
 }
@@ -242,7 +247,7 @@ func (q *PageQueries) DeletePage(ctx context.Context, id string) error {
 
 // UpdatePageContent updates the content of an existing page in the database.
 func (q *PageQueries) UpdatePageContent(ctx context.Context, page *models.Page) error {
-	query := `UPDATE page SET content = ?, updated = datetime('now') WHERE id = ? `
+	query := `UPDATE page SET content = ?, updated = CURRENT_TIMESTAMP WHERE id = ? `
 	_, err := q.DB.ExecContext(ctx, query, page.Content, page.ID)
 	return err
 }
@@ -251,7 +256,7 @@ func (q *PageQueries) UpdatePageContent(ctx context.Context, page *models.Page) 
 // It updates the 'active' field to its logical negation (i.e., if it was true,
 // it becomes false and vice versa).
 func (q *PageQueries) UpdatePageActive(ctx context.Context, id string) error {
-	query := `UPDATE page SET active = NOT active, updated = datetime('now') WHERE id = ?`
+	query := `UPDATE page SET active = NOT active, updated = CURRENT_TIMESTAMP WHERE id = ?`
 	_, err := q.DB.ExecContext(ctx, query, id)
 	return err
 }

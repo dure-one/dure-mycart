@@ -6,7 +6,7 @@ CREATE TABLE setting (
 	value  TEXT DEFAULT NULL
 );
 CREATE INDEX idx_setting_key ON setting (key);
-INSERT INTO setting VALUES ('fkzjyd1p4z866mj', 'installed', 0);
+INSERT INTO setting VALUES ('fkzjyd1p4z866mj', 'installed', '0');
 INSERT INTO setting VALUES ('j3j2kaq67n0v9op', 'domain', '');
 INSERT INTO setting VALUES ('vlr2rtp82fewd1o', 'email', '');
 INSERT INTO setting VALUES ('zg7kdyrm9c9ivi5', 'password', '');
@@ -37,7 +37,7 @@ CREATE INDEX idx_session_key ON session (key);
 CREATE TABLE subdomain (
 	id    TEXT PRIMARY KEY NOT NULL,
 	name  TEXT UNIQUE NOT NULL,
-	desc  TEXT DEFAULT NULL
+	"desc" TEXT DEFAULT NULL
 );
 CREATE INDEX idx_subdomain_name ON subdomain (name);
 
@@ -46,9 +46,9 @@ CREATE TABLE page (
 	name 			TEXT NOT NULL,
 	slug 			TEXT UNIQUE NOT NULL,
 	content 	TEXT DEFAULT NULL,
-	position  TEXT NOT NULL CHECK (position == 'header' OR position == 'footer'),
+	position  TEXT NOT NULL CHECK (position IN ('header', 'footer')),
 	active    BOOLEAN DEFAULT FALSE NOT NULL,
-	created 	TIMESTAMP DEFAULT (datetime('now')),
+	created 	TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	updated 	TIMESTAMP
 );
 CREATE INDEX idx_page_name ON page (name);
@@ -62,15 +62,15 @@ INSERT INTO page (id, name, slug, position, content, active) VALUES
 CREATE TABLE product (
 	id         TEXT PRIMARY KEY NOT NULL,
 	name       TEXT NOT NULL,
-	desc       TEXT NOT NULL,
+	"desc"      TEXT NOT NULL,
 	slug       TEXT UNIQUE NOT NULL,
-	amount     NUMERC NOT NULL,
-	metadata   JSON DEFAULT '[]' NOT NULL,
-	attribute  JSON DEFAULT '[]' NOT NULL,
-	digital    TEXT CHECK (digital == 'file' OR digital == 'data' OR digital == 'api'),
+	amount     NUMERIC NOT NULL,
+	metadata   TEXT DEFAULT '[]' NOT NULL,
+	attribute  TEXT DEFAULT '[]' NOT NULL,
+	digital    TEXT CHECK (digital IN ('file', 'data', 'api')),
 	active     BOOLEAN DEFAULT TRUE NOT NULL,
 	deleted    BOOLEAN DEFAULT FALSE NOT NULL,
-	created    TIMESTAMP DEFAULT (datetime('now')),
+	created    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	updated    TIMESTAMP
 );
 CREATE INDEX idx_product_id ON product (id);
@@ -110,12 +110,12 @@ CREATE TABLE cart (
 	id              TEXT PRIMARY KEY NOT NULL,
 	email           TEXT DEFAULT NULL,
 	name            TEXT DEFAULT NULL,
-	amount_total    NUMERC NOT NULL,
+	amount_total    NUMERIC NOT NULL,
 	currency        TEXT NOT NULL,
 	payment_id      TEXT DEFAULT NULL,
 	payment_status  TEXT DEFAULT NULL,
-	cart            JSON DEFAULT '[]' NOT NULL,
-	created         TIMESTAMP DEFAULT (datetime('now')),
+	cart            TEXT DEFAULT '[]' NOT NULL,
+	created         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	updated         TIMESTAMP
 );
 -- +goose StatementEnd

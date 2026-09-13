@@ -26,7 +26,7 @@
 
 ## 🛒&nbsp;&nbsp;What is myCart?
 
-myCart is an open source shopping-cart in 1 file of embedded database (SQLite), convenient dashboard UI and simple site.
+myCart is an open source shopping-cart in 1 file with an embedded database (SQLite by default, PostgreSQL if you prefer), a convenient dashboard UI and a simple site.
 Formerly known as **litecart** (legacy project name kept here for discoverability in search).
 
 > [!WARNING]
@@ -53,7 +53,7 @@ Formerly known as **litecart** (legacy project name kept here for discoverabilit
 
 🔑 **Sell Files and License Keys**: Whether you're selling digital files or license keys, myCart has you covered, providing flexibility in the types of products you can offer.  
 
-⚙️ **Lightweight and Efficient**: myCart utilizes SQLite as its embedded database, eliminating the need for heavy databases like MySQL, PostgreSQL, or MongoDB. This results in a lightweight website that performs exceptionally well.  
+⚙️ **Lightweight and Efficient**: myCart runs on an embedded SQLite database by default — no separate server to install, configure or keep running — which makes for a lightweight website that performs exceptionally well. If you would rather run a database server, [PostgreSQL is supported too](#-database) and is chosen when you install.  
 
 ☁️ **Easily Customizable**: Modify and customize your myCart website effortlessly to match your branding and unique requirements, making it truly your own.  
 
@@ -200,6 +200,8 @@ docker-compose run --rm mycart install \
   --domain localhost
 ```
 
+Add `--db postgres --db-dsn 'postgres://…'` to install into PostgreSQL instead; see [Database](#-database).
+
 For Kubernetes, run a one-shot Job with the same `install` command and the same volume mounts as the main Deployment.
 
 **Environment Variables**:
@@ -224,13 +226,115 @@ docker-compose down
 An example manifest for running on Kubernetes can be found in the `/k8s/` folder (thanks <a href="https://github.com/vuisme" target="_blank">@vuisme</a>)
 
 
+## 🗄️&nbsp;&nbsp;Database
+
+myCart supports two databases and asks which one to use when you install it. **SQLite is the default**, and staying on it
+is a no-op: an existing installation keeps its `./lc_base/data.db` and nothing about it changes.
+
+| | SQLite (default) | PostgreSQL |
+|---|---|---|
+| Setup | none — a file in `./lc_base` | a server you run yourself |
+| Backups | copy `./lc_base` | `./mycart db backup` / `db restore` |
+| Concurrent writers | one at a time | many |
+| Best for | a single small shop, a VPS, a laptop | many writers, managed backups, an existing DBA |
+
+### Choosing PostgreSQL at install time
+
+In the setup wizard (`/_/install`) pick **PostgreSQL**, enter the connection string, press **Test connection** and then
+install. The whole wizard can be driven from the command line instead:
+
+```bash
+./mycart install \
+  --email admin@example.com \
+  --password 'YourSecurePass' \
+  --domain example.com \
+  --db postgres \
+  --db-dsn 'postgres://mycart:secret@db.example.com:5432/mycart?sslmode=disable'
+```
+
+The choice is written to `./lc_base/config.json` (mode `0600`, it holds the password) and every later command — `serve`,
+`migrate`, `update` — reads it from there.
+
+### Choosing the database outside the wizard
+
+`--db` / `--db-dsn` on the command line, or the `MYCART_DB_DRIVER` / `MYCART_DB_DSN` environment variables, take
+precedence over `config.json`:
+
+```bash
+MYCART_DB_DRIVER=postgres \
+MYCART_DB_DSN='postgres://mycart:secret@db.example.com:5432/mycart?sslmode=disable' \
+./mycart serve
+```
+
+A database configured this way is *fixed*: the install wizard reports it as locked and refuses to install somewhere
+else, because quietly connecting to a different database than the operator asked for is never right.
+
+### Notes for PostgreSQL
+
+* The connection string may be a URL (`postgres://…`) or `key=value` pairs. `timezone=UTC` is added
+  automatically; myCart stores timestamps without a time zone and refuses to start on a session that is not UTC,
+  since it would otherwise shift every stored date by the server's offset.
+* `pool_max_conns` and the other `pgxpool` options are rejected with a message pointing at
+  `MYCART_DB_MAX_OPEN_CONNS`, `MYCART_DB_MAX_IDLE_CONNS` and `MYCART_DB_CONN_MAX_LIFETIME`. Behind PgBouncer, use
+  transaction pooling mode.
+* The schema is created and kept up to date by `./mycart migrate`, on either database. Migrating an empty database
+  is all the setup PostgreSQL needs.
+* `./mycart db backup`, `db restore` and `db copy` move data between a file and a PostgreSQL database; see
+  [Backups](#backups) and [Moving an existing shop onto PostgreSQL](#moving-an-existing-shop-onto-postgresql).
+
+### Backups
+
+* **SQLite** — stop the container (or let it run; WAL keeps the copy consistent) and copy `./lc_base`, as before.
+* **PostgreSQL** — `./mycart db backup`, which writes one file holding every row of the cart:
+
+```bash
+./mycart db backup --out mycart-2026-09-12.sql.gz
+```
+
+The file is plain SQL — a `COPY` section per table, in the order the foreign keys require — so it can be read,
+grepped, diffed and replayed by `psql`. Restoring replaces the contents of the target:
+
+```bash
+./mycart db restore --from mycart-2026-09-12.sql.gz
+```
+
+`db restore` migrates the target first, empties it, loads the dump and checks the row count of every table, all in
+one transaction: a dump that is truncated or does not fit the schema leaves the database exactly as it was. A
+database that already holds an installation is **refused** unless `--force` is given, because restoring into it
+erases the shop that is in there. The file's own header records when it was taken and from which myCart version.
+
+`pg_dump` works too, as it does for any application, but the file it writes can only be restored into this
+database by `pg_restore` — the built-in dump is what `db copy` and the restore verification understand.
+
+`./lc_base` still matters on PostgreSQL, but only for `config.json` — the database itself no longer lives there.
+Together with the database, back up `./lc_uploads` (product images), `./lc_digitals` (sellable files) and
+`./site`, which are files rather than rows.
+
+### Moving an existing shop onto PostgreSQL
+
+A cart installed on SQLite moves onto PostgreSQL in one command, also in one transaction and with the same
+verification:
+
+```bash
+./mycart db copy --from ./lc_base/data.db --to 'postgres://mycart:secret@db.example.com:5432/mycart?sslmode=disable' --dry-run
+./mycart db copy --from ./lc_base/data.db --to 'postgres://mycart:secret@db.example.com:5432/mycart?sslmode=disable'
+```
+
+`--from` is a SQLite file or a PostgreSQL connection string, `--to` is the PostgreSQL target and defaults to the
+configured database. The target is migrated first, and the copy is refused unless it is empty or `--force` is
+given. Stop the service first, keep the backup of `./lc_base` and of `./lc_uploads` / `./lc_digitals`, then point
+the installation at PostgreSQL with `--db postgres --db-dsn …` (or `MYCART_DB_DRIVER` / `MYCART_DB_DSN`) and run
+`./mycart serve`. The SQLite file is left untouched, so the old cart is still there to compare against and to go
+back to.
+
 ## 🔄&nbsp;&nbsp;Migrating from litecart
 
 If you are upgrading from a version that was published under the old name **litecart**, see the **[Migration Guide](./docs/migration-from-litecart.md)** for step-by-step instructions covering binary, Docker, Docker Compose, Kubernetes, Homebrew, and Go module updates. Your data and database are fully compatible — no schema migration is required.
 
 ## ⬇️&nbsp;&nbsp;Updating
 > [!WARNING]
-> Before any update, be sure to make a backup of the *./lc_base* folder and the *./site* folder.
+> Before any update, be sure to make a backup of the *./lc_base* folder and the *./site* folder. On PostgreSQL the
+> database is not in *./lc_base* any more — run `./mycart db backup` instead, see [Backups](#backups).
 
 #### Update on macOS / Linux / Windows
 The easiest way to update `mycart` to the latest version is to execute the command:
@@ -308,6 +412,7 @@ Usage:
 
 Available commands:
 ```
+install     Installs the cart (admin account, domain, database)
 init        Creating the basic structure
 migrate     Migrate on the latest version of database schema
 serve       Starts the web server (default to 0.0.0.0:8080)
@@ -316,9 +421,13 @@ update      Updating the application to the latest version
 
 Global flags `./mycart [flags]`:
 ```
--h, --help      help for mycart
--v, --version   version for mycart
+-h, --help          help for mycart
+-v, --version       version for mycart
+    --db string     database to use: sqlite or postgres
+    --db-dsn string database connection string
 ```
+
+`--db` and `--db-dsn` apply to every command that touches the database and override `lc_base/config.json`.
 
 Serve flags `./mycart serve [flags]`:
 ```
@@ -463,6 +572,39 @@ There are a number of scripts (in the ./scripts folder) that simplify developmen
 > I recommend running the `./scripts/migration dev up` command. It will add test data to the database, which makes it easier to work with. For example, it will create products, transfer test images and create a test user for access to the admin panel:  
 > login - user@mail.com  
 > password - Pass123
+
+#### Tests
+
+The suite runs on the embedded SQLite database by default. To run the whole of it on PostgreSQL, start the
+throwaway server the development compose file carries and point the tests at it:
+
+```bash
+docker compose -f docker/docker-compose.yml -f docker/docker-compose_dev.yml up -d pgtestdb
+
+TEST_DB_DRIVER=postgres \
+TEST_POSTGRES_DSN='postgres://postgres:password@localhost:5433/postgres?sslmode=disable' \
+go test ./... -count=1
+```
+
+The `pgtestdb` service is a `postgres:17-alpine` on port 5433 whose data directory is a tmpfs and whose durability is
+off: it holds nothing worth keeping, so restarting it and throwing it away both cost nothing. It is not the
+`postgres` service in the same file — that one holds a real shop's data.
+
+`TEST_POSTGRES_DSN` is an administrator connection: the tests provision their databases with
+[pgtestdb](https://github.com/peterldowns/pgtestdb), which creates a role and a template database on that server and
+clones a database per test. Use a dedicated test server — never one holding data you want to keep. The templates are
+built once per server, so the migrations run once for the whole suite rather than once per test. The database named in
+the connection string is only what the tests administer the server through, which is why `postgres` — the maintenance
+database the image always creates — is enough.
+
+The same two variables run the suite on a non-UTC database server, which is worth doing before touching anything
+related to dates:
+
+```bash
+PGTESTDB_TZ=Asia/Seoul docker compose -f docker/docker-compose.yml -f docker/docker-compose_dev.yml up -d pgtestdb
+```
+
+The next `up -d pgtestdb` without `PGTESTDB_TZ` recreates the server on UTC.
 
 #### Admin panel (frontend)
 To develop the web interface of the admin panel, you need to start the myCart server (for example, execute the command from the project root `go run ./cmd/main.go serve`).

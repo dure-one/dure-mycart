@@ -9,23 +9,24 @@ import (
 	"os"
 	"strings"
 
+	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/pkg/errors"
 	"github.com/shurco/mycart/pkg/security"
 	"github.com/shurco/mycart/pkg/slugify"
 )
 
-// ProductQueries is a struct that embeds a pointer to an sql.DB.
+// ProductQueries is a struct that holds a dialect-aware database handle.
 // This allows for direct access to the database methods via the ProductQueries struct,
-// effectively extending it with all the functionality of *sql.DB.
+// calls on it are automatically rebound for the configured dialect.
 type ProductQueries struct {
-	*sql.DB
+	DB *database.Conn
 }
 
 // ListProducts retrieves a list of products from the database.
 // If cartID is provided, it will also include digital products that were purchased in that cart.
 func (q *ProductQueries) ListProducts(ctx context.Context, private bool, limit, offset int, cartID string, idList ...models.CartProduct) (*models.Products, error) {
-	currency, err := db.GetSettingByKey(ctx, "currency")
+	currency, err := NewBase(q.DB).GetSettingByKey(ctx, "currency")
 	if err != nil {
 		return nil, err
 	}
@@ -36,14 +37,31 @@ func (q *ProductQueries) ListProducts(ctx context.Context, private bool, limit, 
 
 	// Build variants subquery based on private mode
 	// For private mode (e.g., validation), include all variants
+	d := q.DB.Dialect()
+
 	// For public mode (e.g., storefront), only show active variants
 	variantsFilter := ""
 	if !private {
-		variantsFilter = " AND active = 1"
+		variantsFilter = " AND active = TRUE"
 	}
 
+	// The aggregates are built from dialect fragments rather than written out
+	// literally: SQLite and PostgreSQL disagree on both the function names and
+	// on how a text column becomes a nested JSON value.
+	imagesJSON := d.JSONAgg(d.JSONObject(
+		"'id', product_image.id, 'name', product_image.name, 'ext', product_image.ext"))
+	variantsJSON := d.JSONAgg(d.JSONObject(
+		"'id', product_variant.id, 'sku', product_variant.sku, 'quantity', product_variant.quantity, " +
+			"'price_surcharge', product_variant.price_surcharge, " +
+			"'option_values', " + d.JSONValue("product_variant.option_values") + ", " +
+			"'active', " + d.JSONBool("product_variant.active")))
+
+	// No DISTINCT: the only table in FROM is product, and the two EXISTS below
+	// are folded into the same row, so no row can be duplicated. DISTINCT would
+	// also break the ORDER BY on PostgreSQL, which requires every ORDER BY
+	// expression to appear in the select list.
 	query := fmt.Sprintf(`
-			SELECT DISTINCT
+			SELECT
 			  product.id,
 				product.name,
 				product.brief,
@@ -53,13 +71,13 @@ func (q *ProductQueries) ListProducts(ctx context.Context, private bool, limit, 
 				product.has_variants,
 				product.active,
 				product.digital,
-				EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = product.id AND digital_data.cart_id IS NULL) OR
-				EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = product.id) AS digital_filled,
-				(SELECT json_group_array(json_object('id', product_image.id, 'name', product_image.name, 'ext', product_image.ext)) as images FROM product_image WHERE product_id = product.id GROUP BY id LIMIT 1) as image,
-				(SELECT json_group_array(json_object('id', product_variant.id, 'sku', product_variant.sku, 'quantity', product_variant.quantity, 'price_surcharge', product_variant.price_surcharge, 'option_values', json(product_variant.option_values), 'active', CASE WHEN product_variant.active = 1 THEN json('true') ELSE json('false') END)) FROM product_variant WHERE product_id = product.id%s) as variants,
-				strftime('%%s', created)
+				(EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = product.id AND digital_data.cart_id IS NULL) OR
+				EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = product.id)) AS digital_filled,
+				(SELECT %s as images FROM product_image WHERE product_id = product.id) as image,
+				(SELECT %s FROM product_variant WHERE product_id = product.id%s) as variants,
+				%s
 			FROM product
-		`, variantsFilter)
+		`, imagesJSON, variantsJSON, variantsFilter, d.Epoch("created"))
 
 	var queryPublic string
 	var params []any
@@ -70,7 +88,7 @@ func (q *ProductQueries) ListProducts(ctx context.Context, private bool, limit, 
 		countParams = append(countParams, params...)
 	} else {
 		// For private mode, add basic WHERE clause to filter deleted products
-		queryPublic = " WHERE product.deleted = 0 "
+		queryPublic = " WHERE product.deleted = FALSE "
 	}
 
 	var queryAddon string
@@ -129,8 +147,8 @@ func (q *ProductQueries) ListProducts(ctx context.Context, private bool, limit, 
 			return nil, err
 		}
 
-		if image.Valid && image.String != `[{"id":null,"name":null,"ext":null}]` {
-			if err := json.Unmarshal([]byte(image.String), &product.Images); err != nil {
+		if image.Valid {
+			if err := decodeFiles(image.String, &product.Images); err != nil {
 				return nil, err
 			}
 		}
@@ -139,8 +157,8 @@ func (q *ProductQueries) ListProducts(ctx context.Context, private bool, limit, 
 			product.HasVariants = hasVariants.Bool
 		}
 
-		if variants.Valid && variants.String != `[{"id":null}]` && variants.String != "[]" {
-			if err := json.Unmarshal([]byte(variants.String), &product.Variants); err != nil {
+		if variants.Valid {
+			if err := decodeVariants(variants.String, &product.Variants); err != nil {
 				return nil, err
 			}
 		}
@@ -176,12 +194,21 @@ func (q *ProductQueries) ListProducts(ctx context.Context, private bool, limit, 
 func (q *ProductQueries) Product(ctx context.Context, private bool, id string) (*models.Product, error) {
 	product := &models.Product{}
 
-	query := `
-			SELECT DISTINCT
+	d := q.DB.Dialect()
+
+	// The images are collected by a scalar subquery rather than a LEFT JOIN +
+	// GROUP BY. The join produced an all-null placeholder row for a product
+	// without images, which then had to be filtered out by comparing the
+	// aggregated JSON against a literal — and PostgreSQL and SQLite format that
+	// same JSON differently. A subquery simply yields NULL instead.
+	imagesJSON := d.JSONAgg(d.JSONObject("'id', pi.id, 'name', pi.name, 'ext', pi.ext"))
+
+	query := fmt.Sprintf(`
+			SELECT
 				product.id,
 				product.name,
 				product.brief,
-				product.desc,
+				product."desc",
 				product.slug,
 				product.amount,
 				product.quantity,
@@ -192,25 +219,21 @@ func (q *ProductQueries) Product(ctx context.Context, private bool, id string) (
 				product.attribute,
 				product.digital,
 				product.seo,
-				json_group_array(json_object('id', pi.id, 'name', pi.name, 'ext', pi.ext)) as images,
-				strftime('%s', product.created),
-				strftime('%s', product.updated)
-	`
+				(SELECT %s FROM product_image pi WHERE pi.product_id = product.id) as images,
+				%s,
+				%s
+	`, imagesJSON, d.Epoch("product.created"), d.Epoch("product.updated"))
 
 	// Добавляем вычисление digital_filled для приватных запросов
 	if private {
-		query += `, EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = product.id AND digital_data.cart_id IS NULL) OR
-				EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = product.id) AS digital_filled
+		query += `, (EXISTS(SELECT 1 FROM digital_data WHERE digital_data.product_id = product.id AND digital_data.cart_id IS NULL) OR
+				EXISTS(SELECT 1 FROM digital_file WHERE digital_file.product_id = product.id)) AS digital_filled
 			FROM product
-			LEFT JOIN product_image pi ON product.id = pi.product_id
-			WHERE product.id = ?
-			GROUP BY product.id`
+			WHERE product.id = ?`
 	} else {
 		query += `
 			FROM product
-			LEFT JOIN product_image pi ON product.id = pi.product_id
-			WHERE product.slug = ? AND product.deleted = 0 AND product.active = 1
-			GROUP BY product.id`
+			WHERE product.slug = ? AND product.deleted = FALSE AND product.active = TRUE`
 	}
 
 	var images, metadata, attributes, digitalType, seo, sku sql.NullString
@@ -255,8 +278,8 @@ func (q *ProductQueries) Product(ctx context.Context, private bool, id string) (
 		product.Updated = updated.Int64
 	}
 
-	if images.Valid && images.String != `[{"id":null,"name":null,"ext":null}]` {
-		if err := json.Unmarshal([]byte(images.String), &product.Images); err != nil {
+	if images.Valid {
+		if err := decodeFiles(images.String, &product.Images); err != nil {
 			return nil, err
 		}
 	}
@@ -374,7 +397,7 @@ func (q *ProductQueries) Product(ctx context.Context, private bool, id string) (
 		variantsQuery := `
 			SELECT id, sku, price_surcharge, quantity, option_values, active
 			FROM product_variant
-			WHERE product_id = ? AND deleted = 0`
+			WHERE product_id = ? AND deleted = FALSE`
 
 		variantRows, err := q.DB.QueryContext(ctx, variantsQuery, product.ID)
 		if err != nil {
@@ -416,22 +439,18 @@ func (q *ProductQueries) Product(ctx context.Context, private bool, id string) (
 func (q *ProductQueries) AddProduct(ctx context.Context, product *models.Product) (*models.Product, error) {
 	product.ID = security.RandomString()
 
-	metadata, err := json.Marshal(product.Metadata)
+	metadata, attributes, seo, err := q.marshalProductJSON(product)
 	if err != nil {
 		return nil, err
 	}
 
-	attributes, err := json.Marshal(product.Attributes)
-	if err != nil {
-		return nil, err
-	}
-
-	query := `
+	query := fmt.Sprintf(`
 			INSERT INTO product (
-					id, name, amount, slug, metadata, attribute, brief, desc, digital, active
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE)
-			RETURNING strftime('%s', created)
-	`
+					id, name, amount, slug, metadata, attribute, brief, "desc", digital,
+					quantity, sku, seo, active
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			RETURNING %s
+	`, q.DB.Dialect().Epoch("created"))
 	stmt, err := q.DB.PrepareContext(ctx, query)
 	if err != nil {
 		return nil, err
@@ -441,12 +460,23 @@ func (q *ProductQueries) AddProduct(ctx context.Context, product *models.Product
 	err = stmt.QueryRowContext(ctx,
 		product.ID, product.Name, product.Amount, product.Slug,
 		metadata, attributes, product.Brief, product.Description, product.Digital.Type,
+		product.Quantity, skuOrNull(product.SKU), seo, product.Active,
 	).Scan(&product.Created)
 	if err != nil {
 		return nil, err
 	}
 
 	return product, nil
+}
+
+// skuOrNull keeps the unique index on sku usable: it applies to every value
+// that is not NULL, so rows without a SKU have to store NULL rather than the
+// empty string — otherwise the second one would collide with the first.
+func skuOrNull(sku string) any {
+	if sku == "" {
+		return nil
+	}
+	return sku
 }
 
 // UpdateProduct updates an existing product in the database with new values.
@@ -502,12 +532,12 @@ func (q *ProductQueries) marshalProductJSON(product *models.Product) (metadata, 
 }
 
 // updateProductMainFields executes the UPDATE statement for main product fields
-func (q *ProductQueries) updateProductMainFields(ctx context.Context, tx *sql.Tx, product *models.Product, metadata, attributes, seo []byte) error {
+func (q *ProductQueries) updateProductMainFields(ctx context.Context, tx *database.Tx, product *models.Product, metadata, attributes, seo []byte) error {
 	stmt, err := tx.PrepareContext(ctx, `
 		UPDATE product SET
 			name = ?,
 			brief = ?,
-			desc = ?,
+			"desc" = ?,
 			slug = ?,
 			amount = ?,
 			quantity = ?,
@@ -516,19 +546,13 @@ func (q *ProductQueries) updateProductMainFields(ctx context.Context, tx *sql.Tx
 			metadata = ?,
 			attribute = ?,
 			seo = ?,
-			updated = datetime('now')
+			updated = CURRENT_TIMESTAMP
 		WHERE id = ?
 	`)
 	if err != nil {
 		return fmt.Errorf("prepare update statement: %w", err)
 	}
 	defer func() { _ = stmt.Close() }()
-
-	// Handle empty SKU as NULL
-	var productSKU sql.NullString
-	if product.SKU != "" {
-		productSKU = sql.NullString{String: product.SKU, Valid: true}
-	}
 
 	_, err = stmt.ExecContext(ctx,
 		product.Name,
@@ -537,7 +561,7 @@ func (q *ProductQueries) updateProductMainFields(ctx context.Context, tx *sql.Tx
 		product.Slug,
 		product.Amount,
 		product.Quantity,
-		productSKU,
+		skuOrNull(product.SKU),
 		product.HasVariants,
 		metadata,
 		attributes,
@@ -552,7 +576,7 @@ func (q *ProductQueries) updateProductMainFields(ctx context.Context, tx *sql.Tx
 }
 
 // syncProductVariants handles all variant-related CRUD operations
-func (q *ProductQueries) syncProductVariants(ctx context.Context, tx *sql.Tx, product *models.Product) error {
+func (q *ProductQueries) syncProductVariants(ctx context.Context, tx *database.Tx, product *models.Product) error {
 	if product.HasVariants {
 		// Delete existing options (cascades to option values)
 		_, err := tx.ExecContext(ctx, `DELETE FROM product_option WHERE product_id = ?`, product.ID)
@@ -601,15 +625,9 @@ func (q *ProductQueries) syncProductVariants(ctx context.Context, tx *sql.Tx, pr
 				return fmt.Errorf("marshal option values: %w", err)
 			}
 
-			// Handle empty SKU as NULL to avoid unique constraint violations
-			var skuValue sql.NullString
-			if variant.SKU != "" {
-				skuValue = sql.NullString{String: variant.SKU, Valid: true}
-			}
-
 			_, err = tx.ExecContext(ctx,
 				`INSERT INTO product_variant (id, product_id, sku, price_surcharge, quantity, option_values, active) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-				variantID, product.ID, skuValue, variant.PriceSurcharge, variant.Quantity, string(optionValuesJSON), variant.Active,
+				variantID, product.ID, skuOrNull(variant.SKU), variant.PriceSurcharge, variant.Quantity, string(optionValuesJSON), variant.Active,
 			)
 			if err != nil {
 				return fmt.Errorf("insert variant: %w", err)
@@ -655,8 +673,8 @@ func (q *ProductQueries) DeleteProduct(ctx context.Context, id string) error {
 func publicProductFilter(cartID string) (string, []any) {
 	if cartID != "" {
 		return `
-			WHERE product.deleted = 0 AND (
-				product.active = 1
+			WHERE product.deleted = FALSE AND (
+				product.active = TRUE
 				OR EXISTS (
 					SELECT 1 FROM digital_data
 					WHERE digital_data.product_id = product.id
@@ -665,7 +683,7 @@ func publicProductFilter(cartID string) (string, []any) {
 			)
 		`, []any{cartID}
 	}
-	return ` WHERE product.deleted = 0 AND product.active = 1 `, nil
+	return ` WHERE product.deleted = FALSE AND product.active = TRUE `, nil
 }
 
 // IsProduct checks if a product with the given slug exists and is active.
@@ -674,7 +692,7 @@ func (q *ProductQueries) IsProduct(ctx context.Context, slug string) bool {
 	query := `
 			SELECT EXISTS (
 				SELECT 1 FROM product
-				WHERE product.slug = ? AND product.deleted = 0 AND product.active = 1
+				WHERE product.slug = ? AND product.deleted = FALSE AND product.active = TRUE
 			)
 	`
 	err := q.DB.QueryRowContext(ctx, query, slug).Scan(&exists)
@@ -684,7 +702,7 @@ func (q *ProductQueries) IsProduct(ctx context.Context, slug string) bool {
 // UpdateActive toggles the 'active' status of a product and updates its 'updated' timestamp.
 // It takes a context and an ID as arguments, and returns an error if the operation fails.
 func (q *ProductQueries) UpdateActive(ctx context.Context, id string) error {
-	query := `UPDATE product SET active = NOT active, updated = datetime('now') WHERE id = ?`
+	query := `UPDATE product SET active = NOT active, updated = CURRENT_TIMESTAMP WHERE id = ?`
 	_, err := q.DB.ExecContext(ctx, query, id)
 	return err
 }
@@ -1002,19 +1020,14 @@ func (q *ProductQueries) AddProductWithVariants(ctx context.Context, product *mo
 	// 1. Insert product
 	query := `
 		INSERT INTO product (
-			id, name, brief, desc, slug, amount, quantity, sku,
-			has_variants, metadata, attribute, digital, active
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			id, name, brief, "desc", slug, amount, quantity, sku,
+			has_variants, metadata, attribute, seo, digital, active
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
-	metadata, err := json.Marshal(product.Metadata)
+	metadata, attributes, seo, err := q.marshalProductJSON(product)
 	if err != nil {
-		return nil, fmt.Errorf("marshal metadata: %w", err)
-	}
-
-	attributes, err := json.Marshal(product.Attributes)
-	if err != nil {
-		return nil, fmt.Errorf("marshal attributes: %w", err)
+		return nil, err
 	}
 
 	_, err = tx.ExecContext(ctx, query,
@@ -1025,10 +1038,11 @@ func (q *ProductQueries) AddProductWithVariants(ctx context.Context, product *mo
 		product.Slug,
 		product.Amount,
 		product.Quantity,
-		product.SKU,
+		skuOrNull(product.SKU),
 		product.HasVariants,
-		string(metadata),
-		string(attributes),
+		metadata,
+		attributes,
+		seo,
 		product.Digital.Type,
 		product.Active,
 	)
@@ -1059,7 +1073,7 @@ func (q *ProductQueries) AddProductWithVariants(ctx context.Context, product *mo
 }
 
 // insertProductImages inserts all product images within a transaction
-func (q *ProductQueries) insertProductImages(ctx context.Context, tx *sql.Tx, productID string, images []models.File) error {
+func (q *ProductQueries) insertProductImages(ctx context.Context, tx *database.Tx, productID string, images []models.File) error {
 	for i, img := range images {
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO product_image (id, product_id, name, ext, orig_name, position)
@@ -1073,7 +1087,7 @@ func (q *ProductQueries) insertProductImages(ctx context.Context, tx *sql.Tx, pr
 }
 
 // insertProductOptions inserts options and their values within a transaction
-func (q *ProductQueries) insertProductOptions(ctx context.Context, tx *sql.Tx, productID string, options []models.ProductOption) error {
+func (q *ProductQueries) insertProductOptions(ctx context.Context, tx *database.Tx, productID string, options []models.ProductOption) error {
 	for _, option := range options {
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO product_option (id, product_id, name, position)
@@ -1097,7 +1111,7 @@ func (q *ProductQueries) insertProductOptions(ctx context.Context, tx *sql.Tx, p
 }
 
 // insertProductVariants inserts variants with relationships and images within a transaction
-func (q *ProductQueries) insertProductVariants(ctx context.Context, tx *sql.Tx, product *models.Product) error {
+func (q *ProductQueries) insertProductVariants(ctx context.Context, tx *database.Tx, product *models.Product) error {
 	for _, variant := range product.Variants {
 		// Marshal option values to JSON
 		optionValuesJSON, err := json.Marshal(variant.OptionValues)
@@ -1109,7 +1123,7 @@ func (q *ProductQueries) insertProductVariants(ctx context.Context, tx *sql.Tx, 
 			INSERT INTO product_variant (
 				id, product_id, sku, price_surcharge, quantity, option_values, active
 			) VALUES (?, ?, ?, ?, ?, ?, ?)
-		`, variant.ID, product.ID, variant.SKU, variant.PriceSurcharge, variant.Quantity, string(optionValuesJSON), variant.Active)
+		`, variant.ID, product.ID, skuOrNull(variant.SKU), variant.PriceSurcharge, variant.Quantity, string(optionValuesJSON), variant.Active)
 		if err != nil {
 			return fmt.Errorf("insert variant %s: %w", variant.SKU, err)
 		}
@@ -1157,7 +1171,7 @@ func (q *ProductQueries) GetProductWithVariants(ctx context.Context, productID s
 
 	// 1. Get product base data
 	query := `
-		SELECT id, name, brief, desc, slug, amount, quantity, sku,
+		SELECT id, name, brief, "desc", slug, amount, quantity, sku,
 		       has_variants, metadata, attribute, digital, active
 		FROM product
 		WHERE id = ? AND deleted = FALSE

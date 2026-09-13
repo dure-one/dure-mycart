@@ -302,6 +302,38 @@ func TestListProducts_PublicWithCartID(t *testing.T) {
 	}
 }
 
+// A product with more than one image must list all of them: the image aggregate
+// used to be grouped by product_image.id, which made every aggregate a
+// one-element array.
+func TestListProducts_ReturnsAllImages(t *testing.T) {
+	db, ctx := bootstrap(t)
+
+	p, err := db.AddProduct(ctx, validProductInput())
+	if err != nil {
+		t.Fatalf("AddProduct: %v", err)
+	}
+	for _, id := range []string{"00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"} {
+		if _, err := db.AddImage(ctx, p.ID, id, "jpg", id+".jpg"); err != nil {
+			t.Fatalf("AddImage: %v", err)
+		}
+	}
+
+	list, err := db.ListProducts(ctx, true, 10, 0, "")
+	if err != nil {
+		t.Fatalf("ListProducts: %v", err)
+	}
+
+	for _, product := range list.Products {
+		if product.ID == p.ID {
+			if len(product.Images) != 2 {
+				t.Fatalf("images = %d, want 2: %+v", len(product.Images), product.Images)
+			}
+			return
+		}
+	}
+	t.Fatalf("product %s missing from list: %+v", p.ID, list.Products)
+}
+
 func TestBuildCartItems(t *testing.T) {
 	t.Parallel()
 	products := &models.Products{
@@ -432,7 +464,7 @@ func TestAddProductWithVariants(t *testing.T) {
 
 	// Verify options were created
 	var optionCount int
-	err = db.ProductQueries.QueryRowContext(ctx, "SELECT COUNT(*) FROM product_option WHERE product_id = ?", product.ID).Scan(&optionCount)
+	err = db.ProductQueries.DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM product_option WHERE product_id = ?", product.ID).Scan(&optionCount)
 	if err != nil {
 		t.Fatalf("Failed to count options: %v", err)
 	}
@@ -442,7 +474,7 @@ func TestAddProductWithVariants(t *testing.T) {
 
 	// Verify option values were created
 	var valueCount int
-	err = db.ProductQueries.QueryRowContext(ctx, "SELECT COUNT(*) FROM product_option_value WHERE option_id = ?", product.Options[0].ID).Scan(&valueCount)
+	err = db.ProductQueries.DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM product_option_value WHERE option_id = ?", product.Options[0].ID).Scan(&valueCount)
 	if err != nil {
 		t.Fatalf("Failed to count option values: %v", err)
 	}
@@ -452,7 +484,7 @@ func TestAddProductWithVariants(t *testing.T) {
 
 	// Verify variants were created
 	var variantCount int
-	err = db.ProductQueries.QueryRowContext(ctx, "SELECT COUNT(*) FROM product_variant WHERE product_id = ?", product.ID).Scan(&variantCount)
+	err = db.ProductQueries.DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM product_variant WHERE product_id = ?", product.ID).Scan(&variantCount)
 	if err != nil {
 		t.Fatalf("Failed to count variants: %v", err)
 	}
@@ -527,8 +559,8 @@ func TestGenerateUniqueSlug(t *testing.T) {
 	db, ctx := bootstrap(t)
 
 	// Create a product with slug "test-product"
-	_, err := db.ProductQueries.ExecContext(ctx, `
-		INSERT INTO product (id, name, slug, desc, amount, digital, active, deleted)
+	_, err := db.ProductQueries.DB.ExecContext(ctx, `
+		INSERT INTO product (id, name, slug, "desc", amount, digital, active, deleted)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`, security.RandomString(), "Test", "test-product", "desc", 1000, "file", true, false)
 	if err != nil {

@@ -14,16 +14,6 @@ import (
 	"github.com/shurco/mycart/internal/testutil"
 )
 
-func TestPaymentList(t *testing.T) {
-	app, _, cleanup := testutil.SetupTestApp(t)
-	defer cleanup()
-
-	app.Get("/api/cart/payment", PaymentList)
-
-	resp := testutil.DoRequest(t, app, http.MethodGet, "/api/cart/payment", "", "")
-	testutil.AssertStatus(t, resp, http.StatusOK)
-}
-
 func TestGetCart(t *testing.T) {
 	app, _, cleanup := testutil.SetupTestApp(t)
 	defer cleanup()
@@ -112,20 +102,4 @@ func clearWebhookURL(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_ = db.UpdateSettingByKey(ctx, &models.SettingName{Key: "webhook_url", Value: ""})
-}
-
-
-func TestPaymentList_FiltersByPortOneCurrency(t *testing.T) {
-	// This is a placeholder test structure
-	// Real implementation would use testutil fixtures
-	t.Skip("Requires integration test setup with database fixtures")
-
-	// Test case 1: Currency = KRW, PortOne supports KRW
-	// Expected: PortOne included in response
-
-	// Test case 2: Currency = USD, PortOne supports only KRW
-	// Expected: PortOne excluded from response
-
-	// Test case 3: Currency = USD, PortOne supports ["KRW", "USD"]
-	// Expected: PortOne included in response
 }

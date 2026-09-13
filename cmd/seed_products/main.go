@@ -8,8 +8,7 @@ import (
 	"os"
 	"strconv"
 
-	_ "modernc.org/sqlite"
-
+	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/queries"
 	"github.com/shurco/mycart/migrations"
@@ -17,8 +16,13 @@ import (
 )
 
 func main() {
-	// Initialize database
-	if err := queries.New(migrations.Embed()); err != nil {
+	// Initialize database. The same resolution order as the CLI applies:
+	// flags are absent here, so the environment and lc_base/config.json win.
+	cfg, err := database.Resolve(database.Overrides{})
+	if err != nil {
+		log.Fatalf("Failed to resolve database configuration: %v", err)
+	}
+	if err := queries.New(cfg, migrations.Embed()); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 

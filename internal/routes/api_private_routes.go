@@ -11,6 +11,7 @@ import (
 func ApiPrivateRoutes(c *fiber.App) {
 	c.Get("/api/install/status", handlers.InstallStatus)
 	c.Post("/api/install", middleware.AuthLimiter(), handlers.Install)
+	c.Post("/api/install/db/test", middleware.AuthLimiter(), handlers.InstallDBTest)
 
 	c.Get("/api/_/version", middleware.JWTProtected(), handlers.Version)
 

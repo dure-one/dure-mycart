@@ -29,7 +29,7 @@ func TestCoinbase_Pay(t *testing.T) {
 	// Note: This test will fail without a valid API key and network access
 	// In a real scenario, you would mock the HTTP client
 	payment, err := provider.Pay(cart)
-	
+
 	// Without valid API key, we expect an error
 	if err == nil {
 		// If no error, verify payment structure
@@ -55,7 +55,7 @@ func TestCoinbase_Checkout(t *testing.T) {
 	// Note: This test will fail without a valid API key and network access
 	// In a real scenario, you would mock the HTTP client
 	updatedPayment, err := provider.Checkout(payment, "test_charge_id")
-	
+
 	// Without valid API key, we expect an error
 	if err == nil {
 		// If no error, verify payment was updated
