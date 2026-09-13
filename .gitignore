@@ -73,6 +73,7 @@ docs/e2e/
 mycart
 mycart-linux
 mycart-test
+main
 
 # Temporary files
 docker/Dockerfile.dev.bak

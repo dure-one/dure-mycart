@@ -76,7 +76,6 @@
       position: idx
     }))
 
-    console.log('[SortableImage] Reorder:', updates)
     onReorder?.(updates)
 
     draggedIndex = null
@@ -84,7 +83,6 @@
   }
 
   function handleSetRepresentative(imageId: string) {
-    console.log('[SortableImage] Set representative:', imageId)
     onSetRepresentative?.(imageId)
   }
 </script>
