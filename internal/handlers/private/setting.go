@@ -156,6 +156,17 @@ func GetSetting(c fiber.Ctx) error {
 // token-signing secret (jwt_secret) for a persistent backdoor.
 var protectedSettingKeys = []string{"installed", "jwt_secret"}
 
+// groupOnlySettingKeys are keys a group carries and validates. Writing one of
+// them on its own through the raw key/value fallback skips that validation,
+// which for the branding marks is the check that a value is a bare file name
+// rather than a path — so the fallback refuses them and the group endpoint,
+// which validates, is the way in.
+var groupOnlySettingKeys = []string{
+	"branding_logo",
+	"branding_favicon",
+	"branding_tagline",
+}
+
 // UpdateSetting updates a setting value by key.
 //
 // @Summary      Update setting
@@ -177,6 +188,10 @@ func UpdateSetting(c fiber.Ctx) error {
 
 	if slices.Contains(protectedSettingKeys, settingKey) {
 		return webutil.StatusBadRequest(c, "setting key is protected")
+	}
+
+	if slices.Contains(groupOnlySettingKeys, settingKey) {
+		return webutil.StatusBadRequest(c, "setting is written through its group")
 	}
 
 	var request any

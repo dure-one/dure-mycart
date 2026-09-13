@@ -26,6 +26,13 @@ func ApiPrivateRoutes(c *fiber.App) {
 	sign.Post("/out", middleware.JWTProtected(), handlers.SignOut)
 
 	settings := c.Group("/api/_/settings", middleware.JWTProtected())
+	// Registered before the group's own two-segment-free routes: the marks are
+	// uploaded and removed rather than written as values, and a route that
+	// answers first is the one that is reached.
+	settings.Post("/branding/logo", handlers.UploadBrandingLogo)
+	settings.Delete("/branding/logo", handlers.DeleteBrandingLogo)
+	settings.Post("/branding/favicon", handlers.UploadBrandingFavicon)
+	settings.Delete("/branding/favicon", handlers.DeleteBrandingFavicon)
 	settings.Get("/:setting_key", handlers.GetSetting)
 	settings.Patch("/:setting_key", handlers.UpdateSetting)
 

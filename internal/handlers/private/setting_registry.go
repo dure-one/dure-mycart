@@ -19,6 +19,7 @@ type settingFactory func() any
 // storage semantics and is handled explicitly by UpdateSetting.
 var settingRegistry = map[string]settingFactory{
 	"main":        func() any { return &models.Main{} },
+	"branding":    func() any { return &models.Branding{} },
 	"social":      func() any { return &models.Social{} },
 	"auth":        func() any { return &models.Auth{} },
 	"jwt":         func() any { return &models.JWT{} },

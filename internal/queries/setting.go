@@ -102,6 +102,12 @@ func (q *SettingQueries) GroupFieldMap(settings any) map[string]any {
 			"smtp_password":     &s.SMTP.Password,
 			"smtp_encryption":   &s.SMTP.Encryption,
 		}
+	case *models.Branding:
+		return map[string]any{
+			"branding_logo":    &s.Logo,
+			"branding_favicon": &s.Favicon,
+			"branding_tagline": &s.Tagline,
+		}
 	case *models.Account:
 		// account_jwt_secret is not here on purpose: this map is what the admin
 		// settings read and save walks, and a key an operator never sees must
