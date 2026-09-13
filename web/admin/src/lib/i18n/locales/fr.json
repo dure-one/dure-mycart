@@ -402,6 +402,9 @@
     "h3": "Titre 3",
     "bulletlist": "Liste à puces",
     "orderedList": "Liste numérotée",
-    "blockquote": "Citation"
+    "blockquote": "Citation",
+    "toolbar": "Mise en forme",
+    "horizontalRule": "Séparateur",
+    "clearFormatting": "Effacer la mise en forme"
   }
 }

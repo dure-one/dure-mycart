@@ -402,6 +402,9 @@
     "h3": "Heading 3",
     "bulletlist": "Bullet list",
     "orderedList": "Numbered list",
-    "blockquote": "Quote"
+    "blockquote": "Quote",
+    "toolbar": "Text formatting",
+    "horizontalRule": "Divider",
+    "clearFormatting": "Clear formatting"
   }
 }

@@ -3,7 +3,7 @@
   import { Editor } from '@tiptap/core'
   import StarterKit from '@tiptap/starter-kit'
   import Placeholder from '@tiptap/extension-placeholder'
-  import SvgIcon from './SvgIcon.svelte'
+  import IconButton from './IconButton.svelte'
   import { translate } from '$lib/i18n'
 
   // Reactive translation function
@@ -16,70 +16,194 @@
     onupdateModelValue?: (value: string) => void
   }
 
-  let {
-    modelValue = $bindable(''),
-    placeholder = '',
-    id = undefined,
-    onupdateModelValue
-  }: Props = $props()
+  let { modelValue = $bindable(''), placeholder = '', id = undefined, onupdateModelValue }: Props = $props()
+
+  interface EditorAction {
+    /** The sprite icon and the `editor.<name>` translation key. */
+    name: string
+    icon: string
+    /** ProseMirror shortcut notation, spelled for the reader in the tooltip. */
+    shortcut?: string
+    run: (editor: Editor) => void
+    /** Only the toggling actions carry one — the button then reports `aria-pressed`. */
+    isActive?: (editor: Editor) => boolean
+    /** Omitted where the action is always available. */
+    isEnabled?: (editor: Editor) => boolean
+  }
+
+  // Reading order: history, marks, block types, lists, then the pair that
+  // inserts or clears. Each group is a divider in the toolbar.
+  const ACTION_GROUPS: EditorAction[][] = [
+    [
+      {
+        name: 'undo',
+        icon: 'undo',
+        shortcut: 'Mod-z',
+        run: (editor) => editor.chain().focus().undo().run(),
+        isEnabled: (editor) => editor.can().undo()
+      },
+      {
+        name: 'redo',
+        icon: 'redo',
+        shortcut: 'Mod-Shift-z',
+        run: (editor) => editor.chain().focus().redo().run(),
+        isEnabled: (editor) => editor.can().redo()
+      }
+    ],
+    [
+      {
+        name: 'bold',
+        icon: 'bold',
+        shortcut: 'Mod-b',
+        run: (editor) => editor.chain().focus().toggleBold().run(),
+        isActive: (editor) => editor.isActive('bold')
+      },
+      {
+        name: 'italic',
+        icon: 'italic',
+        shortcut: 'Mod-i',
+        run: (editor) => editor.chain().focus().toggleItalic().run(),
+        isActive: (editor) => editor.isActive('italic')
+      },
+      {
+        name: 'strike',
+        icon: 'strike',
+        shortcut: 'Mod-Shift-s',
+        run: (editor) => editor.chain().focus().toggleStrike().run(),
+        isActive: (editor) => editor.isActive('strike')
+      }
+    ],
+    [
+      {
+        name: 'paragraph',
+        icon: 'paragraph',
+        shortcut: 'Mod-Alt-0',
+        run: (editor) => editor.chain().focus().setParagraph().run(),
+        isActive: (editor) => editor.isActive('paragraph')
+      },
+      {
+        name: 'h1',
+        icon: 'h1',
+        shortcut: 'Mod-Alt-1',
+        run: (editor) => editor.chain().focus().toggleHeading({ level: 1 }).run(),
+        isActive: (editor) => editor.isActive('heading', { level: 1 })
+      },
+      {
+        name: 'h2',
+        icon: 'h2',
+        shortcut: 'Mod-Alt-2',
+        run: (editor) => editor.chain().focus().toggleHeading({ level: 2 }).run(),
+        isActive: (editor) => editor.isActive('heading', { level: 2 })
+      },
+      {
+        name: 'h3',
+        icon: 'h3',
+        shortcut: 'Mod-Alt-3',
+        run: (editor) => editor.chain().focus().toggleHeading({ level: 3 }).run(),
+        isActive: (editor) => editor.isActive('heading', { level: 3 })
+      },
+      {
+        name: 'blockquote',
+        icon: 'blockquote',
+        shortcut: 'Mod-Shift-b',
+        run: (editor) => editor.chain().focus().toggleBlockquote().run(),
+        isActive: (editor) => editor.isActive('blockquote')
+      }
+    ],
+    [
+      {
+        name: 'bulletlist',
+        icon: 'bulletlist',
+        shortcut: 'Mod-Shift-8',
+        run: (editor) => editor.chain().focus().toggleBulletList().run(),
+        isActive: (editor) => editor.isActive('bulletList')
+      },
+      {
+        name: 'orderedList',
+        icon: 'orderedlist',
+        shortcut: 'Mod-Shift-7',
+        run: (editor) => editor.chain().focus().toggleOrderedList().run(),
+        isActive: (editor) => editor.isActive('orderedList')
+      }
+    ],
+    [
+      {
+        name: 'horizontalRule',
+        icon: 'minus',
+        run: (editor) => editor.chain().focus().setHorizontalRule().run()
+      },
+      {
+        name: 'clearFormatting',
+        icon: 'eraser',
+        run: (editor) => editor.chain().focus().unsetAllMarks().clearNodes().run()
+      }
+    ]
+  ]
+
+  const ACTIONS = ACTION_GROUPS.flat()
+
+  interface ActionState {
+    active: boolean
+    enabled: boolean
+  }
 
   let editor: Editor | null = $state(null)
   let editorElement: HTMLElement | undefined = $state()
 
-  const editorActions = [
-    { name: 'undo', method: 'undo', icon: 'undo', stroke: 'currentColor', activeCondition: {} },
-    { name: 'redo', method: 'redo', icon: 'redo', stroke: 'currentColor', activeCondition: {} },
-    { name: 'bold', method: 'toggleBold', icon: 'bold', activeCondition: { type: 'bold' } },
-    { name: 'italic', method: 'toggleItalic', icon: 'italic', activeCondition: { type: 'italic' } },
-    { name: 'strike', method: 'toggleStrike', icon: 'strike', activeCondition: { type: 'strike' } },
-    { name: 'paragraph', method: 'toggleParagraph', icon: 'paragraph', activeCondition: { type: 'paragraph' } },
-    { name: 'h1', method: 'toggleHeading', icon: 'h1', activeCondition: { type: 'heading', options: { level: 1 } } },
-    { name: 'h2', method: 'toggleHeading', icon: 'h2', activeCondition: { type: 'heading', options: { level: 2 } } },
-    { name: 'h3', method: 'toggleHeading', icon: 'h3', activeCondition: { type: 'heading', options: { level: 3 } } },
-    { name: 'bulletlist', method: 'toggleBulletList', icon: 'bulletlist', activeCondition: { type: 'bulletList' } },
-    { name: 'orderedList', method: 'toggleOrderedList', icon: 'orderedlist', activeCondition: { type: 'orderedList' } },
-    { name: 'blockquote', method: 'toggleBlockquote', icon: 'blockquote', activeCondition: { type: 'blockquote' } }
-  ]
+  // ProseMirror owns the truth about what is toggled and what can still be
+  // undone; this mirror is what carries it into the toolbar. Without it the
+  // template reads the editor once and the buttons never move again.
+  let actionState = $state<Record<string, ActionState>>({})
 
-  interface EditorOptions {
-    level?: number
-    [key: string]: unknown
-  }
-
-  function performEditorAction(method: string, options?: EditorOptions) {
-    if (!editor) return
-    const chain = editor.chain().focus()
-    if (options) {
-      ;(chain[method as keyof typeof chain] as (options: EditorOptions) => typeof chain)(options).run()
-    } else {
-      ;(chain[method as keyof typeof chain] as () => typeof chain)().run()
+  function syncActionState(target: Editor | null) {
+    const next: Record<string, ActionState> = {}
+    if (target) {
+      for (const action of ACTIONS) {
+        next[action.name] = {
+          active: action.isActive?.(target) ?? false,
+          enabled: action.isEnabled?.(target) ?? true
+        }
+      }
     }
+    actionState = next
   }
 
-  function canPerformEditorAction(method: string): boolean {
-    if (!editor) return false
-    if (method === 'undo' || method === 'redo') {
-      const canMethod = editor.can().chain().focus()[method as 'undo' | 'redo']
-      return !canMethod().run()
-    }
-    return false
+  // TipTap spells a shortcut the ProseMirror way; a tooltip spells it the way
+  // this keyboard does, so the hint reads Mod-b as ⌘B on a Mac and Ctrl+B
+  // anywhere else.
+  const MODIFIER_LABELS: Record<string, [string, string]> = {
+    Mod: ['Ctrl', '⌘'],
+    Shift: ['Shift', '⇧'],
+    Alt: ['Alt', '⌥']
   }
 
-  function isActive(type: string, options?: EditorOptions): boolean {
-    if (!editor || !type) return false
-    return editor.isActive(type, options)
+  let isMac = $state(false)
+
+  function shortcutLabel(shortcut: string): string {
+    const parts = shortcut.split('-').map((part) => {
+      const labels = MODIFIER_LABELS[part]
+      if (labels) return isMac ? labels[1] : labels[0]
+      return part.toUpperCase()
+    })
+    return parts.join(isMac ? '' : '+')
   }
 
+  function tooltip(action: EditorAction): string {
+    const label = t(`editor.${action.name}`)
+    return action.shortcut ? `${label} (${shortcutLabel(action.shortcut)})` : label
+  }
+
+  // Push an external change — another product opening in the drawer, a form
+  // reset — into the editor. Guarded on inequality so the write-back that
+  // typing performs never re-sets the document under the caret.
   $effect(() => {
     if (editor && modelValue !== editor.getHTML()) {
-      const isSame = editor.getHTML() === modelValue
-      if (!isSame) {
-        editor.commands.setContent(modelValue, false)
-      }
+      editor.commands.setContent(modelValue, { emitUpdate: false })
     }
   })
 
   onMount(() => {
+    isMac = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent)
     if (!editorElement) return
     editor = new Editor({
       element: editorElement,
@@ -94,95 +218,91 @@
         const html = editor.getHTML()
         modelValue = html
         onupdateModelValue?.(html)
-      }
+      },
+      onCreate: ({ editor }) => syncActionState(editor),
+      onTransaction: ({ editor }) => syncActionState(editor)
     })
+    syncActionState(editor)
   })
 
   onDestroy(() => {
     if (editor) {
       editor.destroy()
+      editor = null
     }
   })
 </script>
 
-{#if editor}
-  <div class="editor">
-    {#each editorActions as action (action.name)}
-      <button
-        type="button"
-        aria-label={t(`editor.${action.name}`)}
-        onclick={() => performEditorAction(action.method, action.activeCondition.options)}
-        disabled={canPerformEditorAction(action.method)}
-        class={action.stroke
-          ? ''
-          : isActive(action.activeCondition.type || '', action.activeCondition.options)
-            ? 'is-active'
-            : ''}
-      >
-        <SvgIcon name={action.icon} stroke={action.stroke || 'currentColor'} />
-      </button>
-    {/each}
-  </div>
-{/if}
-
-<article class="mt-5" bind:this={editorElement} {id}></article>
+<div class="editor">
+  {#if editor}
+    <div class="editor-toolbar" role="toolbar" aria-label={t('editor.toolbar')}>
+      {#each ACTION_GROUPS as group, index (index)}
+        {#if index > 0}
+          <span class="editor-divider" aria-hidden="true"></span>
+        {/if}
+        {#each group as action (action.name)}
+          {@const state = actionState[action.name]}
+          <IconButton
+            ico={action.icon}
+            label={tooltip(action)}
+            active={action.isActive ? (state?.active ?? false) : undefined}
+            disabled={state ? !state.enabled : false}
+            onclick={() => {
+              if (editor) action.run(editor)
+            }}
+          />
+        {/each}
+      {/each}
+    </div>
+  {/if}
+  <article class="editor-surface" bind:this={editorElement} {id}></article>
+</div>
 
 <style>
   @reference "tailwindcss";
 
-  :global(.tiptap p.is-editor-empty:first-child::before) {
-    @apply text-gray-400;
-    content: attr(data-placeholder);
-    float: left;
-    height: 0;
-    pointer-events: none;
+  /*
+   * The shell is the field: one border holding the toolbar and the writing
+   * surface together, going green while it holds the caret — the same focus
+   * treatment FormInput and FormTextarea carry.
+   */
+  .editor {
+    @apply rounded border border-gray-300 bg-white focus-within:border-green-600 focus-within:ring-1 focus-within:ring-green-600;
   }
 
-  :global(.ProseMirror:focus) {
+  /*
+   * Pinned to the top of the drawer's scroll area, so a description long
+   * enough to scroll away does not take its toolbar with it. The offset walks
+   * back over the drawer's own padding — `p-6` in `Drawer` — because a toolbar
+   * stopped at the padding edge leaves a band of scrolled text above it. The
+   * radius is the shell's, less its 1px border.
+   */
+  .editor-toolbar {
+    @apply sticky -top-6 z-10 flex flex-wrap items-center gap-0.5 rounded-t-[3px] border-b border-gray-200 bg-gray-50 px-1.5 py-1;
+  }
+
+  .editor-divider {
+    @apply mx-1 h-5 w-px bg-gray-200;
+  }
+
+  .editor-surface {
+    @apply block px-3 py-2.5 text-sm text-gray-800;
+  }
+
+  /*
+   * The height belongs to the contenteditable itself, not to the shell around
+   * it: an empty field is then a clickable writing area rather than a box
+   * whose only live part is the first line.
+   */
+  :global(.editor-surface .tiptap) {
+    @apply min-h-40;
+  }
+
+  .editor-toolbar :global(button:focus-visible) {
+    @apply ring-1 ring-green-600 outline-none;
+  }
+
+  :global(.editor-surface .tiptap:focus) {
     outline: none;
-  }
-
-  :global(.editor button),
-  :global(.editor input),
-  :global(.editor select) {
-    @apply m-[0.2rem] rounded-[0.3rem] bg-slate-200 px-[0.6rem] py-[0.2rem] text-black;
-  }
-
-  :global(.editor button[disabled]),
-  :global(.editor input[disabled]),
-  :global(.editor select[disabled]) {
-    opacity: 0.3;
-  }
-
-  :global(.is-active) {
-    @apply bg-black text-white;
-  }
-
-  :global(.tiptap > * + *) {
-    margin-top: 0.75em;
-  }
-
-  :global(.tiptap ul) {
-    @apply list-disc pl-10;
-  }
-
-  :global(.tiptap ol) {
-    @apply list-decimal pl-10;
-  }
-
-  :global(.tiptap blockquote) {
-    @apply border-x-2 border-solid border-gray-500 pl-4;
-  }
-
-  :global(.tiptap blockquote ul) {
-    @apply list-disc pl-4;
-  }
-
-  :global(.tiptap blockquote ol) {
-    @apply list-decimal pl-4;
-  }
-
-  :global(.tiptap hr) {
-    @apply my-8 border-0 border-t-2 border-gray-200;
   }
 </style>

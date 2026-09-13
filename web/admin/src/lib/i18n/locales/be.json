@@ -402,6 +402,9 @@
     "h3": "Загаловак 3",
     "bulletlist": "Маркіраваны спіс",
     "orderedList": "Нумараваны спіс",
-    "blockquote": "Цытата"
+    "blockquote": "Цытата",
+    "toolbar": "Фарматаванне тэксту",
+    "horizontalRule": "Раздзяляльнік",
+    "clearFormatting": "Ачысціць фарматаванне"
   }
 }

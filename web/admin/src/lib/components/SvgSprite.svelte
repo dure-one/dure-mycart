@@ -17,7 +17,12 @@
         // Extract content between <svg> and </svg>
         const content = svg.match(/<svg[^>]*>([\s\S]*?)<\/svg>/i)?.[1]
         if (content) {
-          sprite += `<symbol id="icon-${name}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">${content}</symbol>`
+          // The grid is the icon file's own: art drawn on a 16x16 grid placed
+          // in a 24x24 box sits small in one corner instead of centred. Paint
+          // stays normalised here, so every icon carries the panel's stroke
+          // weight and takes its colour from the text around it.
+          const viewBox = svg.match(/viewBox="([^"]+)"/)?.[1] ?? '0 0 24 24'
+          sprite += `<symbol id="icon-${name}" viewBox="${viewBox}" fill="none" stroke="currentColor" stroke-width="1.5">${content}</symbol>`
         }
       }
     }
