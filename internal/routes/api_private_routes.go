@@ -62,4 +62,15 @@ func ApiPrivateRoutes(c *fiber.App) {
 	carts.Get("/", handlers.Carts)
 	carts.Get("/:cart_id<len(15)>", handlers.Cart)
 	carts.Post("/:cart_id<len(15)>/mail", handlers.CartSendMail)
+
+	// customers. The list is keyed by email, so the cart lookup is too: most
+	// rows in it are buyers who checked out as guests and have no account id
+	// to address them by. The account actions below take an id, and only apply
+	// to the rows that have one.
+	customers := c.Group("/api/_/customers", middleware.JWTProtected())
+	customers.Get("/", handlers.Customers)
+	customers.Get("/carts", handlers.CustomerCarts)
+	customers.Patch("/:customer_id<len(15)>/active", handlers.UpdateCustomerActive)
+	customers.Patch("/:customer_id<len(15)>/password", handlers.UpdateCustomerPassword)
+	customers.Delete("/:customer_id<len(15)>", handlers.DeleteCustomer)
 }
