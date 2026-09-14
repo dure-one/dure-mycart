@@ -1,15 +1,25 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
   import Main from '$lib/layouts/Main.svelte'
-  import Drawer from '$lib/components/Drawer.svelte'
+  import TruncationSettings from '$lib/components/TruncationSettings.svelte'
   import Stripe from '$lib/components/payment/Stripe.svelte'
   import Paypal from '$lib/components/payment/Paypal.svelte'
   import Portone from '$lib/components/payment/Portone.svelte'
   import Spectrocoin from '$lib/components/payment/Spectrocoin.svelte'
   import Coinbase from '$lib/components/payment/Coinbase.svelte'
-  import FormButton from '$lib/components/form/Button.svelte'
-  import FormSelect from '$lib/components/form/Select.svelte'
-  import TruncationSettings from '$lib/components/TruncationSettings.svelte'
+  import {
+    PageHeader,
+    PageState,
+    Section,
+    Chip,
+    ChipGroup,
+    Drawer,
+    DrawerFooter,
+    DrawerHeader,
+    FormButton,
+    FormSelect,
+    FormToggle
+  } from '$lib/components'
   import { systemStore } from '$lib/stores/system'
   import { paymentSettingsStore } from '$lib/stores/payment'
   import { loadSettings as loadSettingsHelper, saveSettings } from '$lib/utils/settingsHelpers'
@@ -34,8 +44,29 @@
   // Reactive translation function
   let t = $derived($translate)
 
+  let loading = $state(true)
+  /** The drawer the page currently has open. */
+  type DrawerMode =
+    | 'number-format'
+    | 'currency-display'
+    | 'price-display'
+    | 'stripe'
+    | 'paypal'
+    | 'portone'
+    | 'spectrocoin'
+    | 'coinbase'
+
   let drawerOpen = $state(false)
-  let drawerMode = $state<'stripe' | 'paypal' | 'portone' | 'spectrocoin' | 'coinbase' | null>(null)
+  let drawerMode = $state<DrawerMode | null>(null)
+
+  // The three settings editors are form drawers, so 710px; provider drawers 725px.
+  let drawerWidth = $derived(
+    drawerMode === 'number-format' ||
+      drawerMode === 'currency-display' ||
+      drawerMode === 'price-display'
+      ? '710px'
+      : '725px'
+  )
   let payments = $state<Record<string, boolean>>({})
   let payment = $state<PaymentSettings>({
     currency: ''
@@ -92,7 +123,7 @@
   async function loadPaymentSettings() {
     const paymentProviders = await loadData<Record<string, boolean>>(
       '/api/cart/payment',
-      'Failed to load payment settings'
+      t('payment.failedToLoadSettings')
     )
     if (paymentProviders) {
       payments = paymentProviders
@@ -126,22 +157,23 @@
 
     // Update global store for other admin pages to access
     paymentSettingsStore.set(payment)
+    loading = false
   }
 
   async function handleCurrencySubmit() {
     formErrors = {}
 
     if (!payment.currency) {
-      formErrors.currency = 'Currency is required'
+      formErrors.currency = t('payment.currencyRequired')
       return
     }
 
     if (!currencyOptions.includes(payment.currency)) {
-      formErrors.currency = 'Currency must be one of: ' + currencyOptions.join(', ')
+      formErrors.currency = t('payment.currencyMustBeOneOf', { list: currencyOptions.join(', ') })
       return
     }
 
-    await saveSettings('payment', payment, 'Currency saved')
+    await saveSettings('payment', payment, t('payment.currencySaved'))
     incrementSettingsVersion()
   }
 
@@ -159,7 +191,7 @@
   }
 
   async function handleTruncationSubmit() {
-    await saveSettings('payment', payment, 'Truncation settings saved')
+    await saveSettings('payment', payment, t('payment.truncationSaved'))
     incrementSettingsVersion()
   }
 
@@ -176,7 +208,7 @@
       decimal_precision: parseInt(decimalPrecision) as 0 | 1 | 2,
       show_trailing_zeros: showTrailingZeros
     }
-    await saveSettings('payment', payment, 'Number formatting saved')
+    await saveSettings('payment', payment, t('payment.numberFormatSaved'))
     paymentSettingsStore.set(payment)
     incrementSettingsVersion()
   }
@@ -186,12 +218,12 @@
       admin: symbolDisplay.admin,
       storefront: symbolDisplay.storefront
     }
-    await saveSettings('payment', payment, 'Symbol display saved')
+    await saveSettings('payment', payment, t('payment.symbolDisplaySaved'))
     paymentSettingsStore.set(payment)
     incrementSettingsVersion()
   }
 
-  function openDrawer(mode: 'stripe' | 'paypal' | 'portone' | 'spectrocoin' | 'coinbase') {
+  function openDrawer(mode: DrawerMode) {
     drawerMode = mode
     drawerOpen = true
   }
@@ -207,11 +239,11 @@
 </script>
 
 <Main>
-  <div class="pb-10">
-    <header class="mb-4">
-      <h1>{t('settings.payment')}</h1>
-    </header>
+  <PageHeader title={t('settings.payment')} />
 
+  {#if loading}
+    <PageState kind="loading" />
+  {:else}
     <form onsubmit={(e) => { e.preventDefault(); handleCurrencySubmit(); }} class="max-w-2xl">
       <FormSelect
         id="currency"
@@ -222,122 +254,126 @@
         ico="money"
       />
       <div class="pt-5">
-        <FormButton type="submit" name={t('common.save')} color="green" />
+        <FormButton type="submit" name={t('common.save')} variant="primary" />
       </div>
     </form>
-    <hr class="mt-5" />
 
-    <div class="mt-5 max-w-2xl">
-      <h2 class="mb-5">{t('settings.numberFormatting')}</h2>
+    <Section title={t('settings.displaySettings')}>
+      <ChipGroup>
+        <Chip onclick={() => openDrawer('number-format')}>{t('settings.numberFormatting')}</Chip>
+        <Chip onclick={() => openDrawer('currency-display')}>{t('settings.currencyDisplay')}</Chip>
+        {#if payment.currency}
+          <Chip onclick={() => openDrawer('price-display')}>
+            {t('settings.priceDisplaySettings')}
+          </Chip>
+        {/if}
+      </ChipGroup>
+    </Section>
 
-      <FormSelect
-        id="decimal-precision"
-        title={t('settings.decimalPrecision')}
-        options={['0', '1', '2']}
-        bind:value={decimalPrecision}
-        ico="hash"
-      />
+    <Section title={t('settings.paymentProviders')}>
+      <ChipGroup>
+        <Chip active={payments.stripe} onclick={() => openDrawer('stripe')}>Stripe</Chip>
+        <Chip active={payments.paypal} onclick={() => openDrawer('paypal')}>Paypal</Chip>
+        <Chip active={payments.portone} onclick={() => openDrawer('portone')}>PortOne</Chip>
+        <Chip active={payments.spectrocoin} onclick={() => openDrawer('spectrocoin')}>Spectrocoin</Chip>
+        <Chip active={payments.coinbase} onclick={() => openDrawer('coinbase')}>Coinbase</Chip>
+      </ChipGroup>
+    </Section>
+  {/if}
+</Main>
 
-      <div class="mb-4 flex items-center">
-        <div class="pr-3">
-          <h3 class="text-sm font-medium text-gray-700">{t('settings.showTrailingZeros')}</h3>
-          <p class="text-sm text-gray-500">{t('settings.showTrailingZerosDesc')}</p>
-        </div>
-        <div class="pt-1">
-          <label for="toggle_trailing-zeros" class="none relative h-6 w-10 cursor-pointer [-webkit-tap-highlight-color:_transparent]">
-            <input
-              type="checkbox"
-              class="peer sr-only [&:checked_+_span_svg[data-checked-icon]]:block [&:checked_+_span_svg[data-unchecked-icon]]:hidden"
-              id="toggle_trailing-zeros"
-              bind:checked={showTrailingZeros}
+{#if drawerOpen}
+  <Drawer isOpen={drawerOpen} onclose={closeDrawer} maxWidth={drawerWidth}>
+    {#if drawerMode === 'number-format'}
+      <DrawerHeader title={t('settings.numberFormatting')} />
+
+      <form onsubmit={(e) => { e.preventDefault(); handleNumberFormatSubmit() }}>
+        <div class="flow-root">
+          <dl class="mx-auto -my-3 mt-2 mb-0 space-y-4 text-sm">
+            <FormSelect
+              id="decimal-precision"
+              title={t('settings.decimalPrecision')}
+              options={['0', '1', '2']}
+              bind:value={decimalPrecision}
+              ico="hash"
             />
-            <span class="absolute inset-y-0 start-0 z-10 m-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-white text-gray-400 transition-all peer-checked:start-4 peer-checked:text-green-600">
-              <svg data-unchecked-icon xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
-              </svg>
-              <svg data-checked-icon xmlns="http://www.w3.org/2000/svg" class="hidden h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-              </svg>
-            </span>
-            <span class="absolute inset-0 rounded-full bg-gray-300 transition peer-checked:bg-green-500"></span>
-          </label>
+          </dl>
+
+          <div class="mt-2 mb-4 flex items-center justify-between gap-4">
+            <div>
+              <h3>{t('settings.showTrailingZeros')}</h3>
+              <p class="text-sm text-gray-500">{t('settings.showTrailingZerosDesc')}</p>
+            </div>
+            <FormToggle id="trailing-zeros" bind:value={showTrailingZeros} />
+          </div>
+
+          <div class="mt-3 text-sm text-gray-600">
+            <div>{t('settings.preview')}: 1.00 → {formatPreview(1.0)}</div>
+            <div>{t('settings.preview')}: 1.23 → {formatPreview(1.23)}</div>
+          </div>
         </div>
-      </div>
 
-      <div class="mt-3 text-sm text-gray-600">
-        <div>{t('settings.preview')}: 1.00 → {formatPreview(1.00)}</div>
-        <div>{t('settings.preview')}: 1.23 → {formatPreview(1.23)}</div>
-      </div>
+        <DrawerFooter onclose={closeDrawer} submitLabel={t('common.save')} />
+      </form>
+    {:else if drawerMode === 'currency-display'}
+      <DrawerHeader title={t('settings.currencyDisplay')} />
 
-      <div class="pt-5">
-        <FormButton onclick={handleNumberFormatSubmit} name={t('common.save')} color="green" />
-      </div>
-    </div>
+      <form onsubmit={(e) => { e.preventDefault(); handleSymbolDisplaySubmit() }}>
+        <div class="flow-root">
+          <div class="mb-5">
+            <h3>{t('settings.adminPanelDisplay')}</h3>
+            <ChipGroup class="mt-3">
+              <Chip
+                class="flex-1 py-3 text-center"
+                active={symbolDisplay.admin === 'currency'}
+                onclick={() => symbolDisplay.admin = 'currency'}
+              >
+                {t('settings.currencySymbol')}
+                <span class="mt-1 block text-xs text-gray-500">$130</span>
+              </Chip>
+              <Chip
+                class="flex-1 py-3 text-center"
+                active={symbolDisplay.admin === 'language'}
+                onclick={() => symbolDisplay.admin = 'language'}
+              >
+                {t('settings.languageSymbol')}
+                <span class="mt-1 block text-xs text-gray-500">130 Dollar</span>
+              </Chip>
+            </ChipGroup>
+          </div>
 
-    <hr class="mt-5" />
-
-    <div class="mt-5 max-w-2xl">
-      <h2 class="mb-5">{t('settings.currencyDisplay')}</h2>
-
-      <div class="mb-4">
-        <h3 class="mb-2 text-sm font-medium text-gray-700">{t('settings.adminPanelDisplay')}</h3>
-        <div class="flex gap-2">
-          <button
-            type="button"
-            class="flex-1 rounded border px-4 py-2 text-sm font-medium transition-colors {symbolDisplay.admin === 'currency' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}"
-            onclick={() => symbolDisplay.admin = 'currency'}
-          >
-            {t('settings.currencySymbol')}
-            <span class="block text-xs text-gray-500 mt-1">$130</span>
-          </button>
-          <button
-            type="button"
-            class="flex-1 rounded border px-4 py-2 text-sm font-medium transition-colors {symbolDisplay.admin === 'language' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}"
-            onclick={() => symbolDisplay.admin = 'language'}
-          >
-            {t('settings.languageSymbol')}
-            <span class="block text-xs text-gray-500 mt-1">130 Dollar</span>
-          </button>
+          <div class="mb-5">
+            <h3>{t('settings.storefrontDisplay')}</h3>
+            <ChipGroup class="mt-3">
+              <Chip
+                class="flex-1 py-3 text-center"
+                active={symbolDisplay.storefront === 'currency'}
+                onclick={() => symbolDisplay.storefront = 'currency'}
+              >
+                {t('settings.currencySymbol')}
+                <span class="mt-1 block text-xs text-gray-500">$130</span>
+              </Chip>
+              <Chip
+                class="flex-1 py-3 text-center"
+                active={symbolDisplay.storefront === 'language'}
+                onclick={() => symbolDisplay.storefront = 'language'}
+              >
+                {t('settings.languageSymbol')}
+                <span class="mt-1 block text-xs text-gray-500">130 Dollar</span>
+              </Chip>
+            </ChipGroup>
+          </div>
         </div>
-      </div>
 
-      <div class="mb-4">
-        <h3 class="mb-2 text-sm font-medium text-gray-700">{t('settings.storefrontDisplay')}</h3>
-        <div class="flex gap-2">
-          <button
-            type="button"
-            class="flex-1 rounded border px-4 py-2 text-sm font-medium transition-colors {symbolDisplay.storefront === 'currency' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}"
-            onclick={() => symbolDisplay.storefront = 'currency'}
-          >
-            {t('settings.currencySymbol')}
-            <span class="block text-xs text-gray-500 mt-1">$130</span>
-          </button>
-          <button
-            type="button"
-            class="flex-1 rounded border px-4 py-2 text-sm font-medium transition-colors {symbolDisplay.storefront === 'language' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}"
-            onclick={() => symbolDisplay.storefront = 'language'}
-          >
-            {t('settings.languageSymbol')}
-            <span class="block text-xs text-gray-500 mt-1">130 Dollar</span>
-          </button>
-        </div>
-      </div>
+        <DrawerFooter onclose={closeDrawer} submitLabel={t('common.save')} />
+      </form>
+    {:else if drawerMode === 'price-display' && payment.currency}
+      <DrawerHeader title={t('settings.priceDisplaySettings')} />
 
-      <div class="pt-5">
-        <FormButton onclick={handleSymbolDisplaySubmit} name={t('common.save')} color="green" />
-      </div>
-    </div>
-
-    <hr class="mt-5" />
-
-    {#if payment.currency}
-      <div class="mt-5">
-        <h2 class="mb-5">{t('settings.priceDisplaySettings')}</h2>
-
-        <div class="max-w-4xl space-y-6">
-          <!-- Admin Panel Settings -->
-          <div>
-            <h3 class="mb-3 text-lg font-semibold">{t('settings.adminPanel')}</h3>
+      <form onsubmit={(e) => { e.preventDefault(); handleTruncationSubmit() }}>
+        <div class="space-y-6">
+          <div class="space-y-3">
+            <h3>{t('settings.adminPanel')}</h3>
             <TruncationSettings
               currency={payment.currency}
               context="admin"
@@ -347,9 +383,8 @@
             />
           </div>
 
-          <!-- Storefront Settings -->
-          <div>
-            <h3 class="mb-3 text-lg font-semibold">{t('settings.storefront')}</h3>
+          <div class="space-y-3">
+            <h3>{t('settings.storefront')}</h3>
             <TruncationSettings
               currency={payment.currency}
               context="storefront"
@@ -358,102 +393,11 @@
               numberFormat={payment.number_format}
             />
           </div>
+        </div>
 
-          <div class="pt-4">
-            <FormButton
-              type="button"
-              name={t('common.save')}
-              color="green"
-              onclick={handleTruncationSubmit}
-            />
-          </div>
-        </div>
-      </div>
-    {/if}
-
-    <hr class="mt-5" />
-
-    <div class="mt-5">
-      <h2 class="mb-5">{t('settings.paymentProviders')}</h2>
-      <div class="flex">
-        <div
-          class="cursor-pointer rounded p-2 {payments.stripe ? 'bg-green-200' : 'bg-gray-200'}"
-          onclick={() => openDrawer('stripe')}
-          role="button"
-          tabindex="0"
-          onkeydown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              openDrawer('stripe')
-            }
-          }}
-        >
-          Stripe
-        </div>
-        <div
-          class="ml-5 cursor-pointer rounded p-2 {payments.paypal ? 'bg-green-200' : 'bg-gray-200'}"
-          onclick={() => openDrawer('paypal')}
-          role="button"
-          tabindex="0"
-          onkeydown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              openDrawer('paypal')
-            }
-          }}
-        >
-          Paypal
-        </div>
-        <div
-          class="ml-5 cursor-pointer rounded p-2 {payments.portone ? 'bg-green-200' : 'bg-gray-200'}"
-          onclick={() => openDrawer('portone')}
-          role="button"
-          tabindex="0"
-          onkeydown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              openDrawer('portone')
-            }
-          }}
-        >
-          PortOne
-        </div>
-        <div
-          class="ml-5 cursor-pointer rounded p-2 {payments.spectrocoin ? 'bg-green-200' : 'bg-gray-200'}"
-          onclick={() => openDrawer('spectrocoin')}
-          role="button"
-          tabindex="0"
-          onkeydown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              openDrawer('spectrocoin')
-            }
-          }}
-        >
-          Spectrocoin
-        </div>
-        <div
-          class="ml-5 cursor-pointer rounded p-2 {payments.coinbase ? 'bg-green-200' : 'bg-gray-200'}"
-          onclick={() => openDrawer('coinbase')}
-          role="button"
-          tabindex="0"
-          onkeydown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              openDrawer('coinbase')
-            }
-          }}
-        >
-          Coinbase
-        </div>
-      </div>
-    </div>
-  </div>
-</Main>
-
-{#if drawerOpen}
-  <Drawer isOpen={drawerOpen} onclose={closeDrawer} maxWidth="725px">
-    {#if drawerMode === 'stripe'}
+        <DrawerFooter onclose={closeDrawer} submitLabel={t('common.save')} />
+      </form>
+    {:else if drawerMode === 'stripe'}
       <Stripe onclose={closeDrawer} />
     {:else if drawerMode === 'paypal'}
       <Paypal onclose={closeDrawer} />

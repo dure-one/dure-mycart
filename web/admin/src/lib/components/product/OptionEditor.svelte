@@ -1,8 +1,6 @@
 <script lang="ts">
-  import FormInput from '../form/Input.svelte'
-  import FormButton from '../form/Button.svelte'
-  import SvgIcon from '../SvgIcon.svelte'
-  import type { ProductOption, ProductOptionValue } from '$lib/types/models'
+  import { FormButton, FormInput, IconButton, SvgIcon } from '$lib/components'
+  import type { ProductOption } from '$lib/types/models'
   import { translate } from '$lib/i18n'
 
   let t = $derived($translate)
@@ -61,23 +59,14 @@
 
 <div class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
   <div class="mb-4 flex items-center justify-between">
-    <h3 class="text-sm font-semibold text-gray-700">
-      {t('products.option')} {optionIndex + 1}
-    </h3>
-    <button
-      type="button"
-      onclick={onDelete}
-      {disabled}
-      class="text-red-600 hover:text-red-800 disabled:opacity-50"
-      title={t('common.delete')}
-    >
-      <SvgIcon name="trash" className="h-5 w-5" />
-    </button>
+    <h3>{t('products.option')} {optionIndex + 1}</h3>
+    <IconButton ico="trash" label={t('common.delete')} variant="danger" onclick={onDelete} {disabled} />
   </div>
 
   <div class="mb-4">
     <FormInput
-      label="Option {optionIndex + 1} Name"
+      id="option-{optionIndex + 1}-name"
+      label={t('products.optionNameNumbered', { index: optionIndex + 1 })}
       type="text"
       value={localOption.name}
       oninput={updateOptionName}
@@ -92,24 +81,23 @@
       <div class="mb-2 flex items-center gap-2">
         <div class="flex-1">
           <FormInput
-            label="Option {optionIndex + 1} Value {index + 1}"
+            id="option-{optionIndex + 1}-value-{index + 1}"
+            label={t('products.optionValueNumbered', { index: optionIndex + 1, value: index + 1 })}
             type="text"
             value={value.value}
             oninput={(e) => updateValueName(index, e)}
-            placeholder="Option {optionIndex + 1} Value {index + 1}"
+            placeholder={t('products.optionValueNumbered', { index: optionIndex + 1, value: index + 1 })}
             {disabled}
             required
           />
         </div>
-        <button
-          type="button"
+        <IconButton
+          ico="minus"
+          label={t('common.delete')}
+          variant="danger"
           onclick={() => deleteValue(index)}
           disabled={disabled || localOption.values.length <= 1}
-          class="text-red-600 hover:text-red-800 disabled:opacity-50"
-          title={t('common.delete')}
-        >
-          <SvgIcon name="minus" className="h-5 w-5" />
-        </button>
+        />
       </div>
     {/each}
 

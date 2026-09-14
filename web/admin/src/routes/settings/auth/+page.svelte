@@ -1,8 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import Main from '$lib/layouts/Main.svelte'
-  import FormButton from '$lib/components/form/Button.svelte'
-  import FormInput from '$lib/components/form/Input.svelte'
+  import { FormButton, FormInput, PageHeader, PageState, Section } from '$lib/components'
   import { loadSettings, saveSettings } from '$lib/utils/settingsHelpers'
   import { saveData } from '$lib/utils/apiHelpers'
   import { validators, validateFields } from '$lib/utils/validation'
@@ -71,49 +70,49 @@
 </script>
 
 <Main>
-  <h1 class="mb-5">{t('settings.authSettings')}</h1>
+  <PageHeader title={t('settings.authSettings')} />
 
   {#if loading}
-    <div class="py-8 text-center">{t('common.loading')}</div>
+    <PageState kind="loading" />
   {:else}
-    <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="max-w-2xl space-y-4">
-      <h2 class="mb-4 text-xl font-bold">{t('settings.email')}</h2>
-      <FormInput
-        id="email"
-        type="email"
-        title={t('settings.email')}
-        bind:value={formData.email}
-        error={formErrors.email}
-        ico="at-symbol"
-      />
-      <div class="pt-4">
-        <FormButton type="submit" name={t('common.save')} color="green" />
-      </div>
-    </form>
+    <Section title={t('settings.email')}>
+      <form onsubmit={(e) => { e.preventDefault(); handleSubmit() }} class="max-w-2xl space-y-4">
+        <FormInput
+          id="email"
+          type="email"
+          title={t('settings.email')}
+          bind:value={formData.email}
+          error={formErrors.email}
+          ico="at-symbol"
+        />
+        <div class="pt-4">
+          <FormButton type="submit" name={t('common.save')} variant="primary" />
+        </div>
+      </form>
+    </Section>
 
-    <hr class="mt-5" />
-
-    <form onsubmit={(e) => { e.preventDefault(); handlePasswordSubmit(); }} class="max-w-2xl space-y-4">
-      <h2 class="mb-4 text-xl font-bold">{t('settings.changePassword')}</h2>
-      <FormInput
-        id="old_password"
-        type="password"
-        title={t('settings.oldPassword')}
-        bind:value={passwordData.old}
-        error={passwordErrors.old}
-        ico="finger-print"
-      />
-      <FormInput
-        id="new_password"
-        type="password"
-        title={t('settings.newPassword')}
-        bind:value={passwordData.new}
-        error={passwordErrors.new}
-        ico="finger-print"
-      />
-      <div class="pt-4">
-        <FormButton type="submit" name={t('settings.updatePassword')} color="green" />
-      </div>
-    </form>
+    <Section title={t('settings.changePassword')}>
+      <form onsubmit={(e) => { e.preventDefault(); handlePasswordSubmit() }} class="max-w-2xl space-y-4">
+        <FormInput
+          id="old_password"
+          type="password"
+          title={t('settings.oldPassword')}
+          bind:value={passwordData.old}
+          error={passwordErrors.old}
+          ico="finger-print"
+        />
+        <FormInput
+          id="new_password"
+          type="password"
+          title={t('settings.newPassword')}
+          bind:value={passwordData.new}
+          error={passwordErrors.new}
+          ico="finger-print"
+        />
+        <div class="pt-4">
+          <FormButton type="submit" name={t('settings.updatePassword')} variant="primary" />
+        </div>
+      </form>
+    </Section>
   {/if}
 </Main>

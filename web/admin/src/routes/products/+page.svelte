@@ -1,21 +1,29 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import Main from '$lib/layouts/Main.svelte'
-  import Drawer from '$lib/components/Drawer.svelte'
-  import ProductView from '$lib/components/product/View.svelte'
+  import {
+    Drawer,
+    DrawerFooter,
+    DrawerHeader,
+    Editor,
+    FormButton,
+    FormGroup,
+    FormInput,
+    FormSelect,
+    FormTextarea,
+    FormUpload,
+    IconButton,
+    PageHeader,
+    PageState,
+    Pagination,
+    ProductView,
+    SortableImage,
+    SvgIcon
+  } from '$lib/components'
   import ProductSeo from '$lib/components/product/Seo.svelte'
   import ProductDigital from '$lib/components/product/Digital.svelte'
   import VariantManager from '$lib/components/product/VariantManager.svelte'
   import CsvImportExport from '$lib/components/product/CsvImportExport.svelte'
-  import FormButton from '$lib/components/form/Button.svelte'
-  import FormInput from '$lib/components/form/Input.svelte'
-  import FormSelect from '$lib/components/form/Select.svelte'
-  import FormTextarea from '$lib/components/form/Textarea.svelte'
-  import Editor from '$lib/components/Editor.svelte'
-  import Upload from '$lib/components/form/Upload.svelte'
-  import SvgIcon from '$lib/components/SvgIcon.svelte'
-  import Pagination from '$lib/components/Pagination.svelte'
-  import SortableImage from '$lib/components/SortableImage.svelte'
   import { loadData, saveData, deleteData, toggleActive as toggleActiveApi } from '$lib/utils/apiHelpers'
   import { costFormat, formatPrice, formatDate, sortByDate, confirmDelete, showMessage } from '$lib/utils'
   import { formatCurrencyWithTruncation } from '$lib/utils/currency'
@@ -954,7 +962,7 @@
                     onSetRepresentative={handleSetRepresentative}
                   />
                 {/if}
-                <Upload
+                <FormUpload
                   section="image"
                   productId={fullProductData.id}
                   accept=".jpg,.jpeg,.png"

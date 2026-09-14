@@ -3,8 +3,8 @@
   import Main from '$lib/layouts/Main.svelte'
   import Drawer from '$lib/components/Drawer.svelte'
   import CartView from '$lib/components/cart/View.svelte'
-  import SvgIcon from '$lib/components/SvgIcon.svelte'
   import Pagination from '$lib/components/Pagination.svelte'
+  import { PageHeader, PageState, Badge, IconButton } from '$lib/components'
   import { loadData, handleApiCall } from '$lib/utils/apiHelpers'
   import { apiPost } from '$lib/utils'
   import { formatCurrency, formatCurrencyWithTruncation } from '$lib/utils/currency'
@@ -91,80 +91,78 @@
 </script>
 
 <Main>
-  <div class="mb-5 flex items-center justify-between">
-    <h1>{t('carts.title')}</h1>
-  </div>
+  <PageHeader title={t('carts.title')} />
 
   {#if loading}
-    <div class="py-8 text-center">{t('common.loading')}</div>
+    <PageState kind="loading" />
   {:else if carts.length === 0}
-    <div class="py-8 text-center text-gray-500">{t('carts.noCarts')}</div>
+    <PageState kind="empty" message={t('carts.noCarts')} />
   {:else}
-    <table>
-      <thead>
-        <tr>
-          <th>{t('carts.email')}</th>
-          <th>{t('carts.priceColumn')}</th>
-          <th>{t('carts.statusColumn')}</th>
-          <th>{t('carts.paymentColumn')}</th>
-          <th class="w-48">{t('common.created')}</th>
-          <th class="w-48">{t('common.updated')}</th>
-          <th class="w-12"></th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each carts as cart, index (cart.id)}
-          <tr
-            class:bg-green-50={cart.payment_status === 'paid'}
-            class="cursor-pointer hover:bg-gray-50"
-            onclick={() => openView(cart)}
-          >
-            <td>{cart.email || '-'}</td>
-            <td>
-              {formatCurrencyWithTruncation(
-                cart.amount_total,
-                cart.currency || 'USD',
-                'admin',
-                paymentSettings?.truncation,
-                currentLocale,
-                paymentSettings?.number_format,
-                paymentSettings?.symbol_display?.admin
-              )}
-            </td>
-            <td
-              class={cart.payment_status === 'paid'
-                ? 'text-green-600'
-                : cart.payment_status === 'pending'
-                  ? 'text-yellow-600'
-                  : cart.payment_status === 'failed'
-                    ? 'text-red-600'
-                    : 'text-gray-600'}
-            >
-              {cart.payment_status || '-'}
-            </td>
-            <td>{cart.payment_system || '-'}</td>
-            <td>{formatDate(cart.created)}</td>
-            <td>
-              {#if cart.updated}
-                {formatDate(cart.updated)}
-              {/if}
-            </td>
-            <td onclick={(e) => e.stopPropagation()}>
-              {#if cart.payment_status === 'paid'}
-                <SvgIcon
-                  name="envelope"
-                  className="h-5 w-5 cursor-pointer"
-                  onclick={(e: Event) => sendMail(cart.id, e)}
-                  stroke="currentColor"
-                />
-              {:else}
-                <SvgIcon name="envelope" className="h-5 w-5 opacity-30" stroke="currentColor" />
-              {/if}
-            </td>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>{t('carts.email')}</th>
+            <th>{t('carts.priceColumn')}</th>
+            <th>{t('carts.statusColumn')}</th>
+            <th>{t('carts.paymentColumn')}</th>
+            <th class="w-48">{t('common.created')}</th>
+            <th class="w-48">{t('common.updated')}</th>
+            <th class="w-12"></th>
           </tr>
-        {/each}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {#each carts as cart, index (cart.id)}
+            <tr
+              class:bg-green-50={cart.payment_status === 'paid'}
+              class="cursor-pointer hover:bg-gray-50"
+              onclick={() => openView(cart)}
+            >
+              <td>{cart.email || '-'}</td>
+              <td>
+                {formatCurrencyWithTruncation(
+                  cart.amount_total,
+                  cart.currency || 'USD',
+                  'admin',
+                  paymentSettings?.truncation,
+                  currentLocale,
+                  paymentSettings?.number_format,
+                  paymentSettings?.symbol_display?.admin
+                )}
+              </td>
+              <td>
+                <Badge
+                  variant={cart.payment_status === 'paid'
+                    ? 'success'
+                    : cart.payment_status === 'pending'
+                      ? 'warning'
+                      : cart.payment_status === 'failed'
+                        ? 'danger'
+                        : 'neutral'}
+                >
+                  {cart.payment_status || '-'}
+                </Badge>
+              </td>
+              <td>{cart.payment_system || '-'}</td>
+              <td>{formatDate(cart.created)}</td>
+              <td>
+                {#if cart.updated}
+                  {formatDate(cart.updated)}
+                {/if}
+              </td>
+              <td onclick={(e) => e.stopPropagation()}>
+                <IconButton
+                  ico="envelope"
+                  label={t('carts.sendMail')}
+                  disabled={cart.payment_status !== 'paid'}
+                  onclick={(e) => sendMail(cart.id, e)}
+                />
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
 
     {#if total > 0}
       <Pagination

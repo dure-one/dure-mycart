@@ -27,7 +27,7 @@
 <div class="flex items-center">
   <label
     for="toggle_{id}"
-    class="none relative h-6 w-10 cursor-pointer [-webkit-tap-highlight-color:_transparent]"
+    class="relative h-6 w-10 cursor-pointer [-webkit-tap-highlight-color:_transparent]"
     class:opacity-25={disabled}
   >
     <input

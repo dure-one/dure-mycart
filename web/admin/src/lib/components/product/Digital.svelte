@@ -1,9 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import FormInput from '../form/Input.svelte'
-  import FormButton from '../form/Button.svelte'
-  import Upload from '../form/Upload.svelte'
-  import SvgIcon from '../SvgIcon.svelte'
+  import { DrawerFooter, DrawerHeader, FormInput, FormUpload, IconButton, PageState } from '$lib/components'
   import { loadData } from '$lib/utils/apiHelpers'
   import { apiPost, apiUpdate, apiDelete } from '$lib/utils/api'
   import { showMessage } from '$lib/utils'
@@ -57,7 +54,7 @@
     loading = true
     const result = await loadData<Digital>(
       `/api/_/products/${drawer.product.id}/digital`,
-      'Failed to load digital content'
+      t('digital.failedToLoadContent')
     )
     if (result) {
       digital = {
@@ -76,7 +73,7 @@
   async function handleUpload(event: CustomEvent) {
     if (event.detail.success && event.detail.result) {
       digital.files = [...digital.files, event.detail.result]
-      showMessage('File uploaded', 'connextSuccess')
+      showMessage(t('common.fileUploaded'), 'connextSuccess')
       if (onContentUpdate) {
         onContentUpdate()
       }
@@ -133,32 +130,27 @@
         onContentUpdate()
       }
     } else {
-      showMessage(result.message || 'Failed to delete', 'connextError')
+      showMessage(result.message || t('common.failedToDelete'), 'connextError')
     }
   }
 </script>
 
 <div>
-  <div class="pb-8">
-    <div class="flex items-center">
-      <div class="pr-3">
-        <h1>{t('digital.digitalType', { type: digital.type })}</h1>
-        {#if digital.type === 'file'}
-          <p class="mt-4">
-            {t('digital.fileDescription')}
-          </p>
-        {/if}
-        {#if digital.type === 'data'}
-          <p class="mt-4">
-            {t('digital.dataDescription')}
-          </p>
-        {/if}
-      </div>
-    </div>
-  </div>
+  <DrawerHeader title={t('digital.digitalType', { type: digital.type })} />
+
+  {#if digital.type === 'file'}
+    <p class="mb-4">
+      {t('digital.fileDescription')}
+    </p>
+  {/if}
+  {#if digital.type === 'data'}
+    <p class="mb-4">
+      {t('digital.dataDescription')}
+    </p>
+  {/if}
 
   {#if loading}
-    <div class="py-8 text-center">{t('common.loading')}</div>
+    <PageState kind="loading" />
   {:else if digital.type === 'file'}
     <!-- File section -->
     <div class="flow-root">
@@ -175,25 +167,19 @@
                 >
                   {file.orig_name || file.name}.{file.ext}
                 </a>
-                <div
-                  class="mt-3 ml-3 cursor-pointer"
-                  role="button"
-                  tabindex="0"
-                  onclick={() => deleteDigital('file', index)}
-                  onkeydown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      deleteDigital('file', index)
-                    }
-                  }}
-                >
-                  <SvgIcon name="trash" className="h-5 w-5" stroke="currentColor" />
+                <div class="mt-3 ml-3">
+                  <IconButton
+                    ico="trash"
+                    label={t('common.delete')}
+                    variant="danger"
+                    onclick={() => deleteDigital('file', index)}
+                  />
                 </div>
               </div>
             {/each}
           </div>
         {/if}
-        <Upload section="digital" productId={drawer.product.id} onadded={handleUpload} />
+        <FormUpload section="digital" productId={drawer.product.id} onadded={handleUpload} />
       </div>
     </div>
   {:else if digital.type === 'data'}
@@ -214,19 +200,13 @@
                     onfocusout={() => saveData(index)}
                   />
                 </div>
-                <div
-                  class="flex-none cursor-pointer pt-3 pl-3"
-                  role="button"
-                  tabindex="0"
-                  onclick={() => deleteDigital('data', index)}
-                  onkeydown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      deleteDigital('data', index)
-                    }
-                  }}
-                >
-                  <SvgIcon name="trash" className="h-5 w-5" stroke="currentColor" />
+                <div class="flex-none pt-3 pl-3">
+                  <IconButton
+                    ico="trash"
+                    label={t('common.delete')}
+                    variant="danger"
+                    onclick={() => deleteDigital('data', index)}
+                  />
                 </div>
               {:else}
                 <!-- Sold - read-only with badge -->
@@ -260,10 +240,8 @@
       </div>
     </div>
   {:else}
-    <div class="mt-4 flow-root">Select digital type</div>
+    <PageState kind="empty" message={t('products.selectDigitalType')} />
   {/if}
 
-  <div class="pt-5">
-    <FormButton type="button" name={t('common.close')} color="green" onclick={close} />
-  </div>
+  <DrawerFooter onclose={close} />
 </div>
