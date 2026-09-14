@@ -8,8 +8,6 @@ import (
 )
 
 func TestReorderProductImages(t *testing.T) {
-	t.Parallel()
-
 	app, _, cleanup := testutil.SetupTestApp(t)
 	defer cleanup()
 
