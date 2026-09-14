@@ -19,7 +19,14 @@
     "operationFailed": "Operation failed",
     "networkError": "Network error",
     "failedToLoadData": "Failed to load data",
-    "failedToSaveData": "Failed to save data"
+    "failedToSaveData": "Failed to save data",
+    "preview": "Preview",
+    "fileUploaded": "File uploaded",
+    "pageNotFound": "Page not found",
+    "addRecord": "Add record",
+    "home": "Home",
+    "signOut": "Sign out",
+    "viewRelease": "View release information"
   },
   "menu": {
     "products": "Products",
@@ -116,7 +123,9 @@
     "dribbble": "Dribbble",
     "github": "GitHub",
     "youtube": "YouTube",
-    "otherUrl": "Other (URL)"
+    "otherUrl": "Other (URL)",
+    "paymentProviders": "Payment Providers",
+    "displaySettings": "Display Settings"
   },
   "auth": {
     "login": "Login",
@@ -148,7 +157,31 @@
     "domainInvalid": "Domain is not valid",
     "installedSuccessfully": "Cart installed successfully!",
     "installationFailed": "Installation failed",
-    "networkError": "Network error. Please try again."
+    "networkError": "Network error. Please try again.",
+    "database": "Database",
+    "databaseDriver": "Database engine",
+    "databaseSQLite": "SQLite (built-in, default)",
+    "databasePostgres": "PostgreSQL",
+    "databaseLocked": "The database is fixed by the server configuration:",
+    "useConnectionString": "Use a connection string",
+    "connectionString": "Connection string",
+    "host": "Host",
+    "port": "Port",
+    "databaseName": "Database name",
+    "user": "User",
+    "dbPassword": "Password",
+    "sslMode": "SSL mode",
+    "testConnection": "Test connection",
+    "testingConnection": "Testing…",
+    "testConnectionFirst": "Test the connection before installing",
+    "connectionOk": "Connection successful",
+    "connectionFailed": "Connection failed",
+    "errors": {
+      "databaseAlreadyInstalled": "The selected database already holds an installed cart",
+      "databaseConnectionFailed": "Failed to connect to the selected database",
+      "databaseInspectionFailed": "Failed to inspect the selected database",
+      "migrationsFailed": "Database schema migration failed. Check server logs for details"
+    }
   },
   "products": {
     "title": "Products",
@@ -188,6 +221,8 @@
     "ifZeroPriceFree": "(if 0, the price will be free)",
     "imageDeleted": "Image deleted",
     "failedToDeleteImage": "Failed to delete image",
+    "imageUploaded": "Image uploaded successfully",
+    "imageUploadFailed": "Failed to upload image",
     "productVariants": "Product Variants",
     "variantsDescription": "Create product variations with different options like size, color, or material",
     "enableVariants": "Enable Variants",
@@ -211,6 +246,11 @@
     "tooManyVariants": "Warning: Maximum 100 variants allowed",
     "created": "Product created successfully",
     "updated": "Product updated successfully",
+    "imagesReordered": "Images reordered successfully",
+    "failedToReorderImages": "Failed to reorder images",
+    "representativeSet": "Representative image set successfully",
+    "failedToSetRepresentative": "Failed to set representative image",
+    "firstImageDescription": "First image is shown in product listings and accessible at /products/{urlslug}.png",
     "csv": {
       "exportProducts": "Export Products",
       "exportDescription": "Download all products as CSV file",
@@ -239,7 +279,12 @@
       "optionalFields": "Optional fields",
       "variantFields": "Variant fields",
       "variantNote": "Variant format: [Option:Value1;Value2]=>VariantData|VariantData (e.g., [Size:S;M;L]=>S,0,10,SKU-S|M,500,20,SKU-M)"
-    }
+    },
+    "optionNameNumbered": "Option {{index}} Name",
+    "optionValueNumbered": "Option {{index}} Value {{value}}",
+    "selectDigitalType": "Select digital type",
+    "toggleActive": "Toggle active",
+    "optionNameExists": "Option name \"{{name}}\" already exists. Please use a unique name."
   },
   "carts": {
     "title": "Carts",
@@ -274,7 +319,8 @@
     "quantityColumn": "Qty",
     "subtotalColumn": "Subtotal",
     "mailSentSuccessfully": "Mail sent successfully",
-    "failedToSendMailMessage": "Failed to send mail"
+    "failedToSendMailMessage": "Failed to send mail",
+    "sendMail": "Send mail"
   },
   "pages": {
     "title": "Pages",
@@ -298,7 +344,8 @@
     "failedToUpdatePage": "Failed to update page",
     "seoTitle": "Title",
     "seoKeywords": "Keywords",
-    "seoDescription": "Description"
+    "seoDescription": "Description",
+    "toggleActive": "Toggle active"
   },
   "payment": {
     "stripe": "Stripe",
@@ -321,10 +368,20 @@
     "projectId": "Project ID",
     "privateKey": "Private key",
     "failedToLoad": "Failed to load settings",
-    "failedToSave": "Failed to save settings"
+    "failedToSave": "Failed to save settings",
+    "priceDisplay": "Price Display",
+    "currencyRequired": "Currency is required",
+    "currencyMustBeOneOf": "Currency must be one of: {{list}}",
+    "currencySaved": "Currency saved",
+    "truncationSaved": "Truncation settings saved",
+    "numberFormatSaved": "Number formatting saved",
+    "symbolDisplaySaved": "Symbol display saved",
+    "failedToLoadSettings": "Failed to load payment settings",
+    "apiKey": "API Key"
   },
   "form": {
-    "pleaseSelect": "Please select"
+    "pleaseSelect": "Please select",
+    "uploadLabel": "Upload file"
   },
   "pagination": {
     "previous": "Previous",
@@ -338,7 +395,8 @@
     "sold": "Sold",
     "digitalType": "Digital {{type}}",
     "fileDescription": "This is the product that the user purchases. Upload the files that will be sent to the buyer after payment to the email address provided during checkout.",
-    "dataDescription": "Enter the digital product that you intend to sell. It can be a unique item, such as a license key."
+    "dataDescription": "Enter the digital product that you intend to sell. It can be a unique item, such as a license key.",
+    "failedToLoadContent": "Failed to load digital content"
   },
   "letter": {
     "updateLetter": "Update letter",
@@ -361,5 +419,22 @@
     "invalidEmail": "Invalid email",
     "invalidUrl": "Invalid URL",
     "invalidNumber": "Invalid number"
+  },
+  "editor": {
+    "undo": "Undo",
+    "redo": "Redo",
+    "bold": "Bold",
+    "italic": "Italic",
+    "strike": "Strikethrough",
+    "paragraph": "Paragraph",
+    "h1": "Heading 1",
+    "h2": "Heading 2",
+    "h3": "Heading 3",
+    "bulletlist": "Bullet list",
+    "orderedList": "Numbered list",
+    "blockquote": "Quote",
+    "toolbar": "Text formatting",
+    "horizontalRule": "Divider",
+    "clearFormatting": "Clear formatting"
   }
 }

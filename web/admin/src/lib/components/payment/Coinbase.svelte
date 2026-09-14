@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
-  import FormButton from '../form/Button.svelte'
   import FormInput from '../form/Input.svelte'
   import FormToggle from '../form/Toggle.svelte'
   import { loadPaymentSettings, savePaymentSettings, togglePaymentActive } from '$lib/composables/usePaymentSettings'
@@ -8,6 +7,7 @@
   import { MIN_COINBASE_API_KEY_LENGTH, ERROR_MESSAGES } from '$lib/constants/validation'
   import type { CoinbaseSettings } from '$lib/types/models'
   import { translate } from '$lib/i18n'
+  import { DrawerFooter, DrawerHeader } from '$lib/components'
 
   // Reactive translation function
   let t = $derived($translate)
@@ -39,8 +39,7 @@
     unsubscribe?.()
   })
 
-  async function handleSubmit(event: SubmitEvent) {
-    event.preventDefault()
+  async function handleSubmit() {
     formErrors = {}
 
     if (!settings.api_key || settings.api_key.length < MIN_COINBASE_API_KEY_LENGTH) {
@@ -66,29 +65,24 @@
 </script>
 
 <div>
-  <div class="pb-8">
-    <div class="flex items-center">
-      <div class="pr-3">
-        <h1>Coinbase Commerce</h1>
-      </div>
-      <div class="pt-1">
-        <FormToggle
-          id="coinbase-active"
-          bind:value={settings.active}
-          disabled={Object.keys(formErrors).length > 0}
-          onchange={handleToggleActive}
-        />
-      </div>
-    </div>
-  </div>
+  <DrawerHeader title="Coinbase Commerce">
+    {#snippet actions()}
+      <FormToggle
+        id="coinbase-active"
+        bind:value={settings.active}
+        disabled={Object.keys(formErrors).length > 0}
+        onchange={handleToggleActive}
+      />
+    {/snippet}
+  </DrawerHeader>
 
-  <form onsubmit={handleSubmit}>
+  <form onsubmit={(e) => { e.preventDefault(); handleSubmit() }}>
     <div class="flow-root">
       <dl class="mx-auto -my-3 mt-2 mb-0 space-y-4 text-sm">
         <FormInput
           id="api_key"
           type="text"
-          title="API Key"
+          title={t('payment.apiKey')}
           bind:value={settings.api_key}
           error={formErrors.api_key}
           ico="key"
@@ -96,16 +90,6 @@
       </dl>
     </div>
 
-    <div class="pt-8">
-      <div class="flex">
-        <div class="flex-none">
-          <FormButton type="submit" name={t('common.save')} color="green" />
-        </div>
-        <div class="grow"></div>
-        <div class="flex-none">
-          <FormButton type="button" name={t('common.close')} color="gray" onclick={close} />
-        </div>
-      </div>
-    </div>
+    <DrawerFooter onclose={close} submitLabel={t('common.save')} />
   </form>
 </div>

@@ -429,6 +429,12 @@ chrome --version    # Should show Chromium version
 ffmpeg -version     # Should show ffmpeg 8.x with codecs
 ```
 
+Patchright ships no browser for the BSDs, so point the suite at the system one:
+
+```bash
+E2E_EXECUTABLE_PATH=/usr/local/bin/chrome npm run test:e2e
+```
+
 ### Running E2E Tests
 
 ```bash
@@ -443,6 +449,9 @@ npm run test:e2e:ui
 
 # Run with debugging
 npm run test:e2e:debug
+
+# Run on another port, when something already holds 8080
+E2E_PORT=8090 npm run test:e2e
 
 # View test report
 npm run test:e2e:report
@@ -468,12 +477,14 @@ ln -sf /usr/local/bin/ffmpeg ~/.cache/ms-playwright/ffmpeg-1011/ffmpeg-linux
 
 #### Tests fail to start Chrome
 
-**Cause:** Chromium not installed or wrong path.
+**Cause:** Chromium not installed, or the suite is looking for patchright's own
+build, which does not exist for the BSDs.
 
 **Solution:**
 ```bash
 doas pkg_add chromium
 which chrome  # Should show /usr/local/bin/chrome
+E2E_EXECUTABLE_PATH=/usr/local/bin/chrome npm run test:e2e
 ```
 
 #### Patchright patches not applied

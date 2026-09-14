@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
-  import FormButton from '../form/Button.svelte'
   import FormInput from '../form/Input.svelte'
   import FormToggle from '../form/Toggle.svelte'
   import { loadPaymentSettings, savePaymentSettings, togglePaymentActive } from '$lib/composables/usePaymentSettings'
@@ -13,6 +12,7 @@
   } from '$lib/constants/validation'
   import type { PortoneSettings, PaymentSettings } from '$lib/types/models'
   import { translate } from '$lib/i18n'
+  import { DrawerFooter, DrawerHeader } from '$lib/components'
   import { loadSettings } from '$lib/utils/settingsHelpers'
 
   // Reactive translation function
@@ -47,11 +47,8 @@
 
     // Load store's default currency
     const paymentSettings = await loadSettings<PaymentSettings>('payment', { currency: '' })
-    console.log('PortOne: Loaded payment settings:', paymentSettings)
     if (paymentSettings?.currency) {
       storeCurrency = paymentSettings.currency
-      console.log('PortOne: Store currency set to:', storeCurrency)
-      console.log('PortOne: Show warning?', storeCurrency !== 'KRW')
     }
 
     unsubscribe = systemStore.subscribe((store) => {
@@ -65,8 +62,7 @@
     unsubscribe?.()
   })
 
-  async function handleSubmit(event: SubmitEvent) {
-    event.preventDefault()
+  async function handleSubmit() {
     formErrors = {}
 
     if (!settings.store_id || settings.store_id.length < MIN_PORTONE_STORE_ID_LENGTH) {
@@ -100,23 +96,18 @@
 </script>
 
 <div>
-  <div class="pb-8">
-    <div class="flex items-center">
-      <div class="pr-3">
-        <h1>PortOne</h1>
-      </div>
-      <div class="pt-1">
-        <FormToggle
-          id="portone-active"
-          bind:value={settings.active}
-          disabled={Object.keys(formErrors).length > 0}
-          onchange={handleToggleActive}
-        />
-      </div>
-    </div>
-  </div>
+  <DrawerHeader title="PortOne">
+    {#snippet actions()}
+      <FormToggle
+        id="portone-active"
+        bind:value={settings.active}
+        disabled={Object.keys(formErrors).length > 0}
+        onchange={handleToggleActive}
+      />
+    {/snippet}
+  </DrawerHeader>
 
-  <form onsubmit={handleSubmit}>
+  <form onsubmit={(e) => { e.preventDefault(); handleSubmit() }}>
     <div class="flow-root">
       <dl class="mx-auto -my-3 mt-2 mb-0 space-y-4 text-sm">
         <FormInput
@@ -140,8 +131,8 @@
         />
       </dl>
 
-      <div class="mx-auto mt-5 p-3 bg-blue-50 border border-blue-200 rounded text-blue-800">
-        <p class="text-xs">
+      <div class="notice notice-info mx-auto mt-5">
+        <p class="text-sm">
           ℹ️ {t('payment.portone.pgSupportInfo')}
         </p>
       </div>
@@ -159,17 +150,17 @@
 
       <dl class="mx-auto -my-3 mt-5 mb-0 space-y-4 text-sm">
         <div class="flex items-center gap-4">
-          <label for="debug-enabled" class="font-medium">{t('payment.portone.debugEnabled') || 'Debug Mode'}</label>
           <FormToggle
             id="debug-enabled"
             bind:value={settings.debug_enabled}
+            label={t('payment.portone.debugEnabled')}
           />
         </div>
-        <p class="text-xs text-gray-500 mt-1">{t('payment.portone.debugEnabledDesc') || 'Show debug logs in browser console'}</p>
+        <p class="text-xs text-gray-500 mt-1">{t('payment.portone.debugEnabledDesc')}</p>
       </dl>
 
       {#if showCurrencyWarning}
-        <div class="mx-auto mt-5 p-3 bg-yellow-50 border border-yellow-200 rounded text-yellow-800">
+        <div class="notice notice-warning mx-auto mt-5">
           <p class="text-sm font-medium">⚠️ {t('payment.portone.currencyWarning')}</p>
           <p class="text-xs mt-1">
             {t('payment.portone.currencyWarningDesc', { currency: storeCurrency })}
@@ -178,16 +169,6 @@
       {/if}
     </div>
 
-    <div class="pt-8">
-      <div class="flex">
-        <div class="flex-none">
-          <FormButton type="submit" name={t('common.save')} color="green" />
-        </div>
-        <div class="grow"></div>
-        <div class="flex-none">
-          <FormButton type="button" name={t('common.close')} color="gray" onclick={close} />
-        </div>
-      </div>
-    </div>
+    <DrawerFooter onclose={close} submitLabel={t('common.save')} />
   </form>
 </div>

@@ -56,3 +56,38 @@ func TestNewToken_IsHexAndStable(t *testing.T) {
 		t.Error("NewToken returned identical outputs for different inputs")
 	}
 }
+
+// bcrypt refuses inputs longer than 72 bytes. GeneratePassword must surface that
+// as the error string rather than a truncated hash of the first 72 bytes: a
+// silent truncation would make two different passwords share one hash.
+func TestGeneratePassword_TooLongInput(t *testing.T) {
+	t.Parallel()
+
+	const tooLong = 73
+
+	got := GeneratePassword(strings.Repeat("a", tooLong))
+	if got == "" {
+		t.Fatal("GeneratePassword returned an empty string")
+	}
+	if !strings.HasPrefix(got, "bcrypt:") {
+		t.Errorf("an over-long password should produce bcrypt's error text, got %q", got)
+	}
+	if ComparePasswords(got, strings.Repeat("a", tooLong)) {
+		t.Error("the error text was accepted as a password hash")
+	}
+}
+
+func TestNewToken_TooLongInput(t *testing.T) {
+	t.Parallel()
+
+	token, err := NewToken(strings.Repeat("a", 73))
+	if err == nil {
+		t.Fatalf("an over-long token input was accepted, token = %q", token)
+	}
+	if token != "" {
+		t.Errorf("token returned alongside the error: %q", token)
+	}
+	if !strings.Contains(err.Error(), "bcrypt hash:") {
+		t.Errorf("error %q does not say where it came from", err)
+	}
+}

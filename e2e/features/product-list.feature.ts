@@ -53,4 +53,29 @@ export class ProductListFeature {
     const name = await product.locator('h3').textContent()
     return name?.trim() || ''
   }
+  /**
+   * One product card, found by name. Products created for a single test are
+   * looked up by name because their position in the list is not fixed.
+   */
+  cardByName(name: string) {
+    return this.page.locator('[data-testid="product-card"]').filter({ hasText: name }).first()
+  }
+
+  async waitForProduct(name: string) {
+    await this.cardByName(name).waitFor({ state: 'visible', timeout: 10000 })
+  }
+
+  async addToCartByName(name: string) {
+    const card = this.cardByName(name)
+    await card.waitFor({ state: 'visible', timeout: 10000 })
+    // Look for the green add button (bg-green-500)
+    await card.locator('button.bg-green-500').first().click()
+    // Wait for button to change to red (verifies item was added)
+    await card.locator('button.bg-red-500').first().waitFor({ state: 'visible', timeout: 5000 })
+  }
+
+  async verifyInCartByName(name: string) {
+    const removeButton = this.cardByName(name).locator('button.bg-red-500').first()
+    await expect(removeButton).toBeVisible({ timeout: 5000 })
+  }
 }

@@ -3,116 +3,218 @@
 
   interface ImageItem {
     id: string
-    name: string
-    ext: string
-    position?: number
+    url: string
+    position: number
+    is_representative: boolean
   }
 
   interface Props {
     images: ImageItem[]
-    onReorder: (newOrder: ImageItem[]) => void
-    onDelete: (index: number) => void
+    onReorder?: (updates: Array<{ imageId: string; position: number }>) => void
+    onSetRepresentative?: (imageId: string) => void
   }
 
-  let { images, onReorder, onDelete }: Props = $props()
+  let { images, onReorder, onSetRepresentative }: Props = $props()
 
-  let items = $state<ImageItem[]>([...images])
   let draggedIndex = $state<number | null>(null)
-  let dragOverIndex = $state<number | null>(null)
+  let dropTargetIndex = $state<number | null>(null)
 
-  // Sync items when images prop changes
-  $effect(() => {
-    items = [...images]
-  })
+  // Sort images by position for display
+  let sortedImages = $derived(
+    [...images].sort((a, b) => a.position - b.position)
+  )
 
   function handleDragStart(event: DragEvent, index: number) {
+    if (!event.dataTransfer) return
     draggedIndex = index
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move'
-      event.dataTransfer.setData('text/html', String(index))
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/html', String(index))
+
+    // Add opacity to dragged element
+    if (event.target instanceof HTMLElement) {
+      event.target.style.opacity = '0.4'
     }
+  }
+
+  function handleDragEnd(event: DragEvent) {
+    // Reset opacity
+    if (event.target instanceof HTMLElement) {
+      event.target.style.opacity = '1'
+    }
+    draggedIndex = null
+    dropTargetIndex = null
   }
 
   function handleDragOver(event: DragEvent, index: number) {
     event.preventDefault()
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'move'
-    }
-    dragOverIndex = index
+    if (!event.dataTransfer) return
+
+    event.dataTransfer.dropEffect = 'move'
+    dropTargetIndex = index
   }
 
   function handleDragLeave() {
-    dragOverIndex = null
+    dropTargetIndex = null
   }
 
-  function handleDrop(event: DragEvent, dropIndex: number) {
+  function handleDrop(event: DragEvent, targetIndex: number) {
     event.preventDefault()
 
-    if (draggedIndex === null || draggedIndex === dropIndex) {
+    if (draggedIndex === null || draggedIndex === targetIndex) {
       draggedIndex = null
-      dragOverIndex = null
+      dropTargetIndex = null
       return
     }
 
-    const newItems = [...items]
-    const [draggedItem] = newItems.splice(draggedIndex, 1)
-    newItems.splice(dropIndex, 0, draggedItem)
+    const reorderedImages = [...sortedImages]
+    const [draggedItem] = reorderedImages.splice(draggedIndex, 1)
+    reorderedImages.splice(targetIndex, 0, draggedItem)
 
-    items = newItems
-    onReorder(newItems)
+    // Build updates array with new positions
+    const updates = reorderedImages.map((img, idx) => ({
+      imageId: img.id,
+      position: idx
+    }))
+
+    onReorder?.(updates)
 
     draggedIndex = null
-    dragOverIndex = null
+    dropTargetIndex = null
   }
 
-  function handleDragEnd() {
-    draggedIndex = null
-    dragOverIndex = null
-  }
-
-  function handleDelete(index: number) {
-    onDelete(index)
+  function handleSetRepresentative(imageId: string) {
+    onSetRepresentative?.(imageId)
   }
 </script>
 
-<div class="flex flex-wrap gap-3">
-  {#each items as image, index (image.id)}
-    <div
-      draggable="true"
-      ondragstart={(e) => handleDragStart(e, index)}
-      ondragover={(e) => handleDragOver(e, index)}
-      ondragleave={handleDragLeave}
-      ondrop={(e) => handleDrop(e, index)}
-      ondragend={handleDragEnd}
-      class="group relative rounded-lg border-2 border-gray-200 bg-white p-2 transition-all cursor-grab active:cursor-grabbing {draggedIndex === index
-        ? 'opacity-50'
-        : ''} {dragOverIndex === index ? 'border-blue-500' : ''}"
-    >
-      <!-- Image Preview -->
-      <div class="relative">
-        <img
-          src="/uploads/{image.name}_sm.{image.ext}"
-          alt="Product image {index + 1}"
-          class="h-24 w-24 rounded object-cover"
-        />
-        {#if index === 0}
-          <div
-            class="absolute -top-1 -right-1 rounded-full bg-blue-500 px-2 py-0.5 text-xs font-medium text-white shadow-sm"
-          >
-            Rep
-          </div>
-        {/if}
-
-        <!-- Delete Button (shows on hover) -->
-        <button
-          type="button"
-          onclick={() => handleDelete(index)}
-          class="absolute -top-2 -left-2 rounded-full bg-red-600 p-1.5 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-700"
-          aria-label="Delete image"
-        >
-          <SvgIcon name="trash" className="h-3 w-3" stroke="currentColor" />
-        </button>
-      </div>
+<div class="sortable-image-container">
+  {#if sortedImages.length === 0}
+    <div class="empty-state">
+      <SvgIcon name="photo" className="h-12 w-12 text-gray-400" />
+      <p class="text-sm text-gray-500 mt-2">No images uploaded</p>
     </div>
-  {/each}
+  {:else}
+    <div class="info-text">
+      <p class="text-sm text-gray-600 mb-3">
+        <span class="font-medium">First image is shown in product listings</span> and accessible at <code>/products/{'{urlslug}'}.png</code>
+      </p>
+    </div>
+    <div class="image-grid">
+      {#each sortedImages as image, index (image.id)}
+        <div
+          class="image-item {dropTargetIndex === index ? 'drop-target' : ''}"
+          draggable="true"
+          ondragstart={(e) => handleDragStart(e, index)}
+          ondragend={handleDragEnd}
+          ondragover={(e) => handleDragOver(e, index)}
+          ondragleave={handleDragLeave}
+          ondrop={(e) => handleDrop(e, index)}
+          role="button"
+          tabindex="0"
+        >
+          <div class="image-wrapper">
+            <img src={image.url} alt="Product image {index + 1}" class="image-preview" />
+
+            {#if index === 0}
+              <div class="rep-badge">
+                <span class="text-xs font-bold">REP</span>
+              </div>
+            {/if}
+
+            {#if image.is_representative}
+              <div class="representative-badge">
+                <SvgIcon name="star" className="h-4 w-4 text-yellow-500" fill="currentColor" />
+              </div>
+            {/if}
+
+            <div class="image-overlay">
+              <button
+                type="button"
+                class="overlay-button"
+                onclick={() => handleSetRepresentative(image.id)}
+                aria-label="Set as representative image"
+              >
+                <SvgIcon
+                  name="star"
+                  className="h-5 w-5"
+                  fill={image.is_representative ? 'currentColor' : 'none'}
+                />
+                <span class="text-xs">
+                  {image.is_representative ? 'Main' : 'Set Main'}
+                </span>
+              </button>
+            </div>
+
+            <div class="position-indicator">
+              {index + 1}
+            </div>
+          </div>
+        </div>
+      {/each}
+    </div>
+  {/if}
 </div>
+
+<style>
+  @reference "tailwindcss";
+
+  :global(.sortable-image-container) {
+    @apply w-full;
+  }
+
+  :global(.info-text) {
+    @apply mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg;
+  }
+
+  :global(.info-text code) {
+    @apply bg-white px-2 py-0.5 rounded text-blue-700 font-mono text-xs;
+  }
+
+  :global(.empty-state) {
+    @apply flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg;
+  }
+
+  :global(.image-grid) {
+    @apply grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4;
+  }
+
+  :global(.image-item) {
+    @apply relative cursor-move rounded-lg border-2 border-gray-200 bg-white transition-all;
+  }
+
+  :global(.image-item:hover) {
+    @apply border-blue-400 shadow-md;
+  }
+
+  :global(.image-item.drop-target) {
+    @apply border-blue-500 border-dashed bg-blue-50;
+  }
+
+  :global(.image-wrapper) {
+    @apply relative aspect-square overflow-hidden rounded-md;
+  }
+
+  :global(.image-preview) {
+    @apply w-full h-full object-cover;
+  }
+
+  :global(.rep-badge) {
+    @apply absolute top-2 left-2 bg-blue-600 text-white rounded px-2 py-1 shadow-md z-10;
+  }
+
+  :global(.representative-badge) {
+    @apply absolute top-2 right-2 bg-white rounded-full p-1 shadow-md;
+  }
+
+  :global(.image-overlay) {
+    @apply absolute inset-0 bg-black/0 hover:bg-black/50 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100;
+  }
+
+  :global(.overlay-button) {
+    @apply flex flex-col items-center gap-1 text-white font-medium px-3 py-2 rounded-md bg-black/50 hover:bg-black/70 transition-all;
+  }
+
+  :global(.position-indicator) {
+    @apply absolute bottom-2 left-2 bg-gray-900/75 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center;
+  }
+</style>

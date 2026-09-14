@@ -1,21 +1,29 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import Main from '$lib/layouts/Main.svelte'
-  import Drawer from '$lib/components/Drawer.svelte'
-  import ProductView from '$lib/components/product/View.svelte'
+  import {
+    Drawer,
+    DrawerFooter,
+    DrawerHeader,
+    Editor,
+    FormButton,
+    FormGroup,
+    FormInput,
+    FormSelect,
+    FormTextarea,
+    FormUpload,
+    IconButton,
+    PageHeader,
+    PageState,
+    Pagination,
+    ProductView,
+    SortableImage,
+    SvgIcon
+  } from '$lib/components'
   import ProductSeo from '$lib/components/product/Seo.svelte'
   import ProductDigital from '$lib/components/product/Digital.svelte'
   import VariantManager from '$lib/components/product/VariantManager.svelte'
   import CsvImportExport from '$lib/components/product/CsvImportExport.svelte'
-  import FormButton from '$lib/components/form/Button.svelte'
-  import FormInput from '$lib/components/form/Input.svelte'
-  import FormSelect from '$lib/components/form/Select.svelte'
-  import FormTextarea from '$lib/components/form/Textarea.svelte'
-  import Editor from '$lib/components/Editor.svelte'
-  import Upload from '$lib/components/form/Upload.svelte'
-  import SortableImage from '$lib/components/SortableImage.svelte'
-  import SvgIcon from '$lib/components/SvgIcon.svelte'
-  import Pagination from '$lib/components/Pagination.svelte'
   import { loadData, saveData, deleteData, toggleActive as toggleActiveApi } from '$lib/utils/apiHelpers'
   import { costFormat, formatPrice, formatDate, sortByDate, confirmDelete, showMessage } from '$lib/utils'
   import { formatCurrencyWithTruncation } from '$lib/utils/currency'
@@ -566,11 +574,70 @@
 
   function handleUpload(result: any) {
     if (result?.success) {
-      showMessage('File uploaded', 'connextSuccess')
+      showMessage(t('products.imageUploaded'), 'connextSuccess')
       if (result?.result && fullProductData) {
         productImages = [...(productImages || []), result.result]
       }
       loadProducts()
+    } else {
+      // Show error message from server
+      const errorMsg = result?.message || result?.result || t('products.imageUploadFailed')
+      showMessage(errorMsg, 'connextError')
+    }
+  }
+
+  async function handleImageReorder(updates: Array<{ imageId: string; position: number }>) {
+    if (!fullProductData) return
+
+    try {
+      const res = await fetch(`/api/_/products/${fullProductData.id}/images/reorder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates })
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        showMessage(data.message || t('products.failedToReorderImages'), 'connextError')
+        return
+      }
+
+      showMessage(t('products.imagesReordered'), 'connextSuccess')
+
+      // Refetch product data to get updated positions
+      const updatedProduct = await loadData<Product>(`/api/_/products/${fullProductData.id}`, 'Failed to load product')
+      if (updatedProduct) {
+        productImages = updatedProduct.images || []
+      }
+    } catch (error) {
+      showMessage(t('common.networkError'), 'connextError')
+    }
+  }
+
+  async function handleSetRepresentative(imageId: string) {
+    if (!fullProductData) return
+
+    try {
+      const res = await fetch(`/api/_/products/${fullProductData.id}/images/${imageId}/representative`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        showMessage(data.message || t('products.failedToSetRepresentative'), 'connextError')
+        return
+      }
+
+      showMessage(t('products.representativeSet'), 'connextSuccess')
+
+      // Refetch product data to get updated representative status
+      const updatedProduct = await loadData<Product>(`/api/_/products/${fullProductData.id}`, 'Failed to load product')
+      if (updatedProduct) {
+        productImages = updatedProduct.images || []
+      }
+    } catch (error) {
+      showMessage(t('common.networkError'), 'connextError')
     }
   }
 </script>
@@ -904,12 +971,17 @@
                 <p class="text-sm text-gray-600 mb-2">Drag to reorder • First image is the representative image</p>
                 {#if productImages && productImages.length > 0}
                   <SortableImage
-                    images={productImages}
+                    images={productImages.map(img => ({
+                      id: img.id,
+                      url: `/uploads/${img.name}_sm.${img.ext}`,
+                      position: img.position || 0,
+                      is_representative: img.is_representative || false
+                    }))}
                     onReorder={handleImageReorder}
-                    onDelete={deleteProductImage}
+                    onSetRepresentative={handleSetRepresentative}
                   />
                 {/if}
-                <Upload
+                <FormUpload
                   section="image"
                   productId={fullProductData.id}
                   accept=".jpg,.jpeg,.png"

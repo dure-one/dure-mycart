@@ -42,10 +42,10 @@ func (v Product) Validate() error {
 		validation.Field(&v.Images),
 		validation.Field(&v.Slug, validation.Required, validation.Length(3, 100)),
 		validation.Field(&v.Amount, validation.Min(0)),
-		validation.Field(&v.Quantity, validation.Min(0)),          // NEW
-		validation.Field(&v.SKU, validation.Length(0, 50)),        // NEW
-		validation.Field(&v.Options, validation.Length(0, 3)),     // NEW - Max 3 options
-		validation.Field(&v.Variants, validation.Length(0, 100)),  // NEW - Max 100 variants
+		validation.Field(&v.Quantity, validation.Min(0)),         // NEW
+		validation.Field(&v.SKU, validation.Length(0, 50)),       // NEW
+		validation.Field(&v.Options, validation.Length(0, 3)),    // NEW - Max 3 options
+		validation.Field(&v.Variants, validation.Length(0, 100)), // NEW - Max 100 variants
 		validation.Field(&v.Metadata),
 		validation.Field(&v.Attributes, validation.Each(validation.Length(3, 254))),
 		validation.Field(&v.Digital),
@@ -86,11 +86,12 @@ func (v Digital) Validate() error {
 
 // File is ...
 type File struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Ext      string `json:"ext"`
-	OrigName string `json:"orig_name,omitempty"`
-	Position *int   `json:"position,omitempty"`
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	Ext              string `json:"ext"`
+	OrigName         string `json:"orig_name,omitempty"`
+	Position         int    `json:"position"`
+	IsRepresentative bool   `json:"is_representative"`
 }
 
 // Validate is ...
@@ -120,12 +121,12 @@ func (v Data) Validate() error {
 
 // ProductOption represents an option type (Size, Color, etc.)
 type ProductOption struct {
-	ID        string              `json:"id"`
-	ProductID string              `json:"product_id"`
-	Name      string              `json:"name"`
+	ID        string               `json:"id"`
+	ProductID string               `json:"product_id"`
+	Name      string               `json:"name"`
 	Values    []ProductOptionValue `json:"values"`
-	Position  int                 `json:"position"`
-	Created   int64               `json:"created"`
+	Position  int                  `json:"position"`
+	Created   int64                `json:"created"`
 }
 
 // Validate validates ProductOption
@@ -156,7 +157,7 @@ type ProductVariant struct {
 	ID             string            `json:"id"`
 	ProductID      string            `json:"product_id"`
 	SKU            string            `json:"sku,omitempty"`
-	OptionValues   map[string]string `json:"option_values"` // {"Size": "Medium", "Color": "Black"}
+	OptionValues   map[string]string `json:"option_values"`   // {"Size": "Medium", "Color": "Black"}
 	PriceSurcharge int               `json:"price_surcharge"` // cents
 	Quantity       int               `json:"quantity"`
 	Images         []File            `json:"images,omitempty"`

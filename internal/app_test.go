@@ -2,15 +2,18 @@ package app
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/shurco/mycart/db/migrations"
-	"github.com/shurco/mycart/internal/store/db"
+	"github.com/shurco/mycart/internal/database"
+	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/migrations"
 	"github.com/shurco/mycart/pkg/logging"
 )
 
@@ -90,7 +93,7 @@ func TestIsInstallPath(t *testing.T) {
 
 func TestSetupFiberApp_BuildsAppWithLimits(t *testing.T) {
 	// log is a package-level pointer referenced by middleware.Fiber.
-	log = logging.New()
+	setLogger(logging.New())
 
 	app, err := setupFiberApp(false)
 	if err != nil {
@@ -112,8 +115,8 @@ func TestInstallCheck_RedirectsWhenNotInstalled(t *testing.T) {
 	}
 	_ = os.MkdirAll("lc_base", 0o775)
 	t.Cleanup(func() { _ = os.Chdir(prev) })
-	if err := db.Init(migrations.Embed()); err != nil {
-		t.Fatalf("db.Init: %v", err)
+	if err := queries.New(database.Config{Driver: database.DriverSQLite, DSN: database.DefaultSQLiteDSN}, migrations.Embed()); err != nil {
+		t.Fatalf("queries.New: %v", err)
 	}
 
 	app := fiber.New()
@@ -142,16 +145,42 @@ func TestInstallCheck_RedirectsWhenNotInstalled(t *testing.T) {
 }
 
 func TestStartServer_RespectsContextCancel(t *testing.T) {
-	log = logging.New()
+	setLogger(logging.New())
 	app := fiber.New()
+	app.Get("/ping", func(c fiber.Ctx) error { return c.SendString("pong") })
+
+	// StartServer takes an address rather than a listener, so the address has to
+	// be free before it is handed over.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	addr := ln.Addr().String()
+	_ = ln.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // already cancelled — StartServer should exit quickly.
-	// Use port 0 so the OS allocates; if Listen races past cancellation,
-	// Shutdown will still close the listener cleanly.
-	if err := StartServer(ctx, "127.0.0.1:0", app); err != nil {
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() { done <- StartServer(ctx, addr, app) }()
+
+	// Wait for the server to answer before cancelling. Handing StartServer a
+	// context that is already cancelled would have Shutdown find no listener to
+	// close yet, so Listen would create one afterwards and serve on it for the
+	// rest of the test binary — printing Fiber's banner to stdout at a moment of
+	// its own choosing, which lands in the middle of another test's capture of
+	// it. Waiting for the first answer proves Listen is past its banner already.
+	waitForServer(t, "http://"+addr+"/ping")
+	cancel()
+
+	select {
+	case err := <-done:
 		// a.Shutdown returning nil is the expected path.
-		t.Logf("StartServer exit: %v", err)
+		if err != nil {
+			t.Logf("StartServer exit: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("StartServer did not return after the context was cancelled")
 	}
 }
 
@@ -163,7 +192,7 @@ func TestInit_CreatesDirsAndDB(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(prev) })
 
-	if err := Init(); err != nil {
+	if err := Init(database.Config{Driver: database.DriverSQLite, DSN: database.DefaultSQLiteDSN}); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
 	for _, d := range []string{"lc_uploads", "lc_digitals", "lc_base"} {

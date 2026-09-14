@@ -26,22 +26,22 @@ func seedProductWithDigital(t *testing.T, soldCartID string) (string, string) {
 	database := db.DB()
 
 	productID := security.RandomString()
-	if _, err := database.ExecContext(ctx, `
-		INSERT INTO product (id, name, slug, desc, amount, quantity, digital, active, deleted)
-		VALUES (?, 'Guard Product', ?, 'desc', 1000, 1, 'file', 1, 0)
+	if _, err := db.ProductQueries.DB.ExecContext(ctx, `
+		INSERT INTO product (id, name, slug, "desc", amount, quantity, digital, active, deleted)
+		VALUES (?, 'Guard Product', ?, 'desc', 1000, 1, 'file', TRUE, FALSE)
 	`, productID, "guard-"+productID); err != nil {
 		t.Fatalf("insert product: %v", err)
 	}
 
 	fileID := security.RandomString()
-	if _, err := database.ExecContext(ctx,
+	if _, err := db.ProductQueries.DB.ExecContext(ctx,
 		`INSERT INTO digital_file (id, product_id, name, ext, orig_name) VALUES (?, ?, ?, 'pdf', 'manual.pdf')`,
 		fileID, productID, security.RandomString()+"-uuid"); err != nil {
 		t.Fatalf("insert digital_file: %v", err)
 	}
 
 	if soldCartID != "" {
-		if _, err := database.ExecContext(ctx,
+		if _, err := db.ProductQueries.DB.ExecContext(ctx,
 			`INSERT INTO digital_data (id, product_id, content, cart_id) VALUES (?, ?, 'KEY-001', ?)`,
 			security.RandomString(), productID, soldCartID); err != nil {
 			t.Fatalf("insert digital_data: %v", err)
@@ -56,7 +56,7 @@ func fileUUIDFor(t *testing.T, productID, fileID string) string {
 	t.Helper()
 
 	var name string
-	err := db.DB().QueryRowContext(context.Background(),
+	err := queries.DB().ProductQueries.DB.QueryRowContext(context.Background(),
 		`SELECT name FROM digital_file WHERE id = ? AND product_id = ?`, fileID, productID).Scan(&name)
 	if err != nil {
 		t.Fatalf("load digital file name: %v", err)
@@ -134,7 +134,7 @@ func TestDeleteProduct_SoldDigitalGuard(t *testing.T) {
 		testutil.AssertStatus(t, resp, http.StatusBadRequest)
 
 		var exists bool
-		if err := db.DB().QueryRowContext(ctx,
+		if err := db.ProductQueries.DB.QueryRowContext(ctx,
 			`SELECT EXISTS(SELECT 1 FROM product WHERE id = ?)`, soldProductID).Scan(&exists); err != nil {
 			t.Fatalf("check product: %v", err)
 		}
@@ -148,7 +148,7 @@ func TestDeleteProduct_SoldDigitalGuard(t *testing.T) {
 		testutil.AssertStatus(t, resp, http.StatusOK)
 
 		var exists bool
-		if err := db.DB().QueryRowContext(ctx,
+		if err := db.ProductQueries.DB.QueryRowContext(ctx,
 			`SELECT EXISTS(SELECT 1 FROM product WHERE id = ?)`, cleanProductID).Scan(&exists); err != nil {
 			t.Fatalf("check product: %v", err)
 		}

@@ -12,8 +12,12 @@ touching that subtree.
 ## 1. Orientation
 
 - **Language/runtime:** Go 1.26, SvelteKit (Svelte 5), TailwindCSS v4.
-- **Database:** embedded SQLite via `modernc.org/sqlite` (pure Go, no CGO); optional PostgreSQL support.
-- **Migrations:** [`goose`](https://github.com/pressly/goose) SQL files in `db/migrations/`; type-safe queries via [`sqlc`](https://sqlc.dev/).
+- **Database:** embedded SQLite via `modernc.org/sqlite` (pure Go, no CGO) by
+  default, PostgreSQL via `github.com/jackc/pgx/v5` when the operator chooses it
+  at install time. One query layer serves both — see
+  `internal/database/AGENTS.md` before writing SQL.
+- **Migrations:** [`goose`](https://github.com/pressly/goose) SQL files in
+  `migrations/`, one shared set for both engines.
 - **Entrypoint:** `cmd/main.go` → `internal/app.go` (Fiber v3 HTTP server).
 - **Distribution:** single binary with frontends embedded via `//go:embed`.
 
@@ -22,9 +26,8 @@ Repo layout:
 | Path | Purpose |
 |------|---------|
 | `cmd/` | `main` package and runtime-writable `lc_base/`, `lc_uploads/`, `lc_digitals/` dirs used in dev. |
-| `internal/` | Private application code (HTTP handlers, store layer, DB queries, middleware, mailer, webhooks). |
-| `internal/store/` | Business logic facade layer - handlers call this, delegates to database operations. |
-| `internal/store/db/` | Database abstraction layer using function pointers for query operations. |
+| `internal/` | Private application code (HTTP handlers, DB queries, middleware, mailer, webhooks). |
+| `internal/database/` | The only place that knows which engine is in use: connection, configuration, dialects, migrations runner. |
 | `pkg/` | Reusable packages that could in theory live in their own repo (`litepay`, `jwtutil`, `httpclient`, `webutil`, …). |
 | `web/admin/` | SvelteKit admin panel, served at `/_/`. |
 | `web/site/` | SvelteKit storefront, served at `/`. |
@@ -41,6 +44,22 @@ Repo layout:
 # Go
 go build ./...
 go vet ./...
+go test ./... -count=1 -race
+
+# The same suite on PostgreSQL. Without TEST_DB_DRIVER the tests run on
+# in-memory SQLite; the PostgreSQL run is what proves a change is portable.
+#
+# pgtestdb is the throwaway server from docker/docker-compose_dev.yml: a
+# tmpfs-backed postgres:17-alpine on port 5433, holding nothing worth keeping.
+# It is not the `postgres` service in that file, which holds a real shop's data.
+#
+# TEST_POSTGRES_DSN is an administrator connection to a *dedicated* test
+# server: pgtestdb creates a role (pgtdbuser) and template databases on it and
+# drops the per-test databases again. Never point it at a server with data
+# anybody wants to keep.
+docker compose -f docker/docker-compose.yml -f docker/docker-compose_dev.yml up -d pgtestdb
+TEST_DB_DRIVER=postgres \
+TEST_POSTGRES_DSN='postgres://postgres:password@localhost:5433/postgres?sslmode=disable' \
 go test ./... -count=1 -race
 
 # Admin SPA
@@ -80,10 +99,16 @@ Default admin credentials after `./scripts/migration dev up`:
   `bcrypt` + SHA-256.
 - **Pagination.** Use `webutil.ParsePagination(c)` in list handlers. It
   clamps to `[1, 100]` items per page.
-- **SQL safety.** Always parameterised queries. Use `INSERT OR REPLACE`
-  for idempotent session writes (`store.AddSession`).
-- **Handler pattern.** Handlers call `internal/store` methods, not database queries directly.
-  Store layer provides business logic facade over `internal/store/db` operations.
+- **SQL safety.** Always parameterised queries, through the wrapper in
+  `internal/database` — never `*sql.DB` directly, never `?`-only SQL sent to
+  PostgreSQL. Write portable SQL: `ON CONFLICT … DO UPDATE` instead of
+  `INSERT OR REPLACE`, `TRUE`/`FALSE` instead of `1`/`0`,
+  `CURRENT_TIMESTAMP` instead of `datetime('now')`, and dialect fragments
+  (epoch conversion, JSON aggregation) through `Dialect`.
+- **Dates.** Timestamps are stored without a time zone and read back as unix
+  seconds. The PostgreSQL session is pinned to UTC and the process refuses to
+  start otherwise; do not work around that pin, and do not format a stored
+  timestamp with the process's local time zone.
 
 Frontend (SvelteKit / Svelte 5):
 
@@ -103,8 +128,15 @@ Frontend (SvelteKit / Svelte 5):
 - Files: `*_test.go` next to the code under test.
 - Style: table-driven, parallel (`t.Parallel()`), `t.Cleanup()` /
   `t.TempDir()` / `t.Setenv()` instead of hand-rolled teardown.
-- Use [`testify`](https://github.com/stretchr/testify)
-  `require`/`assert`; helpers live in `internal/testutil/`.
+- Helpers live in `internal/testutil/`: `SetupTestDB` / `SetupCleanDB` /
+  `SetupTestApp` give each test a migrated database and install it as the
+  process-wide handle. They are dialect-parameterised — the same test runs on
+  SQLite and on PostgreSQL according to `TEST_DB_DRIVER`, so never hard-code
+  `sql.Open("sqlite", …)` or `:memory:` in a test.
+- On PostgreSQL each test gets a database of its own, cloned by pgtestdb from a
+  template that already holds the schema and the fixtures, so the migrations run
+  once per server rather than once per test. `internal/testutil/pgtest` owns
+  that; its AGENTS.md explains the constraints on `TEST_POSTGRES_DSN`.
 - Every public function should have at least one happy-path and one
   error-path test. Integration-style tests for handlers live in
   `internal/handlers/*/...*_test.go`.
@@ -126,6 +158,9 @@ Frontend (SvelteKit / Svelte 5):
 - [ ] JWT signing method assertion preserved in any new verifier.
 - [ ] User-authored HTML sanitised on the frontend.
 - [ ] New migrations have a working, non-destructive `Down`.
+- [ ] New SQL is portable (see `migrations/AGENTS.md`) and goes through the
+      dialect wrapper.
+- [ ] Nothing new logs a connection string: use `Config.Redacted()`.
 - [ ] Error responses do not leak internals (`log.ErrorStack`, but
       return `StatusInternalServerError` to clients).
 
@@ -136,10 +171,9 @@ Frontend (SvelteKit / Svelte 5):
 For deeper, directory-scoped guidance, read the nearest `AGENTS.md`:
 
 - `internal/AGENTS.md` — handler, query, middleware, webhook layers.
+- `internal/database/AGENTS.md` — the dialect layer, connections and
+  configuration; read this before adding a query.
 - `pkg/AGENTS.md` — public-ish library packages.
 - `web/AGENTS.md` — both SvelteKit apps.
-- `migrations/AGENTS.md` — migration authoring and pitfalls.
-
-**Developer guides:**
-
-- `docs/database-development.md` — comprehensive guide for database schema changes using goose + sqlc.
+- `migrations/AGENTS.md` — migration authoring, portability and the
+  append-only rule.

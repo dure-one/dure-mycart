@@ -8,15 +8,21 @@ import (
 	"github.com/shurco/mycart/internal/store/db"
 )
 
+// Querier is the database surface SlugService needs. It is declared here, on
+// the consumer side, so this package does not depend on the storage layer and
+// stays usable with any handle that rebinds placeholders for its dialect.
+type Querier interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 // SlugService handles slug generation and uniqueness checking
 type SlugService struct {
-	// No fields needed - uses db.CheckSlugExistsFunc function pointer
+	db Querier
 }
 
 // NewSlugService creates a new slug service
-// db parameter kept for backward compatibility but unused (migration to function pointers)
-func NewSlugService(_ interface{}) *SlugService {
-	return &SlugService{}
+func NewSlugService(db Querier) *SlugService {
+	return &SlugService{db: db}
 }
 
 // Generate creates a URL-friendly slug from name, ensures uniqueness

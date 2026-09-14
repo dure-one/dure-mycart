@@ -144,7 +144,7 @@ func TestProductOptionValidation(t *testing.T) {
 		{
 			name: "too many values",
 			option: ProductOption{
-				Name: "Size",
+				Name:   "Size",
 				Values: make([]ProductOptionValue, 11), // Max is 10
 			},
 			wantErr: true,

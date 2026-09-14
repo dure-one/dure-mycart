@@ -50,10 +50,10 @@ func (v Password) Validate() error {
 
 // Payment is ...
 type Payment struct {
-	Currency      string                  `json:"currency"`
-	Truncation    *TruncationSettings     `json:"truncation,omitempty"`
-	NumberFormat  *NumberFormatSettings   `json:"number_format,omitempty"`
-	SymbolDisplay *SymbolDisplaySettings  `json:"symbol_display,omitempty"`
+	Currency      string                 `json:"currency"`
+	Truncation    *TruncationSettings    `json:"truncation,omitempty"`
+	NumberFormat  *NumberFormatSettings  `json:"number_format,omitempty"`
+	SymbolDisplay *SymbolDisplaySettings `json:"symbol_display,omitempty"`
 }
 
 // Validate is ...
@@ -153,14 +153,14 @@ func validateSymbolDisplay(value interface{}) error {
 
 // CurrencyTruncationSettings defines truncation mode for a currency
 type CurrencyTruncationSettings struct {
-	Mode      string `json:"mode"`       // "none", "fixed", or "flexible"
+	Mode      string `json:"mode"`                 // "none", "fixed", or "flexible"
 	FixedUnit string `json:"fixed_unit,omitempty"` // e.g., "K", "M", "만", "천"
 }
 
 // NumberFormatSettings defines global number formatting options
 type NumberFormatSettings struct {
-	DecimalPrecision  int  `json:"decimal_precision"`    // 0, 1, or 2
-	ShowTrailingZeros bool `json:"show_trailing_zeros"`  // true or false
+	DecimalPrecision  int  `json:"decimal_precision"`   // 0, 1, or 2
+	ShowTrailingZeros bool `json:"show_trailing_zeros"` // true or false
 }
 
 // SymbolDisplaySettings defines currency display mode per context

@@ -7,11 +7,30 @@ import (
 
 	mailer "github.com/xhit/go-simple-mail/v2"
 
+	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/internal/testutil"
 )
 
+// bootstrapDB brings up a fresh queries DB in a temp working directory.
+// Several functions in this package call queries.DB() directly so tests
+// must share the package-level instance.
+func bootstrapDB(t *testing.T) *queries.Base {
+	t.Helper()
+	dir := t.TempDir()
+	prev, _ := os.Getwd()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	_ = os.MkdirAll("lc_base", 0o775)
+	t.Cleanup(func() { _ = os.Chdir(prev) })
+
+	if err := queries.New(database.Config{Driver: database.DriverSQLite, DSN: database.DefaultSQLiteDSN}, migrations.Embed()); err != nil {
+		t.Fatalf("queries.New: %v", err)
+	}
+	return queries.DB()
+}
 
 func TestEncryptionTypesLookup(t *testing.T) {
 	t.Parallel()

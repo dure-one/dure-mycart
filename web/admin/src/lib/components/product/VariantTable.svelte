@@ -1,7 +1,5 @@
 <script lang="ts">
-  import FormInput from '../form/Input.svelte'
-  import FormButton from '../form/Button.svelte'
-  import SvgIcon from '../SvgIcon.svelte'
+  import { FormInput, IconButton, PageState } from '$lib/components'
   import type { ProductVariant, ProductOption } from '$lib/types/models'
   import { translate, locale } from '$lib/i18n'
   import { formatCurrencyWithTruncation } from '$lib/utils/currency'
@@ -84,52 +82,40 @@
   }
 </script>
 
-<div class="overflow-x-auto">
-  <table class="min-w-full divide-y divide-gray-200">
-    <thead class="bg-gray-50">
+<div class="table-wrap">
+  <table class="table-plain">
+    <thead>
       <tr>
-        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-          {t('products.variant')}
-        </th>
-        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-          {t('products.sku')}
-        </th>
-        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-          {t('products.priceSurcharge')}
-        </th>
-        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-          {t('products.totalPrice')}
-        </th>
-        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-          {t('products.quantity')}
-        </th>
-        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-          {t('products.active')}
-        </th>
+        <th>{t('products.variant')}</th>
+        <th>{t('products.sku')}</th>
+        <th>{t('products.priceSurcharge')}</th>
+        <th>{t('products.totalPrice')}</th>
+        <th>{t('products.quantity')}</th>
+        <th>{t('products.active')}</th>
       </tr>
     </thead>
-    <tbody class="divide-y divide-gray-200 bg-white">
-      {#each localVariants as variant, index}
+    <tbody>
+      {#each localVariants as variant, index (index)}
         <tr class:bg-gray-50={!variant.active}>
-          <td class="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+          <td class="whitespace-nowrap">
             {getVariantLabel(variant)}
           </td>
-          <td class="whitespace-nowrap px-4 py-3 text-sm">
+          <td class="whitespace-nowrap">
             <FormInput
               id="variant-{index}-sku"
-              label="SKU"
+              label={t('products.sku')}
               type="text"
               value={variant.sku || ''}
               oninput={(e) => updateVariantSKU(index, e)}
-              placeholder="SKU"
+              placeholder={t('products.sku')}
               {disabled}
               compact
             />
           </td>
-          <td class="whitespace-nowrap px-4 py-3 text-sm">
+          <td class="whitespace-nowrap">
             <FormInput
               id="variant-{index}-price"
-              label="Price Surcharge"
+              label={t('products.priceSurcharge')}
               type="number"
               value={String(variant.price_surcharge)}
               oninput={(e) => updateVariantPrice(index, e)}
@@ -138,9 +124,9 @@
               compact
             />
           </td>
-          <td class="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
+          <td class="whitespace-nowrap text-gray-700">
             {#if getTotalPrice(variant) === 0}
-              <span class="font-bold text-green-600">free</span>
+              <span class="font-bold text-green-600">{t('carts.free')}</span>
             {:else}
               {formatCurrencyWithTruncation(
                 getTotalPrice(variant),
@@ -153,10 +139,10 @@
               )}
             {/if}
           </td>
-          <td class="whitespace-nowrap px-4 py-3 text-sm">
+          <td class="whitespace-nowrap">
             <FormInput
               id="variant-{index}-quantity"
-              label="Quantity"
+              label={t('products.quantity')}
               type="number"
               value={String(variant.quantity)}
               oninput={(e) => updateVariantQuantity(index, e)}
@@ -166,33 +152,27 @@
               compact
             />
           </td>
-          <td class="whitespace-nowrap px-4 py-3 text-sm">
-            <button
-              type="button"
+          <td class="whitespace-nowrap">
+            <IconButton
+              ico={variant.active ? 'eye' : 'eye-slash'}
+              label={t('products.toggleActive')}
+              svgClass="h-5 w-5 {variant.active ? 'text-green-600' : 'text-gray-400'}"
               onclick={() => toggleVariantActive(index)}
               {disabled}
-              class="disabled:opacity-50"
-            >
-              <SvgIcon
-                name={variant.active ? 'eye' : 'eye-slash'}
-                className="h-5 w-5 cursor-pointer {variant.active ? 'text-green-600' : 'text-gray-400'}"
-              />
-            </button>
+            />
           </td>
         </tr>
       {/each}
     </tbody>
   </table>
-
-  {#if localVariants.length === 0}
-    <div class="py-8 text-center text-sm text-gray-500">
-      {t('products.noVariants')}
-    </div>
-  {/if}
-
-  {#if localVariants.length > 100}
-    <div class="mt-2 text-sm text-red-600">
-      {t('products.tooManyVariants')}
-    </div>
-  {/if}
 </div>
+
+{#if localVariants.length === 0}
+  <PageState kind="empty" message={t('products.noVariants')} />
+{/if}
+
+{#if localVariants.length > 100}
+  <div class="mt-2 text-sm text-red-600">
+    {t('products.tooManyVariants')}
+  </div>
+{/if}

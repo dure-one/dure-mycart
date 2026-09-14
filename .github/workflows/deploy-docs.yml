@@ -21,6 +21,31 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    services:
+      # The wizard test installs into a real PostgreSQL: it is what proves the
+      # database chosen in the wizard becomes the one the process serves from,
+      # and that the DSN it reports back has the password taken out of it.
+      # Started for the whole job because GitHub cannot make a service
+      # conditional; only that one test connects to it.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: test
+          # Created empty on purpose: the wizard refuses a database that
+          # already holds a cart.
+          POSTGRES_DB: mycart_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Without it the wizard test skips itself; naming the database is what
+      # puts the PostgreSQL install path in the suite. The rest of the run is
+      # unaffected: the store under test stays on SQLite.
+      E2E_POSTGRES_DSN: postgres://postgres:test@localhost:5432/mycart_e2e?sslmode=disable
     steps:
       # 1. Checkout code
       - name: Checkout Repository

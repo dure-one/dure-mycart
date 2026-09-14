@@ -5,22 +5,23 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"golang.org/x/crypto/acme/autocert"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/static"
 
-	"github.com/shurco/mycart/db/migrations"
+	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/middleware"
 	"github.com/shurco/mycart/internal/routes"
-	"github.com/shurco/mycart/internal/store"
-	"github.com/shurco/mycart/internal/store/db"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/webutil"
 )
@@ -32,21 +33,41 @@ const (
 	DefaultHTTPSPort = ":443"
 )
 
+// Process-wide state that NewApp installs and the rest of the package reads.
+//
+// Both are written by NewApp and read from goroutines that outlive the call it
+// makes them in: the Fiber logger middleware holds the logger, and the listen
+// goroutine inside StartServer reads both. As plain variables that is a data
+// race — reported under -race between NewApp and a goroutine left running by an
+// earlier NewApp in the same process, which is what a test binary does — so
+// access is atomic and the ordering is defined rather than merely unlikely.
 var (
-	DevMode bool
-	log     *logging.Log
+	devMode atomic.Bool
+	appLog  atomic.Pointer[logging.Log]
 )
 
+// DevMode reports whether the application is in development mode. It is false
+// until NewApp has run.
+func DevMode() bool { return devMode.Load() }
+
+// setDevMode sets the development mode flag.
+func setDevMode(dev bool) { devMode.Store(dev) }
+
+// logger returns the process-wide logger, or nil before NewApp has run.
+func logger() *logging.Log { return appLog.Load() }
+
+// setLogger installs the process-wide logger.
+func setLogger(l *logging.Log) { appLog.Store(l) }
+
 // NewApp initializes and starts the web application
-func NewApp(httpAddr, httpsAddr string, noSite, appDev bool) error {
-	DevMode = appDev
-	log = logging.New()
+func NewApp(dbCfg database.Config, httpAddr, httpsAddr string, noSite, appDev bool) error {
+	lg := logging.New()
+	setDevMode(appDev)
+	setLogger(lg)
 
 	schema, mainAddr := determineSchemaAndAddr(httpAddr, httpsAddr)
 
-	// Phase 1: Connect to database without running migrations
-	if err := db.Connect(); err != nil {
-		log.Err(err).Msg("failed to connect to database")
+	if err := Init(dbCfg); err != nil {
 		return err
 	}
 
@@ -73,13 +94,8 @@ func NewApp(httpAddr, httpsAddr string, noSite, appDev bool) error {
 		return err
 	}
 
-	if err := Init(); err != nil {
-		log.Err(err).Send()
-		os.Exit(1)
-	}
-
 	setupRoutes(app, noSite)
-	printStartupInfo(schema, mainAddr, noSite)
+	printStartupInfo(os.Stdout, schema, mainAddr, noSite, dbCfg)
 
 	// Start both HTTP and HTTPS servers when both are provided
 	if httpsAddr != "" && httpAddr != "" {
@@ -119,7 +135,7 @@ func setupFiberApp(noSite bool) (*fiber.App, error) {
 	// Site is now a SPA, no need for HTML templates
 
 	app := fiber.New(config)
-	middleware.Fiber(app, log.Logger)
+	middleware.Fiber(app, logger().Logger)
 
 	return app, nil
 }
@@ -133,7 +149,7 @@ func setupRoutes(app *fiber.App, noSite bool) {
 	app.Use("/uploads", static.New("./lc_uploads"))
 
 	// Swagger documentation (development mode only)
-	if DevMode {
+	if DevMode() {
 		app.Use("/swagger", static.New("./docs/swagger", static.Config{
 			Browse: true,
 		}))
@@ -163,17 +179,22 @@ func setupRoutes(app *fiber.App, noSite bool) {
 	routes.NotFoundRoute(app, noSite)
 }
 
-// printStartupInfo prints application startup information.
-func printStartupInfo(schema, mainAddr string, noSite bool) {
-	fmt.Print("🛒 myCart - open source shopping-cart in 1 file\n")
+// printStartupInfo writes the application startup information to w.
+//
+// The writer is a parameter rather than stdout directly so the banner can be
+// read back without swapping os.Stdout process-wide, which is a global the
+// server goroutines also write to.
+func printStartupInfo(w io.Writer, schema, mainAddr string, noSite bool, dbCfg database.Config) {
+	fmt.Fprint(w, "🛒 myCart - open source shopping-cart in 1 file\n")
 	if !noSite {
-		fmt.Printf("├─ Cart UI: %s://%s/\n", schema, mainAddr)
+		fmt.Fprintf(w, "├─ Cart UI: %s://%s/\n", schema, mainAddr)
 	}
-	fmt.Printf("├─ Admin UI: %s://%s/_/\n", schema, mainAddr)
-	if DevMode {
-		fmt.Printf("└─ API Docs: %s://%s/swagger/index.html\n", schema, mainAddr)
+	fmt.Fprintf(w, "├─ Admin UI: %s://%s/_/\n", schema, mainAddr)
+	fmt.Fprintf(w, "├─ Database: %s (%s)\n", dbCfg.Driver, dbCfg.Redacted())
+	if DevMode() {
+		fmt.Fprintf(w, "└─ API Docs: %s://%s/swagger/index.html\n", schema, mainAddr)
 	} else {
-		fmt.Print("└─ Swagger UI: disabled (use --dev flag to enable)\n")
+		fmt.Fprint(w, "└─ Swagger UI: disabled (use --dev flag to enable)\n")
 	}
 }
 
@@ -206,12 +227,12 @@ func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {
 
 	ln, err := tls.Listen("tcp", listenAddr, cfgTLS)
 	if err != nil {
-		log.Err(err).Send()
+		logger().Err(err).Send()
 		os.Exit(1)
 	}
 
 	if err := app.Listener(ln, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
-		log.Err(err).Send()
+		logger().Err(err).Send()
 		os.Exit(1)
 	}
 
@@ -292,7 +313,7 @@ func startHTTP(mainAddr string, app *fiber.App) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if DevMode {
+	if DevMode() {
 		return StartServer(ctx, mainAddr, app)
 	}
 
@@ -301,7 +322,7 @@ func startHTTP(mainAddr string, app *fiber.App) error {
 	go handleShutdown(ctx, app, idleConnsClosed)
 	go func() {
 		if err := StartServer(ctx, mainAddr, app); err != nil {
-			log.Err(err).Send()
+			logger().Err(err).Send()
 		}
 	}()
 
@@ -316,7 +337,7 @@ func handleShutdown(ctx context.Context, app *fiber.App, idleConnsClosed chan st
 	<-sigint
 
 	if err := app.Shutdown(); err != nil {
-		log.Err(err).Send()
+		logger().Err(err).Send()
 	}
 
 	close(idleConnsClosed)
@@ -363,11 +384,14 @@ func isInstallPath(path string) bool {
 
 // StartServer starts the server and handles graceful shutdown.
 func StartServer(ctx context.Context, addr string, a *fiber.App) error {
-	errCh := make(chan error)
+	// Buffered, so the listen goroutine can always report its error and exit.
+	// Unbuffered it blocks on the send forever when the shutdown path below has
+	// already returned — a goroutine leaked for the life of the process.
+	errCh := make(chan error, 1)
 
 	go func() {
 		if err := a.Listen(addr, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
-			log.Err(err).Send()
+			logger().Err(err).Send()
 			errCh <- err
 		}
 	}()
@@ -375,7 +399,7 @@ func StartServer(ctx context.Context, addr string, a *fiber.App) error {
 	select {
 	case <-ctx.Done():
 		err := errors.New("shutdown signal received, closing server")
-		log.Err(err).Send()
+		logger().Err(err).Send()
 		return a.Shutdown()
 	case err := <-errCh:
 		return err

@@ -13,8 +13,10 @@ export class CartFeature {
   }
 
   async waitForCart() {
-    // Wait for the cart page to fully load - wait for either items or empty message
-    await this.page.waitForSelector('[data-testid="cart-item"], text=/cart is empty/i', { timeout: 10000 })
+    // Either the cart has items or it is empty: both are settled pages.
+    const items = this.page.locator('[data-testid="cart-item"]')
+    const empty = this.page.getByText(/cart is empty/i)
+    await expect(items.or(empty).first()).toBeVisible({ timeout: 10000 })
   }
 
   async verifyPageLoaded() {

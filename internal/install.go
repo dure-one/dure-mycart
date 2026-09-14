@@ -4,39 +4,35 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/shurco/mycart/db/migrations"
+	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/store"
-	"github.com/shurco/mycart/internal/store/db"
+	"github.com/shurco/mycart/internal/queries"
 )
 
 // InstallAdmin performs first-time setup with the given admin credentials.
-// It initializes storage directories, runs migrations, and creates the admin
-// account. Safe to run from a one-shot container job or CLI command.
-func InstallAdmin(ctx context.Context, install *models.Install) error {
+// It initializes storage directories, runs migrations when needed, and
+// creates the admin account. Safe to run from a one-shot container job.
+func InstallAdmin(ctx context.Context, dbCfg database.Config, install *models.Install) error {
 	if err := install.Validate(); err != nil {
 		return fmt.Errorf("validate install: %w", err)
 	}
 
-	if err := Init(); err != nil {
+	if err := Init(dbCfg); err != nil {
 		return fmt.Errorf("init: %w", err)
 	}
 
-	// Connect to database (reads config from environment)
-	if err := db.Connect(); err != nil {
-		return fmt.Errorf("connect database: %w", err)
-	}
-
-	// Run migrations (required for fresh installations)
-	if err := db.Migrate(migrations.Embed()); err != nil {
-		return fmt.Errorf("migrate database: %w", err)
-	}
-
-	// Mark as installed so future db.Init() calls will run migrations
-	db.SetInstalled()
-
-	if err := store.Install(ctx, install); err != nil {
+	if err := queries.DB().Install(ctx, install); err != nil {
 		return fmt.Errorf("install: %w", err)
+	}
+
+	// Record a database that was chosen explicitly, so a later `serve` starts
+	// on the same one. The data now lives there: falling back to the built-in
+	// default would serve an empty shop. The default itself is not recorded —
+	// an installation nobody configured keeps reading the default.
+	if dbCfg.Source != database.SourceDefault {
+		if err := database.WriteConfig(dbCfg); err != nil {
+			return fmt.Errorf("write database config: %w", err)
+		}
 	}
 
 	return nil

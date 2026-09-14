@@ -44,23 +44,14 @@
     isDragging = false
   }
 
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      fileInput?.click()
-    }
-  }
 </script>
 
 <div
-  class="upload bg-gray-200 {isDragging ? 'bg-green-300' : ''}"
-  role="button"
-  tabindex="0"
-  aria-label="Upload file"
+  class="upload bg-gray-200 focus-within:ring-2 focus-within:ring-green-600 {isDragging ? 'bg-green-300' : ''}"
+  role="presentation"
   ondragover={dragover}
   ondragleave={dragleave}
   ondrop={drop}
-  onkeydown={handleKeydown}
 >
   <input
     type="file"

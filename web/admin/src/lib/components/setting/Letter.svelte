@@ -1,8 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import FormButton from '../form/Button.svelte'
-  import FormInput from '../form/Input.svelte'
-  import FormTextarea from '../form/Textarea.svelte'
+  import { DrawerFooter, DrawerHeader, FormInput, FormTextarea, PageState } from '$lib/components'
   import { loadData, saveData } from '$lib/utils/apiHelpers'
   import { translate } from '$lib/i18n'
   import type { LetterData, LetterContent } from '$lib/types/models'
@@ -88,7 +86,13 @@
       value: JSON.stringify(value)
     }
 
-    await saveData<LetterData>(`/api/_/settings/${name}`, update, true, t('letter.letterUpdated'), t('letter.failedToUpdateLetter'))
+    await saveData<LetterData>(
+      `/api/_/settings/${name}`,
+      update,
+      true,
+      t('letter.letterUpdated'),
+      t('letter.failedToUpdateLetter')
+    )
   }
 
   function handleSend() {
@@ -105,50 +109,48 @@
 </script>
 
 <div>
-  <div class="pb-8">
-    <div class="flex items-center">
-      <div class="pr-3">
-        <h1>{t('letter.updateLetter')}</h1>
-      </div>
-    </div>
-  </div>
+  <DrawerHeader title={t('letter.updateLetter')} />
 
   {#if loading}
-    <div class="py-8 text-center">{t('common.loading')}</div>
+    <PageState kind="loading" />
   {:else}
     <div class="flow-root">
       <div class="flow-root">
         <dl class="mx-auto -my-3 mt-2 mb-0 space-y-4 text-sm">
-          <FormInput id="subject" type="text" title={t('letter.subject')} bind:value={letter.subject} onfocusout={updateLetter} />
+          <FormInput
+            id="subject"
+            type="text"
+            title={t('letter.subject')}
+            bind:value={letter.subject}
+            onfocusout={updateLetter}
+          />
         </dl>
       </div>
 
       <dl class="mx-auto -my-3 mt-5 mb-0 space-y-4 text-sm">
-        <FormTextarea id="textarea" title={t('letter.message')} bind:value={letter.text} rows={15} onfocusout={updateLetter} />
+        <FormTextarea
+          id="textarea"
+          title={t('letter.message')}
+          bind:value={letter.text}
+          rows={15}
+          onfocusout={updateLetter}
+        />
       </dl>
     </div>
   {/if}
 
-  <div class="pt-8">
-    <div class="flex">
-      <div class="flex-none">
-        <FormButton type="button" name={t('common.close')} color="gray" onclick={close} />
-      </div>
-      <div class="grow"></div>
-      <div class="flex-none">
-        <FormButton type="button" name={t('letter.testLetter')} color="cyan" onclick={handleSend} />
-      </div>
-    </div>
-  </div>
+  <DrawerFooter onclose={close} ondelete={handleSend} deleteLabel={t('letter.testLetter')} actionVariant="default" />
 
-  <table class="mt-8 text-base">
-    <tbody>
-      {#each Object.entries(legend) as [key, value] (key)}
-        <tr class="cursor-default">
-          <td class="w-32 font-bold">{getTemplateKey(key)}</td>
-          <td>{value}</td>
-        </tr>
-      {/each}
-    </tbody>
-  </table>
+  <div class="table-wrap mt-8">
+    <table class="table-plain">
+      <tbody>
+        {#each Object.entries(legend) as [key, value] (key)}
+          <tr>
+            <td>{getTemplateKey(key)}</td>
+            <td>{value}</td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </div>
 </div>

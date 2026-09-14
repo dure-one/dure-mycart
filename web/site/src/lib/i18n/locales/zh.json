@@ -6,10 +6,17 @@
   },
   "languages": {
     "en": "English",
-    "zh": "中文"
+    "zh": "中文",
+    "ko": "한국어",
+    "fr": "Français",
+    "es": "Español",
+    "de": "Deutsch",
+    "it": "Italiano",
+    "be": "Беларуская"
   },
   "header": {
-    "cart": "购物车"
+    "cart": "购物车",
+    "language": "语言"
   },
   "footer": {
     "follow": "关注：",

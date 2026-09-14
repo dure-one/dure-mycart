@@ -19,7 +19,14 @@
     "operationFailed": "操作失败",
     "networkError": "网络错误",
     "failedToLoadData": "加载数据失败",
-    "failedToSaveData": "保存数据失败"
+    "failedToSaveData": "保存数据失败",
+    "preview": "预览",
+    "fileUploaded": "文件已上传",
+    "pageNotFound": "页面未找到",
+    "addRecord": "添加记录",
+    "home": "首页",
+    "signOut": "退出登录",
+    "viewRelease": "查看版本信息"
   },
   "menu": {
     "products": "商品",
@@ -101,7 +108,9 @@
     "dribbble": "Dribbble",
     "github": "GitHub",
     "youtube": "YouTube",
-    "otherUrl": "其他 (URL)"
+    "otherUrl": "其他 (URL)",
+    "paymentProviders": "支付提供商",
+    "displaySettings": "显示设置"
   },
   "auth": {
     "login": "登录",
@@ -133,7 +142,31 @@
     "domainInvalid": "域名格式无效",
     "installedSuccessfully": "购物车安装成功！",
     "installationFailed": "安装失败",
-    "networkError": "网络错误。请重试。"
+    "networkError": "网络错误。请重试。",
+    "database": "数据库",
+    "databaseDriver": "数据库引擎",
+    "databaseSQLite": "SQLite（内置，默认）",
+    "databasePostgres": "PostgreSQL",
+    "databaseLocked": "数据库由服务器配置固定：",
+    "useConnectionString": "使用连接字符串",
+    "connectionString": "连接字符串",
+    "host": "主机",
+    "port": "端口",
+    "databaseName": "数据库名称",
+    "user": "用户",
+    "dbPassword": "密码",
+    "sslMode": "SSL 模式",
+    "testConnection": "测试连接",
+    "testingConnection": "测试中…",
+    "testConnectionFirst": "安装前请先测试连接",
+    "connectionOk": "连接成功",
+    "connectionFailed": "连接失败",
+    "errors": {
+      "databaseAlreadyInstalled": "所选数据库中已安装购物车",
+      "databaseConnectionFailed": "无法连接到所选数据库",
+      "databaseInspectionFailed": "无法检查所选数据库",
+      "migrationsFailed": "数据库架构迁移失败。请检查服务器日志"
+    }
   },
   "products": {
     "title": "商品",
@@ -173,6 +206,8 @@
     "ifZeroPriceFree": "（如果为 0，价格将免费）",
     "imageDeleted": "图片已删除",
     "failedToDeleteImage": "删除图片失败",
+    "imageUploaded": "图片上传成功",
+    "imageUploadFailed": "图片上传失败",
     "productVariants": "商品规格",
     "variantsDescription": "创建具有不同选项（如尺寸、颜色或材料）的产品变体",
     "enableVariants": "启用规格",
@@ -196,6 +231,11 @@
     "tooManyVariants": "警告：最多允许 100 个变体",
     "created": "产品创建成功",
     "updated": "产品更新成功",
+    "imagesReordered": "图片顺序已成功调整",
+    "failedToReorderImages": "调整图片顺序失败",
+    "representativeSet": "代表图片已成功设置",
+    "failedToSetRepresentative": "设置代表图片失败",
+    "firstImageDescription": "第一张图片显示在商品列表中,可通过 /products/{urlslug}.png 访问",
     "csv": {
       "exportProducts": "导出商品",
       "exportDescription": "将所有商品下载为 CSV 文件",
@@ -224,7 +264,12 @@
       "optionalFields": "可选字段",
       "variantFields": "变体字段",
       "variantNote": "变体格式：[选项:值1;值2]=>变体数据|变体数据 (例如：[Size:S;M;L]=>S,0,10,SKU-S|M,500,20,SKU-M)"
-    }
+    },
+    "optionNameNumbered": "选项 {{index}} 名称",
+    "optionValueNumbered": "选项 {{index}} 值 {{value}}",
+    "selectDigitalType": "选择数字类型",
+    "toggleActive": "切换激活状态",
+    "optionNameExists": "选项名称“{{name}}”已存在。请使用唯一名称。"
   },
   "carts": {
     "title": "购物车",
@@ -259,7 +304,8 @@
     "quantityColumn": "数量",
     "subtotalColumn": "小计",
     "mailSentSuccessfully": "邮件发送成功",
-    "failedToSendMailMessage": "发送邮件失败"
+    "failedToSendMailMessage": "发送邮件失败",
+    "sendMail": "发送邮件"
   },
   "pages": {
     "title": "页面",
@@ -283,7 +329,8 @@
     "failedToUpdatePage": "更新页面失败",
     "seoTitle": "标题",
     "seoKeywords": "关键词",
-    "seoDescription": "描述"
+    "seoDescription": "描述",
+    "toggleActive": "切换激活状态"
   },
   "payment": {
     "stripe": "Stripe",
@@ -306,10 +353,20 @@
     "projectId": "项目 ID",
     "privateKey": "私钥",
     "failedToLoad": "加载设置失败",
-    "failedToSave": "保存设置失败"
+    "failedToSave": "保存设置失败",
+    "priceDisplay": "价格显示",
+    "currencyRequired": "货币为必填项",
+    "currencyMustBeOneOf": "货币必须是以下之一：{{list}}",
+    "currencySaved": "货币已保存",
+    "truncationSaved": "价格显示设置已保存",
+    "numberFormatSaved": "数字格式已保存",
+    "symbolDisplaySaved": "符号显示已保存",
+    "failedToLoadSettings": "加载支付设置失败",
+    "apiKey": "API 密钥"
   },
   "form": {
-    "pleaseSelect": "请选择"
+    "pleaseSelect": "请选择",
+    "uploadLabel": "上传文件"
   },
   "pagination": {
     "previous": "上一页",
@@ -331,7 +388,8 @@
     "sold": "已售出",
     "digitalType": "数字{{type}}",
     "fileDescription": "这是用户购买的产品。上传将在付款后发送给买家的文件，发送到结账时提供的电子邮件地址。",
-    "dataDescription": "输入您打算销售的数字产品。它可以是唯一项目，例如许可证密钥。"
+    "dataDescription": "输入您打算销售的数字产品。它可以是唯一项目，例如许可证密钥。",
+    "failedToLoadContent": "加载数字内容失败"
   },
   "letter": {
     "updateLetter": "更新邮件",
@@ -346,5 +404,22 @@
     "paymentLink": "支付链接",
     "purchases": "购买",
     "adminEmail": "管理员邮箱"
+  },
+  "editor": {
+    "undo": "撤销",
+    "redo": "重做",
+    "bold": "粗体",
+    "italic": "斜体",
+    "strike": "删除线",
+    "paragraph": "段落",
+    "h1": "标题 1",
+    "h2": "标题 2",
+    "h3": "标题 3",
+    "bulletlist": "项目符号列表",
+    "orderedList": "编号列表",
+    "blockquote": "引用",
+    "toolbar": "文本格式",
+    "horizontalRule": "分隔线",
+    "clearFormatting": "清除格式"
   }
 }

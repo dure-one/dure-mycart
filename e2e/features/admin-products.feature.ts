@@ -1,31 +1,26 @@
 import { Page } from 'patchright'
 import { expect } from 'patchright/test'
 
+import { useAdminSession } from '../utils/admin-page'
+
 /**
  * Feature Object for Admin Product Management
  * Handles product list viewing and product creation
  */
 export class AdminProductsFeature {
-  constructor(private page: Page) {}
-
-  async login() {
-    // Check if we're on signin page
-    if (this.page.url().includes('/_/signin')) {
-      // Fill login form with credentials from global-setup
-      await this.page.locator('input[name="email"], input[type="email"]').fill('admin@example.com')
-      await this.page.locator('input[name="password"], input[type="password"]').fill('test1234')
-      await this.page.locator('button[type="submit"]').click()
-      // Wait for redirect after login
-      await this.page.waitForURL('/_/**', { timeout: 10000 })
-    }
-  }
+  constructor(
+    private page: Page,
+    private baseURL: string
+  ) {}
 
   async goto() {
+    // The suite's session is handed over before navigating: the panel
+    // redirects to `/_/signin` without it, and signing in there would spend
+    // the server's rate limit once per test.
+    await useAdminSession(this.page, this.baseURL)
     await this.page.goto('/_/products')
-    // Wait for navigation to settle (either stays on products or redirects to signin)
+    // Wait for navigation to settle
     await this.page.waitForLoadState('networkidle')
-    // Handle redirect to signin if not authenticated
-    await this.login()
   }
 
   async waitForPage() {

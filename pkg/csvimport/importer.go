@@ -13,18 +13,22 @@ import (
 	"github.com/shurco/mycart/pkg/security"
 )
 
+// Querier is the database surface CSVImporter needs. It is declared here, on
+// the consumer side, so this package does not depend on the storage layer and
+// stays usable with any handle that rebinds placeholders for its dialect.
+type Querier interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
 // CSVImporter handles CSV import operations
 type CSVImporter struct {
-	db     *sql.DB
-	dbType string
+	db Querier
 }
 
 // NewCSVImporter creates a new CSV importer
-func NewCSVImporter(db *sql.DB, dbType string) *CSVImporter {
-	return &CSVImporter{
-		db:     db,
-		dbType: dbType,
-	}
+func NewCSVImporter(db Querier) *CSVImporter {
+	return &CSVImporter{db: db}
 }
 
 // Required CSV columns
@@ -461,8 +465,8 @@ func (c *CSVImporter) Import(ctx context.Context, products []models.Product) (*I
 			result.Skipped++
 		} else {
 			// Insert product (simplified - would use AddProductWithVariants in production)
-			query := c.convertPlaceholders(`INSERT INTO product (id, name, slug, "desc", amount, quantity, digital, active, deleted)
-			          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+			query := `INSERT INTO product (id, name, slug, "desc", amount, quantity, digital, active, deleted)
+			          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 			_, err = c.db.ExecContext(ctx, query,
 				product.ID, product.Name, product.Slug, product.Description,
 				product.Amount, product.Quantity, product.Digital.Type, product.Active, false)

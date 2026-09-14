@@ -1,0 +1,53 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20M"
+    max-file: "10"
+
+services:
+  mailhog:
+    image: jcalonso/mailhog
+    restart: always
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  # PostgreSQL for the Go test suite (TEST_POSTGRES_DSN). Nothing here is meant
+  # to outlive a restart: the data directory is a tmpfs and durability is off,
+  # because pgtestdb drops and recreates databases on it on every run and a
+  # restart should hand back a clean server. It is *not* the `postgres` service
+  # in docker-compose.yml, which holds a real shop's data — never point the
+  # suite at that one.
+  #
+  #   docker compose -f docker/docker-compose.yml -f docker/docker-compose_dev.yml up -d pgtestdb
+  #
+  #   TEST_DB_DRIVER=postgres \
+  #   TEST_POSTGRES_DSN='postgres://postgres:password@localhost:5433/postgres?sslmode=disable' \
+  #   go test ./... -count=1
+  #
+  # Port 5433 keeps it out of the way of a PostgreSQL already listening on 5432.
+  pgtestdb:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      # UTC unless asked otherwise: PGTESTDB_TZ=Asia/Seoul is how the suite is
+      # run against a non-UTC server, which is what proves the session pin.
+      TZ: ${PGTESTDB_TZ:-UTC}
+    command:
+      - "postgres"
+      - "-c"
+      - "fsync=off"
+      - "-c"
+      - "synchronous_commit=off"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging

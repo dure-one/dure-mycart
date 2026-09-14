@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/store"
 )
@@ -30,7 +31,7 @@ func TestInstallAdmin_CreatesAdminAccount(t *testing.T) {
 		SQLitePath: "lc_base/data.db",
 	}
 
-	if err := InstallAdmin(ctx, install); err != nil {
+	if err := InstallAdmin(ctx, dbTestConfig, install); err != nil {
 		t.Fatalf("InstallAdmin: %v", err)
 	}
 
@@ -42,10 +43,14 @@ func TestInstallAdmin_CreatesAdminAccount(t *testing.T) {
 		t.Fatal("expected installed=true")
 	}
 
-	if err := InstallAdmin(ctx, install); err == nil {
+	if err := InstallAdmin(ctx, dbTestConfig, install); err == nil {
 		t.Fatal("expected second InstallAdmin to fail")
 	}
 }
+
+// dbTestConfig is the built-in default: SQLite at ./lc_base/data.db, the
+// configuration an installation that nobody has configured uses.
+var dbTestConfig = database.Config{Driver: database.DriverSQLite, DSN: database.DefaultSQLiteDSN}
 
 func TestInstallAdmin_ValidationError(t *testing.T) {
 	prev, _ := os.Getwd()
@@ -55,7 +60,7 @@ func TestInstallAdmin_ValidationError(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(prev) })
 
-	if err := InstallAdmin(context.Background(), &models.Install{
+	if err := InstallAdmin(context.Background(), dbTestConfig, &models.Install{
 		Email:    "bad",
 		Password: "secret12",
 	}); err == nil {

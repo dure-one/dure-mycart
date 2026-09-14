@@ -1,8 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import Main from '$lib/layouts/Main.svelte'
-  import FormButton from '$lib/components/form/Button.svelte'
-  import FormInput from '$lib/components/form/Input.svelte'
+  import { FormButton, FormInput, PageHeader, PageState } from '$lib/components'
   import { loadSettings, saveSettings } from '$lib/utils/settingsHelpers'
   import { translate } from '$lib/i18n'
 
@@ -37,12 +36,12 @@
 </script>
 
 <Main>
-  <h1 class="mb-5">{t('settings.webhookSettings')}</h1>
+  <PageHeader title={t('settings.webhookSettings')} />
 
   {#if loading}
-    <div class="py-8 text-center">{t('common.loading')}</div>
+    <PageState kind="loading" />
   {:else}
-    <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="max-w-2xl space-y-4">
+    <form onsubmit={(e) => { e.preventDefault(); handleSubmit() }} class="max-w-2xl space-y-4">
       <FormInput
         id="url"
         type="url"
@@ -53,7 +52,7 @@
         placeholder="https://example.com/webhook"
       />
       <div class="pt-4">
-        <FormButton type="submit" name={t('common.save')} color="green" />
+        <FormButton type="submit" name={t('common.save')} variant="primary" />
       </div>
     </form>
   {/if}

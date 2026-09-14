@@ -55,6 +55,7 @@ export default withMermaid(defineConfig({
               { text: 'Getting Started', link: '/readme' },
               { text: 'Customization', link: '/customization' },
               { text: 'Payment Customization', link: '/payment-customization' },
+              { text: 'Using PostgreSQL', link: '/using-postgresql' },
               { text: 'Migration from LiteCart', link: '/migration-from-litecart' },
               { text: 'Development on BSD', link: '/development-on-bsd' }
             ]

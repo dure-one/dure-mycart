@@ -1,12 +1,22 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import Main from '$lib/layouts/Main.svelte'
-  import Drawer from '$lib/components/Drawer.svelte'
   import Letter from '$lib/components/setting/Letter.svelte'
-  import FormButton from '$lib/components/form/Button.svelte'
-  import FormInput from '$lib/components/form/Input.svelte'
-  import FormSelect from '$lib/components/form/Select.svelte'
+  import {
+    ActionLink,
+    Chip,
+    ChipGroup,
+    Drawer,
+    FormButton,
+    FormInput,
+    FormSelect,
+    PageHeader,
+    PageState,
+    Section
+  } from '$lib/components'
   import { apiGet, apiUpdate, showMessage } from '$lib/utils'
+  import { DRAWER_CLOSE_DELAY_MS } from '$lib/constants/ui'
+  import { createDelayedReset } from '$lib/utils/delayedReset'
   import { translate } from '$lib/i18n'
 
   // Reactive translation function
@@ -121,9 +131,6 @@
     drawerOpen = true
   }
 
-  import { DRAWER_CLOSE_DELAY_MS } from '$lib/constants/ui'
-  import { createDelayedReset } from '$lib/utils/delayedReset'
-
   const resetDrawer = createDelayedReset(DRAWER_CLOSE_DELAY_MS)
 
   function closeDrawer() {
@@ -135,55 +142,26 @@
 </script>
 
 <Main>
-  <div class="pb-10">
-    <header class="mb-4">
-      <h1>{t('settings.mailSettings')}</h1>
-    </header>
+  <PageHeader title={t('settings.mailSettings')} />
 
-    <div>
-      <h2 class="mb-5">{t('settings.mailLetters')}</h2>
-      <div class="flex">
-        <div
-          class="cursor-pointer rounded bg-gray-200 p-2"
-          onclick={() => openDrawer('mail_letter_payment')}
-          role="button"
-          tabindex="0"
-          onkeydown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              openDrawer('mail_letter_payment')
-            }
-          }}
-        >
-          {t('settings.letterOfPayment')}
-        </div>
-        <div
-          class="ml-5 cursor-pointer rounded bg-gray-200 p-2"
-          onclick={() => openDrawer('mail_letter_purchase')}
-          role="button"
-          tabindex="0"
-          onkeydown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              openDrawer('mail_letter_purchase')
-            }
-          }}
-        >
-          {t('settings.letterOfPurchase')}
-        </div>
-      </div>
-      <hr class="mt-5" />
-    </div>
+  {#if loading}
+    <PageState kind="loading" />
+  {:else}
+    <Section title={t('settings.mailLetters')}>
+      <ChipGroup>
+        <Chip onclick={() => openDrawer('mail_letter_payment')}>{t('settings.letterOfPayment')}</Chip>
+        <Chip onclick={() => openDrawer('mail_letter_purchase')}>{t('settings.letterOfPurchase')}</Chip>
+      </ChipGroup>
+    </Section>
 
-    <div class="mt-5">
-      <h2 class="mb-5">{t('settings.smtpSettings')}</h2>
+    <Section title={t('settings.smtpSettings')}>
       {#if !smtp.host || !smtp.port || !smtp.username || !smtp.password}
-        <div class="mb-5 flex items-center justify-between bg-red-600 px-2 py-3 text-white">
-          <p class="text-sm font-medium">{t('settings.thisSectionRequired')}</p>
+        <div class="notice notice-danger mb-5">
+          {t('settings.thisSectionRequired')}
         </div>
       {/if}
 
-      <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+      <form onsubmit={(e) => { e.preventDefault(); handleSubmit() }}>
         <div class="flex">
           <div class="w-64 pr-3">
             <FormInput
@@ -238,35 +216,19 @@
             />
           </div>
         </div>
-        <div class="flex pt-8">
-          <FormButton type="submit" name={t('common.save')} color="green" />
-          <div class="mt-3 ml-5">
-            <span
-              onclick={() => sendTestLetter('smtp')}
-              class="cursor-pointer text-red-700"
-              role="button"
-              tabindex="0"
-              onkeydown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  sendTestLetter('smtp')
-                }
-              }}
-            >
-              {t('settings.testSmtp')}
-            </span>
-          </div>
+        <div class="flex items-center gap-5 pt-8">
+          <FormButton type="submit" name={t('common.save')} variant="primary" />
+          <ActionLink name={t('settings.testSmtp')} onclick={() => sendTestLetter('smtp')} />
         </div>
       </form>
-    </div>
-  </div>
+    </Section>
+  {/if}
 </Main>
 
 {#if drawerOpen}
   <Drawer isOpen={drawerOpen} onclose={closeDrawer} maxWidth="725px">
     {#if drawerMode === 'mail_letter_payment'}
       <Letter
-        key="mail_letter_payment"
         name="mail_letter_payment"
         legend={letterLegend.mail_letter_payment}
         onclose={closeDrawer}
@@ -274,7 +236,6 @@
       />
     {:else if drawerMode === 'mail_letter_purchase'}
       <Letter
-        key="mail_letter_purchase"
         name="mail_letter_purchase"
         legend={letterLegend.mail_letter_purchase}
         onclose={closeDrawer}

@@ -74,6 +74,7 @@ docs/e2e/
 mycart
 mycart-linux
 mycart-test
+main
 
 # Temporary files
 docker/Dockerfile.dev.bak
@@ -99,7 +100,7 @@ docs/.vitepress/cache/
 
 # Generated from root README.md
 docs/readme.md
-reference/
-seed_products
-cmd/seed_products/seed_products
-.solidbase
+
+# Session the e2e suite shares between global setup and the tests
+e2e/.auth/
+Makefile

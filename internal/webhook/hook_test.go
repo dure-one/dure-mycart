@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shurco/mycart/db/migrations"
+	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/store"
 	"github.com/shurco/mycart/internal/store/db"
@@ -28,9 +28,8 @@ func setupTestDB(t *testing.T) {
 	_ = os.MkdirAll("lc_base", 0o775)
 	t.Cleanup(func() { _ = os.Chdir(prev) })
 
-	// Connect to database
-	if err := db.Connect(); err != nil {
-		t.Fatalf("db.Connect: %v", err)
+	if err := queries.New(database.Config{Driver: database.DriverSQLite, DSN: database.DefaultSQLiteDSN}, migrations.Embed()); err != nil {
+		t.Fatalf("queries.New: %v", err)
 	}
 
 	// Run migrations (required for fresh test databases)

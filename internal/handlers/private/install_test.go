@@ -9,40 +9,21 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/stretchr/testify/require"
 
-	"github.com/shurco/mycart/db/migrations"
-	"github.com/shurco/mycart/internal/store/db"
 	"github.com/shurco/mycart/internal/testutil"
 )
 
+// setupCleanDB returns a Fiber app backed by a migrated but uninstalled
+// database, so the install endpoint starts from first-run state.
 func setupCleanDB(t *testing.T) (*fiber.App, func()) {
 	t.Helper()
-	dirCleanup := testutil.WithCmdTestDir(t)
 
-	// Create required directories
-	_ = os.MkdirAll("lc_base", 0o775)
-
-	// Set up environment for SQLite
-	os.Setenv("DB_TYPE", "sqlite")
-	os.Setenv("SQLITE_PATH", ":memory:")
-
-	// Connect to database
-	if err := db.Connect(); err != nil {
-		t.Fatalf("db.Connect: %v", err)
-	}
-
-	// Run migrations (required for fresh test databases)
-	if err := db.Migrate(migrations.Embed()); err != nil {
-		t.Fatalf("db.Migrate: %v", err)
-	}
-
+	dbCleanup := testutil.SetupCleanDB(t)
 	app := fiber.New()
 
 	return app, func() {
 		_ = app.Shutdown()
-		db.Close()
-		dirCleanup()
+		dbCleanup()
 	}
 }
 

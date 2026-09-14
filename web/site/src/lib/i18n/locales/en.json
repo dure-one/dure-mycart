@@ -6,10 +6,17 @@
   },
   "languages": {
     "en": "English",
-    "zh": "中文"
+    "zh": "中文",
+    "ko": "한국어",
+    "fr": "Français",
+    "es": "Español",
+    "de": "Deutsch",
+    "it": "Italiano",
+    "be": "Беларуская"
   },
   "header": {
-    "cart": "CART"
+    "cart": "CART",
+    "language": "Language"
   },
   "footer": {
     "follow": "Follow:",

@@ -1,0 +1,98 @@
+#!/usr/local/bin/bash
+# Selective sync from nikescar/mycart:main_dure to dure-one/dure-mycart:main
+# Keeps local Docker configuration, adopts upstream database refactor
+
+set -e
+
+FORK_REMOTE="fork"
+FORK_BRANCH="main_dure"
+ORIGIN_REMOTE="origin"
+ORIGIN_BRANCH="main"
+
+# Files/directories to keep from local (not overwrite from upstream)
+# Keep only local docker-compose files, accept upstream database refactor
+KEEP_LOCAL=(
+    "docker-compose.dev.yml"
+    "docker-compose.yaml"
+    "docker-compose.postgres.yml"
+    "docker-compose.unified.yml"
+)
+
+echo "🔄 Selective sync from ${FORK_REMOTE}/${FORK_BRANCH} to ${ORIGIN_REMOTE}/${ORIGIN_BRANCH}..."
+echo "🛡️  Protected files: ${KEEP_LOCAL[@]}"
+echo ""
+
+# Ensure we're on the main branch
+CURRENT_BRANCH=$(git branch --show-current)
+if [ "$CURRENT_BRANCH" != "$ORIGIN_BRANCH" ]; then
+    echo "⚠️  Currently on branch '$CURRENT_BRANCH'. Switching to '$ORIGIN_BRANCH'..."
+    git checkout "$ORIGIN_BRANCH"
+fi
+
+# Create backup branch
+BACKUP_BRANCH="backup-before-sync-$(date +%Y%m%d-%H%M%S)"
+git branch "$BACKUP_BRANCH"
+echo "📦 Created backup branch: $BACKUP_BRANCH"
+
+# Fetch latest from fork
+echo "📥 Fetching from ${FORK_REMOTE}..."
+git fetch "$FORK_REMOTE"
+
+# Check if there are changes to sync
+if git merge-base --is-ancestor "${FORK_REMOTE}/${FORK_BRANCH}" HEAD; then
+    echo "✅ Already up to date. No changes to sync."
+    git branch -D "$BACKUP_BRANCH"
+    exit 0
+fi
+
+# Show commits that will be merged
+echo ""
+echo "📋 Commits to be synced:"
+git log --oneline HEAD.."${FORK_REMOTE}/${FORK_BRANCH}" | head -10
+echo ""
+
+# Merge fork/main_dure without committing
+echo "🔀 Merging ${FORK_REMOTE}/${FORK_BRANCH} (without commit)..."
+if ! git merge "${FORK_REMOTE}/${FORK_BRANCH}" --no-commit --no-ff; then
+    echo "❌ Merge conflicts detected. Please resolve manually."
+    echo "💡 Run: git merge --abort (to cancel)"
+    echo "💡 Or resolve conflicts and run: git commit"
+    exit 1
+fi
+
+# Restore protected files from local version
+echo "🛡️  Restoring protected files from local version..."
+for path in "${KEEP_LOCAL[@]}"; do
+    if git ls-files --error-unmatch "$path" >/dev/null 2>&1; then
+        echo "  ↩️  $path"
+        git checkout HEAD -- "$path" 2>/dev/null || true
+    fi
+done
+
+# Show what will be committed
+echo ""
+echo "📝 Changes to be committed:"
+git status --short
+echo ""
+
+# Prompt for confirmation
+read -p "Continue with commit? (y/n) " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "❌ Aborted. Run 'git merge --abort' to reset."
+    exit 1
+fi
+
+# Commit the selective merge
+git commit -m "merge: selective sync from ${FORK_REMOTE}/${FORK_BRANCH}
+
+Kept local versions of:
+$(printf '- %s\n' "${KEEP_LOCAL[@]}")
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+
+echo ""
+echo "✅ Selective merge committed!"
+echo "💡 Review with: git diff $BACKUP_BRANCH"
+echo "💡 Push with: git push $ORIGIN_REMOTE $ORIGIN_BRANCH"
+echo "💡 Rollback with: git reset --hard $BACKUP_BRANCH"

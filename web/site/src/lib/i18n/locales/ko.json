@@ -7,10 +7,16 @@
   "languages": {
     "en": "English",
     "zh": "中文",
-    "ko": "한국어"
+    "ko": "한국어",
+    "fr": "Français",
+    "es": "Español",
+    "de": "Deutsch",
+    "it": "Italiano",
+    "be": "Беларуская"
   },
   "header": {
-    "cart": "장바구니"
+    "cart": "장바구니",
+    "language": "언어"
   },
   "footer": {
     "follow": "팔로우:",

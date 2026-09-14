@@ -7,8 +7,8 @@
   import FormInput from '$lib/components/form/Input.svelte'
   import FormSelect from '$lib/components/form/Select.svelte'
   import Editor from '$lib/components/Editor.svelte'
-  import SvgIcon from '$lib/components/SvgIcon.svelte'
   import Pagination from '$lib/components/Pagination.svelte'
+  import { PageHeader, PageState, DrawerHeader, DrawerFooter, FormGroup, IconButton } from '$lib/components'
   import { loadData, saveData, deleteData, toggleActive as toggleActiveApi } from '$lib/utils/apiHelpers'
   import { formatDate, confirmDelete } from '$lib/utils'
   import { validators, validateFields } from '$lib/utils/validation'
@@ -118,8 +118,7 @@
     }
   }
 
-  async function handleSubmit(event: SubmitEvent) {
-    event.preventDefault()
+  async function handleSubmit() {
     formErrors = validateFields(formData, [
       { field: 'name', ...validators.minLength(MIN_NAME_LENGTH, ERROR_MESSAGES.NAME_TOO_SHORT) },
       { field: 'slug', ...validators.minLength(MIN_SLUG_LENGTH, ERROR_MESSAGES.SLUG_TOO_SHORT) }
@@ -187,6 +186,12 @@
     formData.content = value
   }
 
+  function deleteFromFooter() {
+    if (drawerPage) {
+      handleDelete(drawerPage)
+    }
+  }
+
   function openSeo(page: Page) {
     drawerPage = page
     drawerMode = 'seo'
@@ -195,75 +200,61 @@
 </script>
 
 <Main>
-  <div class="mb-5 flex items-center justify-between">
-    <h1>{t('pages.title')}</h1>
-    <FormButton name={t('pages.addPage')} color="green" ico="plus" onclick={openAdd} />
-  </div>
+  <PageHeader title={t('pages.title')}>
+    {#snippet actions()}
+      <FormButton name={t('pages.addPage')} variant="primary" ico="plus" onclick={openAdd} />
+    {/snippet}
+  </PageHeader>
 
   {#if loading}
-    <div class="py-8 text-center">{t('common.loading')}</div>
+    <PageState kind="loading" />
   {:else if pages.length === 0}
-    <div class="py-8 text-center text-gray-500">{t('pages.noPages')}</div>
+    <PageState kind="empty" message={t('pages.noPages')} />
   {:else}
-    <table>
-      <thead>
-        <tr>
-          <th>{t('pages.name')}</th>
-          <th class="w-32">{t('pages.position')}</th>
-          <th class="w-32">{t('pages.slug')}</th>
-          <th class="w-48">{t('common.created')}</th>
-          <th class="w-48">{t('common.updated')}</th>
-          <th class="w-24 px-4 py-2"></th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each pages as page, index (page.id)}
-          <tr class:opacity-30={!page.active}>
-            <td>{page.name}</td>
-            <td>{page.position || '-'}</td>
-            <td>
-              <a href="/{page.slug}" target="_blank">{page.slug}</a>
-            </td>
-            <td>
-              {formatDate(page.created)}
-            </td>
-            <td>
-              {#if page.updated}
-                {formatDate(page.updated)}
-              {/if}
-            </td>
-            <td class="px-4 py-2">
-              <div class="flex">
-                <div class="pr-3">
-                  <SvgIcon
-                    name="pencil-square"
-                    className="h-5 w-5 cursor-pointer"
-                    onclick={() => openEdit(page)}
-                    stroke="currentColor"
-                  />
-                </div>
-                <div class="pr-3">
-                  <SvgIcon
-                    name="rocket"
-                    className="h-5 w-5 cursor-pointer"
-                    onclick={() => openSeo(page)}
-                    stroke="currentColor"
-                  />
-                </div>
-                <div>
-                  <SvgIcon
-                    name={page.active ? 'eye' : 'eye-slash'}
-                    className="h-5 w-5 cursor-pointer"
-                    onclick={() => toggleActive(page, index)}
-                    stroke="currentColor"
-                  />
-                </div>
-              </div>
-            </td>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>{t('pages.name')}</th>
+            <th class="w-32">{t('pages.position')}</th>
+            <th class="w-32">{t('pages.slug')}</th>
+            <th class="w-48">{t('common.created')}</th>
+            <th class="w-48">{t('common.updated')}</th>
+            <th class="w-24"></th>
           </tr>
-        {/each}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {#each pages as page, index (page.id)}
+            <tr class:opacity-30={!page.active}>
+              <td>{page.name}</td>
+              <td>{page.position || '-'}</td>
+              <td>
+                <a href="/{page.slug}" target="_blank" class="a-link">{page.slug}</a>
+              </td>
+              <td>
+                {formatDate(page.created)}
+              </td>
+              <td>
+                {#if page.updated}
+                  {formatDate(page.updated)}
+                {/if}
+              </td>
+              <td>
+                <div class="flex items-center gap-2">
+                  <IconButton ico="pencil-square" label={t('common.edit')} onclick={() => openEdit(page)} />
+                  <IconButton ico="rocket" label={t('pages.seo')} onclick={() => openSeo(page)} />
+                  <IconButton
+                    ico={page.active ? 'eye' : 'eye-slash'}
+                    label={t('pages.toggleActive')}
+                    onclick={() => toggleActive(page, index)}
+                  />
+                </div>
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
 
     {#if total > 0}
       <Pagination
@@ -272,7 +263,7 @@
         onPageChange={handlePageChange}
       />
     {/if}
-    {/if}
+  {/if}
 </Main>
 
 {#if drawerOpen}
@@ -280,15 +271,9 @@
     {#if drawerMode === 'seo' && drawerPage}
       <PageSeo page={drawerPage} onclose={closeDrawer} />
     {:else}
-      <div class="pb-8">
-        <div class="flex items-center">
-          <div class="pr-3">
-            <h1>{drawerMode === 'add' ? t('pages.addPage') : t('pages.editPage')}</h1>
-          </div>
-        </div>
-      </div>
+      <DrawerHeader title={drawerMode === 'add' ? t('pages.addPage') : t('pages.editPage')} />
 
-      <form onsubmit={handleSubmit}>
+      <form onsubmit={(e) => { e.preventDefault(); handleSubmit() }}>
         <div class="flow-root">
           <dl class="mx-auto -my-3 mt-4 mb-0 space-y-4 text-sm">
             <FormInput id="name" title={t('pages.name')} bind:value={formData.name} error={formErrors.name} ico="at-symbol" />
@@ -307,43 +292,22 @@
               </div>
             </div>
 
-            <hr />
-            <p class="font-semibold">{t('pages.content')}</p>
-            <Editor
-              bind:modelValue={formData.content}
-              placeholder={t('pages.typeContentHere')}
-              onupdateModelValue={handleEditorUpdate}
-            />
+            <FormGroup label={t('pages.content')}>
+              <Editor
+                bind:modelValue={formData.content}
+                placeholder={t('pages.typeContentHere')}
+                onupdateModelValue={handleEditorUpdate}
+              />
+            </FormGroup>
           </dl>
         </div>
 
-        <div class="pt-8">
-          <div class="flex">
-            <div class="flex-none">
-              <FormButton type="submit" name={drawerMode === 'add' ? t('common.add') : t('common.save')} color="green" />
-              <FormButton type="button" name={t('common.close')} color="gray" onclick={closeDrawer} />
-            </div>
-            <div class="grow"></div>
-            {#if drawerMode === 'edit' && drawerPage}
-              <div class="mt-4 flex-none">
-                <span
-                  role="button"
-                  tabindex="0"
-                  onclick={() => drawerPage && handleDelete(drawerPage)}
-                  onkeydown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      drawerPage && handleDelete(drawerPage)
-                    }
-                  }}
-                  class="cursor-pointer text-red-700"
-                >
-                  {t('common.delete')}
-                </span>
-              </div>
-            {/if}
-          </div>
-        </div>
+        <DrawerFooter
+          onclose={closeDrawer}
+          submitLabel={drawerMode === 'add' ? t('common.add') : t('common.save')}
+          ondelete={drawerMode === 'edit' && drawerPage ? deleteFromFooter : undefined}
+          deleteLabel={t('common.delete')}
+        />
       </form>
     {/if}
   </Drawer>

@@ -302,7 +302,7 @@ func TestCreateCart(t *testing.T) {
 		// fv6c9s9cqzf36sc is a fixture product priced at 2000 cents; the
 		// fixture ships it with quantity=0, so stock some first.
 		ctx := context.Background()
-		if _, err := db.DB().ExecContext(ctx,
+		if _, err := queries.DB().ProductQueries.DB.ExecContext(ctx,
 			`UPDATE product SET quantity = 5 WHERE id = 'fv6c9s9cqzf36sc'`); err != nil {
 			t.Fatalf("stock fixture product: %v", err)
 		}

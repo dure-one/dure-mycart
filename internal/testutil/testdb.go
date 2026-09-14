@@ -7,20 +7,19 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/pressly/goose/v3"
+	goosedb "github.com/pressly/goose/v3/database"
 
-	"github.com/shurco/mycart/db/migrations"
-	"github.com/shurco/mycart/internal/store"
-	"github.com/shurco/mycart/internal/store/db"
+	"github.com/shurco/mycart/internal/database"
+	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/testutil/pgtest"
+	"github.com/shurco/mycart/migrations"
 	"github.com/shurco/mycart/pkg/jwtutil"
-	_ "modernc.org/sqlite"
 )
 
 const (
@@ -29,66 +28,154 @@ const (
 	FixturePassword  = "Pass123"
 )
 
-// projectRoot returns the absolute path to the repository root,
-// derived from this source file's location at compile time.
-func projectRoot() string {
-	_, src, _, _ := runtime.Caller(0)
-	// src = <root>/internal/testutil/testdb.go → root = ../../
-	return filepath.Join(filepath.Dir(src), "..", "..")
+// Environment variables selecting the dialect the suite runs against. When
+// neither is set, tests run on in-memory SQLite, which is what the project has
+// always done.
+const (
+	EnvTestDriver = "TEST_DB_DRIVER"
+	// EnvTestDSN names the PostgreSQL test server. It is the same variable
+	// pgtestdb administers that server through — see pgtest.AdminDSN.
+	EnvTestDSN = pgtest.AdminDSN
+)
+
+// TestingPostgres reports whether the suite is configured to run against
+// PostgreSQL. Tests that only make sense there use it to skip otherwise.
+func TestingPostgres() bool {
+	return strings.EqualFold(os.Getenv(EnvTestDriver), database.DriverPostgres)
 }
 
-// SetupTestDB creates in-memory SQLite, runs schema migrations + fixtures,
-// sets queries.DB global. Returns cleanup function.
+// SetupTestDB creates a migrated, fixture-loaded database and installs it as
+// the process-wide handle. Returns the cleanup function.
+//
+// SQLite gets a fresh in-memory database. PostgreSQL gets a database of its own
+// on the server named by TEST_POSTGRES_DSN, cloned by pgtestdb from a template
+// carrying the schema and the fixtures — see internal/testutil/pgtest. Tests
+// never see each other's rows on either engine.
 func SetupTestDB(t *testing.T) func() {
+	t.Helper()
+	return setupDB(t, true)
+}
+
+// SetupCleanDB is SetupTestDB without the fixtures: a migrated but otherwise
+// empty database, for tests that exercise first-run behaviour.
+func SetupCleanDB(t *testing.T) func() {
+	t.Helper()
+	return setupDB(t, false)
+}
+
+// setupDB creates the per-test database, loads the fixtures when asked for and
+// installs it as the process-wide handle.
+func setupDB(t *testing.T, withFixtures bool) func() {
 	t.Helper()
 
 	dirCleanup := WithCmdTestDir(t)
+	conn, cfg, dbCleanup := openTestDB(t, withFixtures)
 
-	// Use file::memory:?mode=memory&cache=shared to share in-memory DB across connections
-	// Plain :memory: creates separate DB per connection!
-	sqlite, err := sql.Open("sqlite", "file::memory:?mode=memory&cache=shared&_pragma=foreign_keys(ON)")
-	if err != nil {
-		t.Fatalf("open in-memory sqlite: %v", err)
-	}
-	// Allow multiple connections to prevent deadlock with nested queries
-	sqlite.SetMaxOpenConns(5)
-
-	if err := goose.SetDialect("sqlite3"); err != nil {
-		t.Fatalf("set goose dialect: %v", err)
-	}
-
-	// Extract sqlite subdirectory from embedded filesystem
-	migrationsSubFS, err := fs.Sub(migrations.Embed(), "sqlite")
-	if err != nil {
-		t.Fatalf("access sqlite migrations: %v", err)
-	}
-
-	goose.SetBaseFS(migrationsSubFS)
-	goose.SetTableName("migrate_db_version")
-	if err := goose.Up(sqlite, "."); err != nil {
-		t.Fatalf("run schema migrations: %v", err)
-	}
-
-	fixturesDir := filepath.Join(projectRoot(), "fixtures")
-	goose.SetBaseFS(os.DirFS(fixturesDir))
-	goose.SetTableName("migrate_fixtures_version")
-	if err := goose.Up(sqlite, "migration"); err != nil {
-		t.Fatalf("run fixtures: %v", err)
-	}
-
-	store.InitStore(sqlite)
-
-	if err := db.InitFromDB(sqlite, "sqlite"); err != nil {
-		t.Fatalf("init store function pointers: %v", err)
-	}
+	queries.SetConn(conn)
+	// Production sets both when it connects (queries.New). Leaving the active
+	// configuration at the built-in default would make the install wizard
+	// describe a database the test is not talking to.
+	database.SetActive(cfg)
 
 	return func() {
-		_ = sqlite.Close()
+		dbCleanup()
 		dirCleanup()
 	}
 }
 
-// SetupTestApp creates in-memory DB with fixtures, Fiber app, and JWT cookie.
+// openTestDB returns the per-test database — freshly migrated, and carrying the
+// fixtures when they were asked for — and the configuration it is reachable
+// through.
+func openTestDB(t *testing.T, withFixtures bool) (*database.Conn, database.Config, func()) {
+	t.Helper()
+
+	if TestingPostgres() {
+		return openTestPostgres(t, withFixtures)
+	}
+	return openTestSQLite(t, withFixtures)
+}
+
+// testSQLiteDSN is the in-memory database the SQLite half of the suite runs
+// against. The pragma is part of the DSN because a second connection would see
+// an empty database otherwise.
+const testSQLiteDSN = ":memory:?_pragma=foreign_keys(ON)"
+
+// openTestSQLite opens an in-memory SQLite database with the schema — and, when
+// asked for, the fixtures — applied.
+func openTestSQLite(t *testing.T, withFixtures bool) (*database.Conn, database.Config, func()) {
+	t.Helper()
+
+	raw, err := sql.Open("sqlite", testSQLiteDSN)
+	if err != nil {
+		t.Fatalf("open in-memory sqlite: %v", err)
+	}
+	// A single connection keeps the in-memory database alive for the lifetime
+	// of the pool: a second connection would see an empty database.
+	raw.SetMaxOpenConns(1)
+
+	conn := database.Wrap(raw, database.SQLite())
+	if err := database.MigrateOn(conn, migrations.Embed()); err != nil {
+		t.Fatalf("run schema migrations: %v", err)
+	}
+	if withFixtures {
+		applyFixtures(t, conn)
+	}
+
+	cfg := database.Config{Driver: database.DriverSQLite, DSN: testSQLiteDSN, Source: database.SourceDefault}
+	return conn, cfg, func() { _ = raw.Close() }
+}
+
+// openTestPostgres returns a fresh database on the PostgreSQL test server,
+// provisioned by pgtestdb. The template it clones from already holds the schema
+// (and, when asked for, the fixtures), so nothing is migrated here.
+func openTestPostgres(t *testing.T, withFixtures bool) (*database.Conn, database.Config, func()) {
+	t.Helper()
+
+	dsn := pgtest.MigratedDSN(t)
+	if withFixtures {
+		dsn = pgtest.FixturesDSN(t)
+	}
+
+	// Connect, not Open: the database is migrated already, and this is the
+	// production path that pins the session timezone and sizes the pool.
+	cfg := database.Config{Driver: database.DriverPostgres, DSN: dsn, Source: database.SourceDefault}
+
+	conn, err := database.Connect(cfg)
+	if err != nil {
+		t.Fatalf("connect to postgres test database: %v", err)
+	}
+
+	return conn, cfg, func() { _ = conn.Close() }
+}
+
+// applyFixtures loads fixtures/migration into an already migrated SQLite
+// database.
+//
+// PostgreSQL does not come through here: the template it clones from already
+// contains the fixtures, so the fixture script runs once for the whole suite
+// instead of once per test.
+func applyFixtures(t *testing.T, conn *database.Conn) {
+	t.Helper()
+
+	store, err := goosedb.NewStore(goosedb.Dialect(conn.Dialect().GooseDialect()), pgtest.FixturesTable)
+	if err != nil {
+		t.Fatalf("fixture store: %v", err)
+	}
+	// An explicit store keeps the package-level goose state (SetBaseFS,
+	// SetTableName, SetDialect) out of this: it is global, and tests in a
+	// package run in parallel.
+	provider, err := goose.NewProvider("", conn.Raw(), pgtest.FixturesFS(),
+		goose.WithStore(store),
+		goose.WithDisableGlobalRegistry(true))
+	if err != nil {
+		t.Fatalf("fixture provider: %v", err)
+	}
+	if _, err := provider.Up(t.Context()); err != nil {
+		t.Fatalf("run fixtures: %v", err)
+	}
+}
+
+// SetupTestApp creates a database with fixtures, a Fiber app, and a JWT cookie.
 // Fixtures already contain installed state + JWT secret. A matching session
 // row is created so the token passes the middleware revocation check.
 func SetupTestApp(t *testing.T) (app *fiber.App, cookie string, cleanup func()) {

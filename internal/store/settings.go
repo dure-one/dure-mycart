@@ -2,34 +2,22 @@ package store
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/store/db"
 	"github.com/shurco/mycart/pkg/errors"
 	"github.com/shurco/mycart/pkg/security"
 )
 
-// DB connection for transaction-based operations
-// Set by app initialization
-var sqlDB *sql.DB
-var dbType string
-
-// InitStore initializes the store package with database connection
-// Deprecated: Use InitStoreWithType to support multiple database backends
-func InitStore(database *sql.DB) {
-	sqlDB = database
-	dbType = "sqlite" // default for backward compatibility
-}
-
-// InitStoreWithType initializes the store package with database connection and type
-func InitStoreWithType(database *sql.DB, databaseType string) {
-	sqlDB = database
-	dbType = databaseType
+// SettingQueries holds a dialect-aware handle allowing for easy querying and interaction
+// with the database related to application settings.
+type SettingQueries struct {
+	DB *database.Conn
 }
 
 // GroupFieldMap generates a map of fields based on the type of settings.
