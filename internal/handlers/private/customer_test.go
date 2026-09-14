@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 
@@ -40,12 +41,17 @@ func testExec(t *testing.T, query string, args ...any) {
 	}
 }
 
-// seedSession writes a session row so a test can watch it being revoked.
+// seedSession writes a live session row so a test can watch it being revoked.
+//
+// The expiry is in the future on purpose: GetSession only returns a row that has
+// not expired, so an expiry of 0 would make every "the session is gone"
+// assertion below pass whether or not the handler revoked anything.
 func seedSession(t *testing.T, key, customerID string) {
 	t.Helper()
 
 	testExec(t, `INSERT INTO session (key, value, expires) VALUES (?, ?, ?)`,
-		key, queries.SessionValue(queries.SessionRoleCustomer, customerID), 0)
+		key, queries.SessionValue(queries.SessionRoleCustomer, customerID),
+		time.Now().Add(time.Hour).Unix())
 }
 
 // cabinetCustomer registers an account, blocked when active is false.
