@@ -6,7 +6,8 @@ help:
 	@echo "Available targets:"
 	@echo ""
 	@echo "Setup:"
-	@echo "  setup             - Install all prerequisites (npm, go, sqlc) - RUN THIS FIRST on new platforms"
+	@echo "  setup             - Install all prerequisites (npm, go) - RUN THIS FIRST on new platforms"
+	@echo "  reinstall         - Reinstall npm dependencies
 	@echo "  deps-check        - Verify all dependencies are installed"
 	@echo ""
 	@echo "Development:"
@@ -20,6 +21,8 @@ help:
 	@echo "  test-all          - Run tests against both SQLite and PostgreSQL"
 	@echo ""
 	@echo "Frontend Tests:"
+	@echo "  e2e-admin         - Run admin panel e2e tests (browser)"
+	@echo "  e2e-site          - Run storefront e2e tests (browser)"
 	@echo "  e2e-all           - Run all frontend e2e tests"
 	@echo ""
 	@echo "Build:"
@@ -53,10 +56,14 @@ setup:
 	@go mod download
 	@go mod tidy
 	@echo ""
-	@echo "🗄️  Generating sqlc code..."
-	@sqlc generate
-	@echo ""
 	@echo "✅ Setup complete! You can now run 'make dev' or 'make e2e-all'"
+
+reinstall:
+	@echo "Reinstall..."
+	node scripts/postinstall-openbsd-natives.js
+	cd web/admin && rm -rf package-lock.json node_modules/ && npm install --legacy-peer-deps
+	cd web/site && rm -rf package-lock.json node_modules/ && npm install --legacy-peer-deps
+	npm run postinstall
 
 deps-check:
 	@echo "🔍 Checking dependencies..."
@@ -67,8 +74,6 @@ deps-check:
 	@command -v npm >/dev/null 2>&1 && npm --version || echo "❌ NOT FOUND"
 	@echo -n "Go: "
 	@command -v go >/dev/null 2>&1 && go version || echo "❌ NOT FOUND"
-	@echo -n "sqlc: "
-	@command -v sqlc >/dev/null 2>&1 && sqlc version || echo "❌ NOT FOUND"
 	@echo -n "patchright: "
 	@[ -f "node_modules/.bin/patchright" ] && echo "✓ installed" || echo "❌ NOT FOUND (run 'make setup')"
 	@echo -n "Go modules: "
@@ -78,48 +83,40 @@ deps-check:
 
 dev: setup
 	@echo "Starting development server..."
-	@if [ -f .env ]; then \
-		echo "Loading .env file..."; \
-		export $$(grep -v '^#' .env | xargs) && go run ./cmd serve --dev; \
-	else \
-		echo "Warning: .env file not found, using default configuration"; \
-		go run ./cmd serve --dev; \
-	fi
+	go run ./cmd serve --dev
 
 test:
 	@echo "Running tests with SQLite..."
-	go test ./... -v -count=1
+	go test ./... -v -count=1 -race
 
 test-unit:
 	@echo "Running unit tests..."
-	go test ./... -short -v -count=1
+	go test ./... -short -v -count=1 -race
 
 test-integration:
 	@echo "Running integration tests with SQLite..."
-	TEST_DB_TYPE=sqlite go test ./internal/store/... -v -count=1
+	TEST_DB_TYPE=sqlite go test ./internal/store/... -v -count=1 -race
 
 test-postgres:
 	@echo "Running integration tests with PostgreSQL..."
-	@if [ -f .env ]; then \
-		export $$(grep -v '^#' .env | xargs) && TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1; \
-	else \
-		TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1; \
-	fi
+	TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1 -race
 
 test-all:
 	@echo "Running tests against SQLite..."
-	TEST_DB_TYPE=sqlite go test ./internal/store/... -v -count=1
+	TEST_DB_TYPE=sqlite go test ./internal/store/... -v -count=1 -race
 	@echo ""
 	@echo "Running tests against PostgreSQL..."
-	@if [ -f .env ]; then \
-		export $$(grep -v '^#' .env | xargs) && TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1; \
-	else \
-		TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1; \
-	fi
+	TEST_DB_TYPE=postgres go test ./internal/store/... -v -count=1 -race
 
-e2e-all: setup
+e2e-admin:
 	@echo "Running admin panel e2e tests..."
-	npm run test:e2e
+	cd web/admin && bun run test:browser
+
+e2e-site:
+	@echo "Running storefront e2e tests..."
+	cd web/site && bun run test:browser
+
+e2e-all: e2e-admin e2e-site
 
 build-admin:
 	@echo "Building admin panel..."
