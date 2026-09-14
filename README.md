@@ -53,19 +53,25 @@ Formerly known as **litecart** (legacy project name kept here for discoverabilit
 
 🔑 **Sell Files and License Keys**: Whether you're selling digital files or license keys, myCart has you covered, providing flexibility in the types of products you can offer.  
 
+👤 **Customer Accounts**: Buyers can register on the storefront and sign in to a cabinet that keeps everything they bought in one place — the orders, the digital files they can download again at any time and the license keys they were issued. The cabinet is opt-in, so a shop that only takes guest checkouts keeps the storefront it had.  
+
 ⚙️ **Lightweight and Efficient**: myCart runs on an embedded SQLite database by default — no separate server to install, configure or keep running — which makes for a lightweight website that performs exceptionally well. If you would rather run a database server, [PostgreSQL is supported too](#-database) and is chosen when you install.  
 
 ☁️ **Easily Customizable**: Modify and customize your myCart website effortlessly to match your branding and unique requirements, making it truly your own.  
 
-🧞‍♂️ **Convenient Administration Panel**: With a user-friendly dashboard UI, myCart offers a hassle-free administration panel, allowing you to manage your store, inventory, and orders with ease.  
+🖼️ **Your Own Marks**: Upload the shop's logo, favicon and tagline from the admin panel — no rebuild and no theme edit — and the storefront draws them in its header and in the browser tab. Remove a file and the built-in mark comes back.  
+
+🧞‍♂️ **Convenient Administration Panel**: With a user-friendly dashboard UI, myCart offers a hassle-free administration panel, allowing you to manage your store, inventory, orders and customers with ease.  
 
 ⚡️ **Hardware Compatibility**: Whether you're running myCart on a powerful server or a modest hardware setup, rest assured that it will work seamlessly, providing a consistent shopping experience for your customers.  
 
 🔒 **Built-in HTTPS Support**: Prioritizing security, myCart comes with built-in support for HTTPS, ensuring the safety of your customers' data.
 
+🔐 **Hardened Sessions**: The panel and the cabinet sign their sessions with different keys and carry them in different cookies, and every state-changing request to either surface is checked for the same origin, so a page on another site cannot ride a signed-in session. The panel is also served with `X-Robots-Tag: noindex, nofollow` and disallowed in `robots.txt`, which keeps it and its sign-in form out of search results.
+
 🆓 **Free Products Support**: Offer free products to your customers by setting the product price to 0. Free products are automatically processed without requiring payment system integration, making it perfect for free downloads, samples, or promotional content.
 
-🌐 **Multi-language Support**: Built-in internationalization (i18n) support allows you to create multilingual stores. By default, myCart includes support for English and Chinese languages. The language switcher is available in both the admin panel and the public site, making it easy to manage content in multiple languages and provide a localized shopping experience for your customers.
+🌐 **Multi-language Support**: Built-in internationalization (i18n) support allows you to create multilingual stores. myCart ships with eight languages — English, Chinese, Korean, French, Spanish, German, Italian and Belarusian — and each is listed in its own name, so the switcher reads the same whichever language is active. It is available in both the admin panel and the public site, making it easy to manage content in multiple languages and provide a localized shopping experience for your customers.
 
 🎨 **Product Variants**: Offer products with multiple options (size, color, style, etc.) with separate inventory tracking, pricing, and SKUs for each variant. Automatically generate all combinations or manually manage specific variants with quantity and availability control.
 
@@ -307,8 +313,8 @@ erases the shop that is in there. The file's own header records when it was take
 database by `pg_restore` — the built-in dump is what `db copy` and the restore verification understand.
 
 `./lc_base` still matters on PostgreSQL, but only for `config.json` — the database itself no longer lives there.
-Together with the database, back up `./lc_uploads` (product images), `./lc_digitals` (sellable files) and
-`./site`, which are files rather than rows.
+Together with the database, back up `./lc_uploads` (product images, and the shop's own logo and favicon),
+`./lc_digitals` (sellable files) and `./site`, which are files rather than rows.
 
 ### Moving an existing shop onto PostgreSQL
 
@@ -394,6 +400,7 @@ mycart.exe serve
 When launched for the first time, necessary folders will be created in the directory with the executable file. The default links for access are:  
 - [http://localhost:8080](http://localhost:8080) - website  
 - [http://localhost:8080/_/](http://localhost:8080/_/) - control panel  
+- [http://localhost:8080/signin](http://localhost:8080/signin) - buyer sign-in, once customer accounts are enabled  
 
 If you need to run on a different port, use the flag `--http`:
 ```
@@ -417,6 +424,7 @@ init        Creating the basic structure
 migrate     Migrate on the latest version of database schema
 serve       Starts the web server (default to 0.0.0.0:8080)
 update      Updating the application to the latest version
+db          Backup, restore and copy the database
 ```
 
 Global flags `./mycart [flags]`:
@@ -434,6 +442,25 @@ Serve flags `./mycart serve [flags]`:
 --http string    server address (default "0.0.0.0:8080")
 --https string   https server address (auto TLS)
 --no-site        disable create site
+```
+
+Install flags `./mycart install [flags]`:
+```
+--email string      admin email address
+--password string   admin password (6-72 chars)
+--domain string     public store domain (default "localhost")
+```
+
+Add `--db postgres --db-dsn 'postgres://…'` to create the installation in PostgreSQL instead of SQLite; see
+[Database](#-database).
+
+`db` carries the three subcommands that move a cart between a file and a database — see [Backups](#backups) and
+[Moving an existing shop onto PostgreSQL](#moving-an-existing-shop-onto-postgresql):
+
+```
+./mycart db backup [--out file.sql.gz]     write a dump of the PostgreSQL database
+./mycart db restore --from file.sql.gz     replace the PostgreSQL database with a dump
+./mycart db copy --from <source> [--to <target>] [--dry-run] [--force]
 ```
 
 ## 🏦&nbsp;&nbsp;Adding payment systems
@@ -556,6 +583,72 @@ Free products are perfect for:
 - All standard features work with free products: email delivery, digital file downloads, license keys, and webhooks
 - Free products are included in order history and cart management just like paid products
 - No external payment processing occurs - orders are immediately marked as paid when using Dummy Payment
+
+## 👤&nbsp;&nbsp;Customer accounts
+
+A buyer does not need an account to shop: an email address at checkout is still all it takes to pay and to receive
+what was bought. An account adds a place to find it again — sign in and everything ever bought with that address is
+there, with the files ready to download a second time and the license keys the order claimed.
+
+The cabinet is **off on a fresh installation**, so a shop that only ever sells to guests is not handed a sign-in form
+it never asked for. It is turned on in the panel's **Settings → Customers** page (titled *Customer accounts*):
+
+- **Enable customer accounts** — while this is off, the storefront draws no cabinet link and every address under
+  `/api/customer` answers `404`, exactly as if the feature did not exist. The routes stay registered either way, so
+  the switch takes effect on the next request rather than on the next restart.
+- **Session lifetime** — how long a signed-in buyer stays signed in, in days: 1 to 365, 30 by default.
+
+With it on, the storefront gains three pages and the header carries a **MY PURCHASES** link:
+
+| Page | What it is |
+|---|---|
+| `/signup` | Create an account: an email address, a password of at least 8 characters (at most 72 bytes, which is where bcrypt stops reading) and an optional name. |
+| `/signin` | Sign in. An unknown address, a wrong password and a blocked account are all answered with the same message, so the form says nothing about which addresses are registered. |
+| `/account` | Everything the buyer owns: the orders with their dates and amounts, a download link for every file of a purchased product, and the license keys this order claimed. |
+
+An account is not needed for the orders made before it existed. Purchases are looked up **by the address the buyer
+typed at checkout**, so someone who paid as a guest and registers later with the same address finds those orders
+waiting in the cabinet.
+
+> [!NOTE]
+> A customer account and the admin account are two different identities. They are stored apart, signed with different
+> keys and carried in different cookies, and a buyer's session is never accepted by the admin API — signing in on the
+> storefront cannot open the panel.
+
+### Managing customers in the panel
+
+**Customers** in the panel's main menu lists every buyer the shop knows: the accounts that were registered, and the
+addresses that have ever paid. A buyer who never registered appears as a **Guest**, with no account actions to
+offer — there is nothing to block, reset or delete, and the row says so rather than pretending otherwise.
+
+Each row carries what the shop cares about: how many purchases the address has made, how much it spent, in which
+currency, and when it last ordered. The list searches by email or name, can be narrowed to accounts only, and opens a
+drawer per customer with the full order history. What the drawer offers depends on whether there is an account behind
+the row:
+
+- **Block / Unblock** — a blocked buyer cannot sign in, and their open sessions end with the block.
+- **Reset password** — issues a new password and shows it **once**: only its hash is stored, so it cannot be
+  recovered later, and it is not emailed. The buyer's open sessions end with the change.
+- **Delete account** — removes the account. What the buyer paid stays in the shop's records, where the order history
+  still names the address.
+
+## 🖼️&nbsp;&nbsp;Branding
+
+The shop's own marks are set in **Settings → Branding**, without a rebuild and without editing the theme:
+
+- **Logo** — drawn in the storefront header, at its own aspect ratio: the file is served as it is, so scale it before
+  uploading. A few hundred pixels wide is plenty. While no logo is uploaded, the mark the build shipped with is drawn
+  instead.
+- **Favicon** — the icon the browser shows for the shop, in the tab and in a bookmark. A square PNG, 512×512 or so.
+- **Tagline** — up to 120 characters, printed beside the logo in the header. Leave it empty to show the mark alone.
+
+Only PNG and JPEG are accepted: an SVG would be a script the shop hands the browser on the shop's own behalf, and the
+same rule governs product images. Uploading a new file removes the one it replaced, and removing a mark puts the
+storefront back on the mark it was built with.
+
+The files live in `./lc_uploads` — the marks are files rather than rows, so they are not in a database dump; see
+[Backups](#backups). The storefront is handed the two addresses in the public settings and draws them under its own
+origin.
 
 ## 🧩&nbsp;&nbsp;For developers
 The backend is developed in Go language. The frontend admin panel operates on SvelteKit and TailwindCSS.  
