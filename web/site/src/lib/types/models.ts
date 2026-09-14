@@ -52,7 +52,6 @@ export interface Product {
     keywords?: string
     description?: string
   }
-  inCart?: boolean
 }
 
 export interface CartItem {

@@ -26,10 +26,15 @@ function createCartStore() {
 
       const items = JSON.parse(stored)
 
-      // Migration: add quantity=1 to items without quantity field
+      // A cart written before a line carried a count holds one copy, counted
+      // rather than left to the arithmetic below. And the rule above is applied
+      // to what was stored, not only to what is added: a download put in a cart
+      // by an older version holds a count this one will not charge for, and the
+      // total under the list would be the buyer's wrong price rather than the
+      // shop's.
       return items.map((item: any) => ({
         ...item,
-        quantity: item.quantity || 1
+        quantity: orderableQuantity(item, item.quantity || 1)
       }))
     } catch {
       return []
@@ -130,7 +135,7 @@ function createCartStore() {
             : (item.id === productId && !item.variant_id)
 
           if (matches) {
-            return { ...item, quantity: Math.max(1, item.quantity - 1) }
+            return { ...item, quantity: orderableQuantity(item, Math.max(1, item.quantity - 1)) }
           }
           return item
         })

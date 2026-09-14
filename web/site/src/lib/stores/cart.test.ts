@@ -17,6 +17,7 @@ describe('Cart Store', () => {
         name: 'Test Product',
         slug: 'test-product',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -33,6 +34,7 @@ describe('Cart Store', () => {
         name: 'Test Product',
         slug: 'test-product',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -49,6 +51,7 @@ describe('Cart Store', () => {
         name: 'Product 1',
         slug: 'product-1',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -57,6 +60,7 @@ describe('Cart Store', () => {
         name: 'Product 2',
         slug: 'product-2',
         amount: 2000,
+        quantity: 1,
         image: null
       }
 
@@ -77,6 +81,7 @@ describe('Cart Store', () => {
         name: 'Test Product',
         slug: 'test-product',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -93,6 +98,7 @@ describe('Cart Store', () => {
         name: 'Product 1',
         slug: 'product-1',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -101,6 +107,7 @@ describe('Cart Store', () => {
         name: 'Product 2',
         slug: 'product-2',
         amount: 2000,
+        quantity: 1,
         image: null
       }
 
@@ -119,6 +126,7 @@ describe('Cart Store', () => {
         name: 'Product 1',
         slug: 'product-1',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -138,6 +146,7 @@ describe('Cart Store', () => {
         name: 'Product 1',
         slug: 'product-1',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -146,6 +155,7 @@ describe('Cart Store', () => {
         name: 'Product 2',
         slug: 'product-2',
         amount: 2000,
+        quantity: 1,
         image: null
       }
 
@@ -163,6 +173,7 @@ describe('Cart Store', () => {
         name: 'Product 1',
         slug: 'product-1',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -181,6 +192,7 @@ describe('Cart Store', () => {
         name: 'Test Product',
         slug: 'test-product',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -237,6 +249,17 @@ describe('Cart Store', () => {
       cartStore.incrementQuantity('keys', undefined)
 
       expect(get(cartStore)[0].quantity).toBe(4)
+    })
+
+    // A cart written by a version that did not yet sell a download as one copy
+    // is read back through the same rule: the list and the total under it are
+    // the buyer's price, and the checkout would charge one.
+    it('should bring a stored download back as one copy', () => {
+      localStorage.setItem('cart', JSON.stringify([{ ...download, quantity: 3 }]))
+
+      cartStore.reload()
+
+      expect(get(cartStore)[0].quantity).toBe(1)
     })
   })
 })
