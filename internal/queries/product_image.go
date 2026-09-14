@@ -90,7 +90,7 @@ func (q *ProductQueries) SetRepresentativeImage(ctx context.Context, productID s
 
 	// Unmark all images for this product
 	_, err = tx.ExecContext(ctx,
-		`UPDATE product_image SET is_representative = 0 WHERE product_id = ?`,
+		`UPDATE product_image SET is_representative = FALSE WHERE product_id = ?`,
 		productID,
 	)
 	if err != nil {
@@ -99,7 +99,7 @@ func (q *ProductQueries) SetRepresentativeImage(ctx context.Context, productID s
 
 	// Mark the specified image as representative
 	_, err = tx.ExecContext(ctx,
-		`UPDATE product_image SET is_representative = 1 WHERE id = ?`,
+		`UPDATE product_image SET is_representative = TRUE WHERE id = ?`,
 		imageID,
 	)
 	if err != nil {
