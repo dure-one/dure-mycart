@@ -1,0 +1,21 @@
+command = "/usr/local/bin/fail2ban-rs run --config /etc/fail2ban-rs/config.toml"
+start-delay = "3s"
+start-after = ["xmpp-proxy.toml"]
+working-directory = "/var/lib/fail2ban-rs"
+stdout = "/logs/fail2ban-rs-stdout.log"
+stderr = "/logs/fail2ban-rs-stderr.log"
+user = "root"
+
+[restart]
+strategy = "always"
+backoff = "10s"
+attempts = 0
+
+[environment]
+FAIL2BAN_MAX_RETRY = "${FAIL2BAN_MAX_RETRY}"
+FAIL2BAN_FIND_TIME = "${FAIL2BAN_FIND_TIME}"
+FAIL2BAN_BAN_TIME = "${FAIL2BAN_BAN_TIME}"
+
+[termination]
+signal = "TERM"
+wait = "5s"

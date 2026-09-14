@@ -1,0 +1,24 @@
+# interfaces to listen for reverse proxy STARTTLS/Direct TLS XMPP connections on
+incoming_listen = [ "0.0.0.0:5222", "0.0.0.0:5223", "0.0.0.0:5269" ]
+
+# interfaces to listen for reverse proxy QUIC XMPP connections on
+quic_listen = [ ]
+
+# interfaces to listen for outgoing proxy TCP XMPP connections on
+outgoing_listen = [ ]
+
+# c2s port backend XMPP server listens on
+c2s_target = "${XMPP_PROXY_PROSODY_C2S}"
+
+# s2s port backend XMPP server listens on
+s2s_target = "${XMPP_PROXY_PROSODY_S2S}"
+
+# send PROXYv1 header to backend XMPP server
+proxy = true
+
+# limit incoming stanzas to this many bytes
+max_stanza_size_bytes = 262_144
+
+# TLS key/certificate - ORDER MATTERS: key first, then cert
+tls_key = "/certs/privkey.pem"
+tls_cert = "/certs/fullchain.pem"
