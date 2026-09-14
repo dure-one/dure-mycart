@@ -67,6 +67,17 @@ func (v Metadata) Validate() error {
 	)
 }
 
+// The kinds of digital content a product can carry. They differ in where the
+// content comes from rather than in how it is paid for: a file is one file
+// served to every buyer, a licence key is one row per buyer, and an API product
+// is fetched from somewhere else entirely. Callers that treat them alike can
+// use these instead of the raw strings.
+const (
+	DigitalFile = "file"
+	DigitalData = "data"
+	DigitalAPI  = "api"
+)
+
 // Digital is ...
 type Digital struct {
 	Type   string `json:"type"`
@@ -78,7 +89,7 @@ type Digital struct {
 // Validate is ...
 func (v Digital) Validate() error {
 	return validation.ValidateStruct(&v,
-		validation.Field(&v.Type, validation.Required, validation.In("file", "data", "api")),
+		validation.Field(&v.Type, validation.Required, validation.In(DigitalFile, DigitalData, DigitalAPI)),
 		validation.Field(&v.Files),
 		validation.Field(&v.Data, validation.Each(validation.Length(1, 254))),
 	)

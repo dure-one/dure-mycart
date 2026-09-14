@@ -1,16 +1,15 @@
 package handlers
 
 import (
-	"bytes"
 	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/disintegration/imaging"
 	"github.com/gofiber/fiber/v3"
 
+	"github.com/shurco/mycart/internal/digitalfiles"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/queries"
 	"github.com/shurco/mycart/pkg/csvimport"
@@ -440,8 +439,8 @@ func AddProductDigital(c fiber.Ctx) error {
 			return webutil.StatusBadRequest(c, "file type not allowed")
 		}
 
-		fileUUID, fileExt, fileName := generateFileName(fileTmp.Filename)
-		filePath := fmt.Sprintf("%s/%s", dirDigitals, fileName)
+		fileUUID, fileExt, _ := generateFileName(fileTmp.Filename)
+		filePath := digitalfiles.Path(fileUUID, fileExt)
 		fileOrigName := fileTmp.Filename
 
 		if err := saveFile(fileTmp, filePath); err != nil {
@@ -495,19 +494,12 @@ func DownloadProductDigital(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
-	filePath := filepath.Join(dirDigitals, file.Name+"."+file.Ext)
-	content, err := os.ReadFile(filePath)
-	if err != nil {
+	if err := digitalfiles.Serve(c, file); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusNotFound(c)
 	}
 
-	c.Set(fiber.HeaderContentType, "application/octet-stream")
-	c.Set(fiber.HeaderContentDisposition,
-		fmt.Sprintf(`attachment; filename="%s"`, file.OrigName))
-	c.Set(fiber.HeaderXContentTypeOptions, "nosniff")
-
-	return c.SendStream(bytes.NewReader(content))
+	return nil
 }
 
 // UpdateProductDigital updates digital content for a product.

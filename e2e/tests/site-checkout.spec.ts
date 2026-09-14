@@ -91,8 +91,16 @@ test.describe('Site - Checkout', () => {
   })
 
   test('should refuse an item that sold out while it was in the cart', async ({ adminApi, productList, checkout }) => {
-    // ARRANGE: the last unit is in the cart, then it is gone
-    const product = await createProduct(adminApi, 'E2E Sold Out Item', { quantity: 1 })
+    // ARRANGE: the last unit is in the cart, then it is gone.
+    //
+    // The count is a licence-key count. A digital file is not stock — the shop
+    // stores one file and serves the same bytes to every buyer, so quantity on
+    // a file product is ignored and this test would be asserting a refusal the
+    // shop is right not to make.
+    const product = await createProduct(adminApi, 'E2E Sold Out Item', {
+      quantity: 1,
+      digital: { type: 'data' }
+    })
     await productList.goto()
     await productList.waitForProducts()
     await productList.addToCartByName(product.name)

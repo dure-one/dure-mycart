@@ -46,7 +46,10 @@ func (q *InstallQueries) Install(ctx context.Context, i *models.Install) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	passwordHash := security.GeneratePassword(i.Password)
+	passwordHash, err := security.HashPassword(i.Password)
+	if err != nil {
+		return err
+	}
 	jwt_secret, err := security.NewToken(passwordHash)
 	if err != nil {
 		return err

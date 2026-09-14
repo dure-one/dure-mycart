@@ -189,7 +189,8 @@ func SetupTestApp(t *testing.T) (app *fiber.App, cookie string, cleanup func()) 
 		t.Fatalf("generate jwt: %v", err)
 	}
 
-	if err := queries.DB().AddSession(context.Background(), "test-user-id", "admin", exp); err != nil {
+	if err := queries.DB().AddSession(context.Background(), "test-user-id",
+		queries.SessionValue(queries.SessionRoleAdmin, ""), exp); err != nil {
 		t.Fatalf("add session: %v", err)
 	}
 

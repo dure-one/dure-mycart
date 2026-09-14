@@ -117,10 +117,9 @@ describe('API Helpers', () => {
 
   describe('deleteData', () => {
     it('should successfully delete data', async () => {
-      // deleteData returns true only if result is truthy
       vi.mocked(api.apiDelete).mockResolvedValue({
         success: true,
-        result: { deleted: true },  // Return truthy result
+        result: { deleted: true },
         message: 'Deleted'
       })
 
@@ -129,6 +128,20 @@ describe('API Helpers', () => {
       expect(result).toBe(true)
       expect(api.apiDelete).toHaveBeenCalledWith('/api/products/1')
       expect(api.showMessage).toHaveBeenCalledWith('Deleted successfully', 'connextSuccess')
+    })
+
+    it('should report success when the delete returns no result', async () => {
+      // The delete endpoints answer with the message alone. Reading the outcome
+      // off the payload instead made every one of them look like a failure,
+      // which left the drawer open and the list stale behind it.
+      vi.mocked(api.apiDelete).mockResolvedValue({
+        success: true,
+        message: 'Deleted'
+      })
+
+      const result = await deleteData('/api/products/1')
+
+      expect(result).toBe(true)
     })
 
     it('should return false on delete failure', async () => {

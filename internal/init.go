@@ -2,13 +2,14 @@ package app
 
 import (
 	"github.com/shurco/mycart/internal/database"
+	"github.com/shurco/mycart/internal/digitalfiles"
 	"github.com/shurco/mycart/internal/queries"
 	"github.com/shurco/mycart/migrations"
 	"github.com/shurco/mycart/pkg/fsutil"
 )
 
 var (
-	requiredDirs = []string{"./lc_uploads", "./lc_digitals"}
+	requiredDirs = []string{"./lc_uploads", digitalfiles.Dir}
 )
 
 // Init creates the directory layout and connects to the configured database,

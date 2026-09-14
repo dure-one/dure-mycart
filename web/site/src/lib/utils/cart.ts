@@ -50,10 +50,11 @@ export function toggleCartItem(
       name: product.name,
       slug: product.slug,
       amount: finalAmount,
-      quantity: quantity,
+      quantity,
       image,
       variant_id: selectedVariant?.id,
-      variant_name: variantName
+      variant_name: variantName,
+      digital: product.digital
     }
 
     cartStore.add(cartItem)

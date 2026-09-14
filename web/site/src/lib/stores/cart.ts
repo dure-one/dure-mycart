@@ -1,8 +1,20 @@
 import { writable } from 'svelte/store'
 import type { CartItem } from '$lib/types/models'
+import { chargesStock } from '$lib/utils/digital'
 import { isBrowser, getLocalStorage, setLocalStorage } from '$lib/utils/browser'
 
 const CART_STORAGE_KEY = 'cart'
+
+/**
+ * The quantity a line may hold.
+ *
+ * An order holds one copy of a download: the shop stores a single file, so a
+ * second copy is the same file charged twice. Everything else is bounded only
+ * by the stock the shop keeps, which the server checks at checkout, not here.
+ */
+function orderableQuantity(item: CartItem, quantity: number): number {
+  return chargesStock(item) ? quantity : 1
+}
 
 function createCartStore() {
   const loadFromStorage = (): CartItem[] => {
@@ -14,10 +26,15 @@ function createCartStore() {
 
       const items = JSON.parse(stored)
 
-      // Migration: add quantity=1 to items without quantity field
+      // A cart written before a line carried a count holds one copy, counted
+      // rather than left to the arithmetic below. And the rule above is applied
+      // to what was stored, not only to what is added: a download put in a cart
+      // by an older version holds a count this one will not charge for, and the
+      // total under the list would be the buyer's wrong price rather than the
+      // shop's.
       return items.map((item: any) => ({
         ...item,
-        quantity: item.quantity || 1
+        quantity: orderableQuantity(item, item.quantity || 1)
       }))
     } catch {
       return []
@@ -52,14 +69,14 @@ function createCartStore() {
           // Accumulate quantity instead of ignoring
           const newItems = items.map(i =>
             i === existing
-              ? { ...i, quantity: i.quantity + (item.quantity || 1) }
+              ? { ...i, quantity: orderableQuantity(i, i.quantity + (item.quantity || 1)) }
               : i
           )
           saveToStorage(newItems)
           return newItems
         }
 
-        const newItems = [...items, { ...item, quantity: item.quantity || 1 }]
+        const newItems = [...items, { ...item, quantity: orderableQuantity(item, item.quantity || 1) }]
         saveToStorage(newItems)
         return newItems
       })
@@ -86,7 +103,7 @@ function createCartStore() {
             : (item.id === productId && !item.variant_id)
 
           if (matches) {
-            return { ...item, quantity: Math.max(1, quantity) }
+            return { ...item, quantity: orderableQuantity(item, Math.max(1, quantity)) }
           }
           return item
         })
@@ -102,7 +119,7 @@ function createCartStore() {
             : (item.id === productId && !item.variant_id)
 
           if (matches) {
-            return { ...item, quantity: item.quantity + 1 }
+            return { ...item, quantity: orderableQuantity(item, item.quantity + 1) }
           }
           return item
         })
@@ -118,7 +135,7 @@ function createCartStore() {
             : (item.id === productId && !item.variant_id)
 
           if (matches) {
-            return { ...item, quantity: Math.max(1, item.quantity - 1) }
+            return { ...item, quantity: orderableQuantity(item, Math.max(1, item.quantity - 1)) }
           }
           return item
         })

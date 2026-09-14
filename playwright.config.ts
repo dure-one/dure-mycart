@@ -21,7 +21,13 @@ const BASE_URL = `http://localhost:${PORT}`
  * Nothing is pinned by default: patchright brings its own Chromium, which is
  * the one CI downloads. A machine that cannot use it — the BSDs, where
  * patchright distributes no browser — names its own with E2E_EXECUTABLE_PATH,
- * and `channel: 'chrome'` with the OpenBSD patch installed works too.
+ * and a channel with the OpenBSD patch installed works too.
+ *
+ * It travels in `launchOptions`, which is the only place the runner looks. An
+ * `executablePath` written directly under `use` is accepted by the config
+ * loader and then read by nobody: the browser fixture builds its launch options
+ * out of `launchOptions`, `headless` and `channel`, so the override would be
+ * silently dropped and the run would go looking for patchright's own build.
  */
 const EXECUTABLE_PATH = process.env.E2E_EXECUTABLE_PATH
 
@@ -47,7 +53,7 @@ export default defineConfig({
       name: 'chrome',
       use: {
         ...devices['Desktop Chrome'],
-        ...(EXECUTABLE_PATH ? { executablePath: EXECUTABLE_PATH } : {}),
+        ...(EXECUTABLE_PATH ? { launchOptions: { executablePath: EXECUTABLE_PATH } } : {}),
       },
     },
   ],

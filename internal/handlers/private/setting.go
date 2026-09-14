@@ -96,6 +96,17 @@ func cacheVersion(ctx context.Context, db *queries.Base, v *update.Version) erro
 	return db.AddSession(ctx, "update", string(data), expires)
 }
 
+// secretSettingKeys are standalone keys whose stored value is never read back
+// over the API.
+//
+// The admin password is write-only because the panel has no use for the hash.
+// account_jwt_secret is the key the cabinet signs its session cookies with: it
+// is generated and read only by queries.CustomerQueries, an operator never sets
+// it, and the group it belongs to (settingModelFor("account")) deliberately
+// leaves it out. Reaching it through the raw key/value fallback would hand it to
+// anyone holding an admin token, so the fallback refuses it as well.
+var secretSettingKeys = []string{"password", "account_jwt_secret"}
+
 // GetSetting returns a setting value by key.
 //
 // @Summary      Get setting
@@ -113,8 +124,8 @@ func GetSetting(c fiber.Ctx) error {
 	log := logging.New()
 	settingKey := c.Params("setting_key")
 
-	if settingKey == "password" {
-		// Passwords are write-only — never return the stored hash over the API.
+	if slices.Contains(secretSettingKeys, settingKey) {
+		// Secrets are write-only — never hand the stored value back over the API.
 		return webutil.StatusNotFound(c)
 	}
 
@@ -123,7 +134,13 @@ func GetSetting(c fiber.Ctx) error {
 	if model := settingModelFor(settingKey); model != nil {
 		section, err = db.GetSettingByGroup(c.Context(), model)
 	} else {
-		section, err = db.GetSettingByKey(c.Context(), settingKey)
+		// The key/value query answers an unknown key with an empty map rather
+		// than an error, so "there is no such setting" is decided here.
+		var values map[string]models.SettingName
+		if values, err = db.GetSettingByKey(c.Context(), settingKey); err == nil && len(values) == 0 {
+			return webutil.StatusNotFound(c)
+		}
+		section = values
 	}
 
 	if err != nil {
@@ -154,7 +171,20 @@ func GetSetting(c fiber.Ctx) error {
 // the generic key/value PATCH fallback: flipping them would let an attacker
 // re-open the unauthenticated install endpoint (installed), or rotate the
 // token-signing secret (jwt_secret) for a persistent backdoor.
-var protectedSettingKeys = []string{"installed", "jwt_secret"}
+// account_jwt_secret is the cabinet's counterpart to jwt_secret and is refused
+// for the same reason.
+var protectedSettingKeys = []string{"installed", "jwt_secret", "account_jwt_secret"}
+
+// groupOnlySettingKeys are keys a group carries and validates. Writing one of
+// them on its own through the raw key/value fallback skips that validation,
+// which for the branding marks is the check that a value is a bare file name
+// rather than a path — so the fallback refuses them and the group endpoint,
+// which validates, is the way in.
+var groupOnlySettingKeys = []string{
+	"branding_logo",
+	"branding_favicon",
+	"branding_tagline",
+}
 
 // UpdateSetting updates a setting value by key.
 //
@@ -177,6 +207,10 @@ func UpdateSetting(c fiber.Ctx) error {
 
 	if slices.Contains(protectedSettingKeys, settingKey) {
 		return webutil.StatusBadRequest(c, "setting key is protected")
+	}
+
+	if slices.Contains(groupOnlySettingKeys, settingKey) {
+		return webutil.StatusBadRequest(c, "setting is written through its group")
 	}
 
 	var request any

@@ -6,7 +6,7 @@
   import Pagination from '$lib/components/Pagination.svelte'
   import { PageHeader, PageState, Badge, IconButton } from '$lib/components'
   import { loadData, handleApiCall } from '$lib/utils/apiHelpers'
-  import { apiPost } from '$lib/utils'
+  import { apiPost, paymentVariant } from '$lib/utils'
   import { formatCurrency, formatCurrencyWithTruncation } from '$lib/utils/currency'
   import { costFormat, formatDate } from '$lib/utils'
   import { STRIPE_DASHBOARD_URL } from '$lib/utils/constants'
@@ -113,11 +113,7 @@
         </thead>
         <tbody>
           {#each carts as cart, index (cart.id)}
-            <tr
-              class:bg-green-50={cart.payment_status === 'paid'}
-              class="cursor-pointer hover:bg-gray-50"
-              onclick={() => openView(cart)}
-            >
+            <tr class:bg-green-50={cart.payment_status === 'paid'} onclick={() => openView(cart)}>
               <td>{cart.email || '-'}</td>
               <td>
                 {formatCurrencyWithTruncation(
@@ -131,15 +127,7 @@
                 )}
               </td>
               <td>
-                <Badge
-                  variant={cart.payment_status === 'paid'
-                    ? 'success'
-                    : cart.payment_status === 'pending'
-                      ? 'warning'
-                      : cart.payment_status === 'failed'
-                        ? 'danger'
-                        : 'neutral'}
-                >
+                <Badge variant={paymentVariant(cart.payment_status)}>
                   {cart.payment_status || '-'}
                 </Badge>
               </td>
