@@ -6,6 +6,7 @@
   import { apiDelete } from '$lib/utils/api'
   import { loadSettings, saveSettings } from '$lib/utils/settingsHelpers'
   import { translate } from '$lib/i18n'
+  import type { ApiResponse } from '$lib/types/api'
   import type { Branding } from '$lib/types/models'
 
   // Reactive translation function
@@ -34,19 +35,19 @@
   // Merging the answer in would drop what the operator had just typed — upload
   // a logo after typing a tagline and the tagline goes, with nothing on screen
   // saying so.
-  function applyMark(kind: MarkKind, res: any): boolean {
-    if (!res?.success) return false
+  function applyMark(kind: MarkKind, res: ApiResponse<Branding>): boolean {
+    if (!res.success) return false
     formData = { ...formData, [kind]: res.result?.[kind] ?? formData[kind] }
     return true
   }
 
-  function uploaded(kind: MarkKind, res: any) {
+  function uploaded(kind: MarkKind, res: ApiResponse<Branding>) {
     if (!applyMark(kind, res)) return
     showMessage(t(`branding.${kind}Uploaded`), 'connextSuccess')
   }
 
   async function remove(kind: MarkKind) {
-    const res = await apiDelete(`/api/_/settings/branding/${kind}`)
+    const res = await apiDelete<Branding>(`/api/_/settings/branding/${kind}`)
     if (!applyMark(kind, res)) {
       showMessage(res.message || t(`branding.${kind}RemoveFailed`), 'connextError')
       return
@@ -126,7 +127,7 @@
               url={`/api/_/settings/branding/${mark.kind}`}
               accept="image/png,image/jpeg"
               multiple={false}
-              onadded={(res: any) => uploaded(mark.kind, res)}
+              onadded={(res: ApiResponse<Branding>) => uploaded(mark.kind, res)}
             />
           </div>
         </div>

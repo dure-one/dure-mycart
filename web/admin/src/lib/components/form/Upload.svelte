@@ -36,14 +36,19 @@
   let isDragging = $state(false)
 
   const onChange = async () => {
-    if (!fileInput?.files) return
+    const input = fileInput
+    if (!input?.files) return
 
-    for (const file of fileInput.files) {
+    for (const file of input.files) {
       const formData = new FormData()
       formData.append('document', file)
       const res = await apiPost(endpoint, formData)
       onadded?.(res)
     }
+
+    // Re-selecting the file that was just uploaded fires no change event while
+    // the input still holds it, so the upload would silently do nothing.
+    input.value = ''
   }
 
   const dragover = (event: DragEvent) => {
@@ -58,11 +63,21 @@
 
   const drop = (event: DragEvent) => {
     event.preventDefault()
-    if (fileInput && event.dataTransfer?.files) {
-      fileInput.files = event.dataTransfer.files
+    const dropped = event.dataTransfer?.files
+    if (fileInput && dropped?.length) {
+      // The drop goes through the input, so it has to honour the same
+      // single-select as the picker: a shop logo would otherwise reach the
+      // endpoint as three files it was never meant to receive.
+      fileInput.files = multiple ? dropped : firstFile(dropped)
       onChange()
     }
     isDragging = false
+  }
+
+  function firstFile(files: FileList): FileList {
+    const one = new DataTransfer()
+    one.items.add(files[0])
+    return one.files
   }
 
 </script>

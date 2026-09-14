@@ -41,14 +41,10 @@
       return
     }
 
-    const saved = await saveSettings('account', {
+    await saveSettings('account', {
       enabled: formData.enabled,
       expire_hours: days * HOURS_PER_DAY
     })
-
-    if (saved) {
-      formData.expire_hours = days * HOURS_PER_DAY
-    }
   }
 </script>
 
