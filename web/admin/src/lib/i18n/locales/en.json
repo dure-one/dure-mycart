@@ -149,7 +149,13 @@
     "testingConnection": "Testing…",
     "testConnectionFirst": "Test the connection before installing",
     "connectionOk": "Connection successful",
-    "connectionFailed": "Connection failed"
+    "connectionFailed": "Connection failed",
+    "errors": {
+      "databaseAlreadyInstalled": "The selected database already holds an installed cart",
+      "databaseConnectionFailed": "Failed to connect to the selected database",
+      "databaseInspectionFailed": "Failed to inspect the selected database",
+      "migrationsFailed": "Database schema migration failed. Check server logs for details"
+    }
   },
   "products": {
     "title": "Products",

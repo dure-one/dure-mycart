@@ -149,7 +149,13 @@
     "testingConnection": "测试中…",
     "testConnectionFirst": "安装前请先测试连接",
     "connectionOk": "连接成功",
-    "connectionFailed": "连接失败"
+    "connectionFailed": "连接失败",
+    "errors": {
+      "databaseAlreadyInstalled": "所选数据库中已安装购物车",
+      "databaseConnectionFailed": "无法连接到所选数据库",
+      "databaseInspectionFailed": "无法检查所选数据库",
+      "migrationsFailed": "数据库架构迁移失败。请检查服务器日志"
+    }
   },
   "products": {
     "title": "商品",
