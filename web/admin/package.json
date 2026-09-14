@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "postinstall": "node ../../scripts/postinstall-openbsd-natives.js 2>/dev/null || true",
     "dev": "bun --bunx vite dev",
     "build": "bun --bunx vite build",
     "preview": "bun --bunx vite preview",
@@ -50,7 +51,7 @@
     "svelte-check": "^4.7.6",
     "tailwindcss": "4.3.3",
     "typescript": "~6",
-    "vite": "^8.2.2",
+    "vite": "^7.3.6",
     "vitest": "^4.1.11",
     "webdriverio": "^9.31.2"
   }

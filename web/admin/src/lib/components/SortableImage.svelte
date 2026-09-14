@@ -184,14 +184,14 @@
   }
 
   :global(.image-overlay) {
-    @apply absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-50 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100;
+    @apply absolute inset-0 bg-black/0 hover:bg-black/50 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100;
   }
 
   :global(.overlay-button) {
-    @apply flex flex-col items-center gap-1 text-white font-medium px-3 py-2 rounded-md bg-black bg-opacity-50 hover:bg-opacity-70 transition-all;
+    @apply flex flex-col items-center gap-1 text-white font-medium px-3 py-2 rounded-md bg-black/50 hover:bg-black/70 transition-all;
   }
 
   :global(.position-indicator) {
-    @apply absolute bottom-2 left-2 bg-gray-900 bg-opacity-75 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center;
+    @apply absolute bottom-2 left-2 bg-gray-900/75 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center;
   }
 </style>
