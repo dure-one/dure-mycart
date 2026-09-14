@@ -189,6 +189,8 @@
     "ifZeroPriceFree": "(if 0, the price will be free)",
     "imageDeleted": "Image deleted",
     "failedToDeleteImage": "Failed to delete image",
+    "imageUploaded": "Image uploaded successfully",
+    "imageUploadFailed": "Failed to upload image",
     "productVariants": "Product Variants",
     "variantsDescription": "Create product variations with different options like size, color, or material",
     "enableVariants": "Enable Variants",
@@ -216,6 +218,7 @@
     "failedToReorderImages": "Failed to reorder images",
     "representativeSet": "Representative image set successfully",
     "failedToSetRepresentative": "Failed to set representative image",
+    "firstImageDescription": "First image is shown in product listings and accessible at /products/{urlslug}.png",
     "csv": {
       "exportProducts": "Export Products",
       "exportDescription": "Download all products as CSV file",
