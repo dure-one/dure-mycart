@@ -232,7 +232,7 @@ func GetCart(c fiber.Ctx) error {
 	cart, err := db.Cart(c.Context(), cartID)
 	if err != nil {
 		log.ErrorStack(err)
-		if errors.Is(err, errors.ErrProductNotFound) {
+		if errors.Is(err, errors.ErrCartNotFound) {
 			return webutil.StatusNotFound(c)
 		}
 		return webutil.StatusInternalServerError(c)

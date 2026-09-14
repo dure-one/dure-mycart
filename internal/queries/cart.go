@@ -216,7 +216,8 @@ func (q *CartQueries) PaidCartsByEmail(ctx context.Context, email string) ([]*mo
 	return scanCartList(rows, true)
 }
 
-// Cart retrieves a cart from the database using the provided cartId.
+// Cart retrieves a cart from the database using the provided cartId, or
+// errors.ErrCartNotFound.
 func (q *CartQueries) Cart(ctx context.Context, cartId string) (*models.Cart, error) {
 	query := fmt.Sprintf(`
 	SELECT 
@@ -253,7 +254,7 @@ func (q *CartQueries) Cart(ctx context.Context, cartId string) (*models.Cart, er
 		)
 	if err != nil {
 		if stderrors.Is(err, sql.ErrNoRows) {
-			return nil, errors.ErrProductNotFound
+			return nil, errors.ErrCartNotFound
 		}
 		return nil, err
 	}

@@ -26,6 +26,7 @@ func TestSentinels_UnwrapThroughFmtErrorf(t *testing.T) {
 		{"ErrProductNotFound", ErrProductNotFound, MsgProductNotFound},
 		{"ErrPageNotFound", ErrPageNotFound, MsgPageNotFound},
 		{"ErrSettingNotFound", ErrSettingNotFound, MsgSettingNotFound},
+		{"ErrCartNotFound", ErrCartNotFound, MsgCartNotFound},
 		{"ErrCustomerNotFound", ErrCustomerNotFound, MsgCustomerNotFound},
 		{"ErrCustomerEmailTaken", ErrCustomerEmailTaken, MsgCustomerEmailTaken},
 	}
