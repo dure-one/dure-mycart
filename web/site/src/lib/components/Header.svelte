@@ -2,7 +2,7 @@
   import { cartStore } from '$lib/stores/cart'
   import { settingsStore } from '$lib/stores/settings'
   import { handleNavigation } from '$lib/utils/navigation'
-  import { translate, locale } from '$lib/i18n'
+  import { translate } from '$lib/i18n'
   import LanguageSwitcher from './LanguageSwitcher.svelte'
 
   let cartCount = $derived($cartStore.length)

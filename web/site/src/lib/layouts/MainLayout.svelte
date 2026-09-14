@@ -73,8 +73,11 @@
       settingsStore.set(res.result)
       settingsStore.saveToCache(res.result)
 
-      // Update meta tags
-      if (res.result.main?.site_name) {
+      // The shop's name is the title of the pages that do not name themselves.
+      // A product or a CMS page fetches its own seo on the same clock as this
+      // request, so either answer can land first; a title already on the
+      // document is that page's, and this must not take it away.
+      if (res.result.main?.site_name && !document.title) {
         updateSEOTags({ title: res.result.main.site_name })
       }
       updateFavicon(res.result.branding?.favicon ?? '')
