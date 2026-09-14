@@ -2,9 +2,8 @@
   import { onDestroy, onMount } from 'svelte'
   import Main from '$lib/layouts/Main.svelte'
   import Drawer from '$lib/components/Drawer.svelte'
-  import CustomerView from '$lib/components/customer/View.svelte'
   import Pagination from '$lib/components/Pagination.svelte'
-  import { Badge, Chip, ChipGroup, FormInput, PageHeader, PageState } from '$lib/components'
+  import { Badge, Chip, ChipGroup, CustomerView, FormInput, PageHeader, PageState } from '$lib/components'
   import { accountState, formatDate } from '$lib/utils'
   import { loadData } from '$lib/utils/apiHelpers'
   import { formatCurrencyWithTruncation } from '$lib/utils/currency'
@@ -28,7 +27,7 @@
   }
 
   let customers = $state<CustomerSummary[]>([])
-  let loading = $state(true)
+  let initialLoading = $state(true)
   let currentPage = $state(1)
   let limit = $state(DEFAULT_PAGE_SIZE)
   let total = $state(0)
@@ -40,9 +39,13 @@
   let drawerCustomer = $state<CustomerSummary | null>(null)
 
   // Typing filters as it goes, but not on every keystroke: each one would be a
-  // query, and the answer to the first would usually arrive after the answer to
-  // the last.
+  // query of its own.
   let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+  // Only the newest request may write to the list: an answer to an earlier
+  // search would otherwise land on top of a newer one and show rows the
+  // operator has already typed past.
+  let latestRequest = 0
 
   onMount(async () => {
     await loadCustomers(1)
@@ -53,7 +56,7 @@
   })
 
   async function loadCustomers(page = currentPage) {
-    loading = true
+    const request = ++latestRequest
     currentPage = page
 
     const params = new URLSearchParams({ page: String(page), limit: String(limit) })
@@ -65,6 +68,8 @@
       `/api/_/customers?${params.toString()}`,
       t('customers.failedToLoad')
     )
+    if (request !== latestRequest) return
+
     if (result) {
       customers = result.customers || []
       total = result.total || 0
@@ -77,7 +82,7 @@
         drawerCustomer = customers.find((row) => row.email === drawerCustomer?.email) ?? drawerCustomer
       }
     }
-    loading = false
+    initialLoading = false
   }
 
   function onSearchInput() {
@@ -112,13 +117,12 @@
 </script>
 
 <Main>
-  <PageHeader title={t('customers.title')} />
-
-  {#if loading}
-    <PageState kind="loading" />
-  {:else}
-    <div class="mb-5 flex flex-wrap items-center gap-4">
-      <div class="w-full sm:w-72">
+  <PageHeader title={t('customers.title')}>
+    {#snippet actions()}
+      <!-- The filters are the page's controls, so they live in the header's
+           action slot with every other page's: the table then starts directly
+           under the header instead of a row lower. -->
+      <div class="w-72">
         <FormInput
           id="customer-search"
           ico="user-group"
@@ -135,66 +139,68 @@
           {t('customers.registeredOnly')}
         </Chip>
       </ChipGroup>
+    {/snippet}
+  </PageHeader>
+
+  {#if initialLoading}
+    <PageState kind="loading" />
+  {:else if customers.length === 0}
+    <PageState kind="empty" message={t('customers.noCustomers')} />
+  {:else}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>{t('customers.email')}</th>
+            <th>{t('customers.name')}</th>
+            <!-- One column carries both facts the operator needs about a row,
+                 because they are one question in practice: is there an account
+                 here, and is it open? "Guest" is the row where neither answer
+                 applies. The badge comes from `accountState`, shared with the
+                 drawer, so the row and the drawer word it the same way. -->
+            <th class="w-40">{t('customers.account')}</th>
+            <th class="w-32">{t('customers.purchases')}</th>
+            <th class="w-40">{t('customers.spent')}</th>
+            <th class="w-48">{t('customers.lastOrder')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each customers as customer (customer.email)}
+            {@const account = accountState(customer)}
+
+            <tr onclick={() => openCustomer(customer)}>
+              <td>{customer.email}</td>
+              <td>{customer.name || '-'}</td>
+              <td>
+                <Badge variant={account.variant}>{t(account.labelKey)}</Badge>
+              </td>
+              <td>{customer.purchases}</td>
+              <td>
+                {formatCurrencyWithTruncation(
+                  customer.spent,
+                  customer.currency || 'USD',
+                  'admin',
+                  paymentSettings?.truncation,
+                  currentLocale,
+                  paymentSettings?.number_format,
+                  paymentSettings?.symbol_display?.admin
+                )}
+              </td>
+              <td>
+                {#if customer.last_order}
+                  {formatDate(customer.last_order)}
+                {:else}
+                  <span class="text-gray-400">-</span>
+                {/if}
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
     </div>
 
-    {#if customers.length === 0}
-      <PageState kind="empty" message={t('customers.noCustomers')} />
-    {:else}
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>{t('customers.email')}</th>
-              <th>{t('customers.name')}</th>
-              <!-- One column carries both facts the operator needs about a row,
-                   because they are one question in practice: is there an account
-                   here, and is it open? "Guest" is the row where neither answer
-                   applies. The badge comes from `accountState`, shared with the
-                   drawer, so the row and the drawer word it the same way. -->
-              <th class="w-40">{t('customers.account')}</th>
-              <th class="w-32 text-right">{t('customers.purchases')}</th>
-              <th class="w-40 text-right">{t('customers.spent')}</th>
-              <th class="w-48">{t('customers.lastOrder')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each customers as customer (customer.email)}
-              {@const account = accountState(customer)}
-
-              <tr class="cursor-pointer hover:bg-gray-50" onclick={() => openCustomer(customer)}>
-                <td>{customer.email}</td>
-                <td>{customer.name || '-'}</td>
-                <td>
-                  <Badge variant={account.variant}>{t(account.labelKey)}</Badge>
-                </td>
-                <td class="text-right">{customer.purchases}</td>
-                <td class="text-right">
-                  {formatCurrencyWithTruncation(
-                    customer.spent,
-                    customer.currency || 'USD',
-                    'admin',
-                    paymentSettings?.truncation,
-                    currentLocale,
-                    paymentSettings?.number_format,
-                    paymentSettings?.symbol_display?.admin
-                  )}
-                </td>
-                <td>
-                  {#if customer.last_order}
-                    {formatDate(customer.last_order)}
-                  {:else}
-                    <span class="text-gray-400">-</span>
-                  {/if}
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-
-      {#if total > 0}
-        <Pagination {currentPage} totalPages={Math.ceil(total / limit)} onPageChange={loadCustomers} />
-      {/if}
+    {#if total > 0}
+      <Pagination {currentPage} totalPages={Math.ceil(total / limit)} onPageChange={loadCustomers} />
     {/if}
   {/if}
 </Main>

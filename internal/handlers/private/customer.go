@@ -254,7 +254,14 @@ func shopCurrency(c fiber.Ctx) (string, error) {
 		return "", err
 	}
 
-	currency, _ := setting["currency"].Value.(string)
+	currency, ok := setting["currency"].Value.(string)
+	if !ok || currency == "" {
+		// Answered rather than defaulted: every total in the list is summed in
+		// this currency, and a list labelled with an empty one would look like
+		// a shop that trades in nothing.
+		return "", errors.ErrSettingNotFound
+	}
+
 	return currency, nil
 }
 

@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { DetailList, DrawerFooter, DrawerHeader, PageState } from '$lib/components'
-  import { costFormat, formatDate, STRIPE_DASHBOARD_URL } from '$lib/utils'
+  import { costFormat, formatDate, paymentVariant, STRIPE_DASHBOARD_URL } from '$lib/utils'
   import { formatCurrencyWithTruncation } from '$lib/utils/currency'
   import { loadData } from '$lib/utils/apiHelpers'
-  import type { CartDetail } from '$lib/types/models'
+  import type { Cart, CartDetail } from '$lib/types/models'
   import { paymentSettingsStore } from '$lib/stores/payment'
   import { translate, locale } from '$lib/i18n'
 
@@ -14,17 +14,7 @@
   let paymentSettings = $derived($paymentSettingsStore)
 
   interface DrawerCart {
-    cart: {
-      id: string
-      email: string
-      amount_total: number
-      currency: string
-      payment_status: 'paid' | 'pending' | 'failed'
-      payment_system?: string
-      payment_id?: string
-      created?: string
-      updated?: string
-    }
+    cart: Cart
   }
 
   interface Props {
@@ -65,13 +55,15 @@
     onclose?.()
   }
 
+  // The state the badge beside the cart in the list carries, spelled as text
+  // instead. Both read the same mapping, so the two cannot disagree.
   function getPaymentStatusColor(status: string) {
-    switch (status) {
-      case 'paid':
+    switch (paymentVariant(status)) {
+      case 'success':
         return 'text-green-600'
-      case 'pending':
+      case 'warning':
         return 'text-yellow-600'
-      case 'failed':
+      case 'danger':
         return 'text-red-600'
       default:
         return 'text-gray-600'

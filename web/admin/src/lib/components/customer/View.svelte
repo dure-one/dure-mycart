@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { Badge, DetailList, DrawerFooter, DrawerHeader, FormButton, PageState } from '$lib/components'
-  import { accountState, apiUpdate, formatDate, confirmAction, showMessage } from '$lib/utils'
+  import { accountState, apiUpdate, formatDate, confirmAction, paymentVariant, showMessage } from '$lib/utils'
   import { deleteData, handleApiCall, loadData } from '$lib/utils/apiHelpers'
   import { formatCurrencyWithTruncation } from '$lib/utils/currency'
   import type { Cart, CustomerSummary } from '$lib/types/models'
@@ -60,28 +60,11 @@
     )
   }
 
-  function statusVariant(status: string): 'success' | 'warning' | 'danger' | 'neutral' {
-    switch (status) {
-      case 'paid':
-        return 'success'
-      case 'failed':
-      case 'canceled':
-        return 'danger'
-      case 'new':
-      case 'unpaid':
-      case 'processed':
-        return 'warning'
-      default:
-        return 'neutral'
-    }
-  }
-
   async function toggleActive() {
     busy = true
-    const blocked = customer.active
     const result = await handleApiCall(
       () => apiUpdate<CustomerSummary>(`/api/_/customers/${customer.id}/active`, {}),
-      blocked ? t('customers.blockedMessage') : t('customers.unblockedMessage'),
+      customer.active ? t('customers.blockedMessage') : t('customers.unblockedMessage'),
       t('customers.blockFailed')
     )
     busy = false
@@ -203,7 +186,7 @@
               <thead>
                 <tr>
                   <th>{t('customers.date')}</th>
-                  <th class="text-right">{t('customers.amount')}</th>
+                  <th>{t('customers.amount')}</th>
                   <th>{t('customers.status')}</th>
                   <th>{t('customers.payment')}</th>
                 </tr>
@@ -212,9 +195,9 @@
                 {#each carts as cart (cart.id)}
                   <tr>
                     <td>{formatDate(cart.created)}</td>
-                    <td class="text-right">{money(cart.amount_total, cart.currency)}</td>
+                    <td>{money(cart.amount_total, cart.currency)}</td>
                     <td>
-                      <Badge variant={statusVariant(cart.payment_status)}>
+                      <Badge variant={paymentVariant(cart.payment_status)}>
                         {cart.payment_status || '-'}
                       </Badge>
                     </td>
