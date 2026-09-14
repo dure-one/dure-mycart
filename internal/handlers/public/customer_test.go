@@ -255,25 +255,34 @@ func writeDigitalFile(t *testing.T, fileID, ext string, payload []byte) {
 type cabinetPurchases struct {
 	Success bool `json:"success"`
 	Result  struct {
-		Purchases []struct {
-			ID          string `json:"id"`
-			Created     int64  `json:"created"`
-			AmountTotal int    `json:"amount_total"`
-			Currency    string `json:"currency"`
-			Items       []struct {
-				ProductID string `json:"product_id"`
-				Name      string `json:"name"`
-				Slug      string `json:"slug"`
-				Quantity  int    `json:"quantity"`
-				Digital   string `json:"digital"`
-				Files     []struct {
-					ID       string `json:"id"`
-					OrigName string `json:"orig_name"`
-				} `json:"files"`
-				Codes []string `json:"codes"`
-			} `json:"items"`
-		} `json:"purchases"`
+		Purchases []cabinetPurchase `json:"purchases"`
 	} `json:"result"`
+}
+
+// cabinetPurchase is one order in the cabinet's list.
+type cabinetPurchase struct {
+	ID          string                `json:"id"`
+	Created     int64                 `json:"created"`
+	AmountTotal int                   `json:"amount_total"`
+	Currency    string                `json:"currency"`
+	Items       []cabinetPurchaseItem `json:"items"`
+}
+
+// cabinetPurchaseItem is one line of an order, with whatever it hands over.
+type cabinetPurchaseItem struct {
+	ProductID string                `json:"product_id"`
+	Name      string                `json:"name"`
+	Slug      string                `json:"slug"`
+	Quantity  int                   `json:"quantity"`
+	Digital   string                `json:"digital"`
+	Files     []cabinetPurchaseFile `json:"files"`
+	Codes     []string              `json:"codes"`
+}
+
+// cabinetPurchaseFile is a file the buyer may download.
+type cabinetPurchaseFile struct {
+	ID       string `json:"id"`
+	OrigName string `json:"orig_name"`
 }
 
 // TestCustomerPurchasesEndpoint is the cabinet's own list: what a buyer sees
@@ -296,93 +305,134 @@ func TestCustomerPurchasesEndpoint(t *testing.T) {
 	cookie := signUpAndIn(t, app, "user@gmail.com", "Passw0rd!")
 
 	t.Run("lists the paid order and what it hands over", func(t *testing.T) {
-		status, body := readResponse(t, testutil.DoRequest(t, app, http.MethodGet,
-			"/api/customer/purchases", "", cookie))
-		testutil.AssertStatusCode(t, status, http.StatusOK)
-
-		var got cabinetPurchases
-		if err := json.Unmarshal([]byte(body), &got); err != nil {
-			t.Fatalf("decode %q: %v", body, err)
-		}
-
-		if len(got.Result.Purchases) != 1 {
-			t.Fatalf("purchases = %d, want 1: %s", len(got.Result.Purchases), body)
-		}
-		purchase := got.Result.Purchases[0]
-		if purchase.ID != "iodz4ibf5h5zmov" || purchase.AmountTotal != 6300 || purchase.Currency != "USD" {
-			t.Errorf("purchase = %+v", purchase)
-		}
-		if purchase.Created == 0 {
-			t.Error("purchase carries no created timestamp")
-		}
-
-		if len(purchase.Items) != 3 {
-			t.Fatalf("items = %d, want 3: %+v", len(purchase.Items), purchase.Items)
-		}
-
-		byProduct := map[string]int{}
-		for i, item := range purchase.Items {
-			byProduct[item.ProductID] = i
-			if item.Name == "" || item.Slug == "" || item.Quantity != 1 {
-				t.Errorf("item = %+v", item)
-			}
-		}
-
-		files := purchase.Items[byProduct["fv6c9s9cqzf36sc"]]
-		if files.Digital != "file" {
-			t.Errorf("digital = %q, want file", files.Digital)
-		}
-		wantFiles := []string{"secret_image_1.png", "secret_image_2.png"}
-		if len(files.Files) != len(wantFiles) {
-			t.Fatalf("files = %+v, want %v", files.Files, wantFiles)
-		}
-		for i, name := range wantFiles {
-			if files.Files[i].OrigName != name || files.Files[i].ID == "" {
-				t.Errorf("file %d = %+v, want %q", i, files.Files[i], name)
-			}
-		}
-
-		keyed := purchase.Items[byProduct["xrtb1b919t2nuj9"]]
-		if keyed.Digital != "data" {
-			t.Errorf("digital = %q, want data", keyed.Digital)
-		}
-		// The key this order claimed, and only it: the product holds four more,
-		// still unclaimed, and printing them here would hand this buyer the
-		// shop's stock.
-		if len(keyed.Codes) != 1 || keyed.Codes[0] != "ff0b48d1-0a75-4d67-a0ac-e6243cfd6cec" {
-			t.Errorf("codes = %+v, want the one claimed key", keyed.Codes)
-		}
-
-		// An order delivered by an external API has nothing to hand over.
-		external := purchase.Items[byProduct["7mweb67t8xv9pzx"]]
-		if len(external.Files) != 0 || len(external.Codes) != 0 {
-			t.Errorf("api item carries deliverables: %+v", external)
-		}
-
-		// The list is the buyer's own, so it does not need to name them — and
-		// the address they typed at checkout is not part of it.
-		if strings.Contains(body, "user@gmail.com") {
-			t.Errorf("the response carries the buyer's address: %s", body)
-		}
+		assertPaidOrderListed(t, app, cookie)
 	})
 
 	t.Run("shows an empty list to a buyer with no orders", func(t *testing.T) {
-		other := signUpAndIn(t, app, "nobody@example.com", "Passw0rd!")
-
-		status, body := readResponse(t, testutil.DoRequest(t, app, http.MethodGet,
-			"/api/customer/purchases", "", other))
-		testutil.AssertStatusCode(t, status, http.StatusOK)
-
-		var got cabinetPurchases
-		if err := json.Unmarshal([]byte(body), &got); err != nil {
-			t.Fatalf("decode %q: %v", body, err)
-		}
-		// Another address's paid order is in the same table; an empty list is
-		// what says it was not swept up into this one.
-		if len(got.Result.Purchases) != 0 {
-			t.Errorf("purchases = %+v, want none", got.Result.Purchases)
-		}
+		assertNoOrdersListed(t, app)
 	})
+}
+
+// assertPaidOrderListed checks the order the fixtures give a signed-in buyer:
+// the one order, its header, what each line hands over, and what the payload
+// leaves out.
+func assertPaidOrderListed(t *testing.T, app *fiber.App, cookie string) {
+	t.Helper()
+
+	body, got := listPurchasesAs(t, app, cookie)
+
+	if len(got.Result.Purchases) != 1 {
+		t.Fatalf("purchases = %d, want 1: %s", len(got.Result.Purchases), body)
+	}
+	purchase := got.Result.Purchases[0]
+	if purchase.ID != "iodz4ibf5h5zmov" || purchase.AmountTotal != 6300 || purchase.Currency != "USD" {
+		t.Errorf("purchase = %+v", purchase)
+	}
+	if purchase.Created == 0 {
+		t.Error("purchase carries no created timestamp")
+	}
+
+	assertOrderedItems(t, purchase.Items)
+
+	// The list is the buyer's own, so it does not need to name them — and the
+	// address they typed at checkout is not part of it.
+	if strings.Contains(body, "user@gmail.com") {
+		t.Errorf("the response carries the buyer's address: %s", body)
+	}
+}
+
+// assertOrderedItems checks the three lines of the order, each found by the
+// product it was sold as.
+func assertOrderedItems(t *testing.T, items []cabinetPurchaseItem) {
+	t.Helper()
+
+	if len(items) != 3 {
+		t.Fatalf("items = %d, want 3: %+v", len(items), items)
+	}
+
+	byProduct := map[string]int{}
+	for i, item := range items {
+		byProduct[item.ProductID] = i
+		if item.Name == "" || item.Slug == "" || item.Quantity != 1 {
+			t.Errorf("item = %+v", item)
+		}
+	}
+
+	assertFileItem(t, items[byProduct["fv6c9s9cqzf36sc"]])
+	assertKeyItem(t, items[byProduct["xrtb1b919t2nuj9"]])
+	assertExternalItem(t, items[byProduct["7mweb67t8xv9pzx"]])
+}
+
+// assertFileItem checks the line that is downloaded: both uploads, each labelled
+// with the name the buyer will see.
+func assertFileItem(t *testing.T, item cabinetPurchaseItem) {
+	t.Helper()
+
+	if item.Digital != "file" {
+		t.Errorf("digital = %q, want file", item.Digital)
+	}
+	wantFiles := []string{"secret_image_1.png", "secret_image_2.png"}
+	if len(item.Files) != len(wantFiles) {
+		t.Fatalf("files = %+v, want %v", item.Files, wantFiles)
+	}
+	for i, name := range wantFiles {
+		if item.Files[i].OrigName != name || item.Files[i].ID == "" {
+			t.Errorf("file %d = %+v, want %q", i, item.Files[i], name)
+		}
+	}
+}
+
+// assertKeyItem checks the line that hands over a key. The key this order
+// claimed, and only it: the product holds four more, still unclaimed, and
+// printing them here would hand this buyer the shop's stock.
+func assertKeyItem(t *testing.T, item cabinetPurchaseItem) {
+	t.Helper()
+
+	if item.Digital != "data" {
+		t.Errorf("digital = %q, want data", item.Digital)
+	}
+	if len(item.Codes) != 1 || item.Codes[0] != "ff0b48d1-0a75-4d67-a0ac-e6243cfd6cec" {
+		t.Errorf("codes = %+v, want the one claimed key", item.Codes)
+	}
+}
+
+// assertExternalItem checks that an order delivered by an external API has
+// nothing to hand over.
+func assertExternalItem(t *testing.T, item cabinetPurchaseItem) {
+	t.Helper()
+
+	if len(item.Files) != 0 || len(item.Codes) != 0 {
+		t.Errorf("api item carries deliverables: %+v", item)
+	}
+}
+
+// assertNoOrdersListed checks that a buyer who has bought nothing gets an empty
+// list, while another address's paid order sits in the same table.
+func assertNoOrdersListed(t *testing.T, app *fiber.App) {
+	t.Helper()
+
+	other := signUpAndIn(t, app, "nobody@example.com", "Passw0rd!")
+
+	_, got := listPurchasesAs(t, app, other)
+	if len(got.Result.Purchases) != 0 {
+		t.Errorf("purchases = %+v, want none", got.Result.Purchases)
+	}
+}
+
+// listPurchasesAs calls the cabinet's list as one buyer and returns the raw
+// body along with the decoded payload.
+func listPurchasesAs(t *testing.T, app *fiber.App, cookie string) (string, cabinetPurchases) {
+	t.Helper()
+
+	status, body := readResponse(t, testutil.DoRequest(t, app, http.MethodGet,
+		"/api/customer/purchases", "", cookie))
+	testutil.AssertStatusCode(t, status, http.StatusOK)
+
+	var got cabinetPurchases
+	if err := json.Unmarshal([]byte(body), &got); err != nil {
+		t.Fatalf("decode %q: %v", body, err)
+	}
+	return body, got
 }
 
 // TestCustomerDownload covers the download endpoint: what a buyer who paid may

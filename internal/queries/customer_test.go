@@ -141,6 +141,21 @@ func TestAccountSecret(t *testing.T) {
 // cannot account for: the same buyer twice under two spellings, a guest they
 // cannot reach, or a total that added two currencies together.
 func TestCustomers(t *testing.T) {
+	db, ctx := seedCustomerList(t)
+
+	assertCustomerListRows(t, db, ctx)
+	assertCustomerListCurrency(t, db, ctx)
+	assertCustomerListPaging(t, db, ctx)
+	assertCustomerListRegistered(t, db, ctx)
+	assertCustomerListSearch(t, db, ctx)
+}
+
+// seedCustomerList stages the list: two accounts, a guest who paid twice in two
+// currencies, an account whose order is older than the guest's newest, and the
+// two shapes that are not customers at all.
+func seedCustomerList(t *testing.T) (*Base, context.Context) {
+	t.Helper()
+
 	db, ctx := bootstrap(t)
 
 	if _, err := db.CreateCustomer(ctx, "anna@example.com", "Passw0rd!", "Fern"); err != nil {
@@ -174,6 +189,13 @@ func TestCustomers(t *testing.T) {
 	addPaidCart(t, db, ctx, "list-blank", "   ", litepay.PAID, "2024-08-02 10:00:00",
 		models.CartProduct{ProductID: "guide", Quantity: 1})
 
+	return db, ctx
+}
+
+// assertCustomerListRows checks which addresses became rows and in what order.
+func assertCustomerListRows(t *testing.T, db *Base, ctx context.Context) {
+	t.Helper()
+
 	rows, total, err := db.Customers(ctx, CustomerFilter{Currency: "EUR"}, 10, 0)
 	if err != nil {
 		t.Fatalf("Customers: %v", err)
@@ -192,7 +214,15 @@ func TestCustomers(t *testing.T) {
 		t.Errorf("last order = %d against %d, want newest first", rows[0].LastOrder, rows[1].LastOrder)
 	}
 
-	guest := rows[0]
+	assertGuestRow(t, rows[0])
+	assertAnnaRow(t, rows[1])
+	assertZoeRow(t, rows[2])
+}
+
+// assertGuestRow checks the address that bought twice and never signed up.
+func assertGuestRow(t *testing.T, guest *models.CustomerSummary) {
+	t.Helper()
+
 	if guest.Registered || guest.ID != "" {
 		t.Errorf("the guest must be listed without an account: %+v", guest)
 	}
@@ -204,22 +234,37 @@ func TestCustomers(t *testing.T) {
 	if guest.Currency != "EUR" {
 		t.Errorf("currency = %q, want the currency the totals are in", guest.Currency)
 	}
+}
 
-	anna := rows[1]
+// assertAnnaRow checks the account whose one order is older than the guest's
+// newest: it still carries its account, and counts only that order.
+func assertAnnaRow(t *testing.T, anna *models.CustomerSummary) {
+	t.Helper()
+
 	if !anna.Registered || anna.ID == "" || anna.Name != "Fern" {
 		t.Errorf("anna must carry her account: %+v", anna)
 	}
 	if anna.Purchases != 1 || anna.Spent != 2500 {
 		t.Errorf("anna = %d purchases, %d spent, want 1 and 2500", anna.Purchases, anna.Spent)
 	}
+}
 
-	zoe := rows[2]
+// assertZoeRow checks the account that registered and never bought: no orders,
+// and so no totals.
+func assertZoeRow(t *testing.T, zoe *models.CustomerSummary) {
+	t.Helper()
+
 	if !zoe.Registered || zoe.Purchases != 0 || zoe.Spent != 0 || zoe.LastOrder != 0 {
 		t.Errorf("zoe has no orders and no totals: %+v", zoe)
 	}
+}
 
-	// The totals are computed in the requested currency, so asking for dollars
-	// must hand back the dollar order rather than the euro one.
+// assertCustomerListCurrency checks that the totals are computed in the
+// requested currency, so asking for dollars hands back the dollar order rather
+// than the euro one.
+func assertCustomerListCurrency(t *testing.T, db *Base, ctx context.Context) {
+	t.Helper()
+
 	usdRows, _, err := db.Customers(ctx, CustomerFilter{Currency: "USD"}, 10, 0)
 	if err != nil {
 		t.Fatalf("Customers in USD: %v", err)
@@ -227,9 +272,13 @@ func TestCustomers(t *testing.T) {
 	if usdRows[0].Spent != 2500 || usdRows[0].Purchases != 2 {
 		t.Errorf("usd guest = %d spent over %d purchases, want 2500 over 2", usdRows[0].Spent, usdRows[0].Purchases)
 	}
+}
 
-	// The count is what the pager needs, so it has to cover the whole result and
-	// not the page that happens to be asked for.
+// assertCustomerListPaging checks that the count covers the whole result and
+// not the page that happens to be asked for.
+func assertCustomerListPaging(t *testing.T, db *Base, ctx context.Context) {
+	t.Helper()
+
 	page, total, err := db.Customers(ctx, CustomerFilter{Currency: "EUR"}, 1, 0)
 	if err != nil {
 		t.Fatalf("Customers page: %v", err)
@@ -237,6 +286,11 @@ func TestCustomers(t *testing.T) {
 	if len(page) != 1 || total != 3 {
 		t.Errorf("page = %d rows of %d, want 1 of 3", len(page), total)
 	}
+}
+
+// assertCustomerListRegistered checks the filter that keeps the guests out.
+func assertCustomerListRegistered(t *testing.T, db *Base, ctx context.Context) {
+	t.Helper()
 
 	registered, total, err := db.Customers(ctx, CustomerFilter{Currency: "EUR", RegisteredOnly: true}, 10, 0)
 	if err != nil {
@@ -245,34 +299,37 @@ func TestCustomers(t *testing.T) {
 	if total != 2 || len(registered) != 2 || registered[0].Email != "anna@example.com" {
 		t.Errorf("registered only = %d of %d: %+v", len(registered), total, registered)
 	}
+}
 
-	// Search reaches both halves of a row: the address, and the name behind it.
-	byName, total, err := db.Customers(ctx, CustomerFilter{Currency: "EUR", Search: "fern"}, 10, 0)
+// assertCustomerListSearch checks that a search reaches both halves of a row:
+// the address, and the name behind it.
+func assertCustomerListSearch(t *testing.T, db *Base, ctx context.Context) {
+	t.Helper()
+
+	assertCustomerSearch(t, db, ctx, "fern", []string{"anna@example.com"})
+	assertCustomerSearch(t, db, ctx, "ZOE", []string{"zoe@example.com"})
+	// A term is text the operator typed, not a pattern: wildcards in it have to
+	// look for themselves, otherwise a single "%" lists the whole shop and,
+	// worse, reads as if it had matched something.
+	assertCustomerSearch(t, db, ctx, "%", nil)
+	assertCustomerSearch(t, db, ctx, "_", nil)
+}
+
+// assertCustomerSearch checks what one term matches: exactly the addresses it
+// should, and no others.
+func assertCustomerSearch(t *testing.T, db *Base, ctx context.Context, term string, want []string) {
+	t.Helper()
+
+	matched, total, err := db.Customers(ctx, CustomerFilter{Currency: "EUR", Search: term}, 10, 0)
 	if err != nil {
-		t.Fatalf("Customers by name: %v", err)
+		t.Fatalf("Customers search %q: %v", term, err)
 	}
-	if total != 1 || len(byName) != 1 || byName[0].Email != "anna@example.com" {
-		t.Errorf("search by name = %+v", byName)
+	if total != len(want) || len(matched) != len(want) {
+		t.Fatalf("search %q = %+v, want %d rows", term, matched, len(want))
 	}
-
-	byEmail, total, err := db.Customers(ctx, CustomerFilter{Currency: "EUR", Search: "ZOE"}, 10, 0)
-	if err != nil {
-		t.Fatalf("Customers by email: %v", err)
-	}
-	if total != 1 || len(byEmail) != 1 || byEmail[0].Email != "zoe@example.com" {
-		t.Errorf("search by email = %+v", byEmail)
-	}
-
-	// A search term is text the operator typed, not a pattern. Wildcards in it
-	// have to look for themselves — otherwise a single "%" lists the whole shop
-	// and, worse, reads as if it had matched something.
-	for _, term := range []string{"%", "_"} {
-		none, total, err := db.Customers(ctx, CustomerFilter{Currency: "EUR", Search: term}, 10, 0)
-		if err != nil {
-			t.Fatalf("Customers search %q: %v", term, err)
-		}
-		if total != 0 || len(none) != 0 {
-			t.Errorf("search %q matched %d of %d: %+v", term, len(none), total, none)
+	for i, email := range want {
+		if matched[i].Email != email {
+			t.Errorf("search %q row %d = %s, want %s", term, i, matched[i].Email, email)
 		}
 	}
 }
@@ -405,7 +462,17 @@ func TestCustomerPurchases(t *testing.T) {
 		t.Errorf("order = [%s %s], want newest first", purchases[0].ID, purchases[1].ID)
 	}
 
-	newer := purchases[0]
+	assertNewerPurchase(t, purchases[0])
+	assertOlderPurchase(t, purchases[1], guide.ID, keyed.ID, guideFile.ID, unnamed.ID)
+	assertNoPurchasesFor(t, db, ctx, "nobody@example.com")
+}
+
+// assertNewerPurchase checks the newest order: a total in the shop's currency,
+// a date, and one line of an externally delivered product that hands over
+// nothing.
+func assertNewerPurchase(t *testing.T, newer *models.CustomerPurchase) {
+	t.Helper()
+
 	if newer.AmountTotal != 7500 || newer.Currency != "EUR" {
 		t.Errorf("newer order total = %d %s, want 7500 EUR", newer.AmountTotal, newer.Currency)
 	}
@@ -413,13 +480,19 @@ func TestCustomerPurchases(t *testing.T) {
 		t.Error("newer order carries no created timestamp")
 	}
 	if len(newer.Items) != 1 || newer.Items[0].Name != "Paper Map" || newer.Items[0].Quantity != 3 {
-		t.Errorf("newer items = %+v", newer.Items)
+		t.Fatalf("newer items = %+v", newer.Items)
 	}
 	if len(newer.Items[0].Files) != 0 || len(newer.Items[0].Codes) != 0 {
 		t.Errorf("an api product hands nothing over through the cabinet: %+v", newer.Items[0])
 	}
+}
 
-	items := purchases[1].Items
+// assertOlderPurchase checks the older order line by line. Its third line names
+// a product row that is gone, so it drops out rather than showing up unnamed.
+func assertOlderPurchase(t *testing.T, older *models.CustomerPurchase, guideID, keyedID, guideFileID, unnamedID string) {
+	t.Helper()
+
+	items := older.Items
 	if len(items) != 2 {
 		t.Fatalf("older items = %d, want 2 (the deleted product drops out): %+v", len(items), items)
 	}
@@ -427,34 +500,12 @@ func TestCustomerPurchases(t *testing.T) {
 	var seenGuide, seenKeyed bool
 	for _, item := range items {
 		switch item.ProductID {
-		case guide.ID:
+		case guideID:
 			seenGuide = true
-			if item.Slug != "purchase-guide" || item.Digital != "file" || item.Quantity != 1 {
-				t.Errorf("guide item = %+v", item)
-			}
-			if len(item.Files) != 2 {
-				t.Fatalf("guide files = %+v, want 2", item.Files)
-			}
-			// Ordered by the name the buyer will see on disk, and named even
-			// when the upload had no name of its own.
-			want := []models.CustomerPurchaseFile{
-				{ID: unnamed.ID, OrigName: "22222222-2222-4222-8222-222222222222.pdf"},
-				{ID: guideFile.ID, OrigName: "castellon.pdf"},
-			}
-			if !reflect.DeepEqual(item.Files, want) {
-				t.Errorf("files = %+v, want %+v", item.Files, want)
-			}
-		case keyed.ID:
+			assertGuideItem(t, item, guideFileID, unnamedID)
+		case keyedID:
 			seenKeyed = true
-			if item.Digital != "data" || item.Quantity != 2 {
-				t.Errorf("keyed item = %+v", item)
-			}
-			// Only the key this order claimed. The unclaimed one belongs to
-			// nobody yet, and printing it here would hand the buyer the shop's
-			// remaining stock.
-			if len(item.Codes) != 1 || item.Codes[0] != "KEY-THIS-ONE" {
-				t.Errorf("codes = %+v, want just the claimed key", item.Codes)
-			}
+			assertKeyedItem(t, item)
 		default:
 			t.Errorf("unexpected item %+v", item)
 		}
@@ -462,10 +513,49 @@ func TestCustomerPurchases(t *testing.T) {
 	if !seenGuide || !seenKeyed {
 		t.Errorf("missing items: guide=%v keyed=%v", seenGuide, seenKeyed)
 	}
+}
 
-	// An address with no orders gets an empty list, not an error and not
-	// somebody else's orders.
-	none, err := db.CustomerPurchases(ctx, "nobody@example.com")
+// assertGuideItem checks the file line: ordered and labelled by the name the
+// buyer will see on disk, named even when the upload had no name of its own.
+func assertGuideItem(t *testing.T, item models.CustomerPurchaseItem, guideFileID, unnamedID string) {
+	t.Helper()
+
+	if item.Slug != "purchase-guide" || item.Digital != "file" || item.Quantity != 1 {
+		t.Errorf("guide item = %+v", item)
+	}
+	if len(item.Files) != 2 {
+		t.Fatalf("guide files = %+v, want 2", item.Files)
+	}
+
+	want := []models.CustomerPurchaseFile{
+		{ID: unnamedID, OrigName: "22222222-2222-4222-8222-222222222222.pdf"},
+		{ID: guideFileID, OrigName: "castellon.pdf"},
+	}
+	if !reflect.DeepEqual(item.Files, want) {
+		t.Errorf("files = %+v, want %+v", item.Files, want)
+	}
+}
+
+// assertKeyedItem checks the key line: only the key this order claimed. The
+// unclaimed ones belong to nobody yet, and printing them here would hand the
+// buyer the shop's remaining stock.
+func assertKeyedItem(t *testing.T, item models.CustomerPurchaseItem) {
+	t.Helper()
+
+	if item.Digital != "data" || item.Quantity != 2 {
+		t.Errorf("keyed item = %+v", item)
+	}
+	if len(item.Codes) != 1 || item.Codes[0] != "KEY-THIS-ONE" {
+		t.Errorf("codes = %+v, want just the claimed key", item.Codes)
+	}
+}
+
+// assertNoPurchasesFor checks that an address with no orders gets an empty
+// list, not an error and not somebody else's orders.
+func assertNoPurchasesFor(t *testing.T, db *Base, ctx context.Context, email string) {
+	t.Helper()
+
+	none, err := db.CustomerPurchases(ctx, email)
 	if err != nil {
 		t.Fatalf("CustomerPurchases unknown address: %v", err)
 	}

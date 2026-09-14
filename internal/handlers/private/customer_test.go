@@ -149,118 +149,184 @@ func TestCustomers(t *testing.T) {
 	cabinetCart(t, "guest@example.com", 999, "USD", litepay.CANCELED, "2023-06-01 00:00:00")
 
 	t.Run("one row per address, buyers first, newest purchase first", func(t *testing.T) {
-		got := listCustomers(t, app, "?search=%40example.com")
-		if got.Result.Total != 6 {
-			t.Fatalf("total = %d, want 6", got.Result.Total)
-		}
-
-		want := []string{
-			"late-ord@example.com",
-			"euro@example.com",
-			"guest@example.com",
-			"both@example.com",
-			"early-ord@example.com",
-			"registered@example.com",
-		}
-		if len(got.Result.Customers) != len(want) {
-			t.Fatalf("got %d rows, want %d", len(got.Result.Customers), len(want))
-		}
-		for i, email := range want {
-			if got.Result.Customers[i].Email != email {
-				t.Errorf("row %d = %s, want %s", i, got.Result.Customers[i].Email, email)
-			}
-		}
+		assertCustomerRowOrder(t, app)
 	})
 
 	t.Run("totals count paid carts in the shop currency", func(t *testing.T) {
-		rows := map[string]models.CustomerSummary{}
-		for _, customer := range listCustomers(t, app, "?search=%40example.com").Result.Customers {
-			rows[customer.Email] = customer
-		}
-
-		tests := []struct {
-			email      string
-			purchases  int
-			spent      int
-			registered bool
-		}{
-			{"late-ord@example.com", 1, 700, false},
-			{"early-ord@example.com", 1, 500, false},
-			// Paid, so it counts as a purchase — but the shop sells in USD, and
-			// adding EUR cents to USD cents would produce a number that means
-			// nothing.
-			{"euro@example.com", 1, 0, false},
-			// The unpaid cart is not a purchase.
-			{"guest@example.com", 1, 300, false},
-			{"both@example.com", 1, 100, true},
-			{"registered@example.com", 0, 0, true},
-		}
-
-		for _, tt := range tests {
-			row, ok := rows[tt.email]
-			if !ok {
-				t.Errorf("%s: missing from the list", tt.email)
-				continue
-			}
-			if row.Purchases != tt.purchases {
-				t.Errorf("%s: purchases = %d, want %d", tt.email, row.Purchases, tt.purchases)
-			}
-			if row.Spent != tt.spent {
-				t.Errorf("%s: spent = %d, want %d", tt.email, row.Spent, tt.spent)
-			}
-			if row.Registered != tt.registered {
-				t.Errorf("%s: registered = %v, want %v", tt.email, row.Registered, tt.registered)
-			}
-			if row.Registered && row.ID == "" {
-				t.Errorf("%s: registered row has no id", tt.email)
-			}
-			if !row.Registered && row.ID != "" {
-				t.Errorf("%s: guest row carries id %q", tt.email, row.ID)
-			}
-			if row.Currency != "USD" {
-				t.Errorf("%s: currency = %q, want USD", tt.email, row.Currency)
-			}
-		}
+		assertCustomerTotals(t, app)
 	})
 
 	t.Run("registered filter drops the guests", func(t *testing.T) {
-		got := listCustomers(t, app, "?search=%40example.com&registered=true")
-		if got.Result.Total != 2 {
-			t.Fatalf("total = %d, want 2", got.Result.Total)
-		}
-		for _, customer := range got.Result.Customers {
-			if !customer.Registered || customer.ID == "" {
-				t.Errorf("%s: registered = %v, id = %q", customer.Email, customer.Registered, customer.ID)
-			}
-		}
+		assertGuestsDropped(t, app)
 	})
 
 	t.Run("search matches the name too", func(t *testing.T) {
-		got := listCustomers(t, app, "?search=smith")
-		if got.Result.Total != 1 {
-			t.Fatalf("total = %d, want 1", got.Result.Total)
-		}
-		if got.Result.Customers[0].Email != "registered@example.com" {
-			t.Errorf("email = %s", got.Result.Customers[0].Email)
-		}
+		assertCustomerFoundByName(t, app)
 	})
 
 	t.Run("pagination", func(t *testing.T) {
-		got := listCustomers(t, app, "?search=%40example.com&limit=2")
-		if got.Result.Total != 6 {
-			t.Errorf("total = %d, want 6 (the whole set, not the page)", got.Result.Total)
-		}
-		if len(got.Result.Customers) != 2 {
-			t.Errorf("rows = %d, want 2", len(got.Result.Customers))
-		}
+		assertCustomerPageIsAWindow(t, app)
 	})
 
 	t.Run("no match", func(t *testing.T) {
-		got := listCustomers(t, app, "?search=nobody%40nowhere.invalid")
-		if got.Result.Total != 0 || len(got.Result.Customers) != 0 {
-			t.Errorf("total = %d, rows = %d, want 0 and 0", got.Result.Total, len(got.Result.Customers))
-		}
+		assertNoCustomerMatches(t, app)
 	})
+}
+
+// assertCustomerRowOrder checks which addresses became rows and in what order:
+// buyers first, their newest purchase first, then the accounts that never
+// bought.
+func assertCustomerRowOrder(t *testing.T, app *fiber.App) {
+	t.Helper()
+
+	got := listCustomers(t, app, "?search=%40example.com")
+	if got.Result.Total != 6 {
+		t.Fatalf("total = %d, want 6", got.Result.Total)
+	}
+
+	want := []string{
+		"late-ord@example.com",
+		"euro@example.com",
+		"guest@example.com",
+		"both@example.com",
+		"early-ord@example.com",
+		"registered@example.com",
+	}
+	if len(got.Result.Customers) != len(want) {
+		t.Fatalf("got %d rows, want %d", len(got.Result.Customers), len(want))
+	}
+	for i, email := range want {
+		if got.Result.Customers[i].Email != email {
+			t.Errorf("row %d = %s, want %s", i, got.Result.Customers[i].Email, email)
+		}
+	}
+}
+
+// customerTotal is what the list must say about one address: how many carts it
+// paid for, what they add up to, and whether an account stands behind it.
+type customerTotal struct {
+	purchases  int
+	spent      int
+	registered bool
+}
+
+// customerTotals is what every address the test staged has to add up to. The
+// shop sells in USD, so the euro cart counts as a purchase but contributes
+// nothing to the total: adding EUR cents to USD cents would produce a number
+// that means nothing.
+var customerTotals = map[string]customerTotal{
+	"late-ord@example.com":  {1, 700, false},
+	"early-ord@example.com": {1, 500, false},
+	"euro@example.com":      {1, 0, false},
+	// The unpaid cart is not a purchase.
+	"guest@example.com":      {1, 300, false},
+	"both@example.com":       {1, 100, true},
+	"registered@example.com": {0, 0, true},
+}
+
+// assertCustomerTotals checks the totals of every row in one listing.
+func assertCustomerTotals(t *testing.T, app *fiber.App) {
+	t.Helper()
+
+	rows := customersByEmail(t, app, "?search=%40example.com")
+	for email, want := range customerTotals {
+		row, ok := rows[email]
+		if !ok {
+			t.Errorf("%s: missing from the list", email)
+			continue
+		}
+		assertCustomerTotal(t, email, row, want)
+	}
+}
+
+// customersByEmail lists the customers matching a query, keyed by address.
+func customersByEmail(t *testing.T, app *fiber.App, query string) map[string]models.CustomerSummary {
+	t.Helper()
+
+	rows := map[string]models.CustomerSummary{}
+	for _, customer := range listCustomers(t, app, query).Result.Customers {
+		rows[customer.Email] = customer
+	}
+	return rows
+}
+
+// assertCustomerTotal checks one row against what it has to add up to.
+func assertCustomerTotal(t *testing.T, email string, row models.CustomerSummary, want customerTotal) {
+	t.Helper()
+
+	if row.Purchases != want.purchases {
+		t.Errorf("%s: purchases = %d, want %d", email, row.Purchases, want.purchases)
+	}
+	if row.Spent != want.spent {
+		t.Errorf("%s: spent = %d, want %d", email, row.Spent, want.spent)
+	}
+	if row.Registered != want.registered {
+		t.Errorf("%s: registered = %v, want %v", email, row.Registered, want.registered)
+	}
+	if row.Registered && row.ID == "" {
+		t.Errorf("%s: registered row has no id", email)
+	}
+	if !row.Registered && row.ID != "" {
+		t.Errorf("%s: guest row carries id %q", email, row.ID)
+	}
+	if row.Currency != "USD" {
+		t.Errorf("%s: currency = %q, want USD", email, row.Currency)
+	}
+}
+
+// assertGuestsDropped checks the filter: an account is what makes a row survive
+// it, whatever the row bought.
+func assertGuestsDropped(t *testing.T, app *fiber.App) {
+	t.Helper()
+
+	got := listCustomers(t, app, "?search=%40example.com&registered=true")
+	if got.Result.Total != 2 {
+		t.Fatalf("total = %d, want 2", got.Result.Total)
+	}
+	for _, customer := range got.Result.Customers {
+		if !customer.Registered || customer.ID == "" {
+			t.Errorf("%s: registered = %v, id = %q", customer.Email, customer.Registered, customer.ID)
+		}
+	}
+}
+
+// assertCustomerFoundByName checks that a search reaches the name behind the
+// address, not only the address itself.
+func assertCustomerFoundByName(t *testing.T, app *fiber.App) {
+	t.Helper()
+
+	got := listCustomers(t, app, "?search=smith")
+	if got.Result.Total != 1 {
+		t.Fatalf("total = %d, want 1", got.Result.Total)
+	}
+	if got.Result.Customers[0].Email != "registered@example.com" {
+		t.Errorf("email = %s", got.Result.Customers[0].Email)
+	}
+}
+
+// assertCustomerPageIsAWindow checks that a page is a window on the whole set:
+// the rows are the few asked for, and the total is everything that matched.
+func assertCustomerPageIsAWindow(t *testing.T, app *fiber.App) {
+	t.Helper()
+
+	got := listCustomers(t, app, "?search=%40example.com&limit=2")
+	if got.Result.Total != 6 {
+		t.Errorf("total = %d, want 6 (the whole set, not the page)", got.Result.Total)
+	}
+	if len(got.Result.Customers) != 2 {
+		t.Errorf("rows = %d, want 2", len(got.Result.Customers))
+	}
+}
+
+// assertNoCustomerMatches checks that a search matching nothing answers with an
+// empty list rather than an error.
+func assertNoCustomerMatches(t *testing.T, app *fiber.App) {
+	t.Helper()
+
+	got := listCustomers(t, app, "?search=nobody%40nowhere.invalid")
+	if got.Result.Total != 0 || len(got.Result.Customers) != 0 {
+		t.Errorf("total = %d, rows = %d, want 0 and 0", got.Result.Total, len(got.Result.Customers))
+	}
 }
 
 // TestCustomerCarts checks the carts of one address: matched however it was
