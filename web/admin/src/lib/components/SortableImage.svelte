@@ -94,6 +94,11 @@
       <p class="text-sm text-gray-500 mt-2">No images uploaded</p>
     </div>
   {:else}
+    <div class="info-text">
+      <p class="text-sm text-gray-600 mb-3">
+        <span class="font-medium">First image is shown in product listings</span> and accessible at <code>/products/{'{urlslug}'}.png</code>
+      </p>
+    </div>
     <div class="image-grid">
       {#each sortedImages as image, index (image.id)}
         <div
@@ -109,6 +114,12 @@
         >
           <div class="image-wrapper">
             <img src={image.url} alt="Product image {index + 1}" class="image-preview" />
+
+            {#if index === 0}
+              <div class="rep-badge">
+                <span class="text-xs font-bold">REP</span>
+              </div>
+            {/if}
 
             {#if image.is_representative}
               <div class="representative-badge">
@@ -151,6 +162,14 @@
     @apply w-full;
   }
 
+  :global(.info-text) {
+    @apply mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg;
+  }
+
+  :global(.info-text code) {
+    @apply bg-white px-2 py-0.5 rounded text-blue-700 font-mono text-xs;
+  }
+
   :global(.empty-state) {
     @apply flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg;
   }
@@ -177,6 +196,10 @@
 
   :global(.image-preview) {
     @apply w-full h-full object-cover;
+  }
+
+  :global(.rep-badge) {
+    @apply absolute top-2 left-2 bg-blue-600 text-white rounded px-2 py-1 shadow-md z-10;
   }
 
   :global(.representative-badge) {

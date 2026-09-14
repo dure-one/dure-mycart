@@ -168,6 +168,11 @@ func installInto(ctx context.Context, target database.Config, request *models.In
 	if err != nil {
 		// The wizard calls this before anyone has authenticated, so the server's
 		// own words — host, user, database name — must not travel back.
+		// However, distinguish between connection failures and migration failures.
+		if strings.Contains(err.Error(), "run migrations:") {
+			return &installError{status: fiber.StatusBadRequest,
+				err: fmt.Errorf("apply database schema: migrations failed; check server logs for details")}
+		}
 		return &installError{status: fiber.StatusBadRequest,
 			err: fmt.Errorf("connect to the selected database: %s", describeConnectFailure(err))}
 	}

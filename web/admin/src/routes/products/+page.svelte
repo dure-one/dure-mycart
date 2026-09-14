@@ -555,11 +555,15 @@
 
   function handleUpload(result: any) {
     if (result?.success) {
-      showMessage('File uploaded', 'connextSuccess')
+      showMessage(t('products.imageUploaded'), 'connextSuccess')
       if (result?.result && fullProductData) {
         productImages = [...(productImages || []), result.result]
       }
       loadProducts()
+    } else {
+      // Show error message from server
+      const errorMsg = result?.message || result?.result || t('products.imageUploadFailed')
+      showMessage(errorMsg, 'connextError')
     }
   }
 
