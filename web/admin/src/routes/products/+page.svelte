@@ -586,34 +586,6 @@
     }
   }
 
-  async function handleImageReorder(updates: Array<{ imageId: string; position: number }>) {
-    if (!fullProductData) return
-
-    try {
-      const res = await fetch(`/api/_/products/${fullProductData.id}/images/reorder`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ updates })
-      })
-
-      if (!res.ok) {
-        const data = await res.json()
-        showMessage(data.message || t('products.failedToReorderImages'), 'connextError')
-        return
-      }
-
-      showMessage(t('products.imagesReordered'), 'connextSuccess')
-
-      // Refetch product data to get updated positions
-      const updatedProduct = await loadData<Product>(`/api/_/products/${fullProductData.id}`, 'Failed to load product')
-      if (updatedProduct) {
-        productImages = updatedProduct.images || []
-      }
-    } catch (error) {
-      showMessage(t('common.networkError'), 'connextError')
-    }
-  }
-
   async function handleSetRepresentative(imageId: string) {
     if (!fullProductData) return
 

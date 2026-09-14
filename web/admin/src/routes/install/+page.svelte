@@ -37,13 +37,9 @@
   let email = $state('')
   let password = $state('')
   let domain = $state('')
-  let dbType = $state('sqlite')
-  let databaseUrl = $state('')
-  let sqlitePath = $state('./lc_base/data.db')
   let emailError = $state('')
   let passwordError = $state('')
   let domainError = $state('')
-  let dbError = $state('')
 
   // Database selection -------------------------------
 
@@ -173,7 +169,7 @@
     domainError = validateDomain(domain)
     dbError = ''
 
-    if (emailError || passwordError || domainError || dbError) {
+    if (emailError || passwordError || domainError) {
       return
     }
 
