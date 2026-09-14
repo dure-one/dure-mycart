@@ -21,6 +21,10 @@
   let unavailable = $state(false)
   let copied = $state('')
   let signingOut = $state(false)
+  // Kept apart from the page's own error, which takes the cabinet off the
+  // screen. A buyer whose sign-out failed is still signed in and still needs
+  // the page in front of them — and the button, to try again.
+  let signOutError = $state('')
   let copiedTimer: ReturnType<typeof setTimeout> | undefined
 
   onMount(async () => {
@@ -56,7 +60,18 @@
 
   async function signOut() {
     signingOut = true
-    await apiPost('/api/customer/signout')
+    signOutError = ''
+    const res = await apiPost('/api/customer/signout')
+
+    // The session row and the cookie go together: the server fails the request
+    // when it cannot delete the row, and a buyer told they signed out while the
+    // cookie is still in the browser would be wrong about their own account.
+    if (!res.success) {
+      signingOut = false
+      signOutError = t('account.requestFailed')
+      return
+    }
+
     goto('/')
   }
 
@@ -121,6 +136,11 @@
             {t('account.signOut')}
           </button>
         </div>
+        {#if signOutError}
+          <p class="mt-4 border-4 border-black bg-white p-3 text-base tracking-wide text-black">
+            {signOutError}
+          </p>
+        {/if}
       </div>
 
       {#if purchases.length === 0}

@@ -121,7 +121,10 @@
     "failed": "COULD NOT LOAD YOUR PURCHASES. PLEASE TRY AGAIN.",
     "unavailable": "THE ACCOUNT AREA IS NOT AVAILABLE ON THIS SITE.",
     "invalidEmail": "ENTER A VALID EMAIL ADDRESS",
-    "shortPassword": "THE PASSWORD MUST BE AT LEAST 8 CHARACTERS"
+    "shortPassword": "THE PASSWORD MUST BE AT LEAST 8 CHARACTERS",
+    "wrongCredentials": "WRONG EMAIL OR PASSWORD",
+    "emailTaken": "THIS EMAIL IS ALREADY REGISTERED",
+    "requestFailed": "SOMETHING WENT WRONG. PLEASE TRY AGAIN."
   },
   "error": {
     "notFound": "Page not found",

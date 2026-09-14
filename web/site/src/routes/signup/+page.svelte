@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation'
   import { apiPost } from '$lib/utils/api'
   import { cabinetAvailable } from '$lib/utils/cabinet'
+  import { customerErrorKey } from '$lib/utils/customerErrors'
   import { handleNavigation } from '$lib/utils/navigation'
   import CabinetUnavailable from '$lib/components/CabinetUnavailable.svelte'
   import { translate } from '$lib/i18n'
@@ -54,7 +55,7 @@
       return
     }
 
-    error = res.status === 404 ? t('account.unavailable') : res.message || t('account.failed')
+    error = res.status === 404 ? t('account.unavailable') : t(customerErrorKey(res.message))
   }
 </script>
 

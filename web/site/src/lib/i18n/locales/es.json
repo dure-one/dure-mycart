@@ -121,7 +121,10 @@
     "failed": "NO SE PUDIERON CARGAR TUS COMPRAS. INTÉNTALO DE NUEVO.",
     "unavailable": "EL ÁREA DE CUENTA NO ESTÁ DISPONIBLE EN ESTE SITIO.",
     "invalidEmail": "INTRODUCE UN CORREO ELECTRÓNICO VÁLIDO",
-    "shortPassword": "LA CONTRASEÑA DEBE TENER AL MENOS 8 CARACTERES"
+    "shortPassword": "LA CONTRASEÑA DEBE TENER AL MENOS 8 CARACTERES",
+    "wrongCredentials": "CORREO O CONTRASEÑA INCORRECTOS",
+    "emailTaken": "ESTE CORREO YA ESTÁ REGISTRADO",
+    "requestFailed": "ALGO SALIÓ MAL. INTÉNTALO DE NUEVO."
   },
   "error": {
     "notFound": "Página no encontrada",

@@ -121,7 +121,10 @@
     "failed": "IMPOSSIBILE CARICARE I TUOI ACQUISTI. RIPROVA PIÙ TARDI.",
     "unavailable": "L'AREA ACCOUNT NON È DISPONIBILE SU QUESTO SITO.",
     "invalidEmail": "INSERISCI UN INDIRIZZO E-MAIL VALIDO",
-    "shortPassword": "LA PASSWORD DEVE AVERE ALMENO 8 CARATTERI"
+    "shortPassword": "LA PASSWORD DEVE AVERE ALMENO 8 CARATTERI",
+    "wrongCredentials": "E-MAIL O PASSWORD ERRATI",
+    "emailTaken": "QUESTA E-MAIL È GIÀ REGISTRATA",
+    "requestFailed": "QUALCOSA È ANDATO STORTO. RIPROVA."
   },
   "error": {
     "notFound": "Pagina non trovata",

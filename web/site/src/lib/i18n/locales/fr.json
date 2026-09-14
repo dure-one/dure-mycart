@@ -121,7 +121,10 @@
     "failed": "IMPOSSIBLE DE CHARGER VOS ACHATS. RÉESSAYEZ PLUS TARD.",
     "unavailable": "L'ESPACE COMPTE N'EST PAS DISPONIBLE SUR CE SITE.",
     "invalidEmail": "SAISISSEZ UNE ADRESSE E-MAIL VALIDE",
-    "shortPassword": "LE MOT DE PASSE DOIT CONTENIR AU MOINS 8 CARACTÈRES"
+    "shortPassword": "LE MOT DE PASSE DOIT CONTENIR AU MOINS 8 CARACTÈRES",
+    "wrongCredentials": "E-MAIL OU MOT DE PASSE INCORRECT",
+    "emailTaken": "CETTE ADRESSE E-MAIL EST DÉJÀ ENREGISTRÉE",
+    "requestFailed": "UNE ERREUR EST SURVENUE. RÉESSAYEZ."
   },
   "error": {
     "notFound": "Page introuvable",
