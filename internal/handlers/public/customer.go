@@ -1,15 +1,12 @@
 package handlers
 
 import (
-	"bytes"
-	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
+	"github.com/shurco/mycart/internal/digitalfiles"
 	"github.com/shurco/mycart/internal/middleware"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/queries"
@@ -101,6 +98,13 @@ func CustomerSignIn(c fiber.Ctx) error {
 
 	customer, err := db.CustomerByEmail(c.Context(), request.Email)
 	if err != nil {
+		if !errors.Is(err, errors.ErrCustomerNotFound) {
+			// The address is registered and the lookup is what failed. Telling
+			// the buyer their password is wrong would hide a broken database
+			// from whoever is watching, and from them.
+			log.ErrorStack(err)
+			return webutil.StatusInternalServerError(c)
+		}
 		// Unknown address: run the same bcrypt comparison against a dummy hash
 		// and return the same answer as a wrong password.
 		security.ComparePasswords(security.DummyPasswordHash, request.Password)
@@ -247,12 +251,6 @@ func issueCustomerSession(c fiber.Ctx, customerID string) error {
 	return webutil.StatusOK(c, "Signed in", map[string]any{"id": customerID})
 }
 
-// dirDigitals is where uploaded digital goods are kept, relative to the working
-// directory. It has to stay in step with the admin uploader in
-// internal/handlers/private and with the mailer, which attach the same files
-// from the same directory.
-const dirDigitals = "./lc_digitals"
-
 // CustomerPurchases lists what the signed-in customer has bought.
 //
 // @Summary      Purchases of the signed-in customer
@@ -307,8 +305,7 @@ func CustomerDownload(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
-	content, err := os.ReadFile(filepath.Join(dirDigitals, file.Name+"."+file.Ext))
-	if err != nil {
+	if err := digitalfiles.Serve(c, file); err != nil {
 		// The row is there and the buyer is entitled to it, but the bytes are
 		// not. That is the shop's problem to notice — the error is logged — and
 		// the buyer can do nothing with it, so the answer is the same as for a
@@ -317,10 +314,5 @@ func CustomerDownload(c fiber.Ctx) error {
 		return webutil.StatusNotFound(c)
 	}
 
-	c.Set(fiber.HeaderContentType, "application/octet-stream")
-	c.Set(fiber.HeaderContentDisposition,
-		fmt.Sprintf(`attachment; filename="%s"`, file.OrigName))
-	c.Set(fiber.HeaderXContentTypeOptions, "nosniff")
-
-	return c.SendStream(bytes.NewReader(content))
+	return nil
 }

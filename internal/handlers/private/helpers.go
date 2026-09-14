@@ -15,10 +15,7 @@ import (
 	"github.com/shurco/mycart/pkg/fsutil"
 )
 
-const (
-	dirUploads  = "./lc_uploads"
-	dirDigitals = "./lc_digitals"
-)
+const dirUploads = "./lc_uploads"
 
 var validImageMIMETypes = []string{"image/png", "image/jpeg"}
 

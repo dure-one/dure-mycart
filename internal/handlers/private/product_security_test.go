@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/shurco/mycart/internal/digitalfiles"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/queries"
 	"github.com/shurco/mycart/internal/testutil"
@@ -70,11 +71,11 @@ func TestDownloadProductDigital(t *testing.T) {
 	productID, fileID := seedProductWithDigital(t, "")
 
 	payload := []byte("%PDF-1.4 fake manual content")
-	if err := os.MkdirAll(dirDigitals, 0o775); err != nil {
+	if err := os.MkdirAll(digitalfiles.Dir, 0o775); err != nil {
 		t.Fatalf("mkdir digitals: %v", err)
 	}
 	fileName := fileUUIDFor(t, productID, fileID) + ".pdf"
-	if err := os.WriteFile(filepath.Join(dirDigitals, fileName), payload, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(digitalfiles.Dir, fileName), payload, 0o644); err != nil {
 		t.Fatalf("write digital file: %v", err)
 	}
 

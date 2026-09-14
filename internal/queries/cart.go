@@ -798,13 +798,13 @@ func (q *CartQueries) CartLetterPurchase(ctx context.Context, cartID string) (*m
 		}
 
 		switch digitalType {
-		case "file":
+		case models.DigitalFile:
 			productFiles, err := scanDigitalFiles(ctx, tx, cart.ProductID)
 			if err != nil {
 				return nil, err
 			}
 			files = append(files, productFiles...)
-		case "data":
+		case models.DigitalData:
 			key, err := claimDigitalData(ctx, tx, cartID, cart.ProductID)
 			if err != nil {
 				return nil, err

@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +14,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
+	"github.com/shurco/mycart/internal/digitalfiles"
 	"github.com/shurco/mycart/internal/middleware"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/queries"
@@ -243,10 +243,10 @@ func digitalFileName(t *testing.T, fileID string) string {
 func writeDigitalFile(t *testing.T, fileID, ext string, payload []byte) {
 	t.Helper()
 
-	if err := os.MkdirAll(dirDigitals, 0o775); err != nil {
+	if err := os.MkdirAll(digitalfiles.Dir, 0o775); err != nil {
 		t.Fatalf("mkdir digitals: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dirDigitals, digitalFileName(t, fileID)+"."+ext), payload, 0o644); err != nil {
+	if err := os.WriteFile(digitalfiles.Path(digitalFileName(t, fileID), ext), payload, 0o644); err != nil {
 		t.Fatalf("write digital file: %v", err)
 	}
 }
