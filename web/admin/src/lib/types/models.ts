@@ -79,16 +79,66 @@ export interface Page {
   }
 }
 
+/**
+ * The states a payment passes through, as the payment providers report them
+ * (see pkg/litepay). "new" has been created; "unpaid" and "processed" are
+ * still open; "paid", "canceled" and "failed" are the ends it can reach;
+ * "test" is a payment made against a provider's test mode.
+ */
+export type PaymentStatus =
+  | 'new'
+  | 'unpaid'
+  | 'processed'
+  | 'paid'
+  | 'canceled'
+  | 'failed'
+  | 'test'
+
 export interface Cart {
   id: string
   email: string
   amount_total: number
   currency: string
-  payment_status: 'paid' | 'pending' | 'failed'
+  payment_status: PaymentStatus
   payment_system?: string
   payment_id?: string
   created?: string
   updated?: string
+}
+
+/**
+ * The shop's own marks, as the settings API holds them.
+ *
+ * Each of the first two is the name of a file in lc_uploads, not an address:
+ * the storefront builds "/uploads/<name>" from it, and an empty string means
+ * the mark the build shipped with is still in use.
+ */
+export interface Branding {
+  logo: string
+  favicon: string
+  tagline: string
+}
+
+/**
+ * One row of the customer list.
+ *
+ * A row is keyed by email rather than by account: most buyers check out as
+ * guests, so the address is what identifies them. `registered` is what says
+ * whether there is an account behind the row at all — `id` is empty, and no
+ * account-level action is offered, when there is not.
+ */
+export interface CustomerSummary {
+  id: string
+  email: string
+  name?: string
+  active: boolean
+  registered: boolean
+  purchases: number
+  spent: number
+  currency: string
+  last_order?: number
+  created?: number
+  updated?: number
 }
 
 export interface CartItem {

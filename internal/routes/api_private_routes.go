@@ -9,6 +9,12 @@ import (
 
 // ApiPrivateRoutes sets up private API routes that require authentication.
 func ApiPrivateRoutes(c *fiber.App) {
+	// Both session-cookie surfaces of the admin: the panel's own API and the
+	// sign-in endpoints. Registered before the routes for the same reason
+	// middleware always is — a handler that answers first never reaches it.
+	c.Use("/api/_/", middleware.CSRFProtect())
+	c.Use("/api/sign/", middleware.CSRFProtect())
+
 	c.Get("/api/install/status", handlers.InstallStatus)
 	c.Post("/api/install", middleware.AuthLimiter(), handlers.Install)
 	c.Post("/api/install/db/test", middleware.AuthLimiter(), handlers.InstallDBTest)
@@ -20,6 +26,13 @@ func ApiPrivateRoutes(c *fiber.App) {
 	sign.Post("/out", middleware.JWTProtected(), handlers.SignOut)
 
 	settings := c.Group("/api/_/settings", middleware.JWTProtected())
+	// Registered before the group's own two-segment-free routes: the marks are
+	// uploaded and removed rather than written as values, and a route that
+	// answers first is the one that is reached.
+	settings.Post("/branding/logo", handlers.UploadBrandingLogo)
+	settings.Delete("/branding/logo", handlers.DeleteBrandingLogo)
+	settings.Post("/branding/favicon", handlers.UploadBrandingFavicon)
+	settings.Delete("/branding/favicon", handlers.DeleteBrandingFavicon)
 	settings.Get("/:setting_key", handlers.GetSetting)
 	settings.Patch("/:setting_key", handlers.UpdateSetting)
 
@@ -62,4 +75,15 @@ func ApiPrivateRoutes(c *fiber.App) {
 	carts.Get("/", handlers.Carts)
 	carts.Get("/:cart_id<len(15)>", handlers.Cart)
 	carts.Post("/:cart_id<len(15)>/mail", handlers.CartSendMail)
+
+	// customers. The list is keyed by email, so the cart lookup is too: most
+	// rows in it are buyers who checked out as guests and have no account id
+	// to address them by. The account actions below take an id, and only apply
+	// to the rows that have one.
+	customers := c.Group("/api/_/customers", middleware.JWTProtected())
+	customers.Get("/", handlers.Customers)
+	customers.Get("/carts", handlers.CustomerCarts)
+	customers.Patch("/:customer_id<len(15)>/active", handlers.UpdateCustomerActive)
+	customers.Patch("/:customer_id<len(15)>/password", handlers.UpdateCustomerPassword)
+	customers.Delete("/:customer_id<len(15)>", handlers.DeleteCustomer)
 }

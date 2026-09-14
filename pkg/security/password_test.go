@@ -7,11 +7,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func TestGeneratePassword_ProducesValidBcrypt(t *testing.T) {
+func TestHashPassword_ProducesValidBcrypt(t *testing.T) {
 	t.Parallel()
 
 	const plain = "Sup3rSecret!"
-	hash := GeneratePassword(plain)
+	hash, err := HashPassword(plain)
+	if err != nil {
+		t.Fatalf("HashPassword: %v", err)
+	}
 	if !strings.HasPrefix(hash, "$2a$") && !strings.HasPrefix(hash, "$2b$") {
 		t.Fatalf("hash does not look like bcrypt: %q", hash)
 	}
@@ -57,23 +60,24 @@ func TestNewToken_IsHexAndStable(t *testing.T) {
 	}
 }
 
-// bcrypt refuses inputs longer than 72 bytes. GeneratePassword must surface that
-// as the error string rather than a truncated hash of the first 72 bytes: a
-// silent truncation would make two different passwords share one hash.
-func TestGeneratePassword_TooLongInput(t *testing.T) {
+// bcrypt refuses inputs longer than 72 bytes. HashPassword must report that as
+// an error rather than hand back a truncated hash of the first 72 bytes: a silent
+// truncation would make two different passwords share one hash, and a caller that
+// stored the error text would leave an account nothing can open.
+func TestHashPassword_TooLongInput(t *testing.T) {
 	t.Parallel()
 
 	const tooLong = 73
 
-	got := GeneratePassword(strings.Repeat("a", tooLong))
-	if got == "" {
-		t.Fatal("GeneratePassword returned an empty string")
+	got, err := HashPassword(strings.Repeat("a", tooLong))
+	if err == nil {
+		t.Fatalf("an over-long password was accepted, hash = %q", got)
 	}
-	if !strings.HasPrefix(got, "bcrypt:") {
-		t.Errorf("an over-long password should produce bcrypt's error text, got %q", got)
+	if got != "" {
+		t.Errorf("a hash was returned alongside the error: %q", got)
 	}
 	if ComparePasswords(got, strings.Repeat("a", tooLong)) {
-		t.Error("the error text was accepted as a password hash")
+		t.Error("the error path produced something accepted as a password hash")
 	}
 }
 

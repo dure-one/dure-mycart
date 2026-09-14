@@ -134,7 +134,7 @@ SELECT id, name, slug, position, active, seo, strftime('%s', created), strftime(
 ---
 SELECT COUNT(*) FROM page WHERE active = TRUE
 ---
-SELECT id, name, content, active, seo FROM page WHERE slug = ?
+SELECT id, name, content, active, seo FROM page WHERE slug = ? AND active = TRUE
 ---
 SELECT id, name, slug, position, content, active, seo, strftime('%s', created), strftime('%s', updated) FROM page WHERE id = ?
 ---
@@ -229,3 +229,182 @@ SELECT value FROM session WHERE key = ? AND expires > ?
 UPDATE session SET value = ?, expires = ? WHERE key = ? 
 ---
 DELETE FROM session WHERE key = ?
+---
+SELECT COUNT(*) FROM customer WHERE email = ?
+---
+INSERT INTO customer (id, email, password, name, active) VALUES (?, ?, ?, ?, ?) RETURNING strftime('%s', created)
+---
+SELECT id, email, password, name, active, strftime('%s', created), strftime('%s', updated) FROM customer WHERE email = ?
+---
+SELECT id, email, password, name, active, strftime('%s', created), strftime('%s', updated) FROM customer WHERE id = ?
+---
+SELECT key, value FROM setting WHERE key IN (?, ?)
+---
+SELECT value FROM setting WHERE key = ?
+---
+UPDATE setting SET value = ? WHERE key = ? AND value = ''
+---
+SELECT value FROM setting WHERE key = ?
+---
+SELECT COUNT(*)
+	FROM (
+		SELECT email FROM customer
+		UNION
+		SELECT LOWER(TRIM(email)) AS email FROM cart WHERE TRIM(email) <> '' AND payment_status = ?
+	) e
+	LEFT JOIN customer c ON c.email = e.email
+	 WHERE (e.email LIKE ? ESCAPE '\' OR LOWER(COALESCE(c.name, '')) LIKE ? ESCAPE '\')
+---
+
+	SELECT
+		c.id AS account_id,
+		e.email,
+		COALESCE(c.name, '') AS name,
+		c.active,
+		strftime('%s', c.created) AS created,
+		strftime('%s', c.updated) AS updated,
+		COALESCE(o.purchases, 0) AS purchases,
+		COALESCE(o.spent, 0) AS spent,
+		COALESCE(o.last_order, 0) AS last_order
+	
+	FROM (
+		SELECT email FROM customer
+		UNION
+		SELECT LOWER(TRIM(email)) AS email FROM cart WHERE TRIM(email) <> '' AND payment_status = ?
+	) e
+	LEFT JOIN customer c ON c.email = e.email
+	
+	LEFT JOIN (
+		SELECT
+			LOWER(TRIM(email)) AS email,
+			COUNT(*) AS purchases,
+			SUM(CASE WHEN currency = ? THEN amount_total ELSE 0 END) AS spent,
+			MAX(strftime('%s', created)) AS last_order
+		FROM cart
+		WHERE payment_status = ? AND TRIM(email) <> ''
+		GROUP BY LOWER(TRIM(email))
+	) o ON o.email = e.email
+	 WHERE (e.email LIKE ? ESCAPE '\' OR LOWER(COALESCE(c.name, '')) LIKE ? ESCAPE '\')
+	ORDER BY (o.last_order IS NULL), o.last_order DESC, e.email
+ LIMIT ? OFFSET ?
+---
+SELECT COUNT(*)
+	FROM (
+		SELECT email FROM customer
+		UNION
+		SELECT LOWER(TRIM(email)) AS email FROM cart WHERE TRIM(email) <> '' AND payment_status = ?
+	) e
+	LEFT JOIN customer c ON c.email = e.email
+	 WHERE c.id IS NOT NULL
+---
+
+	SELECT
+		c.id AS account_id,
+		e.email,
+		COALESCE(c.name, '') AS name,
+		c.active,
+		strftime('%s', c.created) AS created,
+		strftime('%s', c.updated) AS updated,
+		COALESCE(o.purchases, 0) AS purchases,
+		COALESCE(o.spent, 0) AS spent,
+		COALESCE(o.last_order, 0) AS last_order
+	
+	FROM (
+		SELECT email FROM customer
+		UNION
+		SELECT LOWER(TRIM(email)) AS email FROM cart WHERE TRIM(email) <> '' AND payment_status = ?
+	) e
+	LEFT JOIN customer c ON c.email = e.email
+	
+	LEFT JOIN (
+		SELECT
+			LOWER(TRIM(email)) AS email,
+			COUNT(*) AS purchases,
+			SUM(CASE WHEN currency = ? THEN amount_total ELSE 0 END) AS spent,
+			MAX(strftime('%s', created)) AS last_order
+		FROM cart
+		WHERE payment_status = ? AND TRIM(email) <> ''
+		GROUP BY LOWER(TRIM(email))
+	) o ON o.email = e.email
+	 WHERE c.id IS NOT NULL
+	ORDER BY (o.last_order IS NULL), o.last_order DESC, e.email
+ LIMIT ? OFFSET ?
+---
+
+	SELECT
+		id,
+		email,
+		amount_total,
+		currency,
+		payment_id,
+		payment_status,
+		payment_system,
+		strftime('%s', created),
+		strftime('%s', updated)
+	FROM cart WHERE LOWER(TRIM(email)) = ? ORDER BY created DESC
+---
+
+	SELECT
+		id,
+		email,
+		amount_total,
+		currency,
+		payment_id,
+		payment_status,
+		payment_system,
+		strftime('%s', created),
+		strftime('%s', updated),
+		cart
+	FROM cart WHERE LOWER(TRIM(email)) = ? AND payment_status = ? ORDER BY created DESC
+---
+
+	SELECT
+		id,
+		email,
+		amount_total,
+		currency,
+		payment_id,
+		payment_status,
+		payment_system,
+		strftime('%s', created),
+		strftime('%s', updated),
+		cart
+	FROM cart WHERE LOWER(TRIM(email)) = ? AND payment_status = ? ORDER BY created DESC
+---
+SELECT cart_id, product_id, content FROM digital_data
+			WHERE cart_id IN (?)
+			ORDER BY id
+---
+
+	SELECT
+		id,
+		email,
+		amount_total,
+		currency,
+		payment_id,
+		payment_status,
+		payment_system,
+		strftime('%s', created),
+		strftime('%s', updated),
+		cart
+	FROM cart WHERE LOWER(TRIM(email)) = ? AND payment_status = ? ORDER BY created DESC
+---
+SELECT id, name, ext, orig_name, product_id FROM digital_file WHERE id = ?
+---
+SELECT id, name, slug, digital FROM product WHERE id IN (?)
+---
+SELECT product_id, id, name, ext, orig_name FROM digital_file
+			WHERE product_id IN (?)
+			ORDER BY COALESCE(NULLIF(orig_name, ''), name || '.' || ext), id
+---
+SELECT cart_id, product_id, content FROM digital_data
+			WHERE cart_id IN (?)
+			ORDER BY id
+---
+UPDATE customer SET active = ?, updated = CURRENT_TIMESTAMP WHERE id = ?
+---
+UPDATE customer SET password = ?, updated = CURRENT_TIMESTAMP WHERE id = ?
+---
+DELETE FROM session WHERE value = ?
+---
+DELETE FROM customer WHERE id = ?

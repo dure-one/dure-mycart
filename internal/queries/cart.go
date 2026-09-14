@@ -28,7 +28,7 @@ func (q *CartQueries) PaymentList(ctx context.Context) (map[string]bool, error) 
 		"stripe_active", "paypal_active", "spectrocoin_active", "coinbase_active", "portone_active",
 	}
 
-	query := fmt.Sprintf("SELECT key, value FROM setting WHERE key IN (%s)", strings.Repeat("?, ", len(keys)-1)+"?")
+	query := fmt.Sprintf("SELECT key, value FROM setting WHERE key IN (%s)", inPlaceholders(len(keys)))
 	rows, err := q.DB.QueryContext(ctx, query, keys...)
 	if err != nil {
 		return nil, err
@@ -60,24 +60,84 @@ func (q *CartQueries) PaymentList(ctx context.Context) (map[string]bool, error) 
 	return payments, nil
 }
 
-// Carts retrieves a list of carts from the database.
-func (q *CartQueries) Carts(ctx context.Context, limit, offset int) ([]*models.Cart, int, error) {
+// cartListSelect is the projection every cart listing shares, formatted for the
+// configured dialect and stopping at the end of the column list, so each caller
+// appends the FROM clause that suits it. A caller that needs the cart JSON —
+// only the cabinet does — passes it as an extra column.
+//
+// Carts and CartsByEmail differ only in their WHERE clause, and a listing whose
+// columns drift from another's is a bug that shows up as a zero amount on one
+// screen and not the other — so the columns are built in one place.
+func (q *CartQueries) cartListSelect(extra ...string) string {
+	columns := append([]string{
+		"id",
+		"email",
+		"amount_total",
+		"currency",
+		"payment_id",
+		"payment_status",
+		"payment_system",
+		q.DB.Dialect().Epoch("created"),
+		q.DB.Dialect().Epoch("updated"),
+	}, extra...)
+
+	return "\n\tSELECT\n\t\t" + strings.Join(columns, ",\n\t\t") + "\n\t"
+}
+
+// scanCartList reads a cart listing built by cartListSelect. withLines says
+// whether the projection carried the cart JSON as its last column.
+func scanCartList(rows *sql.Rows, withLines bool) ([]*models.Cart, error) {
 	carts := []*models.Cart{}
 
-	query := fmt.Sprintf(`
-	SELECT
-		id,
-		email,
-		amount_total,
-		currency,
-		payment_id,
-		payment_status,
-		payment_system,
-		%s,
-		%s
-	FROM cart
-	ORDER BY created DESC
-`, q.DB.Dialect().Epoch("created"), q.DB.Dialect().Epoch("updated"))
+	for rows.Next() {
+		var email, paymentID, cartJSON sql.NullString
+		var updated sql.NullInt64
+		cart := &models.Cart{}
+
+		dest := []any{
+			&cart.ID,
+			&email,
+			&cart.AmountTotal,
+			&cart.Currency,
+			&paymentID,
+			&cart.PaymentStatus,
+			&cart.PaymentSystem,
+			&cart.Created,
+			&updated,
+		}
+		if withLines {
+			dest = append(dest, &cartJSON)
+		}
+
+		if err := rows.Scan(dest...); err != nil {
+			return nil, err
+		}
+
+		cart.Email = email.String
+		cart.PaymentID = paymentID.String
+		if updated.Valid {
+			cart.Updated = updated.Int64
+		}
+
+		if cartJSON.Valid && cartJSON.String != "" {
+			if err := json.Unmarshal([]byte(cartJSON.String), &cart.Cart); err != nil {
+				return nil, err
+			}
+		}
+
+		carts = append(carts, cart)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return carts, nil
+}
+
+// Carts retrieves a list of carts from the database.
+func (q *CartQueries) Carts(ctx context.Context, limit, offset int) ([]*models.Cart, int, error) {
+	query := q.cartListSelect() + "FROM cart\n\tORDER BY created DESC\n"
 
 	// Add pagination
 	var params []any
@@ -96,36 +156,8 @@ func (q *CartQueries) Carts(ctx context.Context, limit, offset int) ([]*models.C
 	}
 	defer func() { _ = rows.Close() }()
 
-	for rows.Next() {
-		var email, paymentID sql.NullString
-		var updated sql.NullInt64
-		cart := &models.Cart{}
-
-		err := rows.Scan(
-			&cart.ID,
-			&email,
-			&cart.AmountTotal,
-			&cart.Currency,
-			&paymentID,
-			&cart.PaymentStatus,
-			&cart.PaymentSystem,
-			&cart.Created,
-			&updated,
-		)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		cart.Email = email.String
-		cart.PaymentID = paymentID.String
-		if updated.Valid {
-			cart.Updated = updated.Int64
-		}
-
-		carts = append(carts, cart)
-	}
-
-	if err := rows.Err(); err != nil {
+	carts, err := scanCartList(rows, false)
+	if err != nil {
 		return nil, 0, err
 	}
 
@@ -139,7 +171,53 @@ func (q *CartQueries) Carts(ctx context.Context, limit, offset int) ([]*models.C
 	return carts, total, nil
 }
 
-// Cart retrieves a cart from the database using the provided cartId.
+// CartsByEmail returns every cart created for an address, newest first, in any
+// payment state.
+//
+// The address is matched after trimming and lower-casing, which is how the
+// cabinet stores a login: checkout writes the address exactly as the buyer
+// typed it, so "Anna@Example.com " and "anna@example.com" are one customer.
+// Trusting the raw column instead would let a buyer's own purchases disappear
+// from the cabinet they belong to. The comparison is on an expression, so no
+// index on cart (email) can serve it — see the customer migration for why the
+// index is nonetheless a plain one.
+func (q *CartQueries) CartsByEmail(ctx context.Context, email string) ([]*models.Cart, error) {
+	query := q.cartListSelect() +
+		"FROM cart WHERE LOWER(TRIM(email)) = ? ORDER BY created DESC"
+
+	rows, err := q.DB.QueryContext(ctx, query, NormalizeEmail(email))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	return scanCartList(rows, false)
+}
+
+// PaidCartsByEmail returns the paid carts of an address, newest first, with the
+// lines of each one.
+//
+// It is a third listing rather than a filter over CartsByEmail because the two
+// callers want different things: the admin screen lists orders and shows
+// nothing of what is in them, while the cabinet resolves every line against the
+// catalogue. Leaving the cart JSON out of the shared projection is what keeps
+// an admin page from carrying the contents of every abandoned cart along with
+// it.
+func (q *CartQueries) PaidCartsByEmail(ctx context.Context, email string) ([]*models.Cart, error) {
+	query := q.cartListSelect("cart") +
+		"FROM cart WHERE LOWER(TRIM(email)) = ? AND payment_status = ? ORDER BY created DESC"
+
+	rows, err := q.DB.QueryContext(ctx, query, NormalizeEmail(email), litepay.PAID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	return scanCartList(rows, true)
+}
+
+// Cart retrieves a cart from the database using the provided cartId, or
+// errors.ErrCartNotFound.
 func (q *CartQueries) Cart(ctx context.Context, cartId string) (*models.Cart, error) {
 	query := fmt.Sprintf(`
 	SELECT 
@@ -176,7 +254,7 @@ func (q *CartQueries) Cart(ctx context.Context, cartId string) (*models.Cart, er
 		)
 	if err != nil {
 		if stderrors.Is(err, sql.ErrNoRows) {
-			return nil, errors.ErrProductNotFound
+			return nil, errors.ErrCartNotFound
 		}
 		return nil, err
 	}
@@ -401,6 +479,39 @@ func validateCartItem(
 	return validateNonVariantItem(index, requested, product)
 }
 
+// chargesStock reports whether a product can run out.
+//
+// A digital file cannot: the shop stores one file and serves the same bytes to
+// every buyer, so `quantity` on such a product is not stock. Reading it as stock
+// is what made a shop unable to sell the thing it sells most — a guide left at
+// the quantity the panel's form offers by default, which is zero, was answered
+// with "quantity unavailable" at every checkout.
+//
+// Everything else keeps the count it has always been checked against. A licence
+// key is stock in the literal sense: each buyer takes one unclaimed row out of
+// digital_data, and the operator's number is what stops the shop from promising
+// more keys than it holds.
+func chargesStock(product *models.Product) bool {
+	return product.Digital.Type != models.DigitalFile
+}
+
+// orderableQuantity is the most copies of one item an order may hold.
+//
+// A download is one copy. The shop stores a single file and hands the same
+// bytes to every buyer, so a second copy is the same file charged twice: the
+// buyer is not getting anything the shop would have to produce. Everything
+// else is limited by the stock it keeps.
+//
+// This is the other half of the same rule. `chargesStock` stops the shop from
+// refusing a download it cannot run out of; this stops it from selling more
+// copies of one than there are copies to sell.
+func orderableQuantity(stock int, product *models.Product) int {
+	if !chargesStock(product) {
+		return 1
+	}
+	return stock
+}
+
 // validateVariantItem validates a cart item with a variant
 func validateVariantItem(
 	index int,
@@ -487,14 +598,15 @@ func validateVariantItem(
 	}
 
 	// Check quantity availability
-	if requested.Quantity > variant.Quantity {
+	orderable := orderableQuantity(variant.Quantity, product)
+	if requested.Quantity > orderable {
 		return &models.CartValidationError{
 			ItemIndex:          index,
 			ProductID:          requested.ProductID,
 			VariantID:          requested.VariantID,
 			ErrorType:          "quantity_unavailable",
 			RequestedQty:       requested.Quantity,
-			AvailableQty:       variant.Quantity,
+			AvailableQty:       orderable,
 			RequestedUnitPrice: currentUnitPrice,
 			CurrentUnitPrice:   currentUnitPrice,
 			RequestedTotal:     requested.Quantity * currentUnitPrice,
@@ -549,14 +661,15 @@ func validateNonVariantItem(
 	}
 
 	// Check quantity availability
-	if requested.Quantity > product.Quantity {
+	orderable := orderableQuantity(product.Quantity, product)
+	if requested.Quantity > orderable {
 		return &models.CartValidationError{
 			ItemIndex:          index,
 			ProductID:          requested.ProductID,
 			VariantID:          nil,
 			ErrorType:          "quantity_unavailable",
 			RequestedQty:       requested.Quantity,
-			AvailableQty:       product.Quantity,
+			AvailableQty:       orderable,
 			RequestedUnitPrice: currentUnitPrice,
 			CurrentUnitPrice:   currentUnitPrice,
 			RequestedTotal:     requested.Quantity * currentUnitPrice,
@@ -686,13 +799,13 @@ func (q *CartQueries) CartLetterPurchase(ctx context.Context, cartID string) (*m
 		}
 
 		switch digitalType {
-		case "file":
+		case models.DigitalFile:
 			productFiles, err := scanDigitalFiles(ctx, tx, cart.ProductID)
 			if err != nil {
 				return nil, err
 			}
 			files = append(files, productFiles...)
-		case "data":
+		case models.DigitalData:
 			key, err := claimDigitalData(ctx, tx, cartID, cart.ProductID)
 			if err != nil {
 				return nil, err

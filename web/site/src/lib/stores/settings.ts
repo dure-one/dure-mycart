@@ -31,7 +31,7 @@ function createSettingsStore() {
 
         if (now < cacheTime) {
           try {
-            return JSON.parse(cached)
+            return withoutCabinet(JSON.parse(cached) as Settings)
           } catch {
             return null
           }
@@ -51,7 +51,7 @@ function createSettingsStore() {
         localStorage.setItem(SETTINGS_VERSION_KEY, currentVersion)
       }
 
-      sessionStorage.setItem('settings', JSON.stringify(settings))
+      sessionStorage.setItem('settings', JSON.stringify(withoutCabinet(settings)))
       sessionStorage.setItem('settings_timestamp', expiry.toString())
       sessionStorage.setItem('settings_cached_version', currentVersion)
     },
@@ -69,6 +69,18 @@ function createSettingsStore() {
       localStorage.setItem(SETTINGS_VERSION_KEY, (currentVersion + 1).toString())
     }
   }
+}
+
+// The cabinet switch is the one setting a cached copy must never answer for.
+// It is a feature gate rather than presentation: an operator who has just
+// turned the cabinet off must stop offering it on the next page load, not when
+// a five-minute cache happens to expire — and the storefront keeps this copy
+// precisely so the first paint is not empty, which is not a decision to make a
+// security or entitlement call on. Left out here, it is only ever the value the
+// API just returned.
+function withoutCabinet(settings: Settings): Settings {
+  const { account: _account, ...rest } = settings
+  return rest as Settings
 }
 
 export const settingsStore = createSettingsStore()

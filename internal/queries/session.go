@@ -2,6 +2,7 @@ package queries
 
 import (
 	"context"
+	"strings"
 	"time"
 )
 
@@ -48,4 +49,35 @@ func (q *SettingQueries) UpdateSession(ctx context.Context, key, value string, e
 func (q *SettingQueries) DeleteSession(ctx context.Context, key string) error {
 	_, err := q.DB.ExecContext(ctx, `DELETE FROM session WHERE key = ?`, key)
 	return err
+}
+
+// The two authenticated surfaces this application serves.
+const (
+	// SessionRoleAdmin is the role of the single admin account.
+	SessionRoleAdmin = "admin"
+	// SessionRoleCustomer is the role of a storefront cabinet session.
+	SessionRoleCustomer = "customer"
+)
+
+// SessionValue formats the value column of a session row as "<role>:<subject>".
+//
+// The role is what keeps the surfaces apart. Both the admin and the storefront
+// middleware accept a token on the strength of a row in this table, and the
+// tokens themselves carry nothing but a session id — so without the role a row
+// created for one surface would be enough to be admitted by the other. The
+// subject names who the session belongs to: a customer id for the cabinet,
+// empty for the admin, who is singular and unnamed.
+func SessionValue(role, subject string) string {
+	if subject == "" {
+		return role
+	}
+	return role + ":" + subject
+}
+
+// ParseSessionValue splits a session value into its role and subject. A value
+// with no separator is a bare role, which is how admin sessions were written
+// before subjects existed; the middleware has to keep accepting those.
+func ParseSessionValue(value string) (role, subject string) {
+	role, subject, _ = strings.Cut(value, ":")
+	return role, subject
 }

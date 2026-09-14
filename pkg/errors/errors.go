@@ -16,6 +16,10 @@ const (
 	MsgProductSold     = "product has purchased digital items and cannot be deleted; deactivate it instead"
 	MsgPageNotFound    = "page not found"
 	MsgSettingNotFound = "setting not found"
+	MsgCartNotFound    = "cart not found"
+
+	MsgCustomerNotFound   = "customer not found"
+	MsgCustomerEmailTaken = "customer email already registered"
 )
 
 var (
@@ -30,4 +34,8 @@ var (
 	ErrProductSold     = errors.New(MsgProductSold)
 	ErrPageNotFound    = errors.New(MsgPageNotFound)
 	ErrSettingNotFound = errors.New(MsgSettingNotFound)
+	ErrCartNotFound    = errors.New(MsgCartNotFound)
+
+	ErrCustomerNotFound   = errors.New(MsgCustomerNotFound)
+	ErrCustomerEmailTaken = errors.New(MsgCustomerEmailTaken)
 )

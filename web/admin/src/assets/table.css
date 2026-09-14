@@ -16,8 +16,15 @@ table {
   tbody {
     @apply divide-y divide-gray-200;
 
+    /*
+     * A row is at least as tall as one carrying an icon-only control (p-1.5
+     * plus the h-5 icon, plus the cell's py-2), so a table whose rows hold
+     * nothing but text and a badge — the customer list, the order history in
+     * a drawer — keeps the rhythm of one with a row of buttons at its right
+     * edge. Taller content still sets the height.
+     */
     tr {
-      @apply cursor-pointer hover:bg-gray-100 active:bg-gray-100;
+      @apply h-12 cursor-pointer hover:bg-gray-100 active:bg-gray-100;
 
       td {
         @apply px-4 py-2;

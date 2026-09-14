@@ -11,6 +11,10 @@
   const SOCIALS_SVG_PATH = '/assets/img/socials.svg#'
 
   let settings = $derived($settingsStore)
+  // The shop names itself here. The install wizard makes the site name a
+  // required setting, so this is the shop's own name rather than a fallback —
+  // the text it replaces is what a shop that somehow has none still sees.
+  let siteName = $derived(settings?.main?.site_name || '')
   let pages = $derived(settings?.pages || [])
   let socials = $derived(settings?.socials || {})
   let footerPages = $derived(pages.filter((p) => p.position === 'footer'))
@@ -72,7 +76,7 @@
     <div class="border-t-4 border-yellow-300 pt-6">
       <div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
         <p class="text-xs font-black tracking-widest text-yellow-300 uppercase">
-          © {new Date().getFullYear()} {t('footer.allRightsReserved')}
+          © {new Date().getFullYear()} {siteName || t('footer.allRightsReserved')}
         </p>
         <a
           target="_blank"

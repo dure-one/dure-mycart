@@ -5,7 +5,7 @@
   import CookieConsent from '$lib/components/CookieConsent.svelte'
   import { settingsStore } from '$lib/stores/settings'
   import { apiGet } from '$lib/utils/api'
-  import { updateSEOTags } from '$lib/utils/seo'
+  import { updateFavicon, updateSEOTags } from '$lib/utils/seo'
   import { isBrowser } from '$lib/utils/browser'
   import { page } from '$app/state'
   import { onMount } from 'svelte'
@@ -52,25 +52,39 @@
   onMount(async () => {
     if (!isBrowser()) return
 
-    let cached = settingsStore.loadFromCache()
-    if (!cached) {
-      showOverlay = true
-      const res = await apiGet('/api/settings')
-      if (res.success && res.result) {
-        settingsStore.set(res.result)
-        settingsStore.saveToCache(res.result)
-
-        // Update meta tags
-        if (res.result.main?.site_name) {
-          updateSEOTags({ title: res.result.main.site_name })
-        }
-      } else {
-        error = res.message || 'Failed to load settings'
-      }
-      showOverlay = false
-    } else {
+    // The cache is a first paint, not an answer. It is up to five minutes old,
+    // and the shop's settings are not only presentation: the cabinet switch
+    // rides with them, and a buyer who keeps a stale copy keeps being offered a
+    // cabinet the operator has turned off. So the cached copy is painted at
+    // once and the live one always follows, replacing it.
+    const cached = settingsStore.loadFromCache()
+    if (cached) {
       settingsStore.set(cached)
+      // The icon is set from the cached copy too: the tab is painted before the
+      // live settings arrive, and a shop that has uploaded one should not show
+      // the built-in icon for that moment.
+      updateFavicon(cached.branding?.favicon ?? '')
+    } else {
+      showOverlay = true
     }
+
+    const res = await apiGet('/api/settings')
+    if (res.success && res.result) {
+      settingsStore.set(res.result)
+      settingsStore.saveToCache(res.result)
+
+      // The shop's name is the title of the pages that do not name themselves.
+      // A product or a CMS page fetches its own seo on the same clock as this
+      // request, so either answer can land first; a title already on the
+      // document is that page's, and this must not take it away.
+      if (res.result.main?.site_name && !document.title) {
+        updateSEOTags({ title: res.result.main.site_name })
+      }
+      updateFavicon(res.result.branding?.favicon ?? '')
+    } else if (!cached) {
+      error = res.message || 'Failed to load settings'
+    }
+    showOverlay = false
   })
 
   function closeOverlay() {
@@ -93,7 +107,7 @@
       <Footer />
     </footer>
   {/if}
-  <Overlay show={showOverlay} error={error} onClose={closeOverlay} />
+  <Overlay show={showOverlay} {error} onClose={closeOverlay} />
   {#if !isErrorPage}
     <CookieConsent />
   {/if}

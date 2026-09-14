@@ -26,12 +26,6 @@ import (
 // @Failure      400 {object} webutil.HTTPResponse "Invalid credentials or validation error"
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/sign/in [post]
-// dummyPasswordHash is a bcrypt hash of an unrelated random password. It is
-// compared against on unknown-email sign-in attempts so that both failure
-// paths (unknown email / wrong password) burn comparable CPU time and return
-// identical responses, preventing user enumeration via timing or status codes.
-const dummyPasswordHash = "$2a$10$uo0yzV.HzLdx6hKO4F/4oOM0UQdmaLmZydgeRg9IDdL0lQjZZmoFq"
-
 func SignIn(c fiber.Ctx) error {
 	db := queries.DB()
 	log := logging.New()
@@ -51,7 +45,7 @@ func SignIn(c fiber.Ctx) error {
 	if err != nil {
 		// Unknown email: run the same bcrypt comparison against a dummy hash
 		// and return the same generic error as a wrong password.
-		security.ComparePasswords(dummyPasswordHash, request.Password)
+		security.ComparePasswords(security.DummyPasswordHash, request.Password)
 		log.ErrorStack(err)
 		return webutil.StatusBadRequest(c, "wrong user email address or password")
 	}
@@ -76,8 +70,10 @@ func SignIn(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
-	// Add session record
-	if err := db.AddSession(c.Context(), userID.String(), "admin", expires); err != nil {
+	// Add session record. Written through SessionValue so the row carries the
+	// role the admin middleware checks for rather than a second copy of it.
+	if err := db.AddSession(c.Context(),
+		userID.String(), queries.SessionValue(queries.SessionRoleAdmin, ""), expires); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}

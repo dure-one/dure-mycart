@@ -125,10 +125,13 @@ covers the boolean input and nothing imported the checkbox.
 ## 5. Elements
 
 **Tables.** The global element styles in `assets/table.css` are the only table
-styling. Never put utility classes on `<table>`, `<th>` or `<td>` that the
-global rules already set. Wrap every table in `<div class="table-wrap">`. A
-table inside a drawer that must not offer row hover/cursor uses
-`<table class="table-plain">`.
+styling. Never put utility classes on `<table>`, `<tr>`, `<th>` or `<td>` that
+the global rules already set — the row's cursor, hover and active shades come
+from there, and so does its minimum height: a row is at least as tall as one
+carrying an icon-only control, so a table whose rows hold nothing but text and
+a badge keeps the rhythm of one with a column of buttons. Wrap every table in
+`<div class="table-wrap">`. A table inside a drawer that must not offer row
+hover/cursor uses `<table class="table-plain">`.
 
 **Chips.** One look: `rounded p-2`, `bg-green-200 text-green-900` when active,
 `bg-gray-200 text-gray-700 hover:bg-gray-300` when not. Spacing comes from

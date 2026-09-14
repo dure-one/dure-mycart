@@ -17,6 +17,7 @@ describe('Cart Store', () => {
         name: 'Test Product',
         slug: 'test-product',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -33,6 +34,7 @@ describe('Cart Store', () => {
         name: 'Test Product',
         slug: 'test-product',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -49,6 +51,7 @@ describe('Cart Store', () => {
         name: 'Product 1',
         slug: 'product-1',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -57,6 +60,7 @@ describe('Cart Store', () => {
         name: 'Product 2',
         slug: 'product-2',
         amount: 2000,
+        quantity: 1,
         image: null
       }
 
@@ -77,6 +81,7 @@ describe('Cart Store', () => {
         name: 'Test Product',
         slug: 'test-product',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -93,6 +98,7 @@ describe('Cart Store', () => {
         name: 'Product 1',
         slug: 'product-1',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -101,6 +107,7 @@ describe('Cart Store', () => {
         name: 'Product 2',
         slug: 'product-2',
         amount: 2000,
+        quantity: 1,
         image: null
       }
 
@@ -119,6 +126,7 @@ describe('Cart Store', () => {
         name: 'Product 1',
         slug: 'product-1',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -138,6 +146,7 @@ describe('Cart Store', () => {
         name: 'Product 1',
         slug: 'product-1',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -146,6 +155,7 @@ describe('Cart Store', () => {
         name: 'Product 2',
         slug: 'product-2',
         amount: 2000,
+        quantity: 1,
         image: null
       }
 
@@ -163,6 +173,7 @@ describe('Cart Store', () => {
         name: 'Product 1',
         slug: 'product-1',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -181,6 +192,7 @@ describe('Cart Store', () => {
         name: 'Test Product',
         slug: 'test-product',
         amount: 1000,
+        quantity: 1,
         image: null
       }
 
@@ -191,6 +203,63 @@ describe('Cart Store', () => {
       const parsed = JSON.parse(stored!)
       expect(parsed).toHaveLength(1)
       expect(parsed[0]).toEqual(item)
+    })
+  })
+
+  describe('one copy of a download', () => {
+    const download: CartItem = {
+      id: 'guide',
+      name: 'A Guide',
+      slug: 'a-guide',
+      amount: 2400,
+      quantity: 1,
+      image: null,
+      digital: { type: 'file' }
+    }
+
+    it('should hold one copy however many were asked for', () => {
+      cartStore.add({ ...download, quantity: 3 })
+
+      expect(get(cartStore)[0].quantity).toBe(1)
+    })
+
+    it('should not accumulate a second copy', () => {
+      cartStore.add(download)
+      cartStore.add(download)
+
+      expect(get(cartStore)[0].quantity).toBe(1)
+    })
+
+    it('should not step past one copy', () => {
+      cartStore.add(download)
+      cartStore.incrementQuantity(download.id, undefined)
+
+      expect(get(cartStore)[0].quantity).toBe(1)
+    })
+
+    it('should not be set to more than one copy', () => {
+      cartStore.add(download)
+      cartStore.updateQuantity(download.id, undefined, 5)
+
+      expect(get(cartStore)[0].quantity).toBe(1)
+    })
+
+    it('should leave a licence key with the number it was given', () => {
+      cartStore.add({ ...download, id: 'keys', digital: { type: 'data' }, quantity: 3 })
+      cartStore.incrementQuantity('keys', undefined)
+
+      expect(get(cartStore)[0].quantity).toBe(4)
+    })
+
+    // A cart written by a version that did not yet sell a download as one copy
+    // is read back through the same rule: the list and the total under it are
+    // the buyer's price, and the checkout would charge one.
+    it('should bring a stored download back as one copy', () => {
+      localStorage.setItem('cart', JSON.stringify([{ ...download, quantity: 3 }]))
+
+      cartStore.reload()
+
+      expect(get(cartStore)[0].quantity).toBe(1)
     })
   })
 })

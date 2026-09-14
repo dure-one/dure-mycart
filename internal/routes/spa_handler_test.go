@@ -133,6 +133,41 @@ func TestSetupSPAHandler_StripPrefix(t *testing.T) {
 	}
 }
 
+// TestSetupSPAHandler_CacheHeaders pins the two caching answers the handler
+// gives. The hashed assets may be kept forever; the shell may not, because a
+// browser holding the old shell keeps running the old application — a fix the
+// operator has been told about would not reach them until they cleared their
+// cache by hand.
+func TestSetupSPAHandler_CacheHeaders(t *testing.T) {
+	t.Parallel()
+
+	fsys := fstest.MapFS{
+		indexHTML:                    {Data: []byte("<html>index</html>")},
+		"_app/immutable/chunks/a.js": {Data: []byte("js")},
+	}
+	app := fiber.New()
+	app.Use("/_", setupSPAHandler(fsys, func(string) bool { return false }, "/_"))
+
+	cases := []struct {
+		path string
+		want string
+	}{
+		{"/_/", "no-cache"},
+		{"/_/settings/account", "no-cache"},
+		{"/_/_app/immutable/chunks/a.js", "public, max-age=31536000, immutable"},
+	}
+
+	for _, tc := range cases {
+		resp, err := app.Test(httptest.NewRequest(http.MethodGet, tc.path, nil))
+		if err != nil {
+			t.Fatalf("%s: %v", tc.path, err)
+		}
+		if got := resp.Header.Get("Cache-Control"); got != tc.want {
+			t.Errorf("%s Cache-Control = %q, want %q", tc.path, got, tc.want)
+		}
+	}
+}
+
 func TestNotFoundRoute_ApiPrefixReturns404(t *testing.T) {
 	t.Parallel()
 	app := fiber.New()

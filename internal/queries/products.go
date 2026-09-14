@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/shurco/mycart/internal/database"
+	"github.com/shurco/mycart/internal/digitalfiles"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/pkg/errors"
 	"github.com/shurco/mycart/pkg/security"
@@ -98,7 +99,7 @@ func (q *ProductQueries) ListProducts(ctx context.Context, private bool, limit, 
 			params = append(params, item.ProductID)
 			countParams = append(countParams, item.ProductID)
 		}
-		queryAddon = fmt.Sprintf("AND product.id IN (%s)", strings.Repeat("?, ", len(idList)-1)+"?")
+		queryAddon = fmt.Sprintf("AND product.id IN (%s)", inPlaceholders(len(idList)))
 	}
 
 	query += queryPublic
@@ -988,18 +989,18 @@ func (q *ProductQueries) DeleteDigital(ctx context.Context, productID, digitalID
 	}
 
 	switch digitalType {
-	case "file":
+	case models.DigitalFile:
 		query = `DELETE FROM digital_file WHERE id = ? AND product_id = ?`
 		if _, err := q.DB.ExecContext(ctx, query, digitalID, productID); err != nil {
 			return fmt.Errorf("deleting from digital_file: %w", err)
 		}
 
-		filePath := fmt.Sprintf("./lc_digitals/%s.%s", name.String, ext.String)
+		filePath := digitalfiles.Path(name.String, ext.String)
 		if err := os.Remove(filePath); err != nil {
 			return fmt.Errorf("failed to remove file %s: %w", filePath, err)
 		}
 
-	case "data":
+	case models.DigitalData:
 		query = `DELETE FROM digital_data WHERE id = ? AND product_id = ?`
 		if _, err := q.DB.ExecContext(ctx, query, digitalID, productID); err != nil {
 			return fmt.Errorf("deleting from digital_data: %w", err)

@@ -327,17 +327,29 @@ func TestStartHTTP(t *testing.T) {
 
 		waitForServer(t, "http://"+addr+"/ping")
 
-		if err := syscall.Kill(os.Getpid(), syscall.SIGINT); err != nil {
-			t.Fatalf("send SIGINT: %v", err)
-		}
-
-		select {
-		case err := <-done:
-			if err != nil {
-				t.Fatalf("startHTTP returned %v, want a clean shutdown", err)
+		// startHTTP's handleShutdown registers its signal channel from inside its
+		// own goroutine, so an interrupt that arrives before it gets there is
+		// delivered to this test's own subscriber instead and never reaches the
+		// code under test. Sending it again until startHTTP returns closes that
+		// window: the delay is a scheduling one, so one send is normally enough,
+		// and the test no longer depends on how long it is.
+		deadline := time.Now().Add(5 * time.Second)
+		for {
+			if err := syscall.Kill(os.Getpid(), syscall.SIGINT); err != nil {
+				t.Fatalf("send SIGINT: %v", err)
 			}
-		case <-time.After(5 * time.Second):
-			t.Fatal("startHTTP did not return after the interrupt")
+			select {
+			case err := <-done:
+				if err != nil {
+					t.Fatalf("startHTTP returned %v, want a clean shutdown", err)
+				}
+			case <-time.After(50 * time.Millisecond):
+				if time.Now().Before(deadline) {
+					continue
+				}
+				t.Fatal("startHTTP did not return after the interrupt")
+			}
+			break
 		}
 	})
 }

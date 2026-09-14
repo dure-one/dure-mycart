@@ -107,14 +107,21 @@ func (q *PageQueries) ListPages(ctx context.Context, private bool, limit, offset
 	return pages, total, nil
 }
 
-// Page retrieves a single page from the database based on its slug.
+// Page retrieves a single published page from the database based on its slug.
+//
+// Publication is part of the lookup, exactly as ListPages decides it for the
+// list: a page the operator has written and not switched on is not there. The
+// storefront asks this endpoint for every address it has no route of its own
+// for, so a draft answered here would be published at its slug from the moment
+// it was created — before the operator has decided to publish it, and without
+// ever appearing in the navigation the list feeds.
 func (q *PageQueries) Page(ctx context.Context, slug string) (*models.Page, error) {
 	page := models.Page{
 		Slug: slug,
 	}
 
 	var content, seo sql.NullString
-	query := `SELECT id, name, content, active, seo FROM page WHERE slug = ?`
+	query := `SELECT id, name, content, active, seo FROM page WHERE slug = ? AND active = TRUE`
 	err := q.DB.QueryRowContext(ctx, query, slug).Scan(&page.ID, &page.Name, &content, &page.Active, &seo)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

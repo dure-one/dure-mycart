@@ -8,6 +8,7 @@
   import { settingsStore } from '$lib/stores/settings'
   import { getProductImageUrl } from '$lib/utils/imageUrl'
   import { toggleCartItem } from '$lib/utils/cart'
+  import { chargesStock } from '$lib/utils/digital'
   import { updateSEOTags } from '$lib/utils/seo'
   import { isBrowser } from '$lib/utils/browser'
   import NotFoundPage from '$lib/components/NotFoundPage.svelte'
@@ -38,6 +39,7 @@
   let numberFormat = $derived($settingsStore?.payment?.number_format)
   let symbolMode = $derived($settingsStore?.payment?.symbol_display?.storefront)
   let cart = $derived($cartStore)
+  let accountEnabled = $derived($settingsStore?.account?.enabled === true)
 
   let cartItem = $derived(
     !product ? null :
@@ -67,7 +69,11 @@
   let canAddToCart = $derived.by(() => {
     if (!product) return false
     if (product.has_variants) {
-      return selectedVariant !== null && selectedVariant.quantity > 0
+      if (!selectedVariant) return false
+      // The count on a download is not stock, so a zero there is not a sold-out
+      // variant — the panel's form offers that zero by default. Refusing it
+      // would put the shop's whole catalogue behind a choice nobody can make.
+      return !chargesStock(product) || selectedVariant.quantity > 0
     }
     return true
   })
@@ -277,28 +283,51 @@
               </div>
             {/if}
 
-            <div class="mb-6">
-              <label class="mb-2 block text-sm font-black uppercase tracking-wider text-black">
-                {t('product.quantity')}
-              </label>
-              <div class="flex justify-center">
-                {#if inCart}
-                  <QuantityInput
-                    quantity={currentQuantity}
-                    onIncrement={handleQuantityIncrement}
-                    onDecrement={handleQuantityDecrement}
-                    onChange={handleQuantityChange}
-                  />
-                {:else}
-                  <QuantityInput
-                    quantity={selectedQuantity}
-                    onIncrement={handleQuantityIncrement}
-                    onDecrement={handleQuantityDecrement}
-                    onChange={handleQuantityChange}
-                  />
+            {#if chargesStock(product)}
+              <div class="mb-6">
+                <label class="mb-2 block text-sm font-black uppercase tracking-wider text-black">
+                  {t('product.quantity')}
+                </label>
+                <div class="flex justify-center">
+                  {#if inCart}
+                    <QuantityInput
+                      quantity={currentQuantity}
+                      onIncrement={handleQuantityIncrement}
+                      onDecrement={handleQuantityDecrement}
+                      onChange={handleQuantityChange}
+                    />
+                  {:else}
+                    <QuantityInput
+                      quantity={selectedQuantity}
+                      onIncrement={handleQuantityIncrement}
+                      onDecrement={handleQuantityDecrement}
+                      onChange={handleQuantityChange}
+                    />
+                  {/if}
+                </div>
+              </div>
+            {:else}
+              <!-- A download has no quantity to choose, so the stepper gives way
+                   to what the buyer needs to know instead: nothing arrives by
+                   post, and the link reaches them either way. The second
+                   sentence is about the cabinet, and is said only where the
+                   cabinet is switched on. -->
+              <div class="mb-6 border-4 border-black bg-blue-100 p-4">
+                <span
+                  class="mb-3 inline-block border-4 border-black bg-yellow-300 px-3 py-1 text-xs font-black tracking-wider text-black uppercase"
+                >
+                  {t('product.download')}
+                </span>
+                <p class="text-sm leading-relaxed font-bold text-black">
+                  {t('product.downloadDelivery')}
+                </p>
+                {#if accountEnabled}
+                  <p class="mt-2 text-sm leading-relaxed text-black">
+                    {t('product.downloadInAccount')}
+                  </p>
                 {/if}
               </div>
-            </div>
+            {/if}
 
             <button
               onclick={handleToggleCart}
