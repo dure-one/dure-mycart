@@ -99,7 +99,7 @@ func (q *ProductQueries) ListProducts(ctx context.Context, private bool, limit, 
 			params = append(params, item.ProductID)
 			countParams = append(countParams, item.ProductID)
 		}
-		queryAddon = fmt.Sprintf("AND product.id IN (%s)", strings.Repeat("?, ", len(idList)-1)+"?")
+		queryAddon = fmt.Sprintf("AND product.id IN (%s)", inPlaceholders(len(idList)))
 	}
 
 	query += queryPublic

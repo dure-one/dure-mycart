@@ -2,6 +2,7 @@ package queries
 
 import (
 	"io/fs"
+	"strings"
 	"sync/atomic"
 
 	"github.com/shurco/mycart/internal/database"
@@ -82,4 +83,19 @@ func Conn() *database.Conn {
 // Use New() to initialize the database before calling DB().
 func DB() *Base {
 	return db.Load()
+}
+
+// inPlaceholders renders the placeholder list of an IN clause matching n
+// values. Neither engine binds a slice to one placeholder, so the list has to
+// be built — and the values themselves are still passed one by one, since the
+// connection rewrites `?` for PostgreSQL.
+//
+// An empty list is returned empty rather than as a broken `(?)`: a caller with
+// nothing to match has to skip the query, which is the only answer that reads
+// as "no rows" on both engines.
+func inPlaceholders(n int) string {
+	if n <= 0 {
+		return ""
+	}
+	return strings.Repeat("?, ", n-1) + "?"
 }

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/models"
@@ -189,7 +188,7 @@ func (q *SettingQueries) GetSettingByGroup(ctx context.Context, settings any) (a
 		keys = append(keys, k)
 	}
 
-	query := fmt.Sprintf("SELECT key, value FROM setting WHERE key IN (%s)", strings.Repeat("?, ", len(keys)-1)+"?")
+	query := fmt.Sprintf("SELECT key, value FROM setting WHERE key IN (%s)", inPlaceholders(len(keys)))
 	rows, err := q.DB.QueryContext(ctx, query, keys...)
 	if err != nil {
 		return nil, err
@@ -314,7 +313,7 @@ func (q *SettingQueries) GetSettingByKey(ctx context.Context, key ...string) (ma
 		return nil, errors.ErrSettingNotFound
 	}
 
-	query := fmt.Sprintf("SELECT id, key, value FROM setting WHERE key IN (%s)", strings.Repeat("?, ", len(key)-1)+"?")
+	query := fmt.Sprintf("SELECT id, key, value FROM setting WHERE key IN (%s)", inPlaceholders(len(key)))
 	rows, err := q.DB.QueryContext(ctx, query, strutil.ToAny(key...)...)
 	if err != nil {
 		return nil, err

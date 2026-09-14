@@ -447,23 +447,75 @@ func (q *CustomerQueries) CustomerPurchases(ctx context.Context, email string) (
 		return nil, err
 	}
 
+	// Three reads for the whole cabinet rather than two per line. An order list
+	// asks the same question of every entry in it, and each of these is one
+	// query over the ids the orders mention, so the page costs the same whether
+	// the buyer has one order or twenty.
+	products, err := q.purchaseProducts(ctx, cartProducts(carts))
+	if err != nil {
+		return nil, err
+	}
+
+	files, err := q.purchaseFiles(ctx, productsOfKind(products, models.DigitalFile))
+	if err != nil {
+		return nil, err
+	}
+
+	codes, err := q.purchaseCodes(ctx, cartIDs(carts))
+	if err != nil {
+		return nil, err
+	}
+
 	purchases := []*models.CustomerPurchase{}
 	for _, cart := range carts {
-		items, err := q.purchaseItems(ctx, cart)
-		if err != nil {
-			return nil, err
-		}
-
 		purchases = append(purchases, &models.CustomerPurchase{
 			ID:          cart.ID,
 			Created:     cart.Created,
 			AmountTotal: cart.AmountTotal,
 			Currency:    cart.Currency,
-			Items:       items,
+			Items:       purchaseItems(cart, products, files, codes),
 		})
 	}
 
 	return purchases, nil
+}
+
+// cartProducts lists every product the given orders mention, each once.
+func cartProducts(carts []*models.Cart) []string {
+	seen := map[string]bool{}
+	ids := []string{}
+	for _, cart := range carts {
+		for _, line := range cart.Cart {
+			if !seen[line.ProductID] {
+				seen[line.ProductID] = true
+				ids = append(ids, line.ProductID)
+			}
+		}
+	}
+
+	return ids
+}
+
+// productsOfKind narrows a set of products to those delivered one way.
+func productsOfKind(products map[string]*models.Product, digital string) []string {
+	ids := []string{}
+	for id, product := range products {
+		if product.Digital.Type == digital {
+			ids = append(ids, id)
+		}
+	}
+
+	return ids
+}
+
+// cartIDs lists the ids of the given orders.
+func cartIDs(carts []*models.Cart) []string {
+	ids := make([]string, 0, len(carts))
+	for _, cart := range carts {
+		ids = append(ids, cart.ID)
+	}
+
+	return ids
 }
 
 // CustomerOwnsProduct reports whether an address has ever paid for a product.
@@ -514,22 +566,25 @@ func (q *CustomerQueries) EntitledDigitalFile(ctx context.Context, email, fileID
 	return file, nil
 }
 
-// purchaseItems resolves the lines of one order.
+// purchaseItems resolves the lines of one order against what has already been
+// read.
 //
 // A line whose product no longer exists is dropped rather than shown blank: the
 // cart stores ids only, so once the row is gone there is no name left to
 // display, and a nameless line with nothing behind it is worse than an order
 // that reads one item shorter. The order itself stays, with its total.
-func (q *CustomerQueries) purchaseItems(ctx context.Context, cart *models.Cart) ([]models.CustomerPurchaseItem, error) {
+func purchaseItems(
+	cart *models.Cart,
+	products map[string]*models.Product,
+	files map[string][]models.CustomerPurchaseFile,
+	codes map[string][]string,
+) []models.CustomerPurchaseItem {
 	items := []models.CustomerPurchaseItem{}
 
 	for _, line := range cart.Cart {
-		product, err := q.purchaseProduct(ctx, line.ProductID)
-		if err != nil {
-			if errors.Is(err, errors.ErrProductNotFound) {
-				continue
-			}
-			return nil, err
+		product, ok := products[line.ProductID]
+		if !ok {
+			continue
 		}
 
 		item := models.CustomerPurchaseItem{
@@ -541,66 +596,99 @@ func (q *CustomerQueries) purchaseItems(ctx context.Context, cart *models.Cart) 
 		}
 
 		switch product.Digital.Type {
-		case "file":
-			if item.Files, err = q.purchaseFiles(ctx, product.ID); err != nil {
-				return nil, err
-			}
-		case "data":
-			if item.Codes, err = q.purchaseCodes(ctx, cart.ID, product.ID); err != nil {
-				return nil, err
-			}
+		case models.DigitalFile:
+			item.Files = files[product.ID]
+		case models.DigitalData:
+			item.Codes = codes[codeKey(cart.ID, product.ID)]
 		}
 
 		items = append(items, item)
 	}
 
-	return items, nil
+	return items
 }
 
-// purchaseProduct reads the fields of a product that a list of orders shows.
+// codeKey names one order's claim on one product, which is what a licence key
+// belongs to.
+func codeKey(cartID, productID string) string {
+	return cartID + "\x00" + productID
+}
+
+// purchaseProducts reads the fields of the products a list of orders shows.
 //
 // Deliberately neither of the two lookups the rest of the shop uses. The public
 // one hides anything the operator has not published, and a guide taken off sale
 // is still owed to the people who paid for it. The admin one loads variants,
 // options, metadata and images, none of which an order list shows and all of
 // which the buyer is the wrong caller to hand them to.
-func (q *CustomerQueries) purchaseProduct(ctx context.Context, productID string) (*models.Product, error) {
-	var digital sql.NullString
-	product := &models.Product{}
-
-	err := q.DB.QueryRowContext(ctx,
-		`SELECT id, name, slug, digital FROM product WHERE id = ?`, productID).
-		Scan(&product.ID, &product.Name, &product.Slug, &digital)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.ErrProductNotFound
-		}
-		return nil, err
+//
+// A product the shop has deleted since is absent from the answer, which is how
+// a line whose product is gone drops out of the order.
+func (q *CustomerQueries) purchaseProducts(ctx context.Context, productIDs []string) (map[string]*models.Product, error) {
+	products := map[string]*models.Product{}
+	if len(productIDs) == 0 {
+		return products, nil
 	}
 
-	product.Digital.Type = digital.String
+	args := make([]any, len(productIDs))
+	for i, id := range productIDs {
+		args[i] = id
+	}
 
-	return product, nil
-}
-
-// purchaseFiles lists the downloadable files of a purchased product.
-func (q *CustomerQueries) purchaseFiles(ctx context.Context, productID string) ([]models.CustomerPurchaseFile, error) {
-	// Ordered by the name the buyer will see rather than by the stored one: the
-	// two differ only for a file stored without an upload name, and sorting on
-	// the empty string would put exactly that file first.
 	rows, err := q.DB.QueryContext(ctx,
-		`SELECT id, name, ext, orig_name FROM digital_file WHERE product_id = ?
-			ORDER BY COALESCE(NULLIF(orig_name, ''), name || '.' || ext), id`,
-		productID)
+		`SELECT id, name, slug, digital FROM product WHERE id IN (`+inPlaceholders(len(productIDs))+`)`, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
 
-	files := []models.CustomerPurchaseFile{}
 	for rows.Next() {
-		var id, name, ext, origName string
-		if err := rows.Scan(&id, &name, &ext, &origName); err != nil {
+		product := &models.Product{}
+		var digital sql.NullString
+		if err := rows.Scan(&product.ID, &product.Name, &product.Slug, &digital); err != nil {
+			return nil, err
+		}
+
+		product.Digital.Type = digital.String
+		products[product.ID] = product
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return products, nil
+}
+
+// purchaseFiles lists the downloadable files of the given products, keyed by
+// the product they belong to.
+func (q *CustomerQueries) purchaseFiles(ctx context.Context, productIDs []string) (map[string][]models.CustomerPurchaseFile, error) {
+	files := map[string][]models.CustomerPurchaseFile{}
+	if len(productIDs) == 0 {
+		return files, nil
+	}
+
+	args := make([]any, len(productIDs))
+	for i, id := range productIDs {
+		args[i] = id
+	}
+
+	// Ordered by the name the buyer will see rather than by the stored one: the
+	// two differ only for a file stored without an upload name, and sorting on
+	// the empty string would put exactly that file first. Rows of one product
+	// keep that order inside the group they land in.
+	rows, err := q.DB.QueryContext(ctx,
+		`SELECT product_id, id, name, ext, orig_name FROM digital_file
+			WHERE product_id IN (`+inPlaceholders(len(productIDs))+`)
+			ORDER BY COALESCE(NULLIF(orig_name, ''), name || '.' || ext), id`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var productID, id, name, ext, origName string
+		if err := rows.Scan(&productID, &id, &name, &ext, &origName); err != nil {
 			return nil, err
 		}
 
@@ -612,37 +700,59 @@ func (q *CustomerQueries) purchaseFiles(ctx context.Context, productID string) (
 			origName = name + "." + ext
 		}
 
-		files = append(files, models.CustomerPurchaseFile{ID: id, OrigName: origName})
+		files[productID] = append(files[productID], models.CustomerPurchaseFile{ID: id, OrigName: origName})
 	}
 
-	return files, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return files, nil
 }
 
-// purchaseCodes returns the license keys an order claimed for a product.
+// purchaseCodes returns the licence keys the given orders claimed, keyed by the
+// order and the product it claimed them for.
 //
-// Scoped to the cart as well as the product, and that scoping is the whole
+// Scoped to the orders as well as the product, and that scoping is the whole
 // entitlement: a product holds one row per key, most of them unclaimed and
 // waiting for a buyer, so a lookup by product alone would print the shop's
-// entire remaining stock into the first cabinet that asked.
-func (q *CustomerQueries) purchaseCodes(ctx context.Context, cartID, productID string) ([]string, error) {
+// entire remaining stock into the first cabinet that asked. The orders handed
+// in are the buyer's own, which is what keeps one cabinet out of another's.
+func (q *CustomerQueries) purchaseCodes(ctx context.Context, cartIDs []string) (map[string][]string, error) {
+	codes := map[string][]string{}
+	if len(cartIDs) == 0 {
+		return codes, nil
+	}
+
+	args := make([]any, len(cartIDs))
+	for i, id := range cartIDs {
+		args[i] = id
+	}
+
 	rows, err := q.DB.QueryContext(ctx,
-		`SELECT content FROM digital_data WHERE cart_id = ? AND product_id = ? ORDER BY id`,
-		cartID, productID)
+		`SELECT cart_id, product_id, content FROM digital_data
+			WHERE cart_id IN (`+inPlaceholders(len(cartIDs))+`)
+			ORDER BY id`, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
 
-	codes := []string{}
 	for rows.Next() {
-		var content string
-		if err := rows.Scan(&content); err != nil {
+		var cartID, productID, content string
+		if err := rows.Scan(&cartID, &productID, &content); err != nil {
 			return nil, err
 		}
-		codes = append(codes, content)
+
+		key := codeKey(cartID, productID)
+		codes[key] = append(codes[key], content)
 	}
 
-	return codes, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return codes, nil
 }
 
 // digitalFile reads one digital file and the product it belongs to.

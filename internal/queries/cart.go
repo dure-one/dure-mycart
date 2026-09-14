@@ -28,7 +28,7 @@ func (q *CartQueries) PaymentList(ctx context.Context) (map[string]bool, error) 
 		"stripe_active", "paypal_active", "spectrocoin_active", "coinbase_active", "portone_active",
 	}
 
-	query := fmt.Sprintf("SELECT key, value FROM setting WHERE key IN (%s)", strings.Repeat("?, ", len(keys)-1)+"?")
+	query := fmt.Sprintf("SELECT key, value FROM setting WHERE key IN (%s)", inPlaceholders(len(keys)))
 	rows, err := q.DB.QueryContext(ctx, query, keys...)
 	if err != nil {
 		return nil, err

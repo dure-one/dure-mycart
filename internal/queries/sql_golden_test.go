@@ -151,19 +151,19 @@ func TestSQLGolden(t *testing.T) {
 	ignoreErr(db.Customers(ctx, CustomerFilter{RegisteredOnly: true, Currency: "USD"}, 10, 20))
 	ignoreErr(db.CartsByEmail(ctx, "golden-customer@example.com"))
 
-	// The cabinet's purchase list walks an order line by line, and the two
-	// statements that resolve a line's deliverables are reached only by the
-	// kind of product that has them. The golden cart above is empty, so the
-	// pieces are called directly: what is frozen is each statement's shape,
-	// and this way all of them are in the file whether or not the fixtures
-	// happen to carry a file product.
+	// The cabinet's purchase list resolves an order's lines against the
+	// catalogue, and the statements that read a line's deliverables are reached
+	// only by the kind of product that has them. The golden cart above is
+	// empty, so the pieces are called directly: what is frozen is each
+	// statement's shape, and this way all of them are in the file whether or
+	// not the fixtures happen to carry a file product.
 	ignoreErr(db.PaidCartsByEmail(ctx, "golden@example.com"))
 	ignoreErr(db.CustomerPurchases(ctx, "golden@example.com"))
 	ignoreErr(db.CustomerOwnsProduct(ctx, "golden@example.com", product.ID))
 	ignoreErr(db.EntitledDigitalFile(ctx, "golden@example.com", "golden-file-id"))
-	ignoreErr(db.purchaseProduct(ctx, product.ID))
-	ignoreErr(db.purchaseFiles(ctx, product.ID))
-	ignoreErr(db.purchaseCodes(ctx, cart.ID, product.ID))
+	ignoreErr(db.purchaseProducts(ctx, []string{product.ID}))
+	ignoreErr(db.purchaseFiles(ctx, []string{product.ID}))
+	ignoreErr(db.purchaseCodes(ctx, []string{cart.ID}))
 
 	ignoreErr(db.SetCustomerActive(ctx, customer.ID, false))
 	ignoreErr(db.SetCustomerPassword(ctx, customer.ID, "golden-hash"))

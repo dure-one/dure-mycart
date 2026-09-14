@@ -371,6 +371,10 @@ SELECT COUNT(*)
 		cart
 	FROM cart WHERE LOWER(TRIM(email)) = ? AND payment_status = ? ORDER BY created DESC
 ---
+SELECT cart_id, product_id, content FROM digital_data
+			WHERE cart_id IN (?)
+			ORDER BY id
+---
 
 	SELECT
 		id,
@@ -387,12 +391,15 @@ SELECT COUNT(*)
 ---
 SELECT id, name, ext, orig_name, product_id FROM digital_file WHERE id = ?
 ---
-SELECT id, name, slug, digital FROM product WHERE id = ?
+SELECT id, name, slug, digital FROM product WHERE id IN (?)
 ---
-SELECT id, name, ext, orig_name FROM digital_file WHERE product_id = ?
+SELECT product_id, id, name, ext, orig_name FROM digital_file
+			WHERE product_id IN (?)
 			ORDER BY COALESCE(NULLIF(orig_name, ''), name || '.' || ext), id
 ---
-SELECT content FROM digital_data WHERE cart_id = ? AND product_id = ? ORDER BY id
+SELECT cart_id, product_id, content FROM digital_data
+			WHERE cart_id IN (?)
+			ORDER BY id
 ---
 UPDATE customer SET active = ?, updated = CURRENT_TIMESTAMP WHERE id = ?
 ---
