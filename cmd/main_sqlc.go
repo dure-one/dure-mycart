@@ -1,4 +1,4 @@
-// +build !sqlc
+// +build sqlc
 
 // @title           myCart API
 // @version         1.0
