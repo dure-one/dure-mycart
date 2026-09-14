@@ -300,8 +300,13 @@ func (q *SettingQueries) UpdatePassword(ctx context.Context, password *models.Pa
 		return errors.ErrWrongPassword
 	}
 
+	hash, err := security.HashPassword(password.New)
+	if err != nil {
+		return err
+	}
+
 	query = `UPDATE setting SET value = ? WHERE key = 'password'`
-	_, err := q.DB.ExecContext(ctx, query, security.GeneratePassword(password.New))
+	_, err = q.DB.ExecContext(ctx, query, hash)
 	return err
 }
 

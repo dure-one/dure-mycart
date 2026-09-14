@@ -27,18 +27,6 @@ func HashPassword(p string) (string, error) {
 	return string(hash), nil
 }
 
-// GeneratePassword returns a bcrypt hash of the plaintext password using
-// bcryptCost, or bcrypt's error text when it refuses the input. Prefer
-// HashPassword: this form only exists for the install and settings callers that
-// predate it, and it leaves the check to whoever stores the result.
-func GeneratePassword(p string) string {
-	hash, err := HashPassword(p)
-	if err != nil {
-		return err.Error()
-	}
-	return hash
-}
-
 // DummyPasswordHash is a bcrypt hash of an unrelated random password.
 //
 // A sign-in that has no stored hash to compare against — the address is not
@@ -58,7 +46,7 @@ func ComparePasswords(hashedPwd, inputPwd string) bool {
 // keys bootstrapped during install).
 //
 // Construction: bcrypt(input, DefaultCost) -> SHA-256 hex.
-// bcrypt supplies a random salt (64 bits), SHA-256 then compacts the output to
+// bcrypt supplies a random salt (128 bits), SHA-256 then compacts the output to
 // a fixed-length hex string suitable for use as a secret. We intentionally
 // avoid MD5 here: MD5 is collision-broken and should never be used for any
 // new security-relevant derivation.
