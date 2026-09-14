@@ -23,11 +23,7 @@ func (q *ProductQueries) UpdateProductImagePositions(ctx context.Context, update
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
+	defer func() { _ = tx.Rollback() }()
 
 	// Update each image position
 	for _, update := range updates {
@@ -65,11 +61,7 @@ func (q *ProductQueries) SetRepresentativeImage(ctx context.Context, productID s
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
+	defer func() { _ = tx.Rollback() }()
 
 	// First, verify the image exists and belongs to this product
 	var existingProductID string
