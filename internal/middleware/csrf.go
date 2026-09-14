@@ -59,7 +59,7 @@ func CSRFProtect() fiber.Handler {
 			Str("path", c.Path()).
 			Str("header", header).
 			Str("origin", origin).
-			Str("host", c.Hostname()).
+			Str("host", requestHost(c)).
 			Msg("cross-site request rejected")
 
 		return webutil.Response(c, fiber.StatusForbidden,
@@ -88,7 +88,7 @@ func originBelongsToShop(c fiber.Ctx, raw string) bool {
 		return false
 	}
 
-	own := strings.ToLower(c.Hostname())
+	own := requestHost(c)
 	if host == own {
 		return true
 	}
@@ -100,6 +100,24 @@ func originBelongsToShop(c fiber.Ctx, raw string) bool {
 	}
 
 	return host == shopDomain(c)
+}
+
+// requestHost is the host this request was addressed to, without its port.
+//
+// The host is taken from the request line rather than from c.Hostname(), which
+// prefers X-Forwarded-Host whenever the peer is a trusted proxy — and this app
+// trusts loopback and private peers (internal/app.go). That header is written by
+// whoever sent the request, so anchoring the same-origin check to it would let a
+// request name the origin it claims to have come from: send X-Forwarded-Host and
+// an Origin of the same value and the check agrees with itself. The Host header
+// is filled in by the client because it says where the client connected, which
+// is the question being asked.
+func requestHost(c fiber.Ctx) string {
+	raw := string(c.RequestCtx().URI().Host())
+	if parsed, err := url.Parse("//" + raw); err == nil && parsed.Hostname() != "" {
+		return strings.ToLower(parsed.Hostname())
+	}
+	return strings.ToLower(raw)
 }
 
 // shopDomain returns the host the shop is published under, as configured in
