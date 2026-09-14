@@ -1,11 +1,12 @@
 package migrations
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/shurco/mycart/internal/base"
+	"github.com/shurco/mycart/internal/database"
 	_ "modernc.org/sqlite"
 )
 
@@ -19,16 +20,26 @@ func TestProductImageOrderingMigration(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(prev) })
 
 	dbPath := filepath.Join(tmp, "lc_base", "test.db")
-	db, err := base.New(dbPath, Embed())
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+		t.Fatalf("create db dir: %v", err)
+	}
+
+	// Open SQLite database with migrations
+	db, err := database.Open(database.Config{
+		Driver: database.DriverSQLite,
+		DSN:    dbPath,
+	}, Embed())
 	if err != nil {
-		t.Fatalf("base.New: %v", err)
+		t.Fatalf("database.Open: %v", err)
 	}
 	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
 
 	t.Run("is_representative column exists with default false", func(t *testing.T) {
 		var colType string
 		var defaultVal interface{}
-		err := db.QueryRow(`
+		err := db.QueryRowContext(ctx, `
 			SELECT type, "default" FROM pragma_table_info('product_image')
 			WHERE name = 'is_representative'
 		`).Scan(&colType, &defaultVal)
@@ -42,7 +53,7 @@ func TestProductImageOrderingMigration(t *testing.T) {
 
 	t.Run("position column exists", func(t *testing.T) {
 		var colType string
-		err := db.QueryRow(`
+		err := db.QueryRowContext(ctx, `
 			SELECT type FROM pragma_table_info('product_image')
 			WHERE name = 'position'
 		`).Scan(&colType)
@@ -56,7 +67,7 @@ func TestProductImageOrderingMigration(t *testing.T) {
 
 	t.Run("can insert and query product_image with default is_representative", func(t *testing.T) {
 		// Insert a test product and image
-		_, err := db.Exec(`
+		_, err := db.ExecContext(ctx, `
 			INSERT INTO product (id, name, desc, slug, amount, active)
 			VALUES ('test-prod', 'Test Product', 'Test', 'test-slug', 99.99, true)
 		`)
@@ -64,7 +75,7 @@ func TestProductImageOrderingMigration(t *testing.T) {
 			t.Fatalf("failed to insert product: %v", err)
 		}
 
-		_, err = db.Exec(`
+		_, err = db.ExecContext(ctx, `
 			INSERT INTO product_image (id, product_id, name, ext, orig_name)
 			VALUES ('test-img-1', 'test-prod', 'image.jpg', 'jpg', 'image.jpg')
 		`)
@@ -74,7 +85,7 @@ func TestProductImageOrderingMigration(t *testing.T) {
 
 		var isRep bool
 		var position int
-		err = db.QueryRow(`
+		err = db.QueryRowContext(ctx, `
 			SELECT is_representative, COALESCE(position, 0) FROM product_image WHERE id = 'test-img-1'
 		`).Scan(&isRep, &position)
 		if err != nil {
@@ -86,7 +97,7 @@ func TestProductImageOrderingMigration(t *testing.T) {
 	})
 
 	t.Run("can update is_representative", func(t *testing.T) {
-		_, err := db.Exec(`
+		_, err := db.ExecContext(ctx, `
 			UPDATE product_image SET is_representative = 1 WHERE id = 'test-img-1'
 		`)
 		if err != nil {
@@ -94,7 +105,7 @@ func TestProductImageOrderingMigration(t *testing.T) {
 		}
 
 		var isRep bool
-		err = db.QueryRow(`
+		err = db.QueryRowContext(ctx, `
 			SELECT is_representative FROM product_image WHERE id = 'test-img-1'
 		`).Scan(&isRep)
 		if err != nil {

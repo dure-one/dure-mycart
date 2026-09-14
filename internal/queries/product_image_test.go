@@ -1,6 +1,7 @@
 package queries
 
 import (
+	"context"
 	"testing"
 
 	"github.com/shurco/mycart/internal/models"
@@ -55,7 +56,7 @@ func TestUpdateProductImagePositions(t *testing.T) {
 		for _, update := range updates {
 			var position int
 			// Use ProductQueries which has the *sql.DB embedded
-			err := db.ProductQueries.QueryRowContext(ctx,
+			err := db.ProductQueries.DB.QueryRowContext(ctx,
 				`SELECT position FROM product_image WHERE id = ?`,
 				update.ImageID,
 			).Scan(&position)
@@ -104,10 +105,25 @@ func TestUpdateProductImagePositions(t *testing.T) {
 	})
 }
 
-func TestSetRepresentativeImage(t *testing.T) {
-	db, ctx := bootstrap(t)
+// checkRepresentativeStatus verifies whether an image has the expected representative status
+func checkRepresentativeStatus(t *testing.T, db *Base, ctx context.Context, imageID string, shouldBeRep bool) {
+	t.Helper()
+	var isRep bool
+	err := db.ProductQueries.DB.QueryRowContext(ctx,
+		`SELECT is_representative FROM product_image WHERE id = ?`,
+		imageID,
+	).Scan(&isRep)
+	if err != nil {
+		t.Fatalf("query representative status for %s: %v", imageID, err)
+	}
+	if isRep != shouldBeRep {
+		t.Errorf("image %s: expected is_representative=%v, got %v", imageID, shouldBeRep, isRep)
+	}
+}
 
-	// Create a product
+// setupProductWithImages creates a product and three test images
+func setupProductWithImages(t *testing.T, db *Base, ctx context.Context) (*models.Product, *models.File, *models.File, *models.File) {
+	t.Helper()
 	product := &models.Product{
 		Name:        "Image Test Product",
 		Brief:       "brief",
@@ -121,85 +137,43 @@ func TestSetRepresentativeImage(t *testing.T) {
 		t.Fatalf("AddProduct: %v", err)
 	}
 
-	// Add multiple images
 	img1, err := db.AddImage(ctx, p.ID, "img1-uuid", "jpg", "img1.jpg")
 	if err != nil {
 		t.Fatalf("AddImage 1: %v", err)
 	}
-
 	img2, err := db.AddImage(ctx, p.ID, "img2-uuid", "jpg", "img2.jpg")
 	if err != nil {
 		t.Fatalf("AddImage 2: %v", err)
 	}
-
 	img3, err := db.AddImage(ctx, p.ID, "img3-uuid", "jpg", "img3.jpg")
 	if err != nil {
 		t.Fatalf("AddImage 3: %v", err)
 	}
+
+	return p, img1, img2, img3
+}
+
+func TestSetRepresentativeImage(t *testing.T) {
+	db, ctx := bootstrap(t)
+	p, img1, img2, img3 := setupProductWithImages(t, db, ctx)
 
 	t.Run("sets correct image as representative", func(t *testing.T) {
 		err := db.SetRepresentativeImage(ctx, p.ID, img1.ID)
 		if err != nil {
 			t.Fatalf("SetRepresentativeImage: %v", err)
 		}
-
-		// Verify img1 is marked as representative
-		var isRep bool
-		err = db.ProductQueries.QueryRowContext(ctx,
-			`SELECT is_representative FROM product_image WHERE id = ?`,
-			img1.ID,
-		).Scan(&isRep)
-		if err != nil {
-			t.Fatalf("query representative status: %v", err)
-		}
-		if !isRep {
-			t.Error("img1 should be marked as representative")
-		}
+		checkRepresentativeStatus(t, db, ctx, img1.ID, true)
 	})
 
 	t.Run("unmarks all other images for same product", func(t *testing.T) {
-		// Set img2 as representative
 		err := db.SetRepresentativeImage(ctx, p.ID, img2.ID)
 		if err != nil {
 			t.Fatalf("SetRepresentativeImage: %v", err)
 		}
 
-		// Verify img2 is representative
-		var isRep bool
-		err = db.ProductQueries.QueryRowContext(ctx,
-			`SELECT is_representative FROM product_image WHERE id = ?`,
-			img2.ID,
-		).Scan(&isRep)
-		if err != nil {
-			t.Fatalf("query img2: %v", err)
-		}
-		if !isRep {
-			t.Error("img2 should be marked as representative")
-		}
-
-		// Verify img1 is no longer representative
-		err = db.ProductQueries.QueryRowContext(ctx,
-			`SELECT is_representative FROM product_image WHERE id = ?`,
-			img1.ID,
-		).Scan(&isRep)
-		if err != nil {
-			t.Fatalf("query img1: %v", err)
-		}
-		if isRep {
-			t.Error("img1 should NOT be marked as representative")
-		}
-
-		// Verify img3 is not representative
-		err = db.ProductQueries.QueryRowContext(ctx,
-			`SELECT is_representative FROM product_image WHERE id = ?`,
-			img3.ID,
-		).Scan(&isRep)
-		if err != nil {
-			t.Fatalf("query img3: %v", err)
-		}
-		if isRep {
-			t.Error("img3 should NOT be marked as representative")
-		}
+		checkRepresentativeStatus(t, db, ctx, img2.ID, true)
+		checkRepresentativeStatus(t, db, ctx, img1.ID, false)
+		checkRepresentativeStatus(t, db, ctx, img3.ID, false)
 	})
 
 	t.Run("returns error if image doesn't exist", func(t *testing.T) {
@@ -210,7 +184,6 @@ func TestSetRepresentativeImage(t *testing.T) {
 	})
 
 	t.Run("returns error if image doesn't belong to product", func(t *testing.T) {
-		// Create another product
 		product2 := &models.Product{
 			Name:        "Another Product",
 			Brief:       "brief",
@@ -224,13 +197,11 @@ func TestSetRepresentativeImage(t *testing.T) {
 			t.Fatalf("AddProduct 2: %v", err)
 		}
 
-		// Add image to second product
 		img4, err := db.AddImage(ctx, p2.ID, "img4-uuid", "jpg", "img4.jpg")
 		if err != nil {
 			t.Fatalf("AddImage 4: %v", err)
 		}
 
-		// Try to set image from second product as representative for first product
 		err = db.SetRepresentativeImage(ctx, p.ID, img4.ID)
 		if err == nil {
 			t.Error("expected error when image doesn't belong to product")
