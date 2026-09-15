@@ -173,15 +173,15 @@ sqlc:
 # Backend test targets - General
 test:
 	@echo "Running tests with SQLite..."
-	go test ./... -v -count=1 $(RACE_FLAG)
+	gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./...
 
 test-unit:
 	@echo "Running unit tests..."
-	go test ./... -short -v -count=1 $(RACE_FLAG)
+	gotestsum --format short-verbose -- -short -count=1 $(RACE_FLAG) ./...
 
 test-integration:
 	@echo "Running integration tests with SQLite..."
-	go test ./... -v -count=1 $(RACE_FLAG)
+	gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./...
 
 test-postgres:
 	@echo "Running integration tests with PostgreSQL..."
@@ -191,11 +191,11 @@ test-postgres:
 		exit 1; \
 	fi
 	TEST_DB_DRIVER=postgres \
-	go test ./... -v -count=1 $(RACE_FLAG)
+	gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./...
 
 test-all:
 	@echo "Running tests against SQLite..."
-	go test ./... -v -count=1 $(RACE_FLAG)
+	gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./...
 	@echo ""
 	@echo "Running tests against PostgreSQL..."
 	@echo "Note: Requires TEST_POSTGRES_DSN environment variable (see .env.example)"
@@ -204,12 +204,12 @@ test-all:
 		exit 1; \
 	fi
 	TEST_DB_DRIVER=postgres \
-	go test ./... -v -count=1 $(RACE_FLAG)
+	gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./...
 
 # Backend test targets - Query layer specific
 test-queries-raw-sqlite:
 	@echo "Testing raw SQL backend with SQLite..."
-	@go test ./internal/queries/... -count=1 $(RACE_FLAG)
+	@gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./internal/queries/...
 
 test-queries-raw-postgres:
 	@echo "Testing raw SQL backend with PostgreSQL..."
@@ -218,11 +218,11 @@ test-queries-raw-postgres:
 		exit 1; \
 	fi
 	@TEST_DB_DRIVER=postgres \
-	go test ./internal/queries/... -count=1 $(RACE_FLAG)
+	gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./internal/queries/...
 
 test-queries-sqlc-sqlite:
 	@echo "Testing sqlc backend with SQLite..."
-	@go test -tags sqlc ./internal/queries_sqlc/... -count=1 $(RACE_FLAG)
+	@gotestsum --format short-verbose -- -tags sqlc -count=1 $(RACE_FLAG) ./internal/queries_sqlc/...
 
 test-queries-sqlc-postgres:
 	@echo "Testing sqlc backend with PostgreSQL..."
@@ -231,7 +231,7 @@ test-queries-sqlc-postgres:
 		exit 1; \
 	fi
 	@TEST_DB_DRIVER=postgres \
-	go test -tags sqlc ./internal/queries_sqlc/... -count=1 $(RACE_FLAG)
+	gotestsum --format short-verbose -- -tags sqlc -count=1 $(RACE_FLAG) ./internal/queries_sqlc/...
 
 # 4-mode query test matrix (raw+sqlc × SQLite+PostgreSQL)
 test-queries-all: test-queries-raw-sqlite test-queries-raw-postgres \
