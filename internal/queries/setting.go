@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/models"
@@ -102,6 +101,21 @@ func (q *SettingQueries) GroupFieldMap(settings any) map[string]any {
 			"smtp_password":     &s.SMTP.Password,
 			"smtp_encryption":   &s.SMTP.Encryption,
 		}
+	case *models.Branding:
+		return map[string]any{
+			"branding_logo":    &s.Logo,
+			"branding_favicon": &s.Favicon,
+			"branding_tagline": &s.Tagline,
+		}
+	case *models.Account:
+		// account_jwt_secret is not here on purpose: this map is what the admin
+		// settings read and save walks, and a key an operator never sees must
+		// not be rewritten with an empty value on every save. AccountSecret
+		// owns that row.
+		return map[string]any{
+			"account_enabled":          &s.Enabled,
+			"account_jwt_expire_hours": &s.ExpireHours,
+		}
 	default:
 		return nil
 	}
@@ -174,7 +188,7 @@ func (q *SettingQueries) GetSettingByGroup(ctx context.Context, settings any) (a
 		keys = append(keys, k)
 	}
 
-	query := fmt.Sprintf("SELECT key, value FROM setting WHERE key IN (%s)", strings.Repeat("?, ", len(keys)-1)+"?")
+	query := fmt.Sprintf("SELECT key, value FROM setting WHERE key IN (%s)", inPlaceholders(len(keys)))
 	rows, err := q.DB.QueryContext(ctx, query, keys...)
 	if err != nil {
 		return nil, err
@@ -286,8 +300,13 @@ func (q *SettingQueries) UpdatePassword(ctx context.Context, password *models.Pa
 		return errors.ErrWrongPassword
 	}
 
+	hash, err := security.HashPassword(password.New)
+	if err != nil {
+		return err
+	}
+
 	query = `UPDATE setting SET value = ? WHERE key = 'password'`
-	_, err := q.DB.ExecContext(ctx, query, security.GeneratePassword(password.New))
+	_, err = q.DB.ExecContext(ctx, query, hash)
 	return err
 }
 
@@ -299,7 +318,7 @@ func (q *SettingQueries) GetSettingByKey(ctx context.Context, key ...string) (ma
 		return nil, errors.ErrSettingNotFound
 	}
 
-	query := fmt.Sprintf("SELECT id, key, value FROM setting WHERE key IN (%s)", strings.Repeat("?, ", len(key)-1)+"?")
+	query := fmt.Sprintf("SELECT id, key, value FROM setting WHERE key IN (%s)", inPlaceholders(len(key)))
 	rows, err := q.DB.QueryContext(ctx, query, strutil.ToAny(key...)...)
 	if err != nil {
 		return nil, err

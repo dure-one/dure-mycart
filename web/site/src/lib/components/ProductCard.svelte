@@ -8,6 +8,7 @@
   import { toggleCartItem } from '$lib/utils/cart'
   import { handleNavigation } from '$lib/utils/navigation'
   import { translate, locale } from '$lib/i18n'
+  import { chargesStock } from '$lib/utils/digital'
   import QuantityInput from './QuantityInput.svelte'
 
   // Reactive translation function
@@ -141,7 +142,9 @@
             {t('product.details')}
           </a>
         {:else}
-          {#if !inCart}
+          <!-- A download is one copy, so it keeps the spacer rather than a
+               stepper: cards line up either way. -->
+          {#if !inCart && chargesStock(product)}
             <QuantityInput
               quantity={selectedQuantity}
               onIncrement={handleQuantityIncrement}

@@ -75,8 +75,20 @@ func customKeyFunc() jwt.Keyfunc {
 		if !ok || sessionID == "" {
 			return nil, fmt.Errorf("token has no session id")
 		}
-		if _, err := db.GetSession(ctx, sessionID); err != nil {
+		value, err := db.GetSession(ctx, sessionID)
+		if err != nil {
 			return nil, fmt.Errorf("session not found or expired")
+		}
+
+		// Role check. The session table is shared with the storefront cabinet,
+		// and both surfaces' tokens carry nothing but a session id, so the row
+		// alone would otherwise be enough to be admitted here. The cabinet signs
+		// with a key of its own, which already stops its tokens reaching this
+		// function — this is the check that keeps holding when a future surface
+		// does share the key, and it is what makes the "admin" value the admin
+		// sign-in has always written mean something.
+		if role, _ := queries.ParseSessionValue(value); role != queries.SessionRoleAdmin {
+			return nil, fmt.Errorf("session is not an admin session")
 		}
 
 		return []byte(settingJWT.Secret), nil

@@ -42,3 +42,23 @@ function updateMetaTag(selector: string, attribute: string, value: string): void
     element.setAttribute(attribute, value)
   }
 }
+
+/**
+ * Points the browser at the shop's own icon, where it has uploaded one.
+ *
+ * Not a meta tag, so it does not go through updateSEOTags: the icon a browser
+ * shows comes from the element, and rewriting its href is what makes a browser
+ * that already has the built-in icon ask for this one. An empty url leaves the
+ * link as the build wrote it in app.html.
+ */
+export function updateFavicon(url: string): void {
+  if (!isBrowser() || !url) return
+
+  let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
+  if (!link) {
+    link = document.createElement('link')
+    link.rel = 'icon'
+    document.head.appendChild(link)
+  }
+  link.href = url
+}

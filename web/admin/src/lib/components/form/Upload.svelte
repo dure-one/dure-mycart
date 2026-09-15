@@ -3,26 +3,52 @@
   import { apiPost } from '$lib/utils/api'
 
   interface Props {
-    section: string
+    /**
+     * Endpoint to post to. Takes precedence over the product endpoint built
+     * from `productId` and `section`, so a page that uploads something other
+     * than a product file — the shop's own logo, say — can use this component
+     * instead of growing a second copy of the drag-and-drop shell.
+     */
+    url?: string
+    section?: string
     accept?: string
     productId?: string
+    /** A mark is one file, so those callers turn the multi-select off. */
+    multiple?: boolean
     onadded?: (res: any) => void
   }
 
-  let { section, accept = undefined, productId = undefined, onadded }: Props = $props()
+  let {
+    url = undefined,
+    section = undefined,
+    accept = undefined,
+    productId = undefined,
+    multiple = true,
+    onadded
+  }: Props = $props()
+
+  // Unique per instance: two uploads on one page would otherwise share an id,
+  // and the second label would point at the first input.
+  const fieldId = $props.id()
+  const endpoint = $derived(url ?? `/api/_/products/${productId}/${section}`)
 
   let fileInput: HTMLInputElement | undefined = $state()
   let isDragging = $state(false)
 
   const onChange = async () => {
-    if (!fileInput?.files) return
+    const input = fileInput
+    if (!input?.files) return
 
-    for (const file of fileInput.files) {
+    for (const file of input.files) {
       const formData = new FormData()
       formData.append('document', file)
-      const res = await apiPost(`/api/_/products/${productId}/${section}`, formData)
+      const res = await apiPost(endpoint, formData)
       onadded?.(res)
     }
+
+    // Re-selecting the file that was just uploaded fires no change event while
+    // the input still holds it, so the upload would silently do nothing.
+    input.value = ''
   }
 
   const dragover = (event: DragEvent) => {
@@ -37,11 +63,21 @@
 
   const drop = (event: DragEvent) => {
     event.preventDefault()
-    if (fileInput && event.dataTransfer?.files) {
-      fileInput.files = event.dataTransfer.files
+    const dropped = event.dataTransfer?.files
+    if (fileInput && dropped?.length) {
+      // The drop goes through the input, so it has to honour the same
+      // single-select as the picker: a shop logo would otherwise reach the
+      // endpoint as three files it was never meant to receive.
+      fileInput.files = multiple ? dropped : firstFile(dropped)
       onChange()
     }
     isDragging = false
+  }
+
+  function firstFile(files: FileList): FileList {
+    const one = new DataTransfer()
+    one.items.add(files[0])
+    return one.files
   }
 
 </script>
@@ -55,14 +91,14 @@
 >
   <input
     type="file"
-    multiple
+    {multiple}
     name="fields[assetsFieldHandle][]"
-    id="assetsFieldHandle"
+    id={fieldId}
     onchange={onChange}
     bind:this={fileInput}
     {accept}
   />
-  <label for="assetsFieldHandle">
+  <label for={fieldId}>
     <SvgIcon name="plus" className="h-5 w-5" stroke="currentColor" />
   </label>
 </div>

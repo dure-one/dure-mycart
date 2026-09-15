@@ -2,7 +2,6 @@
   interface Props {
     id?: string
     value?: boolean
-    checked?: boolean
     label?: string
     disabled?: boolean
     onchange?: () => void
@@ -11,25 +10,25 @@
   let {
     id = 'name',
     value = $bindable(false),
-    checked,
     label,
     disabled = false,
     onchange
   }: Props = $props()
-
-  let computedValue = $derived(checked ?? value)
 
   function handleChange() {
     onchange?.()
   }
 </script>
 
-<div class="flex items-center">
-  <label
-    for="toggle_{id}"
-    class="relative h-6 w-10 cursor-pointer [-webkit-tap-highlight-color:_transparent]"
-    class:opacity-25={disabled}
-  >
+<label
+  for="toggle_{id}"
+  class="inline-flex shrink-0 cursor-pointer items-center gap-3 [-webkit-tap-highlight-color:_transparent]"
+  class:opacity-25={disabled}
+>
+  <!-- The text belongs inside this one label: a second label on the same
+       input would be a second match for a `label[for=…]` lookup, and the
+       track only has room for the knob, so the switch keeps its own box. -->
+  <span class="relative h-6 w-10">
     <input
       type="checkbox"
       id="toggle_{id}"
@@ -66,8 +65,9 @@
     </span>
 
     <span class="absolute inset-0 rounded-full bg-gray-300 transition peer-checked:bg-green-500"></span>
-  </label>
+  </span>
+
   {#if label}
-    <span class="ml-3 text-sm font-medium text-gray-700">{label}</span>
+    <span class="text-sm font-medium text-gray-700">{label}</span>
   {/if}
-</div>
+</label>

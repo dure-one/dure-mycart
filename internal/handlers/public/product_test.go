@@ -77,23 +77,27 @@ func TestProduct(t *testing.T) {
 	app, _, cleanup := testutil.SetupTestApp(t)
 	defer cleanup()
 
-	app.Get("/api/products/:product_id", Product)
+	app.Get("/api/products/:product_slug", Product)
 
+	// A product the shop does not have, or has switched off, is not there: the
+	// visitor gets a 404 and the storefront's own not-found page, not a server
+	// error. The assertions used to accept either, which is how a 500 on every
+	// mistyped address went unnoticed.
 	tests := []struct {
-		name       string
-		productID  string
-		wantStatus []int
+		name        string
+		productSlug string
+		wantStatus  int
 	}{
-		{"active product with digital inventory", "url1", []int{http.StatusOK}},
-		{"active product without digital inventory", "url3", []int{http.StatusOK}},
-		{"inactive product", "url6", []int{http.StatusNotFound, http.StatusInternalServerError}},
-		{"non-existent product", "nonexistent12345", []int{http.StatusNotFound, http.StatusInternalServerError}},
+		{"active product with digital inventory", "url1", http.StatusOK},
+		{"active product without digital inventory", "url3", http.StatusOK},
+		{"inactive product", "url6", http.StatusNotFound},
+		{"non-existent product", "nonexistent12345", http.StatusNotFound},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp := testutil.DoRequest(t, app, http.MethodGet, "/api/products/"+tt.productID, "", "")
-			testutil.AssertStatus(t, resp, tt.wantStatus...)
+			resp := testutil.DoRequest(t, app, http.MethodGet, "/api/products/"+tt.productSlug, "", "")
+			testutil.AssertStatus(t, resp, tt.wantStatus)
 		})
 	}
 }

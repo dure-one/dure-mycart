@@ -2,6 +2,7 @@ package queries
 
 import (
 	"io/fs"
+	"strings"
 	"sync/atomic"
 
 	"github.com/shurco/mycart/internal/database"
@@ -13,7 +14,7 @@ import (
 var db atomic.Pointer[Base]
 
 // Base aggregates the query groups for settings, authentication, installation,
-// pages, products and carts.
+// pages, products, carts and storefront customers.
 //
 // Every group shares one handle, so the whole application always talks to the
 // same database in the same dialect.
@@ -26,18 +27,20 @@ type Base struct {
 	PageQueries
 	ProductQueries
 	CartQueries
+	CustomerQueries
 }
 
 // NewBase wires every query group to conn.
 func NewBase(conn *database.Conn) *Base {
 	return &Base{
-		conn:           conn,
-		AuthQueries:    AuthQueries{DB: conn},
-		InstallQueries: InstallQueries{DB: conn},
-		SettingQueries: SettingQueries{DB: conn},
-		PageQueries:    PageQueries{DB: conn},
-		ProductQueries: ProductQueries{DB: conn},
-		CartQueries:    CartQueries{DB: conn},
+		conn:            conn,
+		AuthQueries:     AuthQueries{DB: conn},
+		InstallQueries:  InstallQueries{DB: conn},
+		SettingQueries:  SettingQueries{DB: conn},
+		PageQueries:     PageQueries{DB: conn},
+		ProductQueries:  ProductQueries{DB: conn},
+		CartQueries:     CartQueries{DB: conn},
+		CustomerQueries: CustomerQueries{DB: conn},
 	}
 }
 
@@ -80,4 +83,19 @@ func Conn() *database.Conn {
 // Use New() to initialize the database before calling DB().
 func DB() *Base {
 	return db.Load()
+}
+
+// inPlaceholders renders the placeholder list of an IN clause matching n
+// values. Neither engine binds a slice to one placeholder, so the list has to
+// be built — and the values themselves are still passed one by one, since the
+// connection rewrites `?` for PostgreSQL.
+//
+// An empty list is returned empty rather than as a broken `(?)`: a caller with
+// nothing to match has to skip the query, which is the only answer that reads
+// as "no rows" on both engines.
+func inPlaceholders(n int) string {
+	if n <= 0 {
+		return ""
+	}
+	return strings.Repeat("?, ", n-1) + "?"
 }

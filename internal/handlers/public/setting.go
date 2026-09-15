@@ -58,6 +58,18 @@ func Settings(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
+	settingAccount, err := queries.GetSettingByGroup[models.Account](c.Context(), db)
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	settingBranding, err := queries.GetSettingByGroup[models.Branding](c.Context(), db)
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
 	return webutil.Response(c, fiber.StatusOK, "Settings", map[string]any{
 		"main": map[string]string{
 			"site_name": settingMain.SiteName,
@@ -67,5 +79,33 @@ func Settings(c fiber.Ctx) error {
 		"socials": settingSocial,
 		"pages":   pages,
 		"payment": settingPayment,
+		// Only the switch leaves the server. The same group also holds the
+		// signing key for cabinet sessions, and the storefront has no business
+		// knowing it — the response is built from the named field rather than
+		// from the struct for exactly that reason.
+		"account": map[string]any{
+			"enabled": settingAccount.Enabled,
+		},
+		// The two marks the shop has uploaded, as addresses the storefront can
+		// put in a src. Empty strings mean the built-in mark is still in use.
+		"branding": map[string]any{
+			"logo":    uploadURL(settingBranding.Logo),
+			"favicon": uploadURL(settingBranding.Favicon),
+			"tagline": settingBranding.Tagline,
+		},
 	})
+}
+
+// uploadURL turns a file name stored in the branding group into the address
+// the storefront can put in a src. An empty name returns an empty string rather
+// than "/uploads/", which would be a request for the directory.
+//
+// The name is a value the admin API validated as a bare file name, and the
+// storefront only ever builds this address from it — it never composes a path
+// from anything a visitor sent.
+func uploadURL(name string) string {
+	if name == "" {
+		return ""
+	}
+	return "/uploads/" + name
 }

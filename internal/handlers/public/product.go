@@ -15,6 +15,7 @@ import (
 
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/pkg/errors"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/webutil"
 	"github.com/shurco/mycart/web"
@@ -46,23 +47,32 @@ func Products(c fiber.Ctx) error {
 	return webutil.Response(c, fiber.StatusOK, "Products", products)
 }
 
-// Product returns a single active product by ID for public access.
+// Product returns a single active product by slug for public access.
+//
+// The address is the slug and not the row id: the storefront links to
+// /products/<slug>, and the public query behind this handler matches on the
+// slug. Asking for something the shop does not have is a 404 — the product is
+// simply not there — and not the 500 an unclassified error would produce.
 //
 // @Summary      Get active product
-// @Description  Get a single active product by its ID
+// @Description  Get a single active product by its slug
 // @Tags         Public
 // @Produce      json
-// @Param        product_id path string true "Product ID"
+// @Param        product_slug path string true "Product slug"
 // @Success      200 {object} webutil.HTTPResponse{result=models.Product} "Product details"
+// @Failure      404 {object} webutil.HTTPResponse "Product not found"
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
-// @Router       /api/products/{product_id} [get]
+// @Router       /api/products/{product_slug} [get]
 func Product(c fiber.Ctx) error {
-	productID := c.Params("product_id")
+	productSlug := c.Params("product_slug")
 	db := queries.DB()
 	log := logging.New()
 
-	product, err := db.Product(c.Context(), false, productID)
+	product, err := db.Product(c.Context(), false, productSlug)
 	if err != nil {
+		if errors.Is(err, errors.ErrProductNotFound) {
+			return webutil.StatusNotFound(c)
+		}
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}

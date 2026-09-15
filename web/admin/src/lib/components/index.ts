@@ -31,3 +31,6 @@ export { default as SvgIcon } from './SvgIcon.svelte'
 
 // Product components
 export * from './product/index'
+
+// Customer components
+export * from './customer/index'

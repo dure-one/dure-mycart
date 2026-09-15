@@ -232,7 +232,7 @@ func GetCart(c fiber.Ctx) error {
 	cart, err := db.Cart(c.Context(), cartID)
 	if err != nil {
 		log.ErrorStack(err)
-		if errors.Is(err, errors.ErrProductNotFound) {
+		if errors.Is(err, errors.ErrCartNotFound) {
 			return webutil.StatusNotFound(c)
 		}
 		return webutil.StatusInternalServerError(c)
@@ -602,7 +602,10 @@ func PaymentCallback(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
-	// send email
+	// send email. Unlike the redirect below, a failure here is returned on
+	// purpose: the caller is the payment provider, and a provider that is told
+	// the callback failed sends it again — which is the retry that gets the
+	// buyer their file. The buyer is not waiting on this request.
 	if payment.Status == litepay.PAID {
 		if err := mailer.SendCartLetter(payment.CartID); err != nil {
 			log.ErrorStack(err)
@@ -780,11 +783,15 @@ func PaymentSuccess(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
-	// send email
+	// send email. A failure here is logged and not returned: the buyer has
+	// already been charged and is standing on the page the provider sent them
+	// back to, so answering with a server error would take the confirmation
+	// away from them without putting the guide back. The letter is what the
+	// shop owes them, not what this request is — the provider's callback
+	// retries it, and the panel's resend does when that never comes.
 	if payment.Status == litepay.PAID {
 		if err := mailer.SendCartLetter(payment.CartID); err != nil {
 			log.ErrorStack(err)
-			return webutil.StatusInternalServerError(c)
 		}
 	}
 

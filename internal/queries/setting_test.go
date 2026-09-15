@@ -32,6 +32,7 @@ func TestGroupFieldMap_AllKnownTypes(t *testing.T) {
 		&models.Main{}, &models.Auth{}, &models.JWT{}, &models.Social{},
 		&models.Payment{}, &models.Stripe{}, &models.Paypal{}, &models.Spectrocoin{},
 		&models.Coinbase{}, &models.Dummy{}, &models.Webhook{}, &models.Mail{},
+		&models.Account{}, &models.Branding{},
 	}
 	for _, v := range types {
 		v := v

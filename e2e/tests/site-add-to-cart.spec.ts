@@ -57,6 +57,57 @@ test.describe('Site - Add to Cart', () => {
     expect(cartItemName).toBe(productName)
   })
 
+  test('should offer no quantity for a download, and one where the count is stock', async ({
+    page,
+    adminApi,
+    productList,
+    cart
+  }) => {
+    // ARRANGE: two products that differ only in what the shop delivers.
+    //
+    // A download is one copy. The shop stores a single file and serves the same
+    // bytes to every buyer, so a second copy is that file charged twice — and
+    // the count beside it in the panel is left at zero, which is why the page
+    // must not read it as stock. A licence key is drawn from a pile the
+    // operator counts, and a buyer may take several at once.
+    const token = Math.random().toString(36).slice(2, 8)
+    const download = await adminApi.createProduct({
+      name: `E2E Download ${token}`,
+      slug: `e2e-download-${token}`,
+      brief: 'One file, one copy',
+      amount: 0,
+      quantity: 0,
+      sku: `E2E-DL-${token}`,
+      digital: { type: 'file' }
+    })
+    const keys = await adminApi.createProduct({
+      name: `E2E Licence Keys ${token}`,
+      slug: `e2e-licence-keys-${token}`,
+      brief: 'Ten keys, sold by the one',
+      amount: 0,
+      quantity: 10,
+      sku: `E2E-KEYS-${token}`,
+      digital: { type: 'data' }
+    })
+
+    await productList.goto()
+    await productList.waitForProducts()
+
+    // ASSERT: the download offers no number to choose; the keys do
+    await expect(productList.cardByName(download.name)).toBeVisible()
+    await expect(productList.cardByName(download.name).locator('input[aria-label="Quantity"]')).toHaveCount(0)
+    await expect(productList.cardByName(keys.name).locator('input[aria-label="Quantity"]')).toHaveCount(1)
+
+    // ACT: the download goes in the cart
+    await productList.addToCartByName(download.name)
+
+    // ASSERT: the line is one copy, and there is nothing to step
+    await cart.goto()
+    await cart.verifyCartHasItems(1)
+    expect(await cart.getItemNameByIndex(0)).toBe(download.name)
+    await expect(page.locator('[data-testid="cart-item"] input[aria-label="Quantity"]')).toHaveCount(0)
+  })
+
   test('should add multiple products to cart', async ({ productList, cart }) => {
     // ARRANGE
     await productList.goto()

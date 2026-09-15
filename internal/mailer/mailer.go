@@ -8,6 +8,7 @@ import (
 
 	mailer "github.com/xhit/go-simple-mail/v2"
 
+	"github.com/shurco/mycart/internal/digitalfiles"
 	"github.com/shurco/mycart/internal/models"
 )
 
@@ -68,7 +69,7 @@ func SendMail(smtp *models.Mail, mail *models.MessageMail) error {
 	if len(mail.Files) > 0 {
 		for _, file := range mail.Files {
 			email.Attach(&mailer.File{
-				FilePath: fmt.Sprintf("./lc_digitals/%s.%s", file.Name, file.Ext),
+				FilePath: digitalfiles.Path(file.Name, file.Ext),
 				Name:     file.OrigName,
 			})
 		}
