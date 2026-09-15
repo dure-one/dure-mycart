@@ -31,6 +31,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/peterldowns/pgtestdb"
@@ -43,6 +44,15 @@ import (
 // AdminDSN names the environment variable holding the administrative
 // connection string of the PostgreSQL test server.
 const AdminDSN = "TEST_POSTGRES_DSN"
+
+// AdminMode names the environment variable controlling test database mode.
+// "1" (default) = admin mode: requires CREATEDB/CREATEROLE, uses pgtestdb.
+// "0" = table-level mode: only requires table permissions, truncates tables.
+const AdminMode = "TEST_POSTGRES_ADMIN"
+
+// tableLevelMutex serializes truncate+fixture operations in table-level mode
+// to prevent deadlocks from concurrent TRUNCATE CASCADE on the shared database.
+var tableLevelMutex sync.Mutex
 
 // FixturesDir is the directory under the repository root holding the fixture
 // migrations.
@@ -69,6 +79,11 @@ func FixturesFS() fs.FS {
 // apply the migrations to an empty database the way a real installation does.
 func EmptyDSN(t *testing.T) string {
 	t.Helper()
+	if isTableLevelMode() {
+		// Table-level mode cannot provide truly empty databases since the shared
+		// database already has schema. Skip tests requiring empty databases.
+		t.Skip("EmptyDSN not supported in table-level mode (TEST_POSTGRES_ADMIN=0)")
+	}
 	return instance(t, pgtestdb.NoopMigrator{})
 }
 
@@ -76,6 +91,9 @@ func EmptyDSN(t *testing.T) string {
 // applied.
 func MigratedDSN(t *testing.T) string {
 	t.Helper()
+	if isTableLevelMode() {
+		return tableLevelInstance(t, false)
+	}
 	return instance(t, migrator(false))
 }
 
@@ -83,6 +101,9 @@ func MigratedDSN(t *testing.T) string {
 // and the fixtures applied.
 func FixturesDSN(t *testing.T) string {
 	t.Helper()
+	if isTableLevelMode() {
+		return tableLevelInstance(t, true)
+	}
 	return instance(t, migrator(true))
 }
 
@@ -243,4 +264,222 @@ func repoRoot() string {
 	_, src, _, _ := runtime.Caller(0)
 	// src = <root>/internal/testutil/pgtest/pgtest.go
 	return filepath.Join(filepath.Dir(src), "..", "..", "..")
+}
+
+// isTableLevelMode reports whether tests should use table-level cleanup instead
+// of database-level isolation. When TEST_POSTGRES_ADMIN=0, tests use TRUNCATE
+// instead of creating/dropping databases, requiring only table permissions.
+func isTableLevelMode() bool {
+	mode := os.Getenv(AdminMode)
+	return mode == "0"
+}
+
+// tableLevelInstance returns a DSN to the shared test database and truncates all
+// tables for isolation. This mode requires only table-level permissions (SELECT,
+// INSERT, UPDATE, DELETE, TRUNCATE) instead of CREATEDB/CREATEROLE.
+func tableLevelInstance(t *testing.T, withFixtures bool) string {
+	t.Helper()
+
+	raw := os.Getenv(AdminDSN)
+	if raw == "" {
+		t.Fatalf("%s is not set (required for table-level mode)", AdminDSN)
+	}
+
+	dsn, err := database.NormalizePostgresDSN(raw)
+	if err != nil {
+		t.Fatalf("%s: %v", AdminDSN, err)
+	}
+
+	// Connect using database.Connect to ensure timezone pin and pool config
+	cfg := database.Config{
+		Driver: database.DriverPostgres,
+		DSN:    dsn,
+		Source: database.SourceDefault,
+	}
+
+	ctx := context.Background()
+	conn, err := database.Connect(cfg)
+	if err != nil {
+		t.Fatalf("connect to test database: %v", err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+
+	// Ensure schema is migrated
+	if err := database.MigrateOn(conn, migrations.Embed()); err != nil {
+		t.Fatalf("migrate test database: %v", err)
+	}
+
+	// Serialize truncate+fixture operations to prevent deadlocks from concurrent
+	// TRUNCATE CASCADE on the shared database. Tests running in parallel would
+	// otherwise compete for locks on foreign key relationships.
+	tableLevelMutex.Lock()
+	defer tableLevelMutex.Unlock()
+
+	// Truncate all tables for isolation
+	if err := truncateTables(ctx, conn.Raw()); err != nil {
+		t.Fatalf("truncate tables: %v", err)
+	}
+
+	// Apply fixtures if requested
+	if withFixtures {
+		if err := applyFixturesTo(ctx, conn.Raw()); err != nil {
+			t.Fatalf("apply fixtures: %v", err)
+		}
+	}
+
+	return dsn
+}
+
+// truncateTables empties all user tables in the database, excluding bookkeeping
+// tables like migration versioning and migration-seeded configuration data.
+func truncateTables(ctx context.Context, db *sql.DB) error {
+	rows, err := db.QueryContext(ctx, `
+		SELECT table_name
+		FROM information_schema.tables
+		WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+		ORDER BY table_name`)
+	if err != nil {
+		return fmt.Errorf("list tables: %w", err)
+	}
+	defer rows.Close()
+
+	var tables []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return fmt.Errorf("scan table name: %w", err)
+		}
+		// Skip goose bookkeeping tables and migration-seeded configuration
+		if name == database.MigrateTable || name == FixturesTable || name == "setting" {
+			continue
+		}
+		tables = append(tables, name)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate tables: %w", err)
+	}
+
+	if len(tables) == 0 {
+		return nil
+	}
+
+	// Quote identifiers for safety
+	quoted := make([]string, len(tables))
+	for i, name := range tables {
+		quoted[i] = `"` + strings.ReplaceAll(name, `"`, `""`) + `"`
+	}
+
+	truncateSQL := "TRUNCATE TABLE " + strings.Join(quoted, ", ") + " CASCADE"
+	if _, err := db.ExecContext(ctx, truncateSQL); err != nil {
+		return fmt.Errorf("truncate tables: %w", err)
+	}
+
+	// Reset the installation state in the setting table so tests see a clean DB.
+	// The setting table holds migration-seeded configuration (currency, jwt_secret,
+	// etc.) that tests may depend on, so we can't truncate it. But we must reset
+	// the 'installed' flag that tests set during installation flows.
+	if _, err := db.ExecContext(ctx, `UPDATE setting SET value = '0' WHERE key = 'installed'`); err != nil {
+		return fmt.Errorf("reset installation state: %w", err)
+	}
+
+	return nil
+}
+
+// applyFixturesTo loads fixtures into an already-migrated and truncated database.
+// In table-level mode, we execute the fixture SQL directly instead of using goose's
+// versioning system, since the tables are already empty from truncation.
+func applyFixturesTo(ctx context.Context, db *sql.DB) error {
+	// Ensure the fixtures version table exists
+	if _, err := db.ExecContext(ctx, fmt.Sprintf(
+		"CREATE TABLE IF NOT EXISTS %s (id SERIAL PRIMARY KEY, version_id BIGINT, is_applied BOOLEAN, tstamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
+		FixturesTable)); err != nil {
+		return fmt.Errorf("create fixtures version table: %w", err)
+	}
+
+	// Check if fixtures have already been applied by checking for any version records
+	var count int
+	if err := db.QueryRowContext(ctx, fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE is_applied = TRUE", FixturesTable)).Scan(&count); err != nil {
+		return fmt.Errorf("check fixtures version: %w", err)
+	}
+
+	// If fixtures are already applied, skip re-applying them
+	if count > 0 {
+		return nil
+	}
+
+	// Read the fixture SQL file directly
+	entries, err := fs.ReadDir(FixturesFS(), ".")
+	if err != nil {
+		return fmt.Errorf("read fixtures directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
+			continue
+		}
+
+		content, err := fs.ReadFile(FixturesFS(), entry.Name())
+		if err != nil {
+			return fmt.Errorf("read fixture file %s: %w", entry.Name(), err)
+		}
+
+		// Extract SQL from goose migration file (between StatementBegin/End markers)
+		sqlContent := extractGooseSQL(string(content))
+
+		// Execute the fixture SQL
+		if _, err := db.ExecContext(ctx, sqlContent); err != nil {
+			return fmt.Errorf("execute fixture %s: %w", entry.Name(), err)
+		}
+
+		// Mark this fixture as applied
+		if _, err := db.ExecContext(ctx, fmt.Sprintf(
+			"INSERT INTO %s (version_id, is_applied) VALUES (1, TRUE)", FixturesTable)); err != nil {
+			return fmt.Errorf("mark fixture %s as applied: %w", entry.Name(), err)
+		}
+	}
+
+	return nil
+}
+
+// extractGooseSQL extracts SQL statements from the "Up" section of a goose
+// migration file (content between first StatementBegin and StatementEnd).
+func extractGooseSQL(content string) string {
+	var result strings.Builder
+	inUpStatement := false
+	foundFirstStatement := false
+
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+
+		// Check for goose directives
+		if strings.HasPrefix(trimmed, "-- +goose") {
+			if strings.Contains(trimmed, "Up") {
+				// Start of Up section
+				continue
+			} else if strings.Contains(trimmed, "Down") {
+				// Start of Down section - stop extracting
+				break
+			} else if strings.Contains(trimmed, "StatementBegin") {
+				inUpStatement = true
+				foundFirstStatement = true
+				continue
+			} else if strings.Contains(trimmed, "StatementEnd") {
+				// If we found the first statement, this ends it
+				if foundFirstStatement {
+					break
+				}
+				inUpStatement = false
+				continue
+			}
+			continue
+		}
+
+		// Include content when in the Up statement block
+		if inUpStatement {
+			result.WriteString(line)
+			result.WriteString("\n")
+		}
+	}
+
+	return result.String()
 }

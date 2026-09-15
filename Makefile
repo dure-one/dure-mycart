@@ -16,6 +16,13 @@ RACE_FLAG =
 RACE_FLAG = -race
 .endif
 
+# Load environment variables from .env if it exists
+.if exists(.env)
+.for line in ${:!cat .env | grep -v '^\#' | grep '=' || true!}
+.export ${line:S/=/ /W:S/ *//:S/ /:=/}
+.endfor
+.endif
+
 # Default target
 help:
 	@echo "Available targets:"
@@ -186,12 +193,32 @@ test-integration:
 test-postgres:
 	@echo "Running integration tests with PostgreSQL..."
 	@echo "Note: Requires TEST_POSTGRES_DSN environment variable (see .env.example)"
-	@if [ -z "$$TEST_POSTGRES_DSN" ]; then \
-		echo "ERROR: TEST_POSTGRES_DSN not set. Set it in your environment or .env file"; \
-		exit 1; \
+	@if [ -f .env ]; then \
+		echo "Loading environment from .env..."; \
+		export $$(grep -v '^\#' .env | xargs); \
+		if [ "$$TEST_POSTGRES_ADMIN" = "0" ]; then \
+			echo "Table-level mode detected (TEST_POSTGRES_ADMIN=0), running tests sequentially..."; \
+			export TEST_DB_DRIVER=postgres; \
+			gotestsum --format short-verbose -- -count=1 -p 1 ./...; \
+		else \
+			echo "Admin mode detected, running tests in parallel..."; \
+			export TEST_DB_DRIVER=postgres; \
+			gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./...; \
+		fi \
+	else \
+		if [ -z "$$TEST_POSTGRES_DSN" ]; then \
+			echo "ERROR: TEST_POSTGRES_DSN not set. Create .env file or export variables"; \
+			exit 1; \
+		fi; \
+		if [ "$$TEST_POSTGRES_ADMIN" = "0" ]; then \
+			echo "Table-level mode detected (TEST_POSTGRES_ADMIN=0), running tests sequentially..."; \
+			export TEST_DB_DRIVER=postgres; \
+			gotestsum --format short-verbose -- -count=1 -p 1 ./...; \
+		else \
+			export TEST_DB_DRIVER=postgres; \
+			gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./...; \
+		fi \
 	fi
-	TEST_DB_DRIVER=postgres \
-	gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./...
 
 test-all:
 	@echo "Running tests against SQLite..."
@@ -199,12 +226,32 @@ test-all:
 	@echo ""
 	@echo "Running tests against PostgreSQL..."
 	@echo "Note: Requires TEST_POSTGRES_DSN environment variable (see .env.example)"
-	@if [ -z "$$TEST_POSTGRES_DSN" ]; then \
-		echo "ERROR: TEST_POSTGRES_DSN not set. Set it in your environment or .env file"; \
-		exit 1; \
+	@if [ -f .env ]; then \
+		echo "Loading environment from .env..."; \
+		export $$(grep -v '^\#' .env | xargs); \
+		if [ "$$TEST_POSTGRES_ADMIN" = "0" ]; then \
+			echo "Table-level mode detected (TEST_POSTGRES_ADMIN=0), running tests sequentially..."; \
+			export TEST_DB_DRIVER=postgres; \
+			gotestsum --format short-verbose -- -count=1 -p 1 ./...; \
+		else \
+			echo "Admin mode detected, running tests in parallel..."; \
+			export TEST_DB_DRIVER=postgres; \
+			gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./...; \
+		fi \
+	else \
+		if [ -z "$$TEST_POSTGRES_DSN" ]; then \
+			echo "ERROR: TEST_POSTGRES_DSN not set. Create .env file or export variables"; \
+			exit 1; \
+		fi; \
+		if [ "$$TEST_POSTGRES_ADMIN" = "0" ]; then \
+			echo "Table-level mode detected (TEST_POSTGRES_ADMIN=0), running tests sequentially..."; \
+			export TEST_DB_DRIVER=postgres; \
+			gotestsum --format short-verbose -- -count=1 -p 1 ./...; \
+		else \
+			export TEST_DB_DRIVER=postgres; \
+			gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./...; \
+		fi \
 	fi
-	TEST_DB_DRIVER=postgres \
-	gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./...
 
 # Backend test targets - Query layer specific
 test-queries-raw-sqlite:
