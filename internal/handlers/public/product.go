@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/jpeg"
 	"image/png"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/shurco/mycart/internal/queries"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/webutil"
+	"github.com/shurco/mycart/web"
 )
 
 // Products returns a list of all active products for public access.
@@ -68,6 +70,22 @@ func Product(c fiber.Ctx) error {
 	return webutil.Response(c, fiber.StatusOK, "Product info", product)
 }
 
+// servePlaceholderImage serves the noimage.png placeholder from embedded assets
+func servePlaceholderImage(c fiber.Ctx, log *logging.Log) error {
+	embedSite := web.EmbedSite()
+	placeholderPath := "site/build/assets/img/noimage.png"
+
+	placeholderData, err := fs.ReadFile(embedSite, placeholderPath)
+	if err != nil {
+		log.ErrorStack(fmt.Errorf("failed to read placeholder image: %w", err))
+		return webutil.StatusNotFound(c)
+	}
+
+	c.Set("Content-Type", "image/png")
+	c.Set("Cache-Control", "public, max-age=86400") // Cache for 1 day
+	return c.Send(placeholderData)
+}
+
 // ProductRepresentativeImage serves the representative (first) product image as PNG.
 // URL pattern: /products/{slug}.png
 // Converts JPEG to PNG if needed.
@@ -93,12 +111,12 @@ func ProductRepresentativeImage(c fiber.Ctx) error {
 	product, err := db.Product(c.Context(), false, slug)
 	if err != nil {
 		log.ErrorStack(err)
-		return webutil.StatusNotFound(c)
+		return servePlaceholderImage(c, log)
 	}
 
 	// Find representative image (first by position or marked as representative)
 	if len(product.Images) == 0 {
-		return webutil.StatusNotFound(c)
+		return servePlaceholderImage(c, log)
 	}
 
 	// Get the first image (position 0)
@@ -121,7 +139,7 @@ func ProductRepresentativeImage(c fiber.Ctx) error {
 	imageData, err := os.ReadFile(imagePath)
 	if err != nil {
 		log.ErrorStack(fmt.Errorf("failed to read image file %s: %w", imagePath, err))
-		return webutil.StatusNotFound(c)
+		return servePlaceholderImage(c, log)
 	}
 
 	// If already PNG, serve directly
