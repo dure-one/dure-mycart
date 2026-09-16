@@ -92,8 +92,10 @@ func EmptyDSN(t *testing.T) string {
 func MigratedDSN(t *testing.T) string {
 	t.Helper()
 	if isTableLevelMode() {
+		t.Logf("MigratedDSN: using table-level mode")
 		return tableLevelInstance(t, false)
 	}
+	t.Logf("MigratedDSN: using admin mode (pgtestdb)")
 	return instance(t, migrator(false))
 }
 
@@ -119,12 +121,20 @@ func instance(t *testing.T, m pgtestdb.Migrator) string {
 	// Built from the fields rather than with cfg.URL(), which interpolates the
 	// password into the URL unescaped and would produce a broken DSN for one
 	// containing "@" or ":".
+	// Ensure timezone=UTC is in the query string for all pool connections.
+	opts := cfg.Options
+	if opts == "" {
+		opts = "timezone=UTC"
+	} else if !strings.Contains(opts, "timezone") && !strings.Contains(opts, "TimeZone") {
+		opts += "&timezone=UTC"
+	}
+
 	dsn := (&url.URL{
 		Scheme:   "postgres",
 		User:     url.UserPassword(cfg.User, cfg.Password),
 		Host:     net.JoinHostPort(cfg.Host, cfg.Port),
 		Path:     "/" + cfg.Database,
-		RawQuery: cfg.Options,
+		RawQuery: opts,
 	}).String()
 
 	// Then through the application's own normaliser, rather than trusting
@@ -151,7 +161,81 @@ func config(t *testing.T) pgtestdb.Config {
 	if err != nil {
 		t.Fatalf("%s: %v", AdminDSN, err)
 	}
+
+	// Drop existing template databases to force recreation with correct timezone.
+	// This ensures templates built before timezone fixes are not reused.
+	dropTemplates(t, cfg)
+
 	return cfg
+}
+
+// dropTemplates drops all pgtestdb template databases to force recreation.
+// This is necessary when timezone configuration changes, as templates created
+// before the fix contain fixture data with incorrect timezone offsets.
+func dropTemplates(t *testing.T, cfg pgtestdb.Config) {
+	t.Helper()
+
+	// Build DSN with timezone parameter to ensure our connection uses UTC
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?timezone=UTC",
+		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Database)
+
+	db, err := sql.Open(cfg.DriverName, dsn)
+	if err != nil {
+		t.Logf("dropTemplates: failed to connect: %v", err)
+		return
+	}
+	defer db.Close()
+
+	if err := db.Ping(); err != nil {
+		t.Logf("dropTemplates: failed to ping: %v", err)
+		return
+	}
+
+	// Query for template databases
+	rows, err := db.Query(`
+		SELECT datname
+		FROM pg_database
+		WHERE datname LIKE 'testdb_tpl%'
+	`)
+	if err != nil {
+		t.Logf("dropTemplates: failed to query templates: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	var templates []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			continue
+		}
+		templates = append(templates, name)
+	}
+
+	if len(templates) > 0 {
+		t.Logf("dropTemplates: found %d templates to drop: %v", len(templates), templates)
+	}
+
+	// Drop each template database
+	for _, name := range templates {
+		// Terminate connections first
+		terminateSQL := fmt.Sprintf(`
+			SELECT pg_terminate_backend(pid)
+			FROM pg_stat_activity
+			WHERE datname = '%s' AND pid <> pg_backend_pid()
+		`, name)
+		if _, err := db.Exec(terminateSQL); err != nil {
+			t.Logf("dropTemplates: failed to terminate connections for %s: %v", name, err)
+		}
+
+		// Drop with proper quoting
+		dropSQL := fmt.Sprintf(`DROP DATABASE IF EXISTS "%s"`, name)
+		if _, err := db.Exec(dropSQL); err != nil {
+			t.Logf("dropTemplates: failed to drop %s: %v", name, err)
+		} else {
+			t.Logf("dropTemplates: dropped %s", name)
+		}
+	}
 }
 
 // parseConfig turns an administrative connection string into a pgtestdb
@@ -190,6 +274,16 @@ func parseConfig(raw string) (pgtestdb.Config, error) {
 		port = "5432"
 	}
 
+	// Ensure timezone=UTC is in the options. NormalizePostgresDSN should have
+	// added it to the query string, but we verify and add it explicitly if missing
+	// to guarantee pgtestdb's connections use UTC timezone when building templates.
+	opts := u.RawQuery
+	if opts == "" {
+		opts = "timezone=UTC"
+	} else if !strings.Contains(opts, "timezone") && !strings.Contains(opts, "TimeZone") {
+		opts += "&timezone=UTC"
+	}
+
 	return pgtestdb.Config{
 		DriverName: database.Postgres().Driver(),
 		Host:       u.Hostname(),
@@ -197,7 +291,7 @@ func parseConfig(raw string) (pgtestdb.Config, error) {
 		User:       u.User.Username(),
 		Password:   password,
 		Database:   name,
-		Options:    u.RawQuery,
+		Options:    opts,
 	}, nil
 }
 
@@ -290,6 +384,8 @@ func tableLevelInstance(t *testing.T, withFixtures bool) string {
 		t.Fatalf("%s: %v", AdminDSN, err)
 	}
 
+	t.Logf("tableLevelInstance: normalized DSN: %s", dsn)
+
 	// Connect using database.Connect to ensure timezone pin and pool config
 	cfg := database.Config{
 		Driver: database.DriverPostgres,
@@ -303,6 +399,21 @@ func tableLevelInstance(t *testing.T, withFixtures bool) string {
 		t.Fatalf("connect to test database: %v", err)
 	}
 	t.Cleanup(func() { _ = conn.Close() })
+
+	// Explicitly set session timezone to UTC. While database.NormalizePostgresDSN
+	// adds timezone=UTC to the DSN, some PostgreSQL configurations may not respect
+	// it. This ensures the session timezone is always UTC regardless of the server's
+	// default timezone or DSN parameter handling.
+	if _, err := conn.Raw().ExecContext(ctx, "SET timezone = 'UTC'"); err != nil {
+		t.Fatalf("set timezone: %v", err)
+	}
+
+	// Verify timezone is actually UTC
+	var tz string
+	if err := conn.Raw().QueryRowContext(ctx, "SHOW timezone").Scan(&tz); err != nil {
+		t.Fatalf("check timezone: %v", err)
+	}
+	t.Logf("tableLevelInstance: session timezone is: %s", tz)
 
 	// Ensure schema is migrated
 	if err := database.MigrateOn(conn, migrations.Embed()); err != nil {

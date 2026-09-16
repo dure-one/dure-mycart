@@ -173,8 +173,19 @@ func NormalizePostgresDSN(dsn string) (string, error) {
 		if err := rejectPoolParams(q); err != nil {
 			return "", err
 		}
-		if !q.Has("timezone") && !q.Has("options") && !q.Has("TimeZone") {
-			q.Set("timezone", "UTC")
+		// Use options=-c format for PgBouncer compatibility (Supabase pooler).
+		// The timezone parameter doesn't work with transaction pooling mode.
+		if !q.Has("timezone") && !q.Has("TimeZone") {
+			if q.Has("options") {
+				// Append to existing options
+				opts := q.Get("options")
+				if !strings.Contains(opts, "timezone") {
+					q.Set("options", opts+" -c timezone=UTC")
+				}
+			} else {
+				// Set new options parameter
+				q.Set("options", "-c timezone=UTC")
+			}
 		}
 		u.RawQuery = q.Encode()
 		return u.String(), nil
@@ -187,8 +198,23 @@ func NormalizePostgresDSN(dsn string) (string, error) {
 			return "", err
 		}
 	}
-	if !hasKeyword(parts, "timezone") && !hasKeyword(parts, "options") {
-		parts = append(parts, "timezone=UTC")
+	// Use options=-c format for PgBouncer compatibility
+	if !hasKeyword(parts, "timezone") && !hasKeyword(parts, "TimeZone") {
+		if hasKeyword(parts, "options") {
+			// Append to existing options
+			for i, p := range parts {
+				if strings.HasPrefix(p, "options=") {
+					opts := strings.TrimPrefix(p, "options=")
+					if !strings.Contains(opts, "timezone") {
+						parts[i] = "options=" + opts + " -c timezone=UTC"
+					}
+					break
+				}
+			}
+		} else {
+			// Add new options parameter
+			parts = append(parts, "options=-c timezone=UTC")
+		}
 	}
 	return strings.Join(parts, " "), nil
 }
