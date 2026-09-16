@@ -335,7 +335,7 @@ func tableLevelInstance(t *testing.T, withFixtures bool) string {
 	if err != nil {
 		t.Fatalf("connect to test database: %v", err)
 	}
-	t.Cleanup(func() { _ = conn.Close() })
+	// Don't register cleanup here - we'll close explicitly after setup
 
 	// Explicitly set session timezone to UTC. While database.NormalizePostgresDSN
 	// adds timezone=UTC to the DSN, some PostgreSQL configurations may not respect
@@ -377,11 +377,18 @@ func tableLevelInstance(t *testing.T, withFixtures bool) string {
 		}
 	}
 
+	// Explicitly close the setup connection to ensure all changes are flushed.
+	// Tests will open their own connections using the returned DSN.
+	if err := conn.Close(); err != nil {
+		t.Logf("warning: failed to close setup connection: %v", err)
+	}
+
 	return dsn
 }
 
-// truncateTables empties all user tables in the database, excluding bookkeeping
-// tables like migration versioning and migration-seeded configuration data.
+// truncateTables empties all user tables in the database, excluding only the
+// schema migration bookkeeping table. The setting table is handled specially
+// to preserve migration-seeded configuration while resetting test data.
 func truncateTables(ctx context.Context, db *sql.DB) error {
 	rows, err := db.QueryContext(ctx, `
 		SELECT table_name
@@ -399,8 +406,10 @@ func truncateTables(ctx context.Context, db *sql.DB) error {
 		if err := rows.Scan(&name); err != nil {
 			return fmt.Errorf("scan table name: %w", err)
 		}
-		// Skip goose bookkeeping tables and migration-seeded configuration
-		if name == database.MigrateTable || name == FixturesTable || name == "setting" {
+		// Skip the schema migration bookkeeping table, setting table, and page table.
+		// These tables contain migration-seeded data that fixtures UPDATE.
+		// They're handled separately to preserve migration-seeded rows.
+		if name == database.MigrateTable || name == "setting" || name == "page" {
 			continue
 		}
 		tables = append(tables, name)
@@ -410,7 +419,8 @@ func truncateTables(ctx context.Context, db *sql.DB) error {
 	}
 
 	if len(tables) == 0 {
-		return nil
+		// Even with no tables to truncate, we still need to reset the setting table
+		return resetSettingTable(ctx, db)
 	}
 
 	// Quote identifiers for safety
@@ -419,17 +429,83 @@ func truncateTables(ctx context.Context, db *sql.DB) error {
 		quoted[i] = `"` + strings.ReplaceAll(name, `"`, `""`) + `"`
 	}
 
-	truncateSQL := "TRUNCATE TABLE " + strings.Join(quoted, ", ") + " CASCADE"
+	// RESTART IDENTITY resets sequences, ensuring IDs start from 1 for each test
+	truncateSQL := "TRUNCATE TABLE " + strings.Join(quoted, ", ") + " RESTART IDENTITY CASCADE"
 	if _, err := db.ExecContext(ctx, truncateSQL); err != nil {
 		return fmt.Errorf("truncate tables: %w", err)
 	}
 
-	// Reset the installation state in the setting table so tests see a clean DB.
-	// The setting table holds migration-seeded configuration (currency, jwt_secret,
-	// etc.) that tests may depend on, so we can't truncate it. But we must reset
-	// the 'installed' flag that tests set during installation flows.
-	if _, err := db.ExecContext(ctx, `UPDATE setting SET value = '0' WHERE key = 'installed'`); err != nil {
-		return fmt.Errorf("reset installation state: %w", err)
+	// Reset the setting table to its migration-seeded state
+	return resetSettingTable(ctx, db)
+}
+
+// resetSettingTable resets test-modified keys in the setting table back to their
+// migration-seeded defaults, while preserving other migration-seeded configuration.
+// This allows tests to see a clean state without losing the base configuration that
+// migrations provide.
+func resetSettingTable(ctx context.Context, db *sql.DB) error {
+	// Reset keys that tests modify back to their migration defaults.
+	// These values come from migrations/20230714135923_init_db.sql and subsequent migrations
+	resetSQL := `
+		UPDATE setting SET value = '0' WHERE key = 'installed';
+		UPDATE setting SET value = '' WHERE key = 'domain';
+		UPDATE setting SET value = '' WHERE key = 'email';
+		UPDATE setting SET value = '' WHERE key = 'password';
+		UPDATE setting SET value = 'secret' WHERE key = 'jwt_secret';
+		UPDATE setting SET value = '' WHERE key = 'site_name';
+		UPDATE setting SET value = 'USD' WHERE key = 'currency';
+		UPDATE setting SET value = '' WHERE key = 'stripe_secret_key';
+		UPDATE setting SET value = 'false' WHERE key = 'stripe_active';
+		UPDATE setting SET value = 'false' WHERE key = 'paypal_active';
+		UPDATE setting SET value = 'false' WHERE key = 'spectrocoin_active';
+		UPDATE setting SET value = 'false' WHERE key = 'coinbase_active';
+		UPDATE setting SET value = '' WHERE key = 'social_facebook';
+		UPDATE setting SET value = '' WHERE key = 'social_dribbble';
+		UPDATE setting SET value = '' WHERE key = 'social_youtube';
+		UPDATE setting SET value = '' WHERE key = 'social_other';
+		UPDATE setting SET value = '' WHERE key = 'smtp_host';
+		UPDATE setting SET value = '' WHERE key = 'smtp_port';
+		UPDATE setting SET value = '' WHERE key = 'smtp_username';
+		UPDATE setting SET value = '' WHERE key = 'smtp_password';
+		UPDATE setting SET value = '' WHERE key = 'smtp_encryption';
+		UPDATE setting SET value = '' WHERE key = 'mail_sender_name';
+		UPDATE setting SET value = '' WHERE key = 'mail_sender_email';
+		UPDATE setting SET value = '' WHERE key = 'branding_logo';
+		UPDATE setting SET value = '' WHERE key = 'branding_favicon';
+		UPDATE setting SET value = '' WHERE key = 'branding_tagline';
+		UPDATE setting SET value = 'FALSE' WHERE key = 'account_enabled';
+	`
+	if _, err := db.ExecContext(ctx, resetSQL); err != nil {
+		return fmt.Errorf("reset setting table: %w", err)
+	}
+
+	// Drop any test-created schema objects that aren't part of migrations.
+	// Some tests (e.g., dbtransfer tests) create temporary tables and functions
+	// to test cleanup behavior. In admin mode these disappear with the database;
+	// in table-level mode we need to clean them up explicitly.
+	cleanupSQL := `
+		-- Drop test-created tables (check existence first to avoid errors)
+		DROP TABLE IF EXISTS extension CASCADE;
+
+		-- Drop test-created functions (check existence first to avoid errors)
+		DROP FUNCTION IF EXISTS swallow() CASCADE;
+	`
+	if _, err := db.ExecContext(ctx, cleanupSQL); err != nil {
+		return fmt.Errorf("cleanup test objects: %w", err)
+	}
+
+	// Reset the page table to its migration-seeded state.
+	// The schema creates 3 pages, then fixtures UPDATE them with content.
+	// Tests may have deleted or modified these rows, so we re-insert them if needed.
+	pageResetSQL := `
+		DELETE FROM page;
+		INSERT INTO page (id, name, slug, position, content, active) VALUES
+		('ig9jpCixAgAu31f', 'Terms & Conditions', 'terms', 'footer', '', true),
+		('sdH0wGM54e3mZC2', 'Privacy Policy', 'privacy', 'footer', '', true),
+		('kFCjBnL25hNTRHk', 'Cookies', 'cookies', 'footer', '', true);
+	`
+	if _, err := db.ExecContext(ctx, pageResetSQL); err != nil {
+		return fmt.Errorf("reset page table: %w", err)
 	}
 
 	return nil
@@ -437,24 +513,14 @@ func truncateTables(ctx context.Context, db *sql.DB) error {
 
 // applyFixturesTo loads fixtures into an already-migrated and truncated database.
 // In table-level mode, we execute the fixture SQL directly instead of using goose's
-// versioning system, since the tables are already empty from truncation.
+// versioning system. Since truncateTables empties the fixtures version table before
+// this is called, we unconditionally apply the fixtures for each test.
 func applyFixturesTo(ctx context.Context, db *sql.DB) error {
-	// Ensure the fixtures version table exists
+	// Ensure the fixtures version table exists (created by migrations, but verify)
 	if _, err := db.ExecContext(ctx, fmt.Sprintf(
 		"CREATE TABLE IF NOT EXISTS %s (id SERIAL PRIMARY KEY, version_id BIGINT, is_applied BOOLEAN, tstamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
 		FixturesTable)); err != nil {
 		return fmt.Errorf("create fixtures version table: %w", err)
-	}
-
-	// Check if fixtures have already been applied by checking for any version records
-	var count int
-	if err := db.QueryRowContext(ctx, fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE is_applied = TRUE", FixturesTable)).Scan(&count); err != nil {
-		return fmt.Errorf("check fixtures version: %w", err)
-	}
-
-	// If fixtures are already applied, skip re-applying them
-	if count > 0 {
-		return nil
 	}
 
 	// Read the fixture SQL file directly
@@ -481,7 +547,7 @@ func applyFixturesTo(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("execute fixture %s: %w", entry.Name(), err)
 		}
 
-		// Mark this fixture as applied
+		// Mark this fixture as applied in the version table
 		if _, err := db.ExecContext(ctx, fmt.Sprintf(
 			"INSERT INTO %s (version_id, is_applied) VALUES (1, TRUE)", FixturesTable)); err != nil {
 			return fmt.Errorf("mark fixture %s as applied: %w", entry.Name(), err)

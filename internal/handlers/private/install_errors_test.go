@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -223,6 +224,9 @@ func TestDescribeConnectFailureFromPostgres(t *testing.T) {
 	good := pgtest.MigratedDSN(t)
 
 	t.Run("wrong password", func(t *testing.T) {
+		if os.Getenv(pgtest.AdminMode) == "0" {
+			t.Skip("connection error tests require admin mode (TEST_POSTGRES_ADMIN=1)")
+		}
 		dsn := strings.Replace(good, "pgtdbpass", "wrong-password", 1)
 		_, err := database.Connect(database.Config{Driver: database.DriverPostgres, DSN: dsn})
 		if err == nil {
@@ -239,6 +243,9 @@ func TestDescribeConnectFailureFromPostgres(t *testing.T) {
 	})
 
 	t.Run("database does not exist", func(t *testing.T) {
+		if os.Getenv(pgtest.AdminMode) == "0" {
+			t.Skip("connection error tests require admin mode (TEST_POSTGRES_ADMIN=1)")
+		}
 		dsn := strings.Replace(good, "/testdb_tpl_", "/no_such_database_at_all_", 1)
 		_, err := database.Connect(database.Config{Driver: database.DriverPostgres, DSN: dsn})
 		if err == nil {

@@ -48,8 +48,12 @@ func seedSetting(t *testing.T, cfg database.Config, key, value string) {
 	}
 	defer func() { _ = conn.Close() }()
 
-	if _, err := conn.ExecContext(t.Context(),
-		`UPDATE setting SET value = ? WHERE key = ?`, value, key); err != nil {
+	dialect, err := database.DialectFor(cfg.Driver)
+	if err != nil {
+		t.Fatalf("get dialect: %v", err)
+	}
+	query := dialect.Rebind(`UPDATE setting SET value = ? WHERE key = ?`)
+	if _, err := conn.ExecContext(t.Context(), query, value, key); err != nil {
 		t.Fatalf("set %s: %v", key, err)
 	}
 }
@@ -63,9 +67,13 @@ func readSetting(t *testing.T, cfg database.Config, key string) string {
 	}
 	defer func() { _ = conn.Close() }()
 
+	dialect, err := database.DialectFor(cfg.Driver)
+	if err != nil {
+		t.Fatalf("get dialect: %v", err)
+	}
+	query := dialect.Rebind(`SELECT value FROM setting WHERE key = ?`)
 	var value string
-	if err := conn.QueryRowContext(t.Context(),
-		`SELECT value FROM setting WHERE key = ?`, key).Scan(&value); err != nil {
+	if err := conn.QueryRowContext(t.Context(), query, key).Scan(&value); err != nil {
 		t.Fatalf("read %s: %v", key, err)
 	}
 	return value
@@ -298,7 +306,9 @@ func TestRestoreRejectsWhatIsNotADump(t *testing.T) {
 	})
 
 	t.Run("a truncated gzip stream", func(t *testing.T) {
-		src := postgresConfig(pgtest.MigratedDSN(t))
+		// In table-level mode, getting a new DSN resets the shared database.
+		// Reuse dst to preserve the domain setting seeded earlier.
+		src := dst
 		full := filepath.Join(dir, "backup.sql.gz")
 		if _, err := BackupDatabase(t.Context(), src, full); err != nil {
 			t.Fatalf("backup: %v", err)
