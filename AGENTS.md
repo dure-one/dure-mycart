@@ -39,6 +39,8 @@ Repo layout:
 
 ## 2. Build / Test / Run
 
+### Default Build (Raw SQL Backend)
+
 ```bash
 # Go
 go build ./...
@@ -70,6 +72,35 @@ cd web/site && bun install && bun run build
 # Run locally (serves admin at /_/ and storefront at /)
 go run ./cmd serve
 ```
+
+### sqlc Backend (Optional)
+
+For type-safe SQL with compile-time validation:
+
+```bash
+# Install sqlc (one-time)
+make install-sqlc
+
+# Generate sqlc code
+make sqlc-generate
+
+# Build with sqlc backend
+go build -tags sqlc -o mycart-sqlc ./cmd
+
+# Test sqlc backend
+make test-queries-sqlc-sqlite
+make test-queries-sqlc-postgres
+
+# Build both backends
+make build-both
+```
+
+Both backends:
+- Support SQLite and PostgreSQL
+- Export identical public APIs
+- Pass the same test suite
+
+See `internal/queries_sqlc/AGENTS.md` for sqlc-specific guidance.
 
 Default admin credentials after `./scripts/migration dev up`:
 `user@mail.com` / `Pass123`.

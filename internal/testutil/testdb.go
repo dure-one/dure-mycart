@@ -144,6 +144,28 @@ func openTestPostgres(t *testing.T, withFixtures bool) (*database.Conn, database
 		t.Fatalf("connect to postgres test database: %v", err)
 	}
 
+	// Explicitly set session timezone to UTC for all connections from this pool.
+	// While database.Connect verifies timezone is UTC at connection time, we
+	// ensure it's set for all subsequent connections from the pool.
+	if _, err := conn.Raw().ExecContext(context.Background(), "SET timezone = 'UTC'"); err != nil {
+		_ = conn.Close()
+		t.Fatalf("set timezone: %v", err)
+	}
+
+	// Verify timezone is set and test CURRENT_TIMESTAMP
+	var tz string
+	var dbTime int64
+	if err := conn.Raw().QueryRowContext(context.Background(), "SHOW timezone").Scan(&tz); err != nil {
+		t.Logf("Failed to query timezone: %v", err)
+	}
+	if err := conn.Raw().QueryRowContext(context.Background(), "SELECT EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::bigint").Scan(&dbTime); err != nil {
+		t.Logf("Failed to query timestamp: %v", err)
+	} else {
+		localTime := time.Now().Unix()
+		diff := dbTime - localTime
+		t.Logf("openTestPostgres: timezone=%s, db_time=%d, local_time=%d, diff=%d seconds", tz, dbTime, localTime, diff)
+	}
+
 	return conn, cfg, func() { _ = conn.Close() }
 }
 

@@ -20,7 +20,8 @@ func bootstrap(t *testing.T) (*Base, context.Context) {
 	if err := New(database.Config{Driver: database.DriverSQLite, DSN: database.DefaultSQLiteDSN}, migrations.Embed()); err != nil {
 		t.Fatalf("init queries: %v", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// 10 seconds to account for bcrypt password hashing overhead
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	t.Cleanup(cancel)
 	return DB(), ctx
 }

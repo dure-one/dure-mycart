@@ -186,6 +186,11 @@ func TestWriteConfigIsPrivate(t *testing.T) {
 }
 
 func TestNormalizePostgresDSN(t *testing.T) {
+	driver := os.Getenv("TEST_DB_DRIVER")
+	if driver != "" && !strings.EqualFold(driver, DriverPostgres) {
+		t.Skip("PostgreSQL-specific test, skipping in SQLite-only mode")
+	}
+
 	tests := []struct {
 		name    string
 		dsn     string

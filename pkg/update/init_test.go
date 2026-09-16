@@ -98,6 +98,11 @@ func releaseHandler(t *testing.T, archive []byte) http.HandlerFunc {
 // executable it is meant to replace. It must give up before touching the running
 // binary, which is what makes this testable in-process.
 func TestInit_ExtractedArchiveHasNoExecutable(t *testing.T) {
+	suffix := archiveSuffix(runtime.GOOS, runtime.GOARCH)
+	if suffix == "" {
+		t.Skipf("no release archive is published for %s/%s", runtime.GOOS, runtime.GOARCH)
+	}
+
 	dir := t.TempDir()
 	t.Chdir(dir)
 
@@ -203,6 +208,11 @@ func TestUpdateInitHelperProcess(t *testing.T) {
 }
 
 func TestInit_ReplacesTheExecutable(t *testing.T) {
+	suffix := archiveSuffix(runtime.GOOS, runtime.GOARCH)
+	if suffix == "" {
+		t.Skipf("no release archive is published for %s/%s", runtime.GOOS, runtime.GOARCH)
+	}
+
 	const (
 		execName      = "mycart"
 		newExecBody   = "FAKE NEW BINARY\n"
@@ -426,6 +436,11 @@ func TestReleaseInfo_PicksTheAssetForThisPlatform(t *testing.T) {
 // A newer release with no build for this platform must fail, not silently
 // download somebody else's binary.
 func TestReleaseInfo_MissingAssetIsAnError(t *testing.T) {
+	suffix := archiveSuffix(runtime.GOOS, runtime.GOARCH)
+	if suffix == "" {
+		t.Skipf("no release archive is published for %s/%s", runtime.GOOS, runtime.GOARCH)
+	}
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{
 			"name": "v9.9.9",

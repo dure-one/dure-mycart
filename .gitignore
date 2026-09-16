@@ -98,3 +98,6 @@ docs/readme.md
 # Session the e2e suite shares between global setup and the tests
 e2e/.auth/
 Makefile
+.env
+mycart
+mycart-sqlc

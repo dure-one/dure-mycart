@@ -173,7 +173,12 @@ func NormalizePostgresDSN(dsn string) (string, error) {
 		if err := rejectPoolParams(q); err != nil {
 			return "", err
 		}
-		if !q.Has("timezone") && !q.Has("options") && !q.Has("TimeZone") {
+		// Set timezone=UTC to prevent timestamp corruption.
+		// myCart uses TIMESTAMP (without time zone), which PostgreSQL stores in the
+		// session timezone. A non-UTC session silently shifts all timestamps.
+		// For PgBouncer transaction pooling, configure timezone on the PostgreSQL
+		// server itself: ALTER DATABASE yourdb SET timezone TO 'UTC';
+		if !q.Has("timezone") && !q.Has("TimeZone") && !q.Has("options") {
 			q.Set("timezone", "UTC")
 		}
 		u.RawQuery = q.Encode()
@@ -187,7 +192,8 @@ func NormalizePostgresDSN(dsn string) (string, error) {
 			return "", err
 		}
 	}
-	if !hasKeyword(parts, "timezone") && !hasKeyword(parts, "options") {
+	// Set timezone=UTC (see comment in URL-form branch above)
+	if !hasKeyword(parts, "timezone") && !hasKeyword(parts, "TimeZone") && !hasKeyword(parts, "options") {
 		parts = append(parts, "timezone=UTC")
 	}
 	return strings.Join(parts, " "), nil

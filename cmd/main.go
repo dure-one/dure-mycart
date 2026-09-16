@@ -1,3 +1,5 @@
+// +build !sqlc
+
 // @title           myCart API
 // @version         1.0
 // @description     Open source shopping-cart backend API - a single-binary e-commerce solution
