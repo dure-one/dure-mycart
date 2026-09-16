@@ -54,11 +54,6 @@ const AdminMode = "TEST_POSTGRES_ADMIN"
 // to prevent deadlocks from concurrent TRUNCATE CASCADE on the shared database.
 var tableLevelMutex sync.Mutex
 
-// dropTemplatesOnce ensures dropTemplates runs only once per test suite, not once
-// per test. When tests run in parallel, calling dropTemplates in every test creates
-// a race condition where one test terminates connections that other tests are using.
-var dropTemplatesOnce sync.Once
-
 // FixturesDir is the directory under the repository root holding the fixture
 // migrations.
 const FixturesDir = "fixtures"
@@ -167,85 +162,7 @@ func config(t *testing.T) pgtestdb.Config {
 		t.Fatalf("%s: %v", AdminDSN, err)
 	}
 
-	// Drop existing template databases to force recreation with correct timezone.
-	// This ensures templates built before timezone fixes are not reused.
-	// Use sync.Once to run this only once per test suite, preventing race conditions
-	// when tests run in parallel where one test terminates connections that other
-	// tests are actively using.
-	dropTemplatesOnce.Do(func() {
-		dropTemplates(t, cfg)
-	})
-
 	return cfg
-}
-
-// dropTemplates drops all pgtestdb template databases to force recreation.
-// This is necessary when timezone configuration changes, as templates created
-// before the fix contain fixture data with incorrect timezone offsets.
-func dropTemplates(t *testing.T, cfg pgtestdb.Config) {
-	t.Helper()
-
-	// Build DSN with timezone parameter to ensure our connection uses UTC
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?timezone=UTC",
-		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Database)
-
-	db, err := sql.Open(cfg.DriverName, dsn)
-	if err != nil {
-		t.Logf("dropTemplates: failed to connect: %v", err)
-		return
-	}
-	defer db.Close()
-
-	if err := db.Ping(); err != nil {
-		t.Logf("dropTemplates: failed to ping: %v", err)
-		return
-	}
-
-	// Query for template databases
-	rows, err := db.Query(`
-		SELECT datname
-		FROM pg_database
-		WHERE datname LIKE 'testdb_tpl%'
-	`)
-	if err != nil {
-		t.Logf("dropTemplates: failed to query templates: %v", err)
-		return
-	}
-	defer rows.Close()
-
-	var templates []string
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			continue
-		}
-		templates = append(templates, name)
-	}
-
-	if len(templates) > 0 {
-		t.Logf("dropTemplates: found %d templates to drop: %v", len(templates), templates)
-	}
-
-	// Drop each template database
-	for _, name := range templates {
-		// Terminate connections first
-		terminateSQL := fmt.Sprintf(`
-			SELECT pg_terminate_backend(pid)
-			FROM pg_stat_activity
-			WHERE datname = '%s' AND pid <> pg_backend_pid()
-		`, name)
-		if _, err := db.Exec(terminateSQL); err != nil {
-			t.Logf("dropTemplates: failed to terminate connections for %s: %v", name, err)
-		}
-
-		// Drop with proper quoting
-		dropSQL := fmt.Sprintf(`DROP DATABASE IF EXISTS "%s"`, name)
-		if _, err := db.Exec(dropSQL); err != nil {
-			t.Logf("dropTemplates: failed to drop %s: %v", name, err)
-		} else {
-			t.Logf("dropTemplates: dropped %s", name)
-		}
-	}
 }
 
 // parseConfig turns an administrative connection string into a pgtestdb
