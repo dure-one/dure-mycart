@@ -368,6 +368,18 @@ func isTableLevelMode() bool {
 	return mode == "0"
 }
 
+// redactDSN removes the password from a DSN for safe logging.
+func redactDSN(dsn string) string {
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return "[unparseable DSN]"
+	}
+	if u.User != nil {
+		u.User = url.UserPassword(u.User.Username(), "***")
+	}
+	return u.String()
+}
+
 // tableLevelInstance returns a DSN to the shared test database and truncates all
 // tables for isolation. This mode requires only table-level permissions (SELECT,
 // INSERT, UPDATE, DELETE, TRUNCATE) instead of CREATEDB/CREATEROLE.
@@ -383,8 +395,6 @@ func tableLevelInstance(t *testing.T, withFixtures bool) string {
 	if err != nil {
 		t.Fatalf("%s: %v", AdminDSN, err)
 	}
-
-	t.Logf("tableLevelInstance: normalized DSN: %s", dsn)
 
 	// Connect using database.Connect to ensure timezone pin and pool config
 	cfg := database.Config{
@@ -408,12 +418,14 @@ func tableLevelInstance(t *testing.T, withFixtures bool) string {
 		t.Fatalf("set timezone: %v", err)
 	}
 
-	// Verify timezone is actually UTC
+	// Verify timezone is actually UTC (log only on first call per test)
 	var tz string
 	if err := conn.Raw().QueryRowContext(ctx, "SHOW timezone").Scan(&tz); err != nil {
 		t.Fatalf("check timezone: %v", err)
 	}
-	t.Logf("tableLevelInstance: session timezone is: %s", tz)
+	if tz != "UTC" {
+		t.Fatalf("session timezone is %q, expected UTC", tz)
+	}
 
 	// Ensure schema is migrated
 	if err := database.MigrateOn(conn, migrations.Embed()); err != nil {

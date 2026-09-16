@@ -15,11 +15,13 @@ import (
 func requirePostgres(t *testing.T) {
 	t.Helper()
 
-	if !strings.EqualFold(os.Getenv("TEST_DB_DRIVER"), database.DriverPostgres) {
-		t.Skip("set TEST_DB_DRIVER=postgres and TEST_POSTGRES_DSN to run")
+	driver := os.Getenv("TEST_DB_DRIVER")
+	if driver != "" && !strings.EqualFold(driver, database.DriverPostgres) {
+		t.Skip("PostgreSQL test, skipping in SQLite-only mode")
 	}
-	if os.Getenv(pgtest.AdminDSN) == "" {
-		t.Skipf("%s is not set", pgtest.AdminDSN)
+
+	if os.Getenv("TEST_POSTGRES_DSN") == "" {
+		t.Skip("set TEST_POSTGRES_DSN to run PostgreSQL tests")
 	}
 }
 

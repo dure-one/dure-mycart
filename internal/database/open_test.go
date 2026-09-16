@@ -54,8 +54,9 @@ func TestConnectPostgresRejectsNonUTCTimezone(t *testing.T) {
 func postgresTestDSN(t *testing.T) string {
 	t.Helper()
 
-	if !strings.EqualFold(os.Getenv("TEST_DB_DRIVER"), DriverPostgres) {
-		t.Skip("set TEST_DB_DRIVER=postgres and TEST_POSTGRES_DSN to run")
+	driver := os.Getenv("TEST_DB_DRIVER")
+	if driver != "" && !strings.EqualFold(driver, DriverPostgres) {
+		t.Skip("PostgreSQL test, skipping in SQLite-only mode")
 	}
 	dsn := os.Getenv("TEST_POSTGRES_DSN")
 	if dsn == "" {

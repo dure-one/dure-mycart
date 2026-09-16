@@ -1,0 +1,74 @@
+services:
+  # PostgreSQL test database - isolated from production
+  postgres-test:
+    image: postgres:17-alpine
+    container_name: mycart-postgres-test
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: testpassword
+      TZ: UTC
+    ports:
+      - "5433:5432"  # Use 5433 to avoid conflicts with local PostgreSQL
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    tmpfs:
+      # Use tmpfs for faster tests - data is in-memory only
+      - /var/lib/postgresql/data
+    profiles:
+      - test
+
+  # Test runner - runs all tests against both SQLite and PostgreSQL
+  test-all:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    environment:
+      # Test with PostgreSQL in admin mode (parallel tests)
+      TEST_DB_DRIVER: postgres
+      TEST_POSTGRES_DSN: postgres://postgres:testpassword@postgres-test:5432/postgres?sslmode=disable
+      TEST_POSTGRES_ADMIN: "1"
+    volumes:
+      - .:/workspace
+      - go-cache:/go/pkg/mod
+    working_dir: /workspace
+    command:
+      - sh
+      - -c
+      - |
+        echo "Running tests with SQLite..."
+        TEST_DB_DRIVER=sqlite gotestsum --format short-verbose -- -count=1 -race ./...
+        echo ""
+        echo "Running tests with PostgreSQL..."
+        TEST_DB_DRIVER=postgres gotestsum --format short-verbose -- -count=1 -race ./...
+    profiles:
+      - test
+
+  # Test runner for PostgreSQL only (useful for CI)
+  test-postgres:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    environment:
+      TEST_DB_DRIVER: postgres
+      TEST_POSTGRES_DSN: postgres://postgres:testpassword@postgres-test:5432/postgres?sslmode=disable
+      TEST_POSTGRES_ADMIN: "1"
+    volumes:
+      - .:/workspace
+      - go-cache:/go/pkg/mod
+    working_dir: /workspace
+    command: gotestsum --format short-verbose -- -count=1 -race ./...
+    profiles:
+      - test
+
+volumes:
+  go-cache:

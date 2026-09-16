@@ -1,6 +1,6 @@
 .PHONY: help setup reinstall deps-check dev
 .PHONY: build build-sqlc build-both build-admin build-site build-all
-.PHONY: test test-unit test-integration test-postgres test-all
+.PHONY: test test-unit test-sqlite test-postgres test-all
 .PHONY: test-queries-raw-sqlite test-queries-raw-postgres
 .PHONY: test-queries-sqlc-sqlite test-queries-sqlc-postgres test-queries-all
 .PHONY: install-sqlc sqlc-generate sqlc-verify sqlc
@@ -9,19 +9,16 @@
 .PHONY: docker-build docker-up docker-down docker-logs docker-test-all
 
 # Detect OS and conditionally enable race detector (not supported on OpenBSD)
-UNAME_S != uname -s
-.if ${UNAME_S} == "OpenBSD"
-RACE_FLAG =
-.else
-RACE_FLAG = -race
-.endif
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),OpenBSD)
+RACE_FLAG :=
+else
+RACE_FLAG := -race
+endif
 
 # Load environment variables from .env if it exists
-.if exists(.env)
-.for line in ${:!cat .env | grep -v '^\#' | grep '=' || true!}
-.export ${line:S/=/ /W:S/ *//:S/ /:=/}
-.endfor
-.endif
+-include .env
+export
 
 # Default target
 help:
@@ -54,7 +51,7 @@ help:
 	@echo "Backend Tests:"
 	@echo "  test                     - Run all Go tests (unit + integration with SQLite)"
 	@echo "  test-unit                - Run only unit tests (fast)"
-	@echo "  test-integration         - Run integration tests (SQLite)"
+	@echo "  test-sqlite              - Run integration tests (SQLite)"
 	@echo "  test-postgres            - Run integration tests (PostgreSQL)"
 	@echo "  test-all                 - Run tests against both SQLite and PostgreSQL"
 	@echo ""
@@ -186,9 +183,9 @@ test-unit:
 	@echo "Running unit tests..."
 	gotestsum --format short-verbose -- -short -count=1 $(RACE_FLAG) ./...
 
-test-integration:
+test-sqlite:
 	@echo "Running integration tests with SQLite..."
-	gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./...
+	TEST_DB_DRIVER=sqlite gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./...
 
 test-postgres:
 	@echo "Running integration tests with PostgreSQL..."
@@ -222,7 +219,7 @@ test-postgres:
 
 test-all:
 	@echo "Running tests against SQLite..."
-	gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./...
+	TEST_DB_DRIVER=sqlite gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./...
 	@echo ""
 	@echo "Running tests against PostgreSQL..."
 	@echo "Note: Requires TEST_POSTGRES_DSN environment variable (see .env.example)"
@@ -256,7 +253,7 @@ test-all:
 # Backend test targets - Query layer specific
 test-queries-raw-sqlite:
 	@echo "Testing raw SQL backend with SQLite..."
-	@gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./internal/queries/...
+	@TEST_DB_DRIVER=sqlite gotestsum --format short-verbose -- -count=1 $(RACE_FLAG) ./internal/queries/...
 
 test-queries-raw-postgres:
 	@echo "Testing raw SQL backend with PostgreSQL..."
@@ -269,7 +266,7 @@ test-queries-raw-postgres:
 
 test-queries-sqlc-sqlite:
 	@echo "Testing sqlc backend with SQLite..."
-	@gotestsum --format short-verbose -- -tags sqlc -count=1 $(RACE_FLAG) ./internal/queries_sqlc/...
+	@TEST_DB_DRIVER=sqlite gotestsum --format short-verbose -- -tags sqlc -count=1 $(RACE_FLAG) ./internal/queries_sqlc/...
 
 test-queries-sqlc-postgres:
 	@echo "Testing sqlc backend with PostgreSQL..."
@@ -308,20 +305,20 @@ migrate-down:
 # Docker targets
 docker-build:
 	@echo "Building Docker image..."
-	docker-compose build
+	docker compose build
 
 docker-up:
 	@echo "Starting mycart..."
-	docker-compose up -d
+	docker compose up -d
 
 docker-down:
 	@echo "Stopping mycart..."
-	docker-compose down
+	docker compose down
 
 docker-logs:
 	@echo "Showing logs..."
-	docker-compose logs -f
+	docker compose logs -f
 
 docker-test-all:
 	@echo "Running tests with both databases in Docker..."
-	docker-compose -f docker-compose.test.yml --profile test run test-all
+	docker compose -f docker-compose.test.yml --profile test run --rm test-all

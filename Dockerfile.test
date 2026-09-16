@@ -1,0 +1,23 @@
+# Use Go 1.26 Alpine for both build and runtime (single stage for simplicity)
+FROM golang:1.26-alpine
+
+# Install build dependencies and gotestsum
+RUN apk add --no-cache gcc musl-dev git make && \
+    go install gotest.tools/gotestsum@latest && \
+    which gotestsum && \
+    ls -la /go/bin/
+
+# Ensure /go/bin is in PATH
+ENV PATH="/go/bin:${PATH}"
+
+WORKDIR /workspace
+
+# Pre-download dependencies (cache layer)
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Default command runs all tests
+CMD ["gotestsum", "--format", "short-verbose", "--", "-count=1", "-race", "./..."]

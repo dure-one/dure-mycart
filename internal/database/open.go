@@ -173,19 +173,13 @@ func NormalizePostgresDSN(dsn string) (string, error) {
 		if err := rejectPoolParams(q); err != nil {
 			return "", err
 		}
-		// Use options=-c format for PgBouncer compatibility (Supabase pooler).
-		// The timezone parameter doesn't work with transaction pooling mode.
-		if !q.Has("timezone") && !q.Has("TimeZone") {
-			if q.Has("options") {
-				// Append to existing options
-				opts := q.Get("options")
-				if !strings.Contains(opts, "timezone") {
-					q.Set("options", opts+" -c timezone=UTC")
-				}
-			} else {
-				// Set new options parameter
-				q.Set("options", "-c timezone=UTC")
-			}
+		// Set timezone=UTC to prevent timestamp corruption.
+		// myCart uses TIMESTAMP (without time zone), which PostgreSQL stores in the
+		// session timezone. A non-UTC session silently shifts all timestamps.
+		// For PgBouncer transaction pooling, configure timezone on the PostgreSQL
+		// server itself: ALTER DATABASE yourdb SET timezone TO 'UTC';
+		if !q.Has("timezone") && !q.Has("TimeZone") && !q.Has("options") {
+			q.Set("timezone", "UTC")
 		}
 		u.RawQuery = q.Encode()
 		return u.String(), nil
@@ -198,23 +192,9 @@ func NormalizePostgresDSN(dsn string) (string, error) {
 			return "", err
 		}
 	}
-	// Use options=-c format for PgBouncer compatibility
-	if !hasKeyword(parts, "timezone") && !hasKeyword(parts, "TimeZone") {
-		if hasKeyword(parts, "options") {
-			// Append to existing options
-			for i, p := range parts {
-				if strings.HasPrefix(p, "options=") {
-					opts := strings.TrimPrefix(p, "options=")
-					if !strings.Contains(opts, "timezone") {
-						parts[i] = "options=" + opts + " -c timezone=UTC"
-					}
-					break
-				}
-			}
-		} else {
-			// Add new options parameter
-			parts = append(parts, "options=-c timezone=UTC")
-		}
+	// Set timezone=UTC (see comment in URL-form branch above)
+	if !hasKeyword(parts, "timezone") && !hasKeyword(parts, "TimeZone") && !hasKeyword(parts, "options") {
+		parts = append(parts, "timezone=UTC")
 	}
 	return strings.Join(parts, " "), nil
 }
