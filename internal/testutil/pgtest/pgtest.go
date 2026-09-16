@@ -54,6 +54,11 @@ const AdminMode = "TEST_POSTGRES_ADMIN"
 // to prevent deadlocks from concurrent TRUNCATE CASCADE on the shared database.
 var tableLevelMutex sync.Mutex
 
+// dropTemplatesOnce ensures dropTemplates runs only once per test suite, not once
+// per test. When tests run in parallel, calling dropTemplates in every test creates
+// a race condition where one test terminates connections that other tests are using.
+var dropTemplatesOnce sync.Once
+
 // FixturesDir is the directory under the repository root holding the fixture
 // migrations.
 const FixturesDir = "fixtures"
@@ -164,7 +169,12 @@ func config(t *testing.T) pgtestdb.Config {
 
 	// Drop existing template databases to force recreation with correct timezone.
 	// This ensures templates built before timezone fixes are not reused.
-	dropTemplates(t, cfg)
+	// Use sync.Once to run this only once per test suite, preventing race conditions
+	// when tests run in parallel where one test terminates connections that other
+	// tests are actively using.
+	dropTemplatesOnce.Do(func() {
+		dropTemplates(t, cfg)
+	})
 
 	return cfg
 }

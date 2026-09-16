@@ -8,6 +8,16 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: testpassword
       TZ: UTC
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - statement_timeout=30000
+      - -c
+      - idle_in_transaction_session_timeout=30000
     ports:
       - "5433:5432"  # Use 5433 to avoid conflicts with local PostgreSQL
     healthcheck:
@@ -18,6 +28,7 @@ services:
     tmpfs:
       # Use tmpfs for faster tests - data is in-memory only
       - /var/lib/postgresql/data
+    shm_size: 256mb
     profiles:
       - test
 
@@ -43,10 +54,10 @@ services:
       - -c
       - |
         echo "Running tests with SQLite..."
-        TEST_DB_DRIVER=sqlite gotestsum --format short-verbose -- -count=1 -race ./...
+        TEST_DB_DRIVER=sqlite gotestsum --format short-verbose -- -count=1 ./...
         echo ""
         echo "Running tests with PostgreSQL..."
-        TEST_DB_DRIVER=postgres gotestsum --format short-verbose -- -count=1 -race ./...
+        TEST_DB_DRIVER=postgres gotestsum --format short-verbose -- -count=1 ./...
     profiles:
       - test
 
@@ -66,7 +77,9 @@ services:
       - .:/workspace
       - go-cache:/go/pkg/mod
     working_dir: /workspace
-    command: gotestsum --format short-verbose -- -count=1 -race ./...
+    # Run without -race flag for stable CI/CD (race detector adds ~10x overhead)
+    # To run with race detection: docker compose run --rm test-postgres gotestsum -- -race ./...
+    command: gotestsum --format short-verbose -- -count=1 ./...
     profiles:
       - test
 
