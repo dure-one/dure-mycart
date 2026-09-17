@@ -7,7 +7,7 @@
 .PHONY: test-queries-raw-sqlite test-queries-raw-postgres
 .PHONY: test-queries-sqlc-sqlite test-queries-sqlc-postgres test-queries-all
 .PHONY: install-sqlc sqlc-generate sqlc-verify sqlc
-.PHONY: e2e-admin e2e-site e2e-all
+.PHONY: e2e-all
 .PHONY: migrate-up migrate-down
 .PHONY: docker-build docker-up docker-down docker-logs docker-test-all
 
@@ -66,8 +66,6 @@ help:
 	@echo "  test-queries-all         - Run 4-mode query test matrix"
 	@echo ""
 	@echo "Frontend Tests:"
-	@echo "  e2e-admin                - Run admin panel e2e tests (browser)"
-	@echo "  e2e-site                 - Run storefront e2e tests (browser)"
 	@echo "  e2e-all                  - Run all frontend e2e tests"
 	@echo ""
 	@echo "Database:"
@@ -145,11 +143,11 @@ build-both: build build-sqlc
 # Frontend build targets
 build-admin:
 	@echo "Building admin panel..."
-	cd web/admin && bun install && bun run build
+	cd web/admin && npx vite build 
 
 build-site:
 	@echo "Building storefront..."
-	cd web/site && bun install && bun run build
+	cd web/site && npx vite build
 
 build-all: build-admin build-site
 
@@ -286,15 +284,9 @@ test-queries-all: test-queries-raw-sqlite test-queries-raw-postgres \
 	@echo "✓ All 4-mode query tests passed"
 
 # Frontend test targets
-e2e-admin:
-	@echo "Running admin panel e2e tests..."
-	cd web/admin && bun run test:browser
-
-e2e-site:
-	@echo "Running storefront e2e tests..."
-	cd web/site && bun run test:browser
-
-e2e-all: e2e-admin e2e-site
+e2e-all:
+	@echo "Running e2e tests..."
+	patchright test
 
 # Database migration targets
 migrate-up:
