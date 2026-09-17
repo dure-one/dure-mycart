@@ -144,7 +144,7 @@ jobs:
 
       - name: Install sqlc
         run: |
-          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.28.0
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 
       - name: Generate sqlc code
         run: $(go env GOPATH)/bin/sqlc generate
