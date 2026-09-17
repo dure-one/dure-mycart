@@ -35,7 +35,7 @@ services:
   # Test runner - runs all tests against both SQLite and PostgreSQL
   test-all:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile.test
     depends_on:
       postgres-test:
@@ -46,7 +46,7 @@ services:
       TEST_POSTGRES_DSN: postgres://postgres:testpassword@postgres-test:5432/postgres?sslmode=disable
       TEST_POSTGRES_ADMIN: "1"
     volumes:
-      - .:/workspace
+      - ..:/workspace
       - go-cache:/go/pkg/mod
     working_dir: /workspace
     command:
@@ -64,7 +64,7 @@ services:
   # Test runner for PostgreSQL only (useful for CI)
   test-postgres:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile.test
     depends_on:
       postgres-test:
@@ -74,7 +74,7 @@ services:
       TEST_POSTGRES_DSN: postgres://postgres:testpassword@postgres-test:5432/postgres?sslmode=disable
       TEST_POSTGRES_ADMIN: "1"
     volumes:
-      - .:/workspace
+      - ..:/workspace
       - go-cache:/go/pkg/mod
     working_dir: /workspace
     # Run without -race flag for stable CI/CD (race detector adds ~10x overhead)

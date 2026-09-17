@@ -10,7 +10,7 @@ services:
     restart: "no"
     working_dir: /workspace
     volumes:
-      - ./:/workspace
+      - ../:/workspace
     command: >
       sh -c '
         echo "=== Prosody Modules Initialization ===" &&
@@ -38,7 +38,7 @@ services:
     working_dir: /workspace
     env_file: .env
     volumes:
-      - ./:/workspace
+      - ../:/workspace
     command: sh xmpp-proxy-stack/render-prosody-config.sh
 
   # Prosody XMPP server
@@ -59,8 +59,8 @@ services:
       - /srv/data/prosody:/var/lib/prosody
       - /srv/data/certs:/certs:ro
       - /srv/data/logs/prosody:/var/log/prosody
-      - ./generated/proxy.cfg.lua:/etc/prosody/conf.d/proxy.cfg.lua:ro
-      - ./prosody-modules:/usr/lib/prosody/community:ro
+      - ../generated/proxy.cfg.lua:/etc/prosody/conf.d/proxy.cfg.lua:ro
+      - ../prosody-modules:/usr/lib/prosody/community:ro
     ports:
       - "127.0.0.1:15222:5222"  # C2S (localhost only)
       - "127.0.0.1:15269:5269"  # S2S (localhost only)
