@@ -1,3 +1,6 @@
+# NOTE: This Makefile requires GNU Make
+# On OpenBSD: use 'gmake' instead of 'make'
+
 .PHONY: help setup reinstall deps-check dev
 .PHONY: build build-sqlc build-both build-admin build-site build-all
 .PHONY: test test-unit test-sqlite test-postgres test-all
@@ -18,7 +21,7 @@ endif
 
 # Load environment variables from .env if it exists
 -include .env
-export
+export $(shell [ -f .env ] && sed 's/=.*//' .env)
 
 # Default target
 help:
