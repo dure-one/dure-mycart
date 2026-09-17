@@ -87,6 +87,10 @@ export interface Settings {
   // a payload cached before this existed carries no such key, and the
   // storefront falls back to the mark the build shipped with.
   branding?: BrandingSettings
+  // Korean seller info switch. Optional for the same reason as the cabinet switch:
+  // a payload cached before this feature existed carries no such key, and the
+  // storefront treats a missing one as disabled.
+  dureone?: DureoneSettings
 }
 
 export interface AccountSettings {
@@ -99,6 +103,10 @@ export interface BrandingSettings {
   /** Address of the uploaded favicon, or an empty string when there is none. */
   favicon: string
   tagline: string
+}
+
+export interface DureoneSettings {
+  enabled: boolean
 }
 
 export interface Customer {

@@ -138,7 +138,7 @@
       />
 
       <div class="pt-4">
-        <FormButton type="submit" name={t('common.save')} color="green" />
+        <FormButton type="submit" name={t('common.save')} variant="primary" />
       </div>
     </form>
   {/if}

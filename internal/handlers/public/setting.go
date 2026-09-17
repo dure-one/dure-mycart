@@ -70,6 +70,12 @@ func Settings(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
+	settingDureone, err := queries.GetSettingByGroup[models.Dureone](c.Context(), db)
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
 	return webutil.Response(c, fiber.StatusOK, "Settings", map[string]any{
 		"main": map[string]string{
 			"site_name": settingMain.SiteName,
@@ -92,6 +98,11 @@ func Settings(c fiber.Ctx) error {
 			"logo":    uploadURL(settingBranding.Logo),
 			"favicon": uploadURL(settingBranding.Favicon),
 			"tagline": settingBranding.Tagline,
+		},
+		// Korean seller info toggle - only the enabled flag is public.
+		// The actual seller details are protected behind captcha verification.
+		"dureone": map[string]any{
+			"enabled": settingDureone.Enabled,
 		},
 	})
 }
