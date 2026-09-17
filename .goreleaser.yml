@@ -88,7 +88,7 @@ changelog:
       order: 9999
 
 dockers_v2:
-  - id: release
+  - id: mycart
     images:
       - 'ghcr.io/dure-one/mycart'
     tags:
@@ -111,6 +111,30 @@ dockers_v2:
       'org.opencontainers.image.description': '🛒 myCart - shopping-cart in 1 file'
       'org.opencontainers.image.created': '{{.Date}}'
       'org.opencontainers.image.name': '{{.ProjectName}}'
+      'org.opencontainers.image.revision': '{{.FullCommit}}'
+      'org.opencontainers.image.version': '{{.Version}}'
+      'org.opencontainers.image.source': '{{.GitURL}}'
+  - id: xmpp-proxy-stack
+    images:
+      - 'ghcr.io/dure-one/xmpp-proxy-stack'
+    tags:
+      - 'v{{ .Version }}'
+      - 'latest'
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    dockerfile: xmpp-proxy-stack/Dockerfile
+    sbom: true
+    flags:
+      - '--pull'
+      - '--provenance=true'
+    labels:
+      'io.artifacthub.package.readme-url': 'https://raw.githubusercontent.com/dure-one/dure-mycart/main/README.md'
+      'io.artifacthub.package.maintainers': '[{"name":"Dmitry Shurco"}]'
+      'io.artifacthub.package.license': 'MIT'
+      'org.opencontainers.image.description': 'XMPP Proxy Stack with mycart, xmpp-proxy, and fail2ban-rs'
+      'org.opencontainers.image.created': '{{.Date}}'
+      'org.opencontainers.image.name': 'xmpp-proxy-stack'
       'org.opencontainers.image.revision': '{{.FullCommit}}'
       'org.opencontainers.image.version': '{{.Version}}'
       'org.opencontainers.image.source': '{{.GitURL}}'
