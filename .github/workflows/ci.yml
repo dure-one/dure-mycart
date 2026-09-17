@@ -78,13 +78,15 @@ jobs:
             (cd web/$app && bun install && bun run build)
           done
 
-          # Commit regenerated lockfiles if changed
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add web/*/bun.lockb || true
-          if ! git diff --staged --quiet 2>/dev/null; then
-            git commit -m "chore: regenerate bun lockfiles [skip ci]"
-            git push
+          # Only commit lockfiles once (sqlite leg of go job only)
+          if [ "${{ matrix.db }}" = "sqlite" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add web/*/bun.lockb || true
+            if ! git diff --staged --quiet 2>/dev/null; then
+              git commit -m "chore: regenerate bun lockfiles [skip ci]"
+              git push || echo "Push failed (race condition), ignoring"
+            fi
           fi
 
       - name: Vet
@@ -161,15 +163,6 @@ jobs:
           for app in admin site; do
             (cd web/$app && bun install && bun run build)
           done
-
-          # Commit regenerated lockfiles if changed
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add web/*/bun.lockb || true
-          if ! git diff --staged --quiet 2>/dev/null; then
-            git commit -m "chore: regenerate bun lockfiles [skip ci]"
-            git push
-          fi
 
       - name: Vet (sqlc backend)
         run: go vet -tags sqlc ./...
