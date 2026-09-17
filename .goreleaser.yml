@@ -90,8 +90,7 @@ changelog:
 dockers_v2:
   - id: release
     images:
-      - 'shurco/mycart'
-      - 'ghcr.io/shurco/mycart'
+      - 'ghcr.io/dure-one/mycart'
     tags:
       - 'v{{ .Version }}'
       - 'latest'
@@ -106,7 +105,7 @@ dockers_v2:
       # consumes the context path and fails with "requires 1 argument".
       - '--provenance=true'
     labels:
-      'io.artifacthub.package.readme-url': 'https://raw.githubusercontent.com/shurco/mycart/main/README.md'
+      'io.artifacthub.package.readme-url': 'https://raw.githubusercontent.com/dure-one/dure-mycart/main/README.md'
       'io.artifacthub.package.maintainers': '[{"name":"Dmitry Shurco"}]'
       'io.artifacthub.package.license': 'MIT'
       'org.opencontainers.image.description': '🛒 myCart - shopping-cart in 1 file'
@@ -122,13 +121,13 @@ release:
     > *To update the prebuilt executable you can run `./mycart update`*
 
   footer: |
-    **Full Changelog**: https://github.com/shurco/mycart/compare/{{ .PreviousTag }}...{{ .Tag }}
-    
+    **Full Changelog**: https://github.com/dure-one/dure-mycart/compare/{{ .PreviousTag }}...{{ .Tag }}
+
     > [!WARNING]
     > If you are updating, it is essential to do the following - back up the **./site** folder if you have made changes to it (you can rename it). A new folder with updated files will be created.
 
 announce:
   mastodon:
-    enabled: true
-    message_template: "#mycart {{ .Tag }} is out! Check it out: https://github.com/shurco/mycart/releases/tag/{{ .Tag }}"
+    enabled: false
+    message_template: "#mycart {{ .Tag }} is out! Check it out: https://github.com/dure-one/dure-mycart/releases/tag/{{ .Tag }}"
     server: https://mastodon.social
