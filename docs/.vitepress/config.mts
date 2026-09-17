@@ -21,7 +21,7 @@ copyReadme()
 export default withMermaid(defineConfig({
   title: 'myCart',
   description: 'Open source shopping-cart backend API - a single-binary e-commerce solution',
-  base: '/mycart/',
+  base: '/',
 
   // Ignore dead links for external directories added by GitHub workflow
   ignoreDeadLinks: [
@@ -32,7 +32,7 @@ export default withMermaid(defineConfig({
   ],
 
   head: [
-    ['link', { rel: 'icon', href: '/mycart/favicon.ico' }]
+    ['link', { rel: 'icon', href: '/favicon.ico' }]
   ],
 
   // Internationalization
