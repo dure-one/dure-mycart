@@ -42,11 +42,11 @@ func exportCertificatesToPEM(manager *autocert.Manager, domain string) {
 
 			// Export to PEM files
 			if err := writePEMFiles(cert, certDir); err != nil {
-				log.Err(err).Msg("Failed to export PEM files")
+				logger().Err(err).Msg("Failed to export PEM files")
 				continue
 			}
 
-			log.Info().Msgf("✓ Exported SSL certificates to PEM format for xmpp-proxy")
+			logger().Info().Msgf("✓ Exported SSL certificates to PEM format for xmpp-proxy")
 			exported = true
 		}
 	}()

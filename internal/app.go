@@ -240,7 +240,7 @@ func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
 
 	// Start HTTP server for autocert HTTP-01 challenge
 	go func() {
-		log.Info().Msgf("Starting HTTP server on %s for ACME challenges", httpAddr)
+		logger().Info().Msgf("Starting HTTP server on %s for ACME challenges", httpAddr)
 		// Use standard net/http for the HTTP server to handle ACME challenges
 		httpSrv := &http.Server{
 			Addr:    httpAddr,
@@ -253,7 +253,7 @@ func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
 
 	// Start HTTPS server
 	go func() {
-		log.Info().Msgf("Starting HTTPS server on %s", httpsAddr)
+		logger().Info().Msgf("Starting HTTPS server on %s", httpsAddr)
 		cfgTLS := &tls.Config{
 			GetCertificate: manager.GetCertificate,
 			NextProtos:     []string{"http/1.1", "acme-tls/1"},
