@@ -1,49 +1,20 @@
 # Docker Compose Configurations
 
-Three deployment configurations for myCart application.
+Two deployment configurations for myCart application.
 
 ## Quick Reference
 
 ```bash
-# Local development (SQLite)
+# XMPP server deployment (production)
 docker-compose -f docker/docker-compose.yml up -d
 
-# XMPP server deployment
-docker-compose -f docker/docker-compose.prosody.yml up -d
-
-# Production with SSL (SQLite or PostgreSQL)
+# Production with SSL proxy (SQLite or PostgreSQL)
 cd docker && docker-compose -f docker-compose.onsite.yml up -d
 ```
 
 ---
 
-## 1. docker-compose.yml - Local Development
-
-Simple SQLite-based deployment for development and testing.
-
-**Services:**
-- mycart (SQLite database)
-
-**Ports:**
-- 8080 - HTTP API
-
-**Usage:**
-```bash
-docker-compose -f docker/docker-compose.yml up -d
-docker-compose -f docker/docker-compose.yml logs -f
-docker-compose -f docker/docker-compose.yml down
-```
-
-**Data:**
-- `./lc_base/mycart.db` - SQLite database
-- `./lc_uploads/` - User uploads
-- `./lc_digitals/` - Digital products
-
-**Access:** http://localhost:8080
-
----
-
-## 2. docker-compose.prosody.yml - XMPP Server
+## 1. docker-compose.yml - XMPP Server (Production)
 
 Production XMPP deployment with Prosody server and myCart integration.
 
@@ -53,54 +24,30 @@ Production XMPP deployment with Prosody server and myCart integration.
 - prosody - XMPP server
 - xmpp-proxy-stack - myCart + XMPP proxy + fail2ban
 
-**Ports (host network):**
-- 80 - HTTP (ACME challenges)
-- 5222 - XMPP C2S (StartTLS)
-- 5223 - XMPP C2S (Direct TLS)
-- 5269 - XMPP S2S
-- 443/udp - XMPP over QUIC
+**Documentation:** See [xmpp-proxy-stack/README.md](../xmpp-proxy-stack/README.md) for detailed setup instructions.
 
-**Prerequisites:**
+**Quick Start:**
 ```bash
 # Create data directories
 sudo mkdir -p /srv/data/{prosody,certs,logs,fail2ban,mycart/{lc_base,lc_uploads,lc_digitals}}
 sudo chown -R 1000:1000 /srv/data
 
-# Create .env file
+# Configure .env (see xmpp-proxy-stack/README.md for all variables)
 cat > .env << EOF
 XMPP_DOMAIN=chat.example.com
+MYCART_DOMAIN=chat.example.com
 XMPP_ADMIN=admin@chat.example.com
-PROSODY_LOGLEVEL=info
-PROSODY_RETENTION_DAYS=90
+XMPP_PROXY_PROSODY_C2S=127.0.0.1:15222
+XMPP_PROXY_PROSODY_S2S=127.0.0.1:15269
 EOF
-```
 
-**Usage:**
-```bash
 # Start services
-docker-compose -f docker/docker-compose.prosody.yml up -d
-
-# Check status
-docker-compose -f docker/docker-compose.prosody.yml ps
-docker exec prosody prosodyctl status
-
-# View logs
-docker logs prosody
-docker logs xmpp-proxy-stack
-
-# Check listening ports
-ss -tnlup | grep -E '5222|5269|443'
+docker-compose -f docker/docker-compose.yml up -d
 ```
-
-**Data:**
-- `/srv/data/prosody/` - XMPP database
-- `/srv/data/certs/` - TLS certificates
-- `/srv/data/logs/` - Application logs
-- `/srv/data/mycart/` - myCart data
 
 ---
 
-## 3. docker-compose.onsite.yml - Production with SSL
+## 2. docker-compose.onsite.yml - Production with SSL
 
 Production deployment with automatic SSL certificates and optional PostgreSQL.
 
@@ -212,14 +159,14 @@ cat backup.sql | docker exec -i mycart-postgres psql -U mycart mycart
 ## Environment Variables
 
 ### docker-compose.yml
-- `DB_TYPE=sqlite` (fixed)
-- `SQLITE_PATH=/data/mycart.db`
-
-### docker-compose.prosody.yml
 - `XMPP_DOMAIN` - XMPP domain (required)
+- `MYCART_DOMAIN` - myCart domain, must match XMPP_DOMAIN (required)
 - `XMPP_ADMIN` - Admin JID (required)
+- `XMPP_PROXY_PROSODY_C2S` - Backend Prosody c2s port (required)
+- `XMPP_PROXY_PROSODY_S2S` - Backend Prosody s2s port (required)
 - `PROSODY_LOGLEVEL` - Log level (default: info)
 - `PROSODY_RETENTION_DAYS` - Message retention (default: 90)
+- See [xmpp-proxy-stack/README.md](../xmpp-proxy-stack/README.md) for complete list
 
 ### docker-compose.onsite.yml
 - `DOMAIN` - Your domain (required)

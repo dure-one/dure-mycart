@@ -97,6 +97,92 @@ docker run -d \
   ghcr.io/dure-one/dure-mycart-prosody:latest
 ```
 
+## Docker Compose Deployment
+
+Production XMPP deployment with Prosody server and myCart integration using Docker Compose.
+
+### Services
+
+- **prosody-modules-init** - One-time module setup
+- **prosody-config-init** - Configuration renderer
+- **prosody** - XMPP server (Prosody 13.0)
+- **xmpp-proxy-stack** - myCart + XMPP proxy + fail2ban
+
+### Prerequisites
+
+```bash
+# Create data directories
+sudo mkdir -p /srv/data/{prosody,certs,logs,fail2ban,mycart/{lc_base,lc_uploads,lc_digitals}}
+sudo chown -R 1000:1000 /srv/data
+
+# Create .env file in project root
+cat > .env << EOF
+XMPP_DOMAIN=chat.example.com
+MYCART_DOMAIN=chat.example.com
+XMPP_ADMIN=admin@chat.example.com
+XMPP_PROXY_PROSODY_C2S=127.0.0.1:15222
+XMPP_PROXY_PROSODY_S2S=127.0.0.1:15269
+PROSODY_LOGLEVEL=info
+PROSODY_RETENTION_DAYS=90
+MYCART_DEV_MODE=false
+GIN_MODE=release
+EOF
+```
+
+### Usage
+
+```bash
+# Start all services
+docker-compose -f docker/docker-compose.yml up -d
+
+# Check status
+docker-compose -f docker/docker-compose.yml ps
+docker exec prosody prosodyctl status
+
+# View logs
+docker logs prosody
+docker logs xmpp-proxy-stack
+
+# Check listening ports (using host network)
+ss -tnlup | grep -E '5222|5269|80|443'
+
+# Stop services
+docker-compose -f docker/docker-compose.yml down
+```
+
+### Ports (Host Network Mode)
+
+The xmpp-proxy-stack container uses host networking for PROXY protocol support:
+
+- **80** - HTTP (ACME challenges)
+- **443** - HTTPS
+- **5222** - XMPP C2S (StartTLS)
+- **5223** - XMPP C2S (Direct TLS)
+- **5269** - XMPP S2S (Server-to-Server)
+- **443/udp** - XMPP over QUIC
+
+**Note:** Ports won't show in `docker ps` - use `ss -tnlup` to verify listening ports.
+
+### Data Volumes
+
+- `/srv/data/prosody/` - XMPP database
+- `/srv/data/certs/` - TLS certificates (shared between Prosody and myCart)
+- `/srv/data/logs/` - Application logs
+- `/srv/data/mycart/` - myCart data (database, uploads, digital products)
+
+### Prosody Configuration
+
+Prosody runs on internal bridge network with ports exposed only to localhost:
+- `127.0.0.1:15222` - C2S (client-to-server)
+- `127.0.0.1:15269` - S2S (server-to-server)
+- `127.0.0.1:15280` - HTTP/WebSocket (proxied via myCart)
+
+The xmpp-proxy-stack container connects to these backend ports and handles:
+- Public-facing XMPP ports (5222, 5269)
+- TLS termination with auto-renewed certificates
+- PROXY protocol for client IP preservation
+- fail2ban-rs for intrusion prevention
+
 ## Architecture
 
 Built on **distroless** base for minimal attack surface:
