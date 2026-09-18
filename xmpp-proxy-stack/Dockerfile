@@ -51,6 +51,9 @@ RUN apk add --no-cache git ca-certificates
 COPY go.mod go.sum ./
 RUN go mod download
 
+# Install swag for swagger doc generation
+RUN go install github.com/swaggo/swag/cmd/swag@v1.16.6
+
 # Copy source code
 COPY cmd ./cmd
 COPY internal ./internal
@@ -58,6 +61,9 @@ COPY pkg ./pkg
 COPY docs ./docs
 COPY migrations ./migrations
 COPY web/embed.go ./web/embed.go
+
+# Generate swagger docs (required by cmd/main.go import)
+RUN /go/bin/swag init -g cmd/main.go --output docs/swagger --parseDependency --parseInternal
 
 # Copy built frontend from previous stage
 COPY --from=frontend-builder /app/web/admin/build ./web/admin/build
