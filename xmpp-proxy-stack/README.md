@@ -13,25 +13,70 @@ This all-in-one container includes:
 
 ## Quick Start
 
+### Using GitHub Container Registry
+
+Pull the image from GitHub Container Registry:
+
 ```bash
 docker pull ghcr.io/dure-one/dure-mycart-prosody:latest
+```
 
+**Package URL:** https://github.com/dure-one/dure-mycart/pkgs/container/dure-mycart-prosody
+
+### Configuration with .env File
+
+1. Copy the example environment file:
+
+```bash
+cp .env.example .env
+```
+
+2. Edit `.env` with your configuration:
+
+```bash
+# Required: Set your domain (must match for both services)
+XMPP_DOMAIN=example.com
+MYCART_DOMAIN=example.com
+
+# Configure backend XMPP server ports
+XMPP_PROXY_PROSODY_C2S=127.0.0.1:5222
+XMPP_PROXY_PROSODY_S2S=127.0.0.1:5269
+
+# Mycart settings
+MYCART_DEV_MODE=false
+GIN_MODE=release
+```
+
+3. Run with environment file:
+
+```bash
 docker run -d \
+  --env-file .env \
   -p 80:80 \
   -p 443:443 \
   -p 5222:5222 \
   -p 5269:5269 \
+  -v ./certs:/certs \
+  -v ./logs:/logs \
   --name mycart-prosody \
   ghcr.io/dure-one/dure-mycart-prosody:latest
 ```
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DOMAIN` | Your domain name | `localhost` |
-| `ACME_EMAIL` | Email for Let's Encrypt | - |
-| `XMPP_DOMAIN` | XMPP server domain | Same as `DOMAIN` |
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `XMPP_DOMAIN` | XMPP server domain | **Yes** | - |
+| `MYCART_DOMAIN` | Mycart domain (must match XMPP_DOMAIN) | **Yes** | - |
+| `XMPP_PROXY_PROSODY_C2S` | Backend Prosody c2s port | Yes | `127.0.0.1:5222` |
+| `XMPP_PROXY_PROSODY_S2S` | Backend Prosody s2s port | Yes | `127.0.0.1:5269` |
+| `MYCART_DEV_MODE` | Development mode | No | `false` |
+| `MYCART_HTTP_ADDR` | HTTP bind address | No | `0.0.0.0:80` |
+| `MYCART_HTTPS_ADDR` | HTTPS bind address | No | `0.0.0.0:443` |
+| `GIN_MODE` | Gin framework mode | No | `release` |
+| `REVERSE_PROXY_BINDINGS` | Reverse proxy config | No | - |
+
+**Important:** `XMPP_DOMAIN` and `MYCART_DOMAIN` must match for shared SSL certificate functionality.
 
 ## Ports
 
