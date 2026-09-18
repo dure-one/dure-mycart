@@ -133,10 +133,10 @@ EOF
 
 ```bash
 # Start all services
-docker-compose -f docker/docker-compose.yml up -d
+docker-compose -f xmpp-proxy-stack/docker-compose.yml up -d
 
 # Check status
-docker-compose -f docker/docker-compose.yml ps
+docker-compose -f xmpp-proxy-stack/docker-compose.yml ps
 docker exec prosody prosodyctl status
 
 # View logs
@@ -147,7 +147,7 @@ docker logs xmpp-proxy-stack
 ss -tnlup | grep -E '5222|5269|80|443'
 
 # Stop services
-docker-compose -f docker/docker-compose.yml down
+docker-compose -f xmpp-proxy-stack/docker-compose.yml down
 ```
 
 ### Ports (Host Network Mode)
