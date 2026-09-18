@@ -106,7 +106,6 @@ dockers_v2:
       - '--provenance=true'
     labels:
       'io.artifacthub.package.readme-url': 'https://raw.githubusercontent.com/dure-one/dure-mycart/main/README.md'
-      'io.artifacthub.package.maintainers': '[{"name":"Dmitry Shurco"}]'
       'io.artifacthub.package.license': 'MIT'
       'org.opencontainers.image.description': '🛒 myCart - shopping-cart in 1 file'
       'org.opencontainers.image.created': '{{.Date}}'

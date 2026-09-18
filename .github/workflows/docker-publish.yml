@@ -54,6 +54,10 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            io.artifacthub.package.readme-url=https://raw.githubusercontent.com/dure-one/dure-mycart/main/xmpp-proxy-stack/README.md
+            io.artifacthub.package.license=MIT
+            org.opencontainers.image.description=XMPP Proxy Stack with mycart, xmpp-proxy, and fail2ban-rs
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
