@@ -81,7 +81,7 @@ services:
 
   # Merged stack: mycart + xmpp-proxy + fail2ban-rs
   xmpp-proxy-stack:
-    image: ghcr.io/dure-one/xmpp-proxy-stack:latest
+    image: ghcr.io/dure-one/dure-mycart-prosody:0.0
     container_name: xmpp-proxy-stack
     restart: unless-stopped
     # Uses host networking for PROXY protocol support
