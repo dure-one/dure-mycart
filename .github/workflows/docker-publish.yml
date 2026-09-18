@@ -1,6 +1,9 @@
 name: Build and Publish Docker Image
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -14,10 +17,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - image: mycart
-            dockerfile: Dockerfile
-            context: .
-          - image: xmpp-proxy-stack
+          - image: dure-mycart-prosody
             dockerfile: xmpp-proxy-stack/Dockerfile
             context: .
     steps:
