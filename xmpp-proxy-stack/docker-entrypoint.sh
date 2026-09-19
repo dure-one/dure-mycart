@@ -62,11 +62,29 @@ echo "Starting services via Horust..."
 /usr/local/bin/horust --services-path /etc/horust/services &
 HORUST_PID=$!
 
-# Workaround: Horust isn't starting xmpp-proxy, so start it manually after delay
-sleep 15
-if [ -f /certs/fullchain.pem ] && [ -f /certs/privkey.pem ]; then
-    /usr/local/bin/xmpp-proxy /etc/xmpp-proxy/config.toml &
-fi
+# Start background process to wait for certificates and launch xmpp-proxy
+# Workaround: Horust isn't starting xmpp-proxy, so start it manually when certs available
+(
+    echo "Waiting for SSL certificates before starting xmpp-proxy..."
+    RETRY_COUNT=0
+    MAX_RETRIES=60  # 60 * 5s = 5 minutes max wait
+
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        if [ -f /certs/fullchain.pem ] && [ -f /certs/privkey.pem ]; then
+            echo "✓ SSL certificates found, starting xmpp-proxy"
+            /usr/local/bin/xmpp-proxy /etc/xmpp-proxy/config.toml
+            exit 0
+        fi
+
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        echo "Waiting for certificates... ($RETRY_COUNT/$MAX_RETRIES)"
+        sleep 5
+    done
+
+    echo "ERROR: Timeout waiting for SSL certificates after 5 minutes" >&2
+    echo "xmpp-proxy will not start until certificates are available" >&2
+) &
+XMPP_PROXY_WAITER_PID=$!
 
 # Wait for Horust to complete
 wait $HORUST_PID
