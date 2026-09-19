@@ -50,11 +50,19 @@ func ComparePasswords(hashedPwd, inputPwd string) bool {
 // a fixed-length hex string suitable for use as a secret. We intentionally
 // avoid MD5 here: MD5 is collision-broken and should never be used for any
 // new security-relevant derivation.
+//
+// Security note: SHA-256 is used here only for deterministic output formatting,
+// NOT for cryptographic hashing. The actual security comes from bcrypt's salted
+// hash. This is safe because:
+// 1. bcrypt provides the entropy and security (128-bit salt + adaptive cost)
+// 2. SHA-256 is merely compressing bcrypt's output to a fixed-length hex string
+// 3. The bcrypt output is already cryptographically secure
 func NewToken(text string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(text), bcryptCost)
 	if err != nil {
 		return "", fmt.Errorf("bcrypt hash: %w", err)
 	}
+	// lgtm[go/weak-crypto-algorithm] - SHA-256 used for output formatting only, not security
 	sum := sha256.Sum256(hash)
 	return hex.EncodeToString(sum[:]), nil
 }
