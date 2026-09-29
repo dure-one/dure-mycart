@@ -22,7 +22,9 @@ import (
 
 	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/middleware"
+	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/responder"
 	"github.com/shurco/mycart/internal/routes"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/webutil"
@@ -72,6 +74,9 @@ func NewApp(dbCfg database.Config, httpAddr, httpsAddr string, noSite, appDev bo
 	if err := Init(dbCfg); err != nil {
 		return err
 	}
+
+	// Start responder workers in background
+	startResponderWorkers(context.Background())
 
 	app, err := setupFiberApp(noSite)
 	if err != nil {
@@ -399,4 +404,42 @@ func StartServer(ctx context.Context, addr string, a *fiber.App) error {
 	case err := <-errCh:
 		return err
 	}
+}
+
+// startResponderWorkers starts XMPP worker and cron runner in background
+func startResponderWorkers(ctx context.Context) {
+	db := queries.DB()
+
+	// Load responder settings
+	var settings models.ResponderSettings
+	settingsCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if _, err := db.GetSettingByGroup(settingsCtx, &settings); err != nil {
+		// Settings not configured yet, skip workers
+		return
+	}
+
+	// Only start XMPP worker if settings are configured
+	var xmppWorker *responder.XMPPWorker
+	if settings.XMPPJID != "" && settings.XMPPPassword != "" {
+		xmppWorker = responder.NewXMPPWorker(&settings, db)
+		go func() {
+			if err := xmppWorker.Start(ctx); err != nil && err != context.Canceled {
+				if lg := logger(); lg != nil {
+					lg.Err(err).Msg("XMPP worker error")
+				}
+			}
+		}()
+	}
+
+	// Start cron runner
+	cronRunner := responder.NewCronRunner(db, xmppWorker)
+	go func() {
+		if err := cronRunner.Start(ctx); err != nil && err != context.Canceled {
+			if lg := logger(); lg != nil {
+				lg.Err(err).Msg("Cron runner error")
+			}
+		}
+	}()
 }
