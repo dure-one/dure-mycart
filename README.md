@@ -45,14 +45,75 @@ docker run -v ./lc_base:/lc_base -v ./lc_digitals:/lc_digitals -v ./lc_uploads:/
 docker run --name mycart --restart unless-stopped -p 8080:8080 -v ./lc_base:/lc_base -v ./lc_digitals:/lc_digitals -v ./lc_uploads:/lc_uploads shurco/mycart:latest
 ```
 
+**Image**: Built from `Dockerfile` → `ghcr.io/dure-one/dure-mycart:latest`
+
 #### With Prosody (XMPP)
 
 ```bash
 cd xmpp-proxy-stack
+
+# Copy and configure environment
+cp .env.example .env
+# Edit .env with your domain and settings
+
+# Start services
 docker compose up -d
 ```
 
-Image: `ghcr.io/dure-one/dure-mycart-prosody:0.0`
+**Environment Variables** (`.env`):
+- `XMPP_DOMAIN` - Your domain (required)
+- `MYCART_DOMAIN` - Must match XMPP_DOMAIN for shared SSL
+- `XMPP_ADMIN` - Admin user (e.g., admin@example.com)
+- `PROSODY_LOGLEVEL` - Logging level (info/debug/warn/error)
+- `PROSODY_RETENTION_DAYS` - Message retention (default: 90)
+
+**Image**: Built from `xmpp-proxy-stack/Dockerfile` → `ghcr.io/dure-one/dure-mycart-prosody:0.0`  
+Includes mycart + xmpp-proxy + fail2ban-rs + Prosody configurations
+
+---
+
+## Database
+
+### SQLite (Default)
+
+No configuration needed. Database stored in `./lc_base/data.db`.
+
+### PostgreSQL
+
+#### Installation
+
+```bash
+./mycart install \
+  --email admin@example.com \
+  --password yourpass \
+  --domain localhost \
+  --db postgres \
+  --db-dsn 'postgres://user:password@host:5432/mycart?sslmode=disable'
+```
+
+#### Runtime
+
+```bash
+# Via command line
+./mycart serve --db postgres --db-dsn 'postgres://...'
+
+# Via environment variables
+export MYCART_DB_DRIVER=postgres
+export MYCART_DB_DSN='postgres://user:password@host:5432/mycart?sslmode=disable'
+./mycart serve
+```
+
+#### Docker
+
+```bash
+docker run --name mycart --restart unless-stopped -p 8080:8080 \
+  -e MYCART_DB_DRIVER=postgres \
+  -e MYCART_DB_DSN='postgres://user:password@host:5432/mycart?sslmode=disable' \
+  -v ./lc_base:/lc_base \
+  -v ./lc_digitals:/lc_digitals \
+  -v ./lc_uploads:/lc_uploads \
+  shurco/mycart:latest
+```
 
 ---
 
