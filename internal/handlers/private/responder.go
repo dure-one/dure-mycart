@@ -357,3 +357,148 @@ func DeleteWorkflow(c fiber.Ctx) error {
 
 	return webutil.Response(c, fiber.StatusOK, "Workflow deleted", nil)
 }
+
+// CrontabJobs returns all crontab jobs.
+//
+// @Summary      List crontab jobs
+// @Description  Get list of all crontab jobs
+// @Tags         Settings
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200 {object} webutil.HTTPResponse "Crontab jobs list"
+// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
+// @Router       /api/_/settings/crontab [get]
+func CrontabJobs(c fiber.Ctx) error {
+	db := queries.DB()
+	log := logging.New()
+
+	jobs, err := db.ListCrontabJobs(c.Context())
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	return webutil.Response(c, fiber.StatusOK, "Crontab jobs", map[string]any{
+		"jobs": jobs,
+	})
+}
+
+// UpdateCrontabJobSettings updates a crontab job's enabled status and interval.
+//
+// @Summary      Update crontab job
+// @Description  Update crontab job settings (enabled, interval)
+// @Tags         Settings
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        job_id path string true "Job ID"
+// @Param        request body map[string]any true "Job settings"
+// @Success      200 {object} webutil.HTTPResponse "Job updated"
+// @Failure      400 {object} webutil.HTTPResponse "Validation error"
+// @Failure      404 {object} webutil.HTTPResponse "Job not found"
+// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
+// @Router       /api/_/settings/crontab/{job_id} [patch]
+func UpdateCrontabJobSettings(c fiber.Ctx) error {
+	jobID := c.Params("job_id")
+	db := queries.DB()
+	log := logging.New()
+
+	var request struct {
+		Enabled  bool   `json:"enabled"`
+		Interval string `json:"interval"`
+	}
+
+	if err := c.Bind().Body(&request); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusBadRequest(c, err.Error())
+	}
+
+	if err := db.UpdateCrontabJob(c.Context(), jobID, request.Enabled, request.Interval); err != nil {
+		if errors.Is(err, errors.ErrNotFound) {
+			return webutil.StatusNotFound(c)
+		}
+		log.ErrorStack(err)
+		return webutil.StatusBadRequest(c, err.Error())
+	}
+
+	return webutil.Response(c, fiber.StatusOK, "Crontab job updated", nil)
+}
+
+// GetResponderSettings returns responder XMPP settings.
+//
+// @Summary      Get responder settings
+// @Description  Get XMPP configuration settings
+// @Tags         Settings
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200 {object} webutil.HTTPResponse{result=models.ResponderSettings} "Responder settings"
+// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
+// @Router       /api/_/settings/responder [get]
+func GetResponderSettings(c fiber.Ctx) error {
+	db := queries.DB()
+	log := logging.New()
+
+	// Fetch settings from database
+	settings := &models.ResponderSettings{}
+	result, err := db.GetSettingByGroup(c.Context(), settings)
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	return webutil.Response(c, fiber.StatusOK, "Responder settings", result)
+}
+
+// UpdateResponderSettings updates responder XMPP settings.
+//
+// @Summary      Update responder settings
+// @Description  Update XMPP configuration settings
+// @Tags         Settings
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        request body models.ResponderSettings true "Responder settings"
+// @Success      200 {object} webutil.HTTPResponse "Settings updated"
+// @Failure      400 {object} webutil.HTTPResponse "Validation error"
+// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
+// @Router       /api/_/settings/responder [patch]
+func UpdateResponderSettings(c fiber.Ctx) error {
+	db := queries.DB()
+	log := logging.New()
+	settings := new(models.ResponderSettings)
+
+	if err := c.Bind().Body(settings); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusBadRequest(c, err.Error())
+	}
+
+	if err := settings.Validate(); err != nil {
+		return webutil.StatusBadRequest(c, err.Error())
+	}
+
+	if err := db.UpdateSettingByGroup(c.Context(), settings); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	return webutil.Response(c, fiber.StatusOK, "Responder settings updated", nil)
+}
+
+// XMPPConnectionTest tests the XMPP connection with provided settings.
+//
+// @Summary      Test XMPP connection
+// @Description  Test XMPP connection with current settings
+// @Tags         Settings
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200 {object} webutil.HTTPResponse "Connection successful"
+// @Failure      500 {object} webutil.HTTPResponse "Connection failed"
+// @Router       /api/_/settings/responder/test-connection [post]
+func XMPPConnectionTest(c fiber.Ctx) error {
+	// For now, just return success - actual XMPP connection test will be in Task 9
+	// This is a placeholder that will be implemented with the XMPP worker
+	return webutil.Response(c, fiber.StatusOK, "XMPP connection test placeholder", map[string]any{
+		"status": "not_implemented",
+		"message": "XMPP connection test will be implemented in Task 9",
+	})
+}

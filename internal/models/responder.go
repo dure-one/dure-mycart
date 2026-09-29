@@ -1,8 +1,6 @@
 package models
 
 import (
-	"time"
-
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
@@ -61,11 +59,11 @@ func (w Workflow) Validate() error {
 // CrontabJob represents a predefined background job
 type CrontabJob struct {
 	Core
-	JobType  string     `json:"job_type"`  // xmpp_check, cleanup_inactive
-	Interval string     `json:"interval"`  // 5min, 15min, 1hr, 6hr, daily
-	Enabled  bool       `json:"enabled"`
-	LastRun  *time.Time `json:"last_run"`
-	NextRun  *time.Time `json:"next_run"`
+	JobType  string `json:"job_type"`  // xmpp_check, cleanup_inactive
+	Interval string `json:"interval"`  // 5min, 15min, 1hr, 6hr, daily
+	Enabled  bool   `json:"enabled"`
+	LastRun  *int64 `json:"last_run"`
+	NextRun  *int64 `json:"next_run"`
 }
 
 // MessageCreate is the request payload for creating a message
@@ -101,6 +99,21 @@ func (l LinkContactRequest) Validate() error {
 	return validation.ValidateStruct(&l,
 		validation.Field(&l.ContactID, validation.Required),
 		validation.Field(&l.NewCustomerID, validation.Required),
+	)
+}
+
+// ResponderSettings holds XMPP configuration
+type ResponderSettings struct {
+	XMPPJID      string `json:"xmpp_jid"`
+	XMPPPassword string `json:"xmpp_password"`
+	XMPPServer   string `json:"xmpp_server"`
+	XMPPPort     int    `json:"xmpp_port"`
+}
+
+// Validate responder settings
+func (r ResponderSettings) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.XMPPPort, validation.Min(1), validation.Max(65535)),
 	)
 }
 

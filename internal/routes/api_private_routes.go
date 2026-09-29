@@ -33,6 +33,11 @@ func ApiPrivateRoutes(c *fiber.App) {
 	settings.Delete("/branding/logo", handlers.DeleteBrandingLogo)
 	settings.Post("/branding/favicon", handlers.UploadBrandingFavicon)
 	settings.Delete("/branding/favicon", handlers.DeleteBrandingFavicon)
+	settings.Get("/responder", handlers.GetResponderSettings)
+	settings.Patch("/responder", handlers.UpdateResponderSettings)
+	settings.Post("/responder/test-connection", handlers.XMPPConnectionTest)
+	settings.Get("/crontab", handlers.CrontabJobs)
+	settings.Patch("/crontab/:job_id<len(15)>", handlers.UpdateCrontabJobSettings)
 	settings.Get("/:setting_key", handlers.GetSetting)
 	settings.Patch("/:setting_key", handlers.UpdateSetting)
 

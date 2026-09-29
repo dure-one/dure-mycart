@@ -193,3 +193,71 @@ func TestWorkflowCRUD(t *testing.T) {
 	deleteResp := testutil.DoRequest(t, app, http.MethodDelete, "/api/_/responder/workflows/"+workflowID, "", cookie)
 	testutil.AssertStatus(t, deleteResp, http.StatusOK)
 }
+
+func TestCrontabJobs(t *testing.T) {
+	app, cookie, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	app.Get("/api/_/settings/crontab", CrontabJobs)
+
+	resp := testutil.DoRequest(t, app, http.MethodGet, "/api/_/settings/crontab", "", cookie)
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	var res struct {
+		Result struct {
+			Jobs []map[string]any `json:"jobs"`
+		} `json:"result"`
+	}
+	_ = json.NewDecoder(resp.Body).Decode(&res)
+}
+
+func TestUpdateCrontabJob(t *testing.T) {
+	app, cookie, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	app.Patch("/api/_/settings/crontab/:job_id", UpdateCrontabJobSettings)
+
+	payload := `{
+		"enabled": true,
+		"interval": "15min"
+	}`
+
+	resp := testutil.DoRequest(t, app, http.MethodPatch, "/api/_/settings/crontab/job123456789012", payload, cookie)
+	testutil.AssertStatus(t, resp, http.StatusOK, http.StatusNotFound, http.StatusBadRequest)
+}
+
+func TestResponderSettings(t *testing.T) {
+	app, cookie, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	app.Get("/api/_/settings/responder", GetResponderSettings)
+	app.Patch("/api/_/settings/responder", UpdateResponderSettings)
+
+	// Get settings
+	getResp := testutil.DoRequest(t, app, http.MethodGet, "/api/_/settings/responder", "", cookie)
+	testutil.AssertStatus(t, getResp, http.StatusOK)
+
+	// Update settings
+	updatePayload := `{
+		"xmpp_jid": "bot@example.com",
+		"xmpp_password": "secret",
+		"xmpp_server": "example.com",
+		"xmpp_port": 5222
+	}`
+	updateResp := testutil.DoRequest(t, app, http.MethodPatch, "/api/_/settings/responder", updatePayload, cookie)
+	testutil.AssertStatus(t, updateResp, http.StatusOK)
+}
+
+func TestXMPPConnection(t *testing.T) {
+	app, cookie, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	app.Post("/api/_/settings/responder/test-connection", XMPPConnectionTest)
+
+	resp := testutil.DoRequest(t, app, http.MethodPost, "/api/_/settings/responder/test-connection", "", cookie)
+	testutil.AssertStatus(t, resp, http.StatusOK)
+}
