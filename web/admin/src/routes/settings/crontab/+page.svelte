@@ -1,9 +1,14 @@
 <script lang="ts">
-	import { loadCrontabJobs, updateCrontabJob } from '$lib/utils/responder'
 	import { onMount } from 'svelte'
+	import Main from '$lib/layouts/Main.svelte'
+	import { PageHeader, PageState, Section } from '$lib/components'
+	import { loadCrontabJobs, updateCrontabJob } from '$lib/utils/responder'
+	import { translate } from '$lib/i18n'
 
-	let jobs: any[] = []
-	let loading = true
+	let t = $derived($translate)
+
+	let jobs = $state<any[]>([])
+	let loading = $state(true)
 
 	const intervals = ['5min', '15min', '1hr', '6hr', 'daily']
 
@@ -45,31 +50,29 @@
 	}
 
 	function formatTimestamp(ts: number | null) {
-		if (!ts) return 'Never'
+		if (!ts) return t('crontab.never')
 		return new Date(ts * 1000).toLocaleString()
 	}
 </script>
 
-<div class="settings-page">
-	<div class="page-header">
-		<h1>Crontab Jobs</h1>
-	</div>
+<Main>
+	<PageHeader title={t('crontab.title')} />
 
-	<div class="jobs-panel">
-		<p class="description">Configure scheduled background jobs for XMPP sync and customer cleanup</p>
+	<Section>
+		<p class="text-sm text-gray-600 mb-4">{t('crontab.description')}</p>
 
 		{#if loading}
-			<div class="loading-state">Loading jobs...</div>
+			<div class="loading-state">{t('crontab.loadingJobs')}</div>
 		{:else if jobs.length === 0}
-			<div class="empty-state">No crontab jobs configured</div>
+			<div class="empty-state">{t('crontab.noJobs')}</div>
 		{:else}
 			<div class="jobs-table">
 				<div class="table-header">
-					<div class="col-name">Job</div>
-					<div class="col-interval">Interval</div>
-					<div class="col-last-run">Last Run</div>
-					<div class="col-next-run">Next Run</div>
-					<div class="col-enabled">Enabled</div>
+					<div class="col-name">{t('crontab.job')}</div>
+					<div class="col-interval">{t('crontab.interval')}</div>
+					<div class="col-last-run">{t('crontab.lastRun')}</div>
+					<div class="col-next-run">{t('crontab.nextRun')}</div>
+					<div class="col-enabled">{t('crontab.enabled')}</div>
 				</div>
 
 				{#each jobs as job}
@@ -105,31 +108,10 @@
 				{/each}
 			</div>
 		{/if}
-	</div>
-</div>
+	</Section>
+</Main>
 
 <style>
-	.settings-page {
-		padding: 1.5rem;
-	}
-
-	.page-header h1 {
-		margin: 0 0 1.5rem;
-		font-size: 1.5rem;
-	}
-
-	.jobs-panel {
-		background: white;
-		border-radius: 0.5rem;
-		padding: 1.5rem;
-	}
-
-	.description {
-		color: #6b7280;
-		font-size: 0.875rem;
-		margin-bottom: 1.5rem;
-	}
-
 	.loading-state,
 	.empty-state {
 		text-align: center;

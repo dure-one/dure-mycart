@@ -1,16 +1,22 @@
 <script lang="ts">
-	import { loadResponderSettings, saveResponderSettings, testXMPPConnection } from '$lib/utils/responder'
 	import { onMount } from 'svelte'
+	import Main from '$lib/layouts/Main.svelte'
+	import { PageHeader, FormButton, FormInput, Section } from '$lib/components'
+	import { loadResponderSettings, saveResponderSettings, testXMPPConnection } from '$lib/utils/responder'
+	import { translate } from '$lib/i18n'
 
-	let settings = {
+	let t = $derived($translate)
+
+	let settings = $state({
 		xmpp_jid: '',
 		xmpp_password: '',
 		xmpp_server: '',
 		xmpp_port: 5222
-	}
-	let saving = false
-	let testing = false
-	let testResult: string | null = null
+	})
+	let saving = $state(false)
+	let testing = $state(false)
+	let testResult = $state<string | null>(null)
+	let testSuccess = $state(false)
 
 	onMount(async () => {
 		const response = await loadResponderSettings()
@@ -24,10 +30,10 @@
 		testResult = null
 		try {
 			await saveResponderSettings(settings)
-			alert('Settings saved successfully')
+			alert(t('responder.settingsSaved'))
 		} catch (err) {
 			console.error('Failed to save settings:', err)
-			alert('Failed to save settings')
+			alert(t('responder.failedToSave'))
 		} finally {
 			saving = false
 		}
@@ -38,173 +44,86 @@
 		testResult = null
 		try {
 			const response = await testXMPPConnection()
-			testResult = response.success ? 'Connection successful!' : 'Connection failed'
+			testSuccess = response.success
+			testResult = response.success ? t('responder.connectionSuccessful') : t('responder.connectionFailed')
 		} catch (err) {
 			console.error('Connection test failed:', err)
-			testResult = 'Connection test failed'
+			testSuccess = false
+			testResult = t('responder.connectionFailed')
 		} finally {
 			testing = false
 		}
 	}
 </script>
 
-<div class="settings-page">
-	<div class="page-header">
-		<h1>Responder Settings</h1>
-	</div>
+<Main>
+	<PageHeader title={t('responder.settings')} />
 
-	<div class="settings-panel">
-		<h2>XMPP Configuration</h2>
-		<p class="description">Configure XMPP connection for message synchronization via MAM</p>
+	<Section>
+		<h2 class="text-lg font-medium mb-1">{t('responder.xmppConfiguration')}</h2>
+		<p class="text-sm text-gray-600 mb-4">{t('responder.xmppConfigDesc')}</p>
 
-		<form on:submit|preventDefault={handleSave}>
-			<div class="form-group">
-				<label for="jid">XMPP JID</label>
-				<input
-					id="jid"
-					type="text"
-					bind:value={settings.xmpp_jid}
-					placeholder="bot@example.com"
-					required
+		<form on:submit|preventDefault={handleSave} class="max-w-2xl space-y-4">
+			<FormInput
+				id="xmpp_jid"
+				title={t('responder.xmppJid')}
+				bind:value={settings.xmpp_jid}
+				placeholder="bot@example.com"
+				ico="at-symbol"
+			/>
+
+			<FormInput
+				id="xmpp_password"
+				title={t('responder.xmppPassword')}
+				type="password"
+				bind:value={settings.xmpp_password}
+				ico="lock-closed"
+			/>
+
+			<div class="grid grid-cols-2 gap-4">
+				<FormInput
+					id="xmpp_server"
+					title={t('responder.xmppServer')}
+					bind:value={settings.xmpp_server}
+					placeholder="example.com"
+					ico="server"
+				/>
+
+				<FormInput
+					id="xmpp_port"
+					title={t('responder.xmppPort')}
+					type="number"
+					bind:value={settings.xmpp_port}
+					ico="hashtag"
 				/>
 			</div>
 
-			<div class="form-group">
-				<label for="password">Password</label>
-				<input
-					id="password"
-					type="password"
-					bind:value={settings.xmpp_password}
-					required
+			<div class="flex gap-2 pt-4">
+				<FormButton
+					name={testing ? t('responder.testing') : t('responder.testConnection')}
+					variant="secondary"
+					disabled={testing}
+					onclick={handleTest}
+					type="button"
 				/>
-			</div>
-
-			<div class="form-row">
-				<div class="form-group">
-					<label for="server">Server</label>
-					<input
-						id="server"
-						type="text"
-						bind:value={settings.xmpp_server}
-						placeholder="example.com"
-						required
-					/>
-				</div>
-
-				<div class="form-group">
-					<label for="port">Port</label>
-					<input
-						id="port"
-						type="number"
-						bind:value={settings.xmpp_port}
-						min="1"
-						max="65535"
-						required
-					/>
-				</div>
-			</div>
-
-			<div class="form-actions">
-				<button type="button" class="btn-secondary" on:click={handleTest} disabled={testing}>
-					{testing ? 'Testing...' : 'Test Connection'}
-				</button>
-				<button type="submit" class="btn-primary" disabled={saving}>
-					{saving ? 'Saving...' : 'Save Settings'}
-				</button>
+				<FormButton
+					name={saving ? t('common.save') + '...' : t('common.save')}
+					variant="primary"
+					disabled={saving}
+					type="submit"
+				/>
 			</div>
 
 			{#if testResult}
-				<div class="test-result" class:success={testResult.includes('successful')}>
+				<div class="test-result" class:success={testSuccess}>
 					{testResult}
 				</div>
 			{/if}
 		</form>
-	</div>
-</div>
+	</Section>
+</Main>
 
 <style>
-	.settings-page {
-		padding: 1.5rem;
-		max-width: 800px;
-	}
-
-	.page-header h1 {
-		margin: 0 0 1.5rem;
-		font-size: 1.5rem;
-	}
-
-	.settings-panel {
-		background: white;
-		border-radius: 0.5rem;
-		padding: 1.5rem;
-	}
-
-	.settings-panel h2 {
-		margin: 0 0 0.5rem;
-		font-size: 1.25rem;
-	}
-
-	.description {
-		color: #6b7280;
-		font-size: 0.875rem;
-		margin-bottom: 1.5rem;
-	}
-
-	.form-row {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 1rem;
-	}
-
-	.form-group {
-		margin-bottom: 1rem;
-	}
-
-	.form-group label {
-		display: block;
-		margin-bottom: 0.25rem;
-		font-weight: 500;
-		font-size: 0.875rem;
-	}
-
-	.form-group input {
-		width: 100%;
-		padding: 0.5rem;
-		border: 1px solid #d1d5db;
-		border-radius: 0.25rem;
-	}
-
-	.form-actions {
-		display: flex;
-		gap: 0.5rem;
-		margin-top: 1.5rem;
-	}
-
-	.btn-primary,
-	.btn-secondary {
-		padding: 0.5rem 1rem;
-		border: none;
-		border-radius: 0.25rem;
-		cursor: pointer;
-		font-size: 0.875rem;
-	}
-
-	.btn-primary {
-		background: #3b82f6;
-		color: white;
-	}
-
-	.btn-secondary {
-		background: #f3f4f6;
-		color: #374151;
-	}
-
-	.btn-primary:disabled,
-	.btn-secondary:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
 	.test-result {
 		margin-top: 1rem;
 		padding: 0.75rem;
