@@ -5,7 +5,7 @@
 	import ChatPanel from '$lib/components/responder/ChatPanel.svelte'
 	import LinkContactModal from '$lib/components/responder/LinkContactModal.svelte'
 	import { translate } from '$lib/i18n'
-	import { loadMessageThreads, loadMessagesByCustomer } from '$lib/utils/responder'
+	import { loadMessageThreads, loadCustomerMessages } from '$lib/utils/responder'
 
 	let t = $derived($translate)
 
@@ -41,7 +41,7 @@
 	async function selectThread(thread: any) {
 		selectedThread = thread
 		try {
-			const response = await loadMessagesByCustomer(thread.customer_id)
+			const response = await loadCustomerMessages(thread.customer_id)
 			if (response.success && response.result) {
 				messages = response.result.messages || []
 			}
