@@ -5,6 +5,7 @@ import (
 
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/internal/responder"
 	"github.com/shurco/mycart/pkg/errors"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/webutil"
@@ -495,10 +496,32 @@ func UpdateResponderSettings(c fiber.Ctx) error {
 // @Failure      500 {object} webutil.HTTPResponse "Connection failed"
 // @Router       /api/_/settings/responder/test-connection [post]
 func XMPPConnectionTest(c fiber.Ctx) error {
-	// For now, just return success - actual XMPP connection test will be in Task 9
-	// This is a placeholder that will be implemented with the XMPP worker
-	return webutil.Response(c, fiber.StatusOK, "XMPP connection test placeholder", map[string]any{
-		"status": "not_implemented",
-		"message": "XMPP connection test will be implemented in Task 9",
+	db := queries.DB()
+	log := logging.New()
+
+	var settings models.ResponderSettings
+	if _, err := db.GetSettingByGroup(c.Context(), &settings); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	if settings.XMPPJID == "" || settings.XMPPPassword == "" {
+		return webutil.Response(c, fiber.StatusOK, "XMPP settings incomplete", map[string]any{
+			"success": false,
+			"error":   "XMPP JID and password required",
+		})
+	}
+
+	worker := responder.NewXMPPWorker(&settings, nil)
+	if err := worker.Connect(); err != nil {
+		return webutil.Response(c, fiber.StatusOK, "XMPP connection failed", map[string]any{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+	defer worker.Disconnect()
+
+	return webutil.Response(c, fiber.StatusOK, "XMPP connection successful", map[string]any{
+		"success": true,
 	})
 }
