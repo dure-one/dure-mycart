@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/testutil"
 )
 
@@ -101,4 +102,94 @@ func TestLinkContact(t *testing.T) {
 
 	resp := testutil.DoRequest(t, app, http.MethodPost, "/api/_/responder/messages/link-contact", payload, cookie)
 	testutil.AssertStatus(t, resp, http.StatusOK, http.StatusInternalServerError)
+}
+
+func TestWorkflows(t *testing.T) {
+	app, cookie, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	app.Get("/api/_/responder/workflows", Workflows)
+
+	tests := []struct {
+		name       string
+		query      string
+		wantStatus int
+	}{
+		{"list all workflows", "", http.StatusOK},
+		{"filter by enabled", "?enabled=true", http.StatusOK},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp := testutil.DoRequest(t, app, http.MethodGet, "/api/_/responder/workflows"+tt.query, "", cookie)
+			defer func() { _ = resp.Body.Close() }()
+
+			if resp.StatusCode != tt.wantStatus {
+				t.Fatalf("status = %d, want %d", resp.StatusCode, tt.wantStatus)
+			}
+
+			var res struct {
+				Result struct {
+					Workflows []map[string]any `json:"workflows"`
+					Total     int              `json:"total"`
+				} `json:"result"`
+			}
+			_ = json.NewDecoder(resp.Body).Decode(&res)
+		})
+	}
+}
+
+func TestWorkflowCRUD(t *testing.T) {
+	app, cookie, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	app.Post("/api/_/responder/workflows", CreateWorkflow)
+	app.Get("/api/_/responder/workflows/:workflow_id", GetWorkflow)
+	app.Patch("/api/_/responder/workflows/:workflow_id", UpdateWorkflow)
+	app.Delete("/api/_/responder/workflows/:workflow_id", DeleteWorkflow)
+
+	// Create
+	createPayload := `{
+		"name": "Test Workflow",
+		"description": "Test description",
+		"content": "graph TD\nA --> B",
+		"enabled": true,
+		"tags": "[\"test\"]",
+		"version": "1.0",
+		"author": "admin"
+	}`
+
+	createResp := testutil.DoRequest(t, app, http.MethodPost, "/api/_/responder/workflows", createPayload, cookie)
+
+	if createResp.StatusCode != http.StatusOK {
+		t.Fatalf("create: status = %d", createResp.StatusCode)
+	}
+
+	var createRes struct {
+		Result models.Workflow `json:"result"`
+	}
+	_ = json.NewDecoder(createResp.Body).Decode(&createRes)
+	_ = createResp.Body.Close()
+
+	workflowID := createRes.Result.ID
+	if workflowID == "" {
+		t.Fatal("create returned empty id")
+	}
+
+	// Get
+	getResp := testutil.DoRequest(t, app, http.MethodGet, "/api/_/responder/workflows/"+workflowID, "", cookie)
+	testutil.AssertStatus(t, getResp, http.StatusOK)
+
+	// Update
+	updatePayload := `{
+		"name": "Updated Workflow",
+		"content": "graph TD\nA --> C",
+		"enabled": false
+	}`
+	updateResp := testutil.DoRequest(t, app, http.MethodPatch, "/api/_/responder/workflows/"+workflowID, updatePayload, cookie)
+	testutil.AssertStatus(t, updateResp, http.StatusOK)
+
+	// Delete
+	deleteResp := testutil.DoRequest(t, app, http.MethodDelete, "/api/_/responder/workflows/"+workflowID, "", cookie)
+	testutil.AssertStatus(t, deleteResp, http.StatusOK)
 }

@@ -95,4 +95,10 @@ func ApiPrivateRoutes(c *fiber.App) {
 	responder.Post("/messages", handlers.CreateMessage)
 	responder.Post("/messages/link-contact", handlers.LinkContact)
 	responder.Patch("/messages/:message_id<len(15)>/read", handlers.MarkMessageRead)
+
+	responder.Get("/workflows", handlers.Workflows)
+	responder.Get("/workflows/:workflow_id<len(15)>", handlers.GetWorkflow)
+	responder.Post("/workflows", handlers.CreateWorkflow)
+	responder.Patch("/workflows/:workflow_id<len(15)>", handlers.UpdateWorkflow)
+	responder.Delete("/workflows/:workflow_id<len(15)>", handlers.DeleteWorkflow)
 }

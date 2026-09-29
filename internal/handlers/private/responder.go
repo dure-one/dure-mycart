@@ -5,6 +5,7 @@ import (
 
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/pkg/errors"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/webutil"
 )
@@ -192,4 +193,167 @@ func LinkContact(c fiber.Ctx) error {
 	}
 
 	return webutil.Response(c, fiber.StatusOK, "Contact linked to customer", nil)
+}
+
+// Workflows returns a list of workflows with optional filtering.
+//
+// @Summary      List workflows
+// @Description  Get paginated list of workflows with optional enabled filter
+// @Tags         Responder
+// @Security     BearerAuth
+// @Produce      json
+// @Param        enabled query string false "Filter by enabled status (true/false)"
+// @Param        page query int false "Page number" default(1)
+// @Param        limit query int false "Items per page" default(20)
+// @Success      200 {object} webutil.HTTPResponse "Workflows list"
+// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
+// @Router       /api/_/responder/workflows [get]
+func Workflows(c fiber.Ctx) error {
+	db := queries.DB()
+	log := logging.New()
+
+	p := webutil.ParsePagination(c)
+	filters := make(map[string]string)
+	if enabled := c.Query("enabled"); enabled != "" {
+		filters["enabled"] = enabled
+	}
+
+	workflows, total, err := db.ListWorkflows(c.Context(), filters, p.Limit, p.Offset)
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	return webutil.Response(c, fiber.StatusOK, "Workflows", map[string]any{
+		"workflows": workflows,
+		"total":     total,
+		"page":      p.Page,
+		"limit":     p.Limit,
+	})
+}
+
+// GetWorkflow returns a single workflow by ID.
+//
+// @Summary      Get workflow
+// @Description  Get a single workflow by its ID
+// @Tags         Responder
+// @Security     BearerAuth
+// @Produce      json
+// @Param        workflow_id path string true "Workflow ID"
+// @Success      200 {object} webutil.HTTPResponse{result=models.Workflow} "Workflow details"
+// @Failure      404 {object} webutil.HTTPResponse "Workflow not found"
+// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
+// @Router       /api/_/responder/workflows/{workflow_id} [get]
+func GetWorkflow(c fiber.Ctx) error {
+	workflowID := c.Params("workflow_id")
+	db := queries.DB()
+	log := logging.New()
+
+	workflow, err := db.GetWorkflow(c.Context(), workflowID)
+	if err != nil {
+		if errors.Is(err, errors.ErrNotFound) {
+			return webutil.StatusNotFound(c)
+		}
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	return webutil.Response(c, fiber.StatusOK, "Workflow", workflow)
+}
+
+// CreateWorkflow creates a new workflow.
+//
+// @Summary      Create workflow
+// @Description  Create a new workflow with mermaid content
+// @Tags         Responder
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        request body models.Workflow true "Workflow data"
+// @Success      200 {object} webutil.HTTPResponse{result=models.Workflow} "Created workflow"
+// @Failure      400 {object} webutil.HTTPResponse "Validation error"
+// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
+// @Router       /api/_/responder/workflows [post]
+func CreateWorkflow(c fiber.Ctx) error {
+	db := queries.DB()
+	log := logging.New()
+	workflow := new(models.Workflow)
+
+	if err := c.Bind().Body(workflow); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusBadRequest(c, err.Error())
+	}
+
+	if err := db.CreateWorkflow(c.Context(), workflow); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	return webutil.Response(c, fiber.StatusOK, "Workflow created", workflow)
+}
+
+// UpdateWorkflow updates an existing workflow.
+//
+// @Summary      Update workflow
+// @Description  Update workflow details
+// @Tags         Responder
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        workflow_id path string true "Workflow ID"
+// @Param        request body models.Workflow true "Workflow data"
+// @Success      200 {object} webutil.HTTPResponse "Workflow updated"
+// @Failure      400 {object} webutil.HTTPResponse "Validation error"
+// @Failure      404 {object} webutil.HTTPResponse "Workflow not found"
+// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
+// @Router       /api/_/responder/workflows/{workflow_id} [patch]
+func UpdateWorkflow(c fiber.Ctx) error {
+	workflowID := c.Params("workflow_id")
+	db := queries.DB()
+	log := logging.New()
+	workflow := new(models.Workflow)
+	workflow.ID = workflowID
+
+	if err := c.Bind().Body(workflow); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusBadRequest(c, err.Error())
+	}
+
+	if err := db.UpdateWorkflow(c.Context(), workflow); err != nil {
+		if errors.Is(err, errors.ErrNotFound) {
+			return webutil.StatusNotFound(c)
+		}
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	return webutil.Response(c, fiber.StatusOK, "Workflow updated", nil)
+}
+
+// DeleteWorkflow deletes a workflow by ID.
+//
+// @Summary      Delete workflow
+// @Description  Delete a workflow by its ID
+// @Tags         Responder
+// @Security     BearerAuth
+// @Produce      json
+// @Param        workflow_id path string true "Workflow ID"
+// @Success      200 {object} webutil.HTTPResponse "Workflow deleted"
+// @Failure      404 {object} webutil.HTTPResponse "Workflow not found"
+// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
+// @Router       /api/_/responder/workflows/{workflow_id} [delete]
+func DeleteWorkflow(c fiber.Ctx) error {
+	workflowID := c.Params("workflow_id")
+	db := queries.DB()
+	log := logging.New()
+
+	if err := db.DeleteWorkflow(c.Context(), workflowID); err != nil {
+		if errors.Is(err, errors.ErrNotFound) {
+			return webutil.StatusNotFound(c)
+		}
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	return webutil.Response(c, fiber.StatusOK, "Workflow deleted", nil)
 }
