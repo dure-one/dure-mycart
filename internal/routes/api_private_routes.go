@@ -88,4 +88,11 @@ func ApiPrivateRoutes(c *fiber.App) {
 	customers.Patch("/:customer_id<len(15)>/active", handlers.UpdateCustomerActive)
 	customers.Patch("/:customer_id<len(15)>/password", handlers.UpdateCustomerPassword)
 	customers.Delete("/:customer_id<len(15)>", handlers.DeleteCustomer)
+
+	responder := c.Group("/api/_/responder", middleware.JWTProtected())
+	responder.Get("/messages", handlers.MessageThreads)
+	responder.Get("/messages/:customer_id<len(15)>", handlers.MessagesByCustomer)
+	responder.Post("/messages", handlers.CreateMessage)
+	responder.Post("/messages/link-contact", handlers.LinkContact)
+	responder.Patch("/messages/:message_id<len(15)>/read", handlers.MarkMessageRead)
 }

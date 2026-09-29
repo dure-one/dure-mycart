@@ -182,3 +182,22 @@ func (r *ResponderQueries) ListMessageThreads(ctx context.Context, filters map[s
 
 	return threads, total, nil
 }
+
+// MarkMessageRead updates the read_status of a message
+func (r *ResponderQueries) MarkMessageRead(ctx context.Context, messageID string) error {
+	result, err := r.DB.ExecContext(ctx, `UPDATE message SET read_status = true WHERE id = ?`, messageID)
+	if err != nil {
+		return fmt.Errorf("update read status: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("get rows affected: %w", err)
+	}
+
+	if rows == 0 {
+		return fmt.Errorf("message not found")
+	}
+
+	return nil
+}
