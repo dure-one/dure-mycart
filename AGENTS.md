@@ -9,6 +9,35 @@ touching that subtree.
 
 ---
 
+## 0. Repository Structure
+
+This project maintains a three-tier fork relationship:
+
+| Remote | Repository | Branch | Purpose |
+|--------|------------|--------|---------|
+| upstream | `github.com/shurco/mycart` | `main` | Original myCart project |
+| fork | `github.com/nikescar/mycart` | `main` | Personal fork (syncs from upstream) |
+| fork | `github.com/nikescar/mycart` | `main_dure` | Integration branch |
+| origin | `github.com/dure-one/dure-mycart` | `main` | Team project (production) |
+
+**Branching workflow:**
+- Feature branches: based on `origin/main`
+- Pull requests: target `origin/main`
+- Upstream sync: `upstream/main` → `fork/main` → `fork/main_dure` → `origin/main`
+
+**Current remotes:**
+```bash
+fork    git@github.com:nikescar/mycart.git
+origin  git@github.com:dure-one/dure-mycart.git
+```
+
+Add upstream if not configured:
+```bash
+git remote add upstream git@github.com:shurco/mycart.git
+```
+
+---
+
 ## 1. Orientation
 
 - **Language/runtime:** Go 1.26, SvelteKit (Svelte 5), TailwindCSS v4.
