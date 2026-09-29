@@ -84,7 +84,7 @@
 						<div class="col-interval">
 							<select
 								value={job.interval}
-								on:change={(e) => handleIntervalChange(job, e)}
+								onchange={(e) => handleIntervalChange(job, e)}
 								disabled={!job.enabled}
 							>
 								{#each intervals as interval}
