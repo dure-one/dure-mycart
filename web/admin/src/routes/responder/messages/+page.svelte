@@ -1,21 +1,20 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import Main from '$lib/layouts/Main.svelte'
-	import { PageHeader } from '$lib/components'
-	import ChatPanel from '$lib/components/responder/ChatPanel.svelte'
-	import LinkContactModal from '$lib/components/responder/LinkContactModal.svelte'
+	import { Drawer, DrawerHeader, DrawerFooter, PageHeader, PageState, IconButton } from '$lib/components'
+	import MessageList from '$lib/components/responder/MessageList.svelte'
 	import { translate } from '$lib/i18n'
-	import { loadMessageThreads, loadCustomerMessages } from '$lib/utils/responder'
+	import { loadMessageThreads, loadCustomerMessages, markMessageRead } from '$lib/utils/responder'
+	import { formatDate } from '$lib/utils'
 
 	let t = $derived($translate)
 
 	let threads = $state<any[]>([])
 	let loading = $state(true)
+	let drawerOpen = $state(false)
 	let selectedThread = $state<any | null>(null)
 	let messages = $state<any[]>([])
-	let showLinkModal = $state(false)
 	let channelFilter = $state('')
-	let searchQuery = $state('')
 
 	onMount(async () => {
 		await loadThreads()
@@ -38,7 +37,7 @@
 		}
 	}
 
-	async function selectThread(thread: any) {
+	async function openThread(thread: any) {
 		selectedThread = thread
 		try {
 			const response = await loadCustomerMessages(thread.customer_id)
@@ -48,6 +47,15 @@
 		} catch (err) {
 			console.error('Failed to load messages:', err)
 		}
+		drawerOpen = true
+	}
+
+	function closeDrawer() {
+		drawerOpen = false
+		setTimeout(() => {
+			selectedThread = null
+			messages = []
+		}, 300)
 	}
 
 	async function handleChannelChange(event: Event) {
@@ -55,221 +63,112 @@
 		channelFilter = target.value
 		await loadThreads()
 	}
-
-	let filteredThreads = $derived(
-		threads.filter((thread) => {
-			if (!searchQuery) return true
-			const query = searchQuery.toLowerCase()
-			return (
-				thread.customer_name?.toLowerCase().includes(query) ||
-				thread.last_message?.toLowerCase().includes(query) ||
-				thread.contact_address?.toLowerCase().includes(query)
-			)
-		})
-	)
-
-	function handleLinkContact() {
-		showLinkModal = true
-	}
-
-	async function handleLinkConfirm() {
-		showLinkModal = false
-		await loadThreads()
-		selectedThread = null
-	}
 </script>
 
 <Main>
-	<PageHeader title={t('responder.messages')} />
+	<PageHeader title={t('responder.messages')}>
+		{#snippet actions()}
+			<select value={channelFilter} onchange={handleChannelChange} class="select">
+				<option value="">{t('responder.allChannels')}</option>
+				<option value="xmpp">XMPP</option>
+				<option value="sms">SMS</option>
+			</select>
+		{/snippet}
+	</PageHeader>
 
-	<div class="messages-container">
-		<div class="thread-sidebar">
-			<div class="filters">
-				<input
-					type="text"
-					placeholder={t('responder.searchConversations')}
-					bind:value={searchQuery}
-					class="search-input"
-				/>
-				<select value={channelFilter} onchange={handleChannelChange} class="channel-filter">
-					<option value="">{t('responder.allChannels')}</option>
-					<option value="xmpp">XMPP</option>
-					<option value="sms">SMS</option>
-				</select>
-			</div>
-
-			{#if loading}
-				<div class="loading-state">{t('common.loading')}</div>
-			{:else if filteredThreads.length === 0}
-				<div class="empty-state">{t('responder.noThreads')}</div>
-			{:else}
-				<div class="thread-list">
-					{#each filteredThreads as thread}
-						<div
-							class="thread-item"
-							class:active={selectedThread?.customer_id === thread.customer_id}
-							onclick={() => selectThread(thread)}
-							role="button"
-							tabindex="0"
-							onkeydown={(e) => e.key === 'Enter' && selectThread(thread)}
-						>
-							<div class="thread-header">
-								<span class="customer-name">{thread.customer_name || thread.contact_address}</span>
-								<span class="channel-badge">{thread.channel}</span>
-							</div>
-							<div class="thread-preview">{thread.last_message || t('responder.noMessages')}</div>
-							<div class="thread-meta">
-								<span class="timestamp">{new Date(thread.last_message_at).toLocaleString()}</span>
-								{#if thread.unread_count > 0}
-									<span class="unread-badge">{thread.unread_count}</span>
+	{#if loading}
+		<PageState kind="loading" />
+	{:else if threads.length === 0}
+		<PageState kind="empty" message={t('responder.noThreads')} />
+	{:else}
+		<div class="table-wrap">
+			<table>
+				<thead>
+					<tr>
+						<th>{t('customers.name')}</th>
+						<th class="w-32">{t('responder.allChannels')}</th>
+						<th>{t('responder.noMessages')}</th>
+						<th class="w-48">{t('responder.lastRun')}</th>
+						<th class="w-24"></th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each threads as thread (thread.customer_id)}
+						<tr>
+							<td>
+								<div class="font-medium">{thread.customer_name || thread.contact_address}</div>
+							</td>
+							<td>
+								<span class="badge">{thread.channel}</span>
+							</td>
+							<td>
+								<div class="text-sm text-gray-600 truncate max-w-md">
+									{thread.last_message || '-'}
+								</div>
+							</td>
+							<td>
+								{#if thread.last_message_at}
+									{formatDate(thread.last_message_at)}
+								{:else}
+									-
 								{/if}
-							</div>
-						</div>
+							</td>
+							<td>
+								<div class="flex items-center gap-2">
+									<IconButton ico="chat" label={t('common.edit')} onclick={() => openThread(thread)} />
+								</div>
+							</td>
+						</tr>
 					{/each}
-				</div>
-			{/if}
+				</tbody>
+			</table>
 		</div>
-
-		<div class="chat-container">
-			{#if selectedThread}
-				<ChatPanel
-					{messages}
-					currentCustomer={selectedThread.customer_name || selectedThread.contact_address}
-					onLinkContact={handleLinkContact}
-				/>
-			{:else}
-				<div class="no-selection">{t('responder.selectThread')}</div>
-			{/if}
-		</div>
-	</div>
-
-	{#if showLinkModal && selectedThread}
-		<LinkContactModal
-			contactId={selectedThread.contact_id}
-			currentCustomerId={selectedThread.customer_id}
-			onConfirm={handleLinkConfirm}
-			onCancel={() => (showLinkModal = false)}
-		/>
 	{/if}
 </Main>
 
+{#if drawerOpen && selectedThread}
+	<Drawer isOpen={drawerOpen} onclose={closeDrawer} maxWidth="710px">
+		<DrawerHeader title={selectedThread.customer_name || selectedThread.contact_address} />
+
+		<div class="p-4">
+			<div class="mb-4 text-sm text-gray-600">
+				<div><strong>{t('responder.allChannels')}:</strong> {selectedThread.channel}</div>
+				<div><strong>Contact:</strong> {selectedThread.contact_address}</div>
+			</div>
+
+			<div class="message-list-container">
+				<MessageList {messages} />
+			</div>
+		</div>
+
+		<DrawerFooter onclose={closeDrawer} />
+	</Drawer>
+{/if}
+
 <style>
-	.messages-container {
-		display: grid;
-		grid-template-columns: 350px 1fr;
-		gap: 1rem;
-		height: calc(100vh - 200px);
-		min-height: 600px;
-	}
-
-	.thread-sidebar {
-		display: flex;
-		flex-direction: column;
-		border-right: 1px solid #e5e7eb;
-		overflow: hidden;
-	}
-
-	.filters {
-		padding: 1rem;
-		border-bottom: 1px solid #e5e7eb;
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.search-input,
-	.channel-filter {
-		padding: 0.5rem;
+	.select {
+		padding: 0.5rem 2rem 0.5rem 0.75rem;
 		border: 1px solid #d1d5db;
-		border-radius: 0.25rem;
+		border-radius: 0.375rem;
 		font-size: 0.875rem;
+		background-color: white;
 	}
 
-	.thread-list {
-		flex: 1;
-		overflow-y: auto;
-	}
-
-	.thread-item {
-		padding: 1rem;
-		border-bottom: 1px solid #f3f4f6;
-		cursor: pointer;
-		transition: background-color 0.15s;
-	}
-
-	.thread-item:hover {
-		background-color: #f9fafb;
-	}
-
-	.thread-item.active {
-		background-color: #eff6ff;
-		border-left: 3px solid #3b82f6;
-	}
-
-	.thread-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 0.25rem;
-	}
-
-	.customer-name {
-		font-weight: 600;
-		font-size: 0.875rem;
-	}
-
-	.channel-badge {
+	.badge {
+		display: inline-block;
+		padding: 0.25rem 0.5rem;
 		font-size: 0.75rem;
-		padding: 0.125rem 0.5rem;
-		background-color: #e5e7eb;
+		font-weight: 500;
 		border-radius: 0.25rem;
+		background-color: #e5e7eb;
 		text-transform: uppercase;
 	}
 
-	.thread-preview {
-		font-size: 0.875rem;
-		color: #6b7280;
-		margin-bottom: 0.25rem;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.thread-meta {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		font-size: 0.75rem;
-		color: #9ca3af;
-	}
-
-	.unread-badge {
-		background-color: #3b82f6;
-		color: white;
-		padding: 0.125rem 0.375rem;
-		border-radius: 0.75rem;
-		font-weight: 600;
-	}
-
-	.chat-container {
-		display: flex;
-		flex-direction: column;
-		overflow: hidden;
-	}
-
-	.no-selection {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		height: 100%;
-		color: #9ca3af;
-		font-size: 1rem;
-	}
-
-	.loading-state,
-	.empty-state {
-		padding: 2rem;
-		text-align: center;
-		color: #6b7280;
+	.message-list-container {
+		max-height: 500px;
+		overflow-y: auto;
+		border: 1px solid #e5e7eb;
+		border-radius: 0.375rem;
+		padding: 1rem;
 	}
 </style>
