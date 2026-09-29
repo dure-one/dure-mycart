@@ -29,10 +29,10 @@ type Message struct {
 // MessageThread is a materialized view of message history per customer
 type MessageThread struct {
 	Core
-	CustomerID         string    `json:"customer_id"`
-	LastMessageAt      time.Time `json:"last_message_at"`
-	LastMessagePreview string    `json:"last_message_preview"`
-	UnreadCount        int       `json:"unread_count"`
+	CustomerID         string `json:"customer_id"`
+	LastMessageAt      int64  `json:"last_message_at"`
+	LastMessagePreview string `json:"last_message_preview"`
+	UnreadCount        int    `json:"unread_count"`
 }
 
 // Workflow is a mermaid markdown documentation flow
@@ -109,7 +109,7 @@ type ThreadListItem struct {
 	CustomerID         string            `json:"customer_id"`
 	CustomerName       string            `json:"customer_name"`
 	CustomerEmail      string            `json:"customer_email"`
-	LastMessageAt      time.Time         `json:"last_message_at"`
+	LastMessageAt      int64             `json:"last_message_at"`
 	LastMessagePreview string            `json:"last_message_preview"`
 	UnreadCount        int               `json:"unread_count"`
 	Contacts           []CustomerContact `json:"contacts"`
