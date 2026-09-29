@@ -6,6 +6,7 @@ on:
     # the tag object fails with: "git tag … was not made against commit …".
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
    contents: write # needed to write releases

@@ -2,13 +2,18 @@ name: "analyze"
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
+      - test
+    tags:
+      - 'v*'
   pull_request:
     branches: [ "main" ]
     paths-ignore:
       - '**.md'
   schedule:
     - cron: '34 10 * * 2'
+  workflow_dispatch:
 
 jobs:
   cancel-previous-runs:
@@ -20,11 +25,36 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
+  check-changes:
+    name: Check file changes
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.filter.outputs.go }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+    - uses: actions/checkout@v7
+    - uses: dorny/paths-filter@v3
+      id: filter
+      with:
+        filters: |
+          go:
+            - '**.go'
+            - 'go.mod'
+            - 'go.sum'
+            - 'pkg/**'
+            - 'internal/**'
+            - 'cmd/**'
+          web:
+            - 'web/admin/**'
+            - 'web/site/**'
+            - '**/package.json'
+            - '**/bun.lockb'
+
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
     if: "!contains(github.event.commits[0].message, '[skip ci]') && !contains(github.event.commits[0].message, '[ci skip]')"
-    needs: cancel-previous-runs
+    needs: [cancel-previous-runs, check-changes]
     permissions:
       actions: read
       contents: read
@@ -34,6 +64,9 @@ jobs:
       fail-fast: false
       matrix:
         language: [ 'go', 'javascript-typescript' ]
+        exclude:
+          - language: ${{ needs.check-changes.outputs.go != 'true' && 'go' || 'none' }}
+          - language: ${{ needs.check-changes.outputs.web != 'true' && 'javascript-typescript' || 'none' }}
 
     steps:
     - name: Checkout repository

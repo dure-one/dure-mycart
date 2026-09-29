@@ -4,7 +4,9 @@ on:
   push:
     branches:
       - main
-      - features/goswag
+      - test
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
