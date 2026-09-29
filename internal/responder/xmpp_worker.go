@@ -2,12 +2,12 @@ package responder
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/xmppo/go-xmpp"
+	xmpp "github.com/meszmate/xmpp-go"
+	"github.com/meszmate/xmpp-go/jid"
 
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/queries"
@@ -17,7 +17,7 @@ import (
 type XMPPWorker struct {
 	settings *models.ResponderSettings
 	db       *queries.Base
-	conn     *xmpp.Client
+	client   *xmpp.Client
 	lastSync time.Time
 }
 
@@ -56,31 +56,46 @@ func (w *XMPPWorker) Start(ctx context.Context) error {
 	}
 }
 
+// extractLocal extracts the local part from a full JID (user@domain → user)
+func extractLocal(jid string) string {
+	if idx := strings.Index(jid, "@"); idx > 0 {
+		return jid[:idx]
+	}
+	return jid
+}
+
 // connect establishes XMPP connection
 func (w *XMPPWorker) connect() error {
-	options := xmpp.Options{
-		Host:     fmt.Sprintf("%s:%d", w.settings.XMPPServer, w.settings.XMPPPort),
-		User:     w.settings.XMPPJID,
-		Password: w.settings.XMPPPassword,
-		NoTLS:    false,
-		TLSConfig: &tls.Config{
-			ServerName: w.settings.XMPPServer,
-		},
+	// Build JID from settings
+	userJID, err := jid.New(extractLocal(w.settings.XMPPJID), w.settings.XMPPServer, "")
+	if err != nil {
+		return fmt.Errorf("parse JID: %w", err)
 	}
 
-	client, err := options.NewClient()
+	// Create client with TLS (enabled by default)
+	client, err := xmpp.NewClient(
+		userJID,
+		w.settings.XMPPPassword,
+		xmpp.WithConnectAddr(fmt.Sprintf("%s:%d", w.settings.XMPPServer, w.settings.XMPPPort)),
+	)
 	if err != nil {
 		return fmt.Errorf("new client: %w", err)
 	}
 
-	w.conn = client
+	// Connect and authenticate
+	ctx := context.Background()
+	if err := client.Connect(ctx); err != nil {
+		return fmt.Errorf("connect to %s:%d: %w", w.settings.XMPPServer, w.settings.XMPPPort, err)
+	}
+
+	w.client = client
 	return nil
 }
 
 // disconnect closes the XMPP connection
 func (w *XMPPWorker) disconnect() {
-	if w.conn != nil {
-		_ = w.conn.Close()
+	if w.client != nil {
+		_ = w.client.Close()
 	}
 }
 

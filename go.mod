@@ -14,6 +14,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/gosimple/slug v1.15.0
 	github.com/jackc/pgx/v5 v5.11.0
+	github.com/meszmate/xmpp-go v0.0.0-20260706123516-77fa5101eb64
 	github.com/peterldowns/pgtestdb v0.1.1
 	github.com/peterldowns/pgtestdb/migrators/goosemigrator v0.1.1
 	github.com/pressly/goose/v3 v3.27.3
@@ -24,7 +25,6 @@ require (
 	github.com/wenlng/go-captcha-assets v1.0.7
 	github.com/wenlng/go-captcha/v2 v2.0.5
 	github.com/xhit/go-simple-mail/v2 v2.16.0
-	github.com/xmppo/go-xmpp v0.3.7
 	golang.org/x/crypto v0.57.0
 	modernc.org/sqlite v1.57.0
 )
