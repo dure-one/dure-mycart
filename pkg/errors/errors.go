@@ -20,6 +20,7 @@ const (
 
 	MsgCustomerNotFound   = "customer not found"
 	MsgCustomerEmailTaken = "customer email already registered"
+	MsgContactNotFound    = "contact not found"
 )
 
 var (
@@ -38,4 +39,5 @@ var (
 
 	ErrCustomerNotFound   = errors.New(MsgCustomerNotFound)
 	ErrCustomerEmailTaken = errors.New(MsgCustomerEmailTaken)
+	ErrContactNotFound    = errors.New(MsgContactNotFound)
 )
