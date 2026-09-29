@@ -24,6 +24,7 @@ require (
 	github.com/wenlng/go-captcha-assets v1.0.7
 	github.com/wenlng/go-captcha/v2 v2.0.5
 	github.com/xhit/go-simple-mail/v2 v2.16.0
+	github.com/xmppo/go-xmpp v0.3.7
 	golang.org/x/crypto v0.57.0
 	modernc.org/sqlite v1.57.0
 )
