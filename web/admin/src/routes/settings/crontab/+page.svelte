@@ -99,7 +99,7 @@
 								<input
 									type="checkbox"
 									checked={job.enabled}
-									on:change={() => handleToggle(job)}
+									onchange={() => handleToggle(job)}
 								/>
 								<span class="slider"></span>
 							</label>

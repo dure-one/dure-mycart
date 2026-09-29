@@ -3,7 +3,7 @@
 	import Main from '$lib/layouts/Main.svelte'
 	import { Drawer, DrawerHeader, DrawerFooter, PageHeader, PageState, IconButton, FormInput, FormTextarea, FormGroup } from '$lib/components'
 	import { translate } from '$lib/i18n'
-	import { loadWorkflows, saveWorkflow, deleteWorkflow } from '$lib/utils/responder'
+	import { loadWorkflows as loadWorkflowsApi, saveWorkflow, deleteWorkflow } from '$lib/utils/responder'
 	import { formatDate, confirmDelete, showMessage } from '$lib/utils'
 	import { DRAWER_CLOSE_DELAY_MS } from '$lib/constants/ui'
 	import { createDelayedReset } from '$lib/utils/delayedReset'
@@ -35,7 +35,7 @@
 	async function loadWorkflows() {
 		loading = true
 		try {
-			const response = await loadWorkflows()
+			const response = await loadWorkflowsApi()
 			if (response.success && response.result) {
 				workflows = response.result.workflows || []
 			}

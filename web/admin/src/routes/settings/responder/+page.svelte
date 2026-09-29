@@ -63,7 +63,7 @@
 		<h2 class="text-lg font-medium mb-1">{t('responder.xmppConfiguration')}</h2>
 		<p class="text-sm text-gray-600 mb-4">{t('responder.xmppConfigDesc')}</p>
 
-		<form on:submit|preventDefault={handleSave} class="max-w-2xl space-y-4">
+		<form onsubmit={(e) => { e.preventDefault(); handleSave() }} class="max-w-2xl space-y-4">
 			<FormInput
 				id="xmpp_jid"
 				title={t('responder.xmppJid')}
