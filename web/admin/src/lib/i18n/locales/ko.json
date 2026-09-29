@@ -34,11 +34,11 @@
     "customers": "고객",
     "pages": "페이지",
     "settings": "설정",
-    "responder": "응답자",
+    "responder": "응답기",
     "responderMessages": "메시지",
     "responderWorkflows": "워크플로우",
     "crontab": "예약 작업",
-    "responderSettings": "응답자 설정"
+    "responderSettings": "응답기 설정"
   },
   "settings": {
     "title": "설정",
@@ -497,10 +497,10 @@
     "clearFormatting": "서식 지우기"
   },
   "responder": {
-    "title": "응답자",
+    "title": "응답기",
     "messages": "메시지",
     "workflows": "워크플로우",
-    "settings": "응답자 설정",
+    "settings": "응답기 설정",
     "noThreads": "아직 대화가 없습니다",
     "noMessages": "메시지 없음",
     "selectThread": "메시지를 보려면 대화를 선택하세요",
