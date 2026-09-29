@@ -68,7 +68,7 @@
     { name: 'carts', path: `${base}/carts`, meta: { ico: 'cart', label: () => t('menu.carts') } },
     { name: 'customers', path: `${base}/customers`, meta: { ico: 'user-group', label: () => t('menu.customers') } },
     { name: 'pages', path: `${base}/pages`, meta: { ico: 'docs', label: () => t('menu.pages') } },
-    { name: 'responder', path: `${base}/responder/messages`, meta: { ico: 'chat', label: () => 'Responder' } },
+    { name: 'responder', path: `${base}/responder/messages`, meta: { ico: 'chat', label: () => t('menu.responder') } },
     { name: 'settings', path: `${base}/settings`, meta: { ico: 'booth', divider: true, label: () => t('menu.settings') } }
   ])
 
@@ -88,14 +88,14 @@
         { name: 'settingsBranding', path: `${base}/settings/branding`, meta: { ico: 'pencil', title: () => t('settings.branding') } },
         { name: 'settingsSocials', path: `${base}/settings/socials`, meta: { ico: 'user-group', title: () => t('settings.social') } },
         { name: 'settingsMail', path: `${base}/settings/mail`, meta: { ico: 'at-symbol', title: () => t('settings.mail') } },
-        { name: 'settingsResponder', path: `${base}/settings/responder`, meta: { ico: 'chat', title: () => 'Responder' } },
-        { name: 'settingsCrontab', path: `${base}/settings/crontab`, meta: { ico: 'clock', title: () => 'Crontab Jobs' } }
+        { name: 'settingsResponder', path: `${base}/settings/responder`, meta: { ico: 'chat', title: () => t('menu.responderSettings') } },
+        { name: 'settingsCrontab', path: `${base}/settings/crontab`, meta: { ico: 'clock', title: () => t('menu.crontab') } }
       ]
     }
     if (currentRoute?.includes('/responder')) {
       return [
-        { name: 'responderMessages', path: `${base}/responder/messages`, meta: { ico: 'chat', title: () => 'Messages' } },
-        { name: 'responderWorkflows', path: `${base}/responder/workflows`, meta: { ico: 'docs', title: () => 'Workflows' } }
+        { name: 'responderMessages', path: `${base}/responder/messages`, meta: { ico: 'chat', title: () => t('menu.responderMessages') } },
+        { name: 'responderWorkflows', path: `${base}/responder/workflows`, meta: { ico: 'docs', title: () => t('menu.responderWorkflows') } }
       ]
     }
     return []
