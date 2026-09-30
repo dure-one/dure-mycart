@@ -101,3 +101,4 @@ Makefile
 .env
 mycart
 mycart-sqlc
+*.core

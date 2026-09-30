@@ -117,6 +117,38 @@ docker run --name mycart --restart unless-stopped -p 8080:8080 \
 
 ---
 
+## Optional sqlc Support
+
+myCart supports two SQL backends (choose at build time):
+
+1. **Raw SQL (default)** - Hand-written queries, fast builds
+2. **sqlc (optional)** - Compile-time type-safe queries
+
+Both support SQLite + PostgreSQL and pass identical tests.
+
+### Quick Start
+
+```bash
+# Install sqlc
+make install-sqlc
+
+# Generate type-safe code from SQL
+make sqlc-generate
+
+# Build with sqlc backend
+make build-sqlc
+
+# Test all combinations (raw+sqlc × SQLite+PostgreSQL)
+make test-queries-all
+```
+
+**See [docs/optional_sqlc_support.md](docs/optional_sqlc_support.md) for:**
+- When to use sqlc vs raw SQL
+- Adding new queries
+- PostgreSQL test setup
+
+---
+
 ## First-time Setup
 
 Visit http://localhost:8080/_/install or run:

@@ -93,6 +93,7 @@ func main() {
 	rootCmd.AddCommand(cmdUpdate())
 	rootCmd.AddCommand(cmdMigrate())
 	rootCmd.AddCommand(cmdDB())
+	rootCmd.AddCommand(cmdCronRun())
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
@@ -391,6 +392,18 @@ func cmdMigrate() *cobra.Command {
 		Short: "Migrate on the latest version of database schema",
 		Run: func(_ *cobra.Command, _ []string) {
 			handleCommandError(app.Migrate(resolveDB()))
+		},
+	}
+}
+
+// cmdCronRun creates and returns the cron-run command.
+func cmdCronRun() *cobra.Command {
+	return &cobra.Command{
+		Use:   "cron-run [job_type]",
+		Short: "Run a specific cron job (called by system crontab)",
+		Args:  cobra.ExactArgs(1),
+		Run: func(_ *cobra.Command, args []string) {
+			handleCommandError(app.RunCronJob(resolveDB(), args[0]))
 		},
 	}
 }

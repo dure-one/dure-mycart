@@ -28,19 +28,21 @@ type Base struct {
 	ProductQueries
 	CartQueries
 	CustomerQueries
+	ResponderQueries
 }
 
 // NewBase wires every query group to conn.
 func NewBase(conn *database.Conn) *Base {
 	return &Base{
 		conn:            conn,
-		AuthQueries:     AuthQueries{DB: conn},
-		InstallQueries:  InstallQueries{DB: conn},
-		SettingQueries:  SettingQueries{DB: conn},
-		PageQueries:     PageQueries{DB: conn},
-		ProductQueries:  ProductQueries{DB: conn},
-		CartQueries:     CartQueries{DB: conn},
-		CustomerQueries: CustomerQueries{DB: conn},
+		AuthQueries:      AuthQueries{DB: conn},
+		InstallQueries:   InstallQueries{DB: conn},
+		SettingQueries:   SettingQueries{DB: conn},
+		PageQueries:      PageQueries{DB: conn},
+		ProductQueries:   ProductQueries{DB: conn},
+		CartQueries:      CartQueries{DB: conn},
+		CustomerQueries:  CustomerQueries{DB: conn},
+		ResponderQueries: ResponderQueries{DB: conn},
 	}
 }
 

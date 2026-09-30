@@ -68,6 +68,7 @@
     { name: 'carts', path: `${base}/carts`, meta: { ico: 'cart', label: () => t('menu.carts') } },
     { name: 'customers', path: `${base}/customers`, meta: { ico: 'user-group', label: () => t('menu.customers') } },
     { name: 'pages', path: `${base}/pages`, meta: { ico: 'docs', label: () => t('menu.pages') } },
+    { name: 'responder', path: `${base}/responder/messages`, meta: { ico: 'chat', label: () => t('menu.responder') } },
     { name: 'settings', path: `${base}/settings`, meta: { ico: 'booth', divider: true, label: () => t('menu.settings') } }
   ])
 
@@ -86,7 +87,15 @@
         { name: 'settingsAccount', path: `${base}/settings/account`, meta: { ico: 'user', title: () => t('settings.customer') } },
         { name: 'settingsBranding', path: `${base}/settings/branding`, meta: { ico: 'pencil', title: () => t('settings.branding') } },
         { name: 'settingsSocials', path: `${base}/settings/socials`, meta: { ico: 'user-group', title: () => t('settings.social') } },
-        { name: 'settingsMail', path: `${base}/settings/mail`, meta: { ico: 'at-symbol', title: () => t('settings.mail') } }
+        { name: 'settingsMail', path: `${base}/settings/mail`, meta: { ico: 'at-symbol', title: () => t('settings.mail') } },
+        { name: 'settingsResponder', path: `${base}/settings/responder`, meta: { ico: 'chat', title: () => t('menu.responder') } },
+        { name: 'settingsCrontab', path: `${base}/settings/crontab`, meta: { ico: 'clock', title: () => t('menu.crontab') } }
+      ]
+    }
+    if (currentRoute?.includes('/responder')) {
+      return [
+        { name: 'responderMessages', path: `${base}/responder/messages`, meta: { ico: 'chat', title: () => t('menu.responderMessages') } },
+        { name: 'responderWorkflows', path: `${base}/responder/workflows`, meta: { ico: 'docs', title: () => t('menu.responderWorkflows') } }
       ]
     }
     return []
@@ -115,7 +124,8 @@
                 href={item.path}
                 data-sveltekit-preload-data="hover"
                 class="group relative flex justify-center rounded px-2 py-1.5 {currentRoute === item.path ||
-                (item.path === `${base}/settings` && currentRoute?.startsWith(`${base}/settings`))
+                (item.path === `${base}/settings` && currentRoute?.startsWith(`${base}/settings`)) ||
+                (item.path.includes('/responder/') && currentRoute?.startsWith(`${base}/responder`))
                   ? 'bg-green-100 text-green-700'
                   : 'text-gray-500 hover:bg-gray-200 hover:text-gray-700'}"
               >
@@ -154,7 +164,7 @@
   {#if mainMenuSections.length}
     <div class="h-screen w-52 flex-col justify-between border-e border-e-gray-200 bg-white px-2">
       <div class="px-2 py-5">
-        <h1><span class="text-gray-300">{t('settings.title')}</span></h1>
+        <h1><span class="text-gray-300">{currentRoute?.includes('/settings') ? t('settings.title') : t('menu.responder')}</span></h1>
       </div>
       <ul class="mt-1.5 space-y-1">
         {#each mainMenuSections as item (item.name)}
