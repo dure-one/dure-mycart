@@ -44,11 +44,9 @@ func ComparePasswords(hashedPwd, inputPwd string) bool {
 // the input. It is used to materialize non-password secrets (e.g. JWT signing
 // keys bootstrapped during install).
 //
-// Construction: bcrypt(input, DefaultCost) -> hex.
-// bcrypt supplies a random salt (128 bits); we then hex-encode the bcrypt output
-// for a stable string representation suitable for storage/use as a secret token.
-// We intentionally avoid weak hashes (for example MD5/SHA-1) and also avoid
-// unnecessary fast-hash post-processing of password-derived material.
+// Construction: bcrypt(input, DefaultCost) -> hex encoding.
+// bcrypt supplies a random salt (128 bits) and produces a cryptographically
+// secure hash that is hex-encoded for use as a secret.
 func NewToken(text string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(text), bcryptCost)
 	if err != nil {

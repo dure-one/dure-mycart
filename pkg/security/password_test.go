@@ -41,7 +41,7 @@ func TestNewToken_IsHexAndStable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewToken: %v", err)
 	}
-	// bcrypt output (~60 bytes) hex-encoded = 120 chars.
+	// bcrypt hex-encoded = 120 chars.
 	if len(tok) != 120 {
 		t.Fatalf("token length = %d, want 120", len(tok))
 	}
