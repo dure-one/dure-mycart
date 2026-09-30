@@ -25,6 +25,8 @@ builds:
     goarch:
       - amd64
       - arm64
+    tags:
+      - sqlc
     ldflags:
       - -s -w
       - -X "main.version=v{{.Version}}"

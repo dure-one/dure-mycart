@@ -25,7 +25,7 @@ Access at http://localhost:8080
 
 ```bash
 # Download latest release
-curl -L https://github.com/dure-one/dure-mycart/releases/latest/download/mycart-linux-amd64 -o mycart
+curl -L https://github.com/dure-one/dure-mycart/releases/latest/download/dure-mycart-linux-amd64 -o mycart
 chmod +x mycart
 
 # Initialize
@@ -40,9 +40,9 @@ chmod +x mycart
 #### Without Prosody
 
 ```bash
-docker run -v ./lc_base:/lc_base -v ./lc_digitals:/lc_digitals -v ./lc_uploads:/lc_uploads --rm shurco/mycart:latest init
+docker run -v ./lc_base:/lc_base -v ./lc_digitals:/lc_digitals -v ./lc_uploads:/lc_uploads --rm ghcr.io/dure-one/dure-mycart:latest init
 
-docker run --name mycart --restart unless-stopped -p 8080:8080 -v ./lc_base:/lc_base -v ./lc_digitals:/lc_digitals -v ./lc_uploads:/lc_uploads shurco/mycart:latest
+docker run --name mycart --restart unless-stopped -p 8080:8080 -v ./lc_base:/lc_base -v ./lc_digitals:/lc_digitals -v ./lc_uploads:/lc_uploads ghcr.io/dure-one/dure-mycart:latest
 ```
 
 **Image**: Built from `Dockerfile` → `ghcr.io/dure-one/dure-mycart:latest`
@@ -112,7 +112,7 @@ docker run --name mycart --restart unless-stopped -p 8080:8080 \
   -v ./lc_base:/lc_base \
   -v ./lc_digitals:/lc_digitals \
   -v ./lc_uploads:/lc_uploads \
-  shurco/mycart:latest
+  ghcr.io/dure-one/dure-mycart:latest
 ```
 
 ---

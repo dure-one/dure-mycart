@@ -57,6 +57,7 @@ COPY --from=frontend-builder /app/web/site/build ./web/site/build
 # Build the binary
 ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build \
+    -tags sqlc \
     -ldflags="-w -s" \
     -o /go/bin/mycart \
     ./cmd/main.go
