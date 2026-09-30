@@ -102,3 +102,9 @@ Makefile
 mycart
 mycart-sqlc
 *.core
+
+# Build artifacts and dependencies
+docker/prosody-modules/
+prosody-modules/
+generated/
+bun.lock
