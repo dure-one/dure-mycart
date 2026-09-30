@@ -43,7 +43,7 @@
     "@types/nprogress": "^0.2.3",
     "@vitest/browser": "^4.1.11",
     "@vitest/browser-webdriverio": "^4.1.11",
-    "@vitest/ui": "^4.1.11",
+    "@vitest/ui": "^5.0.2",
     "autoprefixer": "^10.5.4",
     "happy-dom": "^20.11.6",
     "jsdom": "^30.0.1",
