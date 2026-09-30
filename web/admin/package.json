@@ -20,6 +20,7 @@
   },
   "overrides": {
     "cookie": "^0.7.0",
+    "dompurify": "^3.4.16",
     "extract-zip": "github:AIEpisteme/extract-zip"
   },
   "dependencies": {
