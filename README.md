@@ -142,7 +142,7 @@ make build-sqlc
 make test-queries-all
 ```
 
-**See [docs/optional_sqlc_support.md](docs/optional_sqlc_support.md) for:**
+**See [./optional_sqlc_support.md](./optional_sqlc_support.md) for:**
 - When to use sqlc vs raw SQL
 - Adding new queries
 - PostgreSQL test setup
