@@ -508,6 +508,7 @@
     "allChannels": "모든 채널",
     "xmppConfiguration": "XMPP 설정",
     "xmppConfigDesc": "MAM을 통한 메시지 동기화를 위한 XMPP 연결 설정",
+    "useXmppService": "XMPP 서비스 사용",
     "xmppJid": "XMPP JID",
     "xmppPassword": "XMPP 비밀번호",
     "xmppServer": "XMPP 서버",
@@ -542,6 +543,14 @@
     "enabled": "활성화",
     "never": "없음",
     "loadingJobs": "작업 로딩 중...",
-    "noJobs": "예약된 작업이 없습니다"
+    "noJobs": "예약된 작업이 없습니다",
+    "useService": "시스템 크론탭 사용",
+    "serviceEnabled": "시스템 크론탭이 활성화되었습니다",
+    "serviceDisabled": "시스템 크론탭이 비활성화되었습니다",
+    "serviceEnabledDesc": "작업이 시스템 크론탭에 설치되어 자동으로 실행됩니다",
+    "serviceDisabledDesc": "작업이 데이터베이스에만 저장되어 있고 시스템 크론탭에서 실행되지 않습니다",
+    "failedToEnable": "시스템 크론탭 활성화 실패",
+    "failedToDisable": "시스템 크론탭 비활성화 실패",
+    "operationFailed": "크론탭 작업 실패"
   }
 }

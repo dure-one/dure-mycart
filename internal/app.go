@@ -22,6 +22,7 @@ import (
 
 	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/middleware"
+	"github.com/shurco/mycart/migrations"
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/queries"
 	"github.com/shurco/mycart/internal/responder"
@@ -442,4 +443,37 @@ func startResponderWorkers(ctx context.Context) {
 			}
 		}
 	}()
+}
+
+// RunCronJob executes a single cron job and exits (called by system crontab).
+func RunCronJob(dbcfg database.Config, jobType string) error {
+	ctx := context.Background()
+
+	if err := queries.New(dbcfg, migrations.Embed()); err != nil {
+		return fmt.Errorf("database init: %w", err)
+	}
+
+	db := queries.DB()
+
+	// Load responder settings
+	var settings models.ResponderSettings
+	if _, err := db.GetSettingByGroup(ctx, &settings); err != nil {
+		return fmt.Errorf("load settings: %w", err)
+	}
+
+	// Create XMPP worker if settings are configured
+	var xmppWorker *responder.XMPPWorker
+	if settings.XMPPJID != "" && settings.XMPPPassword != "" {
+		xmppWorker = responder.NewXMPPWorker(&settings, db)
+	}
+
+	// Create runner and execute the specific job
+	cronRunner := responder.NewCronRunner(db, xmppWorker)
+
+	// Execute job using the runner's method
+	if err := cronRunner.ExecuteJob(ctx, jobType); err != nil {
+		return fmt.Errorf("execute job %s: %w", jobType, err)
+	}
+
+	return nil
 }

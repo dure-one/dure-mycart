@@ -55,7 +55,7 @@ func (r *CronRunner) checkAndRunJobs(ctx context.Context) error {
 			continue
 		}
 
-		if err := r.executeJob(ctx, job.JobType); err != nil {
+		if err := r.ExecuteJob(ctx, job.JobType); err != nil {
 			// ponytail: log error but continue - one job failure shouldn't stop all jobs
 			continue
 		}
@@ -106,8 +106,8 @@ func (r *CronRunner) parseInterval(interval string) time.Duration {
 	}
 }
 
-// executeJob runs a specific job type
-func (r *CronRunner) executeJob(ctx context.Context, jobType string) error {
+// ExecuteJob runs a specific job type
+func (r *CronRunner) ExecuteJob(ctx context.Context, jobType string) error {
 	switch jobType {
 	case "xmpp_check":
 		if r.xmppWorker == nil {

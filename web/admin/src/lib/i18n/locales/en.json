@@ -521,6 +521,7 @@
     "allChannels": "All Channels",
     "xmppConfiguration": "XMPP Configuration",
     "xmppConfigDesc": "Configure XMPP connection for message synchronization via MAM",
+    "useXmppService": "Use XMPP Service",
     "xmppJid": "XMPP JID",
     "xmppPassword": "XMPP Password",
     "xmppServer": "XMPP Server",
@@ -555,6 +556,14 @@
     "enabled": "Enabled",
     "never": "Never",
     "loadingJobs": "Loading jobs...",
-    "noJobs": "No scheduled jobs configured"
+    "noJobs": "No scheduled jobs configured",
+    "useService": "Use System Crontab",
+    "serviceEnabled": "System crontab enabled successfully",
+    "serviceDisabled": "System crontab disabled successfully",
+    "serviceEnabledDesc": "Jobs are installed in system crontab and will run automatically",
+    "serviceDisabledDesc": "Jobs are only stored in database, not running in system crontab",
+    "failedToEnable": "Failed to enable system crontab",
+    "failedToDisable": "Failed to disable system crontab",
+    "operationFailed": "Crontab operation failed"
   }
 }

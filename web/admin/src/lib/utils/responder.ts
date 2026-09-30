@@ -85,3 +85,15 @@ export async function saveResponderSettings(settings: {
 export async function testXMPPConnection() {
 	return await apiPost('/api/_/settings/responder/test-connection', {})
 }
+
+export async function checkCrontabStatus() {
+	return await apiGet('/api/_/settings/crontab/status')
+}
+
+export async function installCrontab() {
+	return await apiPost('/api/_/settings/crontab/install', {})
+}
+
+export async function uninstallCrontab() {
+	return await apiPost('/api/_/settings/crontab/uninstall', {})
+}

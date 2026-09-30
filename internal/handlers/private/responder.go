@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"os"
+
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/shurco/mycart/internal/models"
@@ -524,4 +526,105 @@ func XMPPConnectionTest(c fiber.Ctx) error {
 	return webutil.Response(c, fiber.StatusOK, "XMPP connection successful", map[string]any{
 		"success": true,
 	})
+}
+
+// CheckCrontabStatus checks if system crontab is installed.
+//
+// @Summary      Check crontab status
+// @Description  Check if mycart system crontab is installed
+// @Tags         Responder
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200 {object} webutil.HTTPResponse "Crontab status"
+// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
+// @Router       /api/_/settings/crontab/status [get]
+func CheckCrontabStatus(c fiber.Ctx) error {
+	log := logging.New()
+
+	binaryPath := getBinaryPath()
+	manager := responder.NewCrontabManager(binaryPath)
+
+	installed, err := manager.IsInstalled(c.Context())
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	return webutil.Response(c, fiber.StatusOK, "Crontab status", map[string]any{
+		"installed": installed,
+	})
+}
+
+// InstallCrontab installs system crontab with enabled jobs.
+//
+// @Summary      Install system crontab
+// @Description  Install mycart crontab entries for enabled jobs
+// @Tags         Responder
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200 {object} webutil.HTTPResponse "Crontab installed"
+// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
+// @Router       /api/_/settings/crontab/install [post]
+func InstallCrontab(c fiber.Ctx) error {
+	db := queries.DB()
+	log := logging.New()
+
+	jobs, err := db.ListCrontabJobs(c.Context())
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	binaryPath := getBinaryPath()
+	manager := responder.NewCrontabManager(binaryPath)
+
+	if err := manager.Install(c.Context(), jobs); err != nil {
+		log.ErrorStack(err)
+		return webutil.Response(c, fiber.StatusOK, "Failed to install crontab", map[string]any{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+
+	return webutil.Response(c, fiber.StatusOK, "Crontab installed successfully", map[string]any{
+		"success": true,
+	})
+}
+
+// UninstallCrontab removes mycart system crontab entries.
+//
+// @Summary      Uninstall system crontab
+// @Description  Remove mycart crontab entries from system
+// @Tags         Responder
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200 {object} webutil.HTTPResponse "Crontab uninstalled"
+// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
+// @Router       /api/_/settings/crontab/uninstall [post]
+func UninstallCrontab(c fiber.Ctx) error {
+	log := logging.New()
+
+	binaryPath := getBinaryPath()
+	manager := responder.NewCrontabManager(binaryPath)
+
+	if err := manager.Uninstall(c.Context()); err != nil {
+		log.ErrorStack(err)
+		return webutil.Response(c, fiber.StatusOK, "Failed to uninstall crontab", map[string]any{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+
+	return webutil.Response(c, fiber.StatusOK, "Crontab uninstalled successfully", map[string]any{
+		"success": true,
+	})
+}
+
+// getBinaryPath returns the path to the current executable
+func getBinaryPath() string {
+	executable, err := os.Executable()
+	if err != nil {
+		return "mycart" // fallback
+	}
+	return executable
 }

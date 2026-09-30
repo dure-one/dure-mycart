@@ -1,19 +1,22 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import Main from '$lib/layouts/Main.svelte'
-	import { PageHeader, PageState, Section } from '$lib/components'
-	import { loadCrontabJobs, updateCrontabJob } from '$lib/utils/responder'
+	import { PageHeader, PageState, Section, FormToggle } from '$lib/components'
+	import { loadCrontabJobs, updateCrontabJob, checkCrontabStatus, installCrontab, uninstallCrontab } from '$lib/utils/responder'
 	import { translate } from '$lib/i18n'
 
 	let t = $derived($translate)
 
 	let jobs = $state<any[]>([])
 	let loading = $state(true)
+	let serviceInstalled = $state(false)
+	let serviceLoading = $state(false)
 
 	const intervals = ['5min', '15min', '1hr', '6hr', 'daily']
 
 	onMount(async () => {
 		await loadJobs()
+		await checkStatus()
 	})
 
 	async function loadJobs() {
@@ -27,6 +30,45 @@
 			console.error('Failed to load jobs:', err)
 		} finally {
 			loading = false
+		}
+	}
+
+	async function checkStatus() {
+		try {
+			const response = await checkCrontabStatus()
+			if (response.success && response.result) {
+				serviceInstalled = response.result.installed || false
+			}
+		} catch (err) {
+			console.error('Failed to check crontab status:', err)
+		}
+	}
+
+	async function handleServiceToggle() {
+		serviceLoading = true
+		try {
+			if (serviceInstalled) {
+				const response = await uninstallCrontab()
+				if (response.success) {
+					serviceInstalled = false
+					alert(t('crontab.serviceDisabled'))
+				} else {
+					alert(t('crontab.failedToDisable'))
+				}
+			} else {
+				const response = await installCrontab()
+				if (response.success) {
+					serviceInstalled = true
+					alert(t('crontab.serviceEnabled'))
+				} else {
+					alert(t('crontab.failedToEnable'))
+				}
+			}
+		} catch (err) {
+			console.error('Failed to toggle crontab service:', err)
+			alert(t('crontab.operationFailed'))
+		} finally {
+			serviceLoading = false
 		}
 	}
 
@@ -60,6 +102,19 @@
 
 	<Section>
 		<p class="text-sm text-gray-600 mb-4">{t('crontab.description')}</p>
+
+		<div class="mb-6 p-4 border rounded-lg bg-gray-50">
+			<FormToggle
+				id="crontab-service"
+				title={t('crontab.useService')}
+				value={serviceInstalled}
+				onchange={handleServiceToggle}
+				disabled={serviceLoading}
+			/>
+			<p class="text-xs text-gray-500 mt-2">
+				{serviceInstalled ? t('crontab.serviceEnabledDesc') : t('crontab.serviceDisabledDesc')}
+			</p>
+		</div>
 
 		{#if loading}
 			<div class="loading-state">{t('crontab.loadingJobs')}</div>
@@ -95,14 +150,11 @@
 						<div class="col-last-run">{formatTimestamp(job.last_run)}</div>
 						<div class="col-next-run">{formatTimestamp(job.next_run)}</div>
 						<div class="col-enabled">
-							<label class="toggle">
-								<input
-									type="checkbox"
-									checked={job.enabled}
-									onchange={() => handleToggle(job)}
-								/>
-								<span class="slider"></span>
-							</label>
+							<FormToggle
+								id="job-{job.id}-enabled"
+								value={job.enabled}
+								onchange={() => handleToggle(job)}
+							/>
 						</div>
 					</div>
 				{/each}
@@ -164,50 +216,5 @@
 	select:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
-	}
-
-	.toggle {
-		position: relative;
-		display: inline-block;
-		width: 48px;
-		height: 24px;
-	}
-
-	.toggle input {
-		opacity: 0;
-		width: 0;
-		height: 0;
-	}
-
-	.slider {
-		position: absolute;
-		cursor: pointer;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background-color: #cbd5e1;
-		transition: 0.2s;
-		border-radius: 24px;
-	}
-
-	.slider:before {
-		position: absolute;
-		content: '';
-		height: 18px;
-		width: 18px;
-		left: 3px;
-		bottom: 3px;
-		background-color: white;
-		transition: 0.2s;
-		border-radius: 50%;
-	}
-
-	input:checked + .slider {
-		background-color: #3b82f6;
-	}
-
-	input:checked + .slider:before {
-		transform: translateX(24px);
 	}
 </style>
