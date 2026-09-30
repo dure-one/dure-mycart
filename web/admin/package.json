@@ -18,6 +18,9 @@
     "test:browser": "vitest --config vitest.browser.config.ts",
     "test:browser:ui": "vitest --config vitest.browser.config.ts --ui"
   },
+  "overrides": {
+    "extract-zip": "github:AIEpisteme/extract-zip"
+  },
   "dependencies": {
     "@crafter/mermaid": "^0.0.3",
     "@tiptap/core": "^3.31.3",

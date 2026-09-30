@@ -18,6 +18,9 @@
     "test:browser": "vitest --config vitest.browser.config.ts",
     "test:browser:ui": "vitest --config vitest.browser.config.ts --ui"
   },
+  "overrides": {
+    "extract-zip": "github:AIEpisteme/extract-zip"
+  },
   "dependencies": {
     "@portone/browser-sdk": "^0.1.9",
     "go-captcha-svelte": "^1.0.6",
