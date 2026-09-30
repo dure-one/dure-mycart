@@ -1,7 +1,6 @@
 package security
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 
@@ -45,24 +44,15 @@ func ComparePasswords(hashedPwd, inputPwd string) bool {
 // the input. It is used to materialize non-password secrets (e.g. JWT signing
 // keys bootstrapped during install).
 //
-// Construction: bcrypt(input, DefaultCost) -> SHA-256 hex.
-// bcrypt supplies a random salt (128 bits), SHA-256 then compacts the output to
-// a fixed-length hex string suitable for use as a secret. We intentionally
-// avoid MD5 here: MD5 is collision-broken and should never be used for any
-// new security-relevant derivation.
-//
-// Security note: SHA-256 is used here only for deterministic output formatting,
-// NOT for cryptographic hashing. The actual security comes from bcrypt's salted
-// hash. This is safe because:
-// 1. bcrypt provides the entropy and security (128-bit salt + adaptive cost)
-// 2. SHA-256 is merely compressing bcrypt's output to a fixed-length hex string
-// 3. The bcrypt output is already cryptographically secure
+// Construction: bcrypt(input, DefaultCost) -> hex.
+// bcrypt supplies a random salt (128 bits); we then hex-encode the bcrypt output
+// for a stable string representation suitable for storage/use as a secret token.
+// We intentionally avoid weak hashes (for example MD5/SHA-1) and also avoid
+// unnecessary fast-hash post-processing of password-derived material.
 func NewToken(text string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(text), bcryptCost)
 	if err != nil {
 		return "", fmt.Errorf("bcrypt hash: %w", err)
 	}
-	// codeql[go/weak-crypto-algorithm] SHA-256 used for output formatting only, not security
-	sum := sha256.Sum256(hash)
-	return hex.EncodeToString(sum[:]), nil
+	return hex.EncodeToString(hash), nil
 }
