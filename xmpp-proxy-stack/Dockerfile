@@ -82,6 +82,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build \
 ##
 FROM debian:13-slim AS xmpp-binaries-builder
 
+ARG TARGETARCH
 ARG XMPP_PROXY_VERSION
 ARG FAIL2BAN_RS_VERSION
 
@@ -92,13 +93,12 @@ RUN apt-get update && \
 WORKDIR /build
 
 # Download xmpp-proxy
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then \
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
         XMPP_ARCH="x86_64"; \
-    elif [ "$ARCH" = "aarch64" ]; then \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
         XMPP_ARCH="aarch64"; \
     else \
-        echo "Unsupported architecture: $ARCH" >&2; \
+        echo "Unsupported architecture: $TARGETARCH" >&2; \
         exit 1; \
     fi && \
     if [ "$XMPP_PROXY_VERSION" = "latest" ]; then \
@@ -111,13 +111,12 @@ RUN ARCH=$(uname -m) && \
     chmod +x /usr/local/bin/xmpp-proxy
 
 # Download fail2ban-rs
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then \
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
         F2B_ARCH="amd64"; \
-    elif [ "$ARCH" = "aarch64" ]; then \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
         F2B_ARCH="arm64"; \
     else \
-        echo "Unsupported architecture: $ARCH" >&2; \
+        echo "Unsupported architecture: $TARGETARCH" >&2; \
         exit 1; \
     fi && \
     if [ "$FAIL2BAN_RS_VERSION" = "latest" ]; then \
@@ -147,6 +146,7 @@ RUN ARCH=$(uname -m) && \
 ##
 FROM alpine:latest AS horust-builder
 
+ARG TARGETARCH
 ARG HORUST_VERSION
 
 RUN apk add --no-cache curl
@@ -154,13 +154,12 @@ RUN apk add --no-cache curl
 WORKDIR /build
 
 # Download Horust binary from GitHub releases
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "aarch64" ]; then \
-        HORUST_ARCH="aarch64"; \
-    elif [ "$ARCH" = "x86_64" ]; then \
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
         HORUST_ARCH="x86_64"; \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
+        HORUST_ARCH="aarch64"; \
     else \
-        echo "Unsupported architecture: $ARCH" >&2; \
+        echo "Unsupported architecture: $TARGETARCH" >&2; \
         exit 1; \
     fi && \
     echo "Downloading Horust v${HORUST_VERSION} for ${HORUST_ARCH}..." && \
