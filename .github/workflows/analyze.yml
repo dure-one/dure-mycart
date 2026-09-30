@@ -19,6 +19,8 @@ jobs:
   cancel-previous-runs:
     name: Cancel previous runs
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
     if: "!contains(github.event.commits[0].message, '[skip ci]') && !contains(github.event.commits[0].message, '[ci skip]')"
     steps:
       - uses: styfle/cancel-workflow-action@0.13.1
@@ -28,6 +30,8 @@ jobs:
   check-changes:
     name: Check file changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       go: ${{ steps.filter.outputs.go }}
       web: ${{ steps.filter.outputs.web }}
