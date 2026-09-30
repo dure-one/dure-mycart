@@ -170,16 +170,28 @@ test.describe('Responder - XMPP Settings', () => {
 		await page.goto('/_/settings/responder')
 
 		// Test connection button is a FormButton with type="button"
-		// Look for button that contains "Test" text
-		const testButton = page.locator('button[type="button"]').filter({ hasText: /test/i })
+		// Look for button that contains "Test" text (case-insensitive, matches "Test Connection")
+		const testButton = page.locator('button[type="button"]').filter({ hasText: /test.*connection/i })
 		await expect(testButton).toBeVisible()
+
+		// Wait for and intercept the API call
+		const responsePromise = page.waitForResponse(
+			response => response.url().includes('/api/_/settings/responder/test-connection') && response.status() === 200,
+			{ timeout: 10000 }
+		)
 
 		// Click test (will fail without real XMPP server)
 		await testButton.click()
 
-		// Wait for result to appear in .test-result div (up to 10s for API response)
+		// Wait for API response
+		await responsePromise
+
+		// Wait for button to finish loading (no longer disabled/testing)
+		await expect(testButton).not.toBeDisabled({ timeout: 2000 })
+
+		// Result should appear in .test-result div after API completes
 		const result = page.locator('.test-result')
-		await expect(result).toBeVisible({ timeout: 10000 })
+		await expect(result).toBeVisible({ timeout: 5000 })
 
 		// Verify result contains text (success or failure message)
 		await expect(result).not.toBeEmpty()
