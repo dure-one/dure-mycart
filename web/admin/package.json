@@ -42,7 +42,7 @@
     "@testing-library/user-event": "^14.6.5",
     "@types/nprogress": "^0.2.3",
     "@vitest/browser": "^4.1.11",
-    "@vitest/browser-webdriverio": "^4.1.11",
+    "@vitest/browser-webdriverio": "^5.0.0",
     "@vitest/ui": "^4.1.11",
     "autoprefixer": "^10.5.4",
     "happy-dom": "^20.11.6",
