@@ -62,7 +62,7 @@ func NewToken(text string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("bcrypt hash: %w", err)
 	}
-	// lgtm[go/weak-crypto-algorithm] - SHA-256 used for output formatting only, not security
+	// codeql[go/weak-crypto-algorithm] SHA-256 used for output formatting only, not security
 	sum := sha256.Sum256(hash)
 	return hex.EncodeToString(sum[:]), nil
 }

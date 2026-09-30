@@ -1,0 +1,1848 @@
+basePath: /
+definitions:
+  github_com_shurco_mycart_internal_models.CartPayment:
+    properties:
+      email:
+        type: string
+      products:
+        items:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.CartProduct'
+        type: array
+      provider:
+        $ref: '#/definitions/github_com_shurco_mycart_pkg_litepay.PaymentSystem'
+    type: object
+  github_com_shurco_mycart_internal_models.CartProduct:
+    properties:
+      id:
+        type: string
+      quantity:
+        type: integer
+      unit_price:
+        description: Expected price from client for validation
+        type: integer
+      variant_id:
+        type: string
+    type: object
+  github_com_shurco_mycart_internal_models.Data:
+    properties:
+      cart_id:
+        type: string
+      content:
+        type: string
+      id:
+        type: string
+    type: object
+  github_com_shurco_mycart_internal_models.Digital:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.Data'
+        type: array
+      files:
+        items:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.File'
+        type: array
+      filled:
+        type: boolean
+      type:
+        type: string
+    type: object
+  github_com_shurco_mycart_internal_models.File:
+    properties:
+      ext:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      orig_name:
+        type: string
+    type: object
+  github_com_shurco_mycart_internal_models.Install:
+    properties:
+      databaseUrl:
+        description: PostgreSQL connection string
+        type: string
+      dbType:
+        description: '"sqlite" or "postgres"'
+        type: string
+      domain:
+        type: string
+      email:
+        type: string
+      password:
+        type: string
+      sqlitePath:
+        description: SQLite database path
+        type: string
+    type: object
+  github_com_shurco_mycart_internal_models.Metadata:
+    properties:
+      key:
+        type: string
+      value:
+        type: string
+    type: object
+  github_com_shurco_mycart_internal_models.Page:
+    properties:
+      active:
+        type: boolean
+      content:
+        type: string
+      created:
+        type: integer
+      id:
+        type: string
+      name:
+        type: string
+      position:
+        type: string
+      seo:
+        $ref: '#/definitions/github_com_shurco_mycart_internal_models.Seo'
+      slug:
+        type: string
+      updated:
+        type: integer
+    type: object
+  github_com_shurco_mycart_internal_models.Product:
+    properties:
+      active:
+        type: boolean
+      amount:
+        type: integer
+      attributes:
+        items:
+          type: string
+        type: array
+      brief:
+        type: string
+      created:
+        type: integer
+      description:
+        type: string
+      digital:
+        $ref: '#/definitions/github_com_shurco_mycart_internal_models.Digital'
+      has_variants:
+        description: NEW
+        type: boolean
+      id:
+        type: string
+      images:
+        items:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.File'
+        type: array
+      metadata:
+        items:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.Metadata'
+        type: array
+      name:
+        type: string
+      options:
+        description: NEW
+        items:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.ProductOption'
+        type: array
+      quantity:
+        description: NEW
+        type: integer
+      seo:
+        $ref: '#/definitions/github_com_shurco_mycart_internal_models.Seo'
+      sku:
+        description: NEW
+        type: string
+      slug:
+        type: string
+      updated:
+        type: integer
+      variants:
+        description: NEW
+        items:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.ProductVariant'
+        type: array
+    type: object
+  github_com_shurco_mycart_internal_models.ProductOption:
+    properties:
+      created:
+        type: integer
+      id:
+        type: string
+      name:
+        type: string
+      position:
+        type: integer
+      product_id:
+        type: string
+      values:
+        items:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.ProductOptionValue'
+        type: array
+    type: object
+  github_com_shurco_mycart_internal_models.ProductOptionValue:
+    properties:
+      id:
+        type: string
+      option_id:
+        type: string
+      position:
+        type: integer
+      value:
+        type: string
+    type: object
+  github_com_shurco_mycart_internal_models.ProductVariant:
+    properties:
+      active:
+        type: boolean
+      created:
+        type: integer
+      id:
+        type: string
+      images:
+        items:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.File'
+        type: array
+      option_values:
+        additionalProperties:
+          type: string
+        description: '{"Size": "Medium", "Color": "Black"}'
+        type: object
+      price_surcharge:
+        description: cents
+        type: integer
+      product_id:
+        type: string
+      quantity:
+        type: integer
+      sku:
+        type: string
+      updated:
+        type: integer
+    type: object
+  github_com_shurco_mycart_internal_models.Products:
+    properties:
+      currency:
+        type: string
+      products:
+        items:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.Product'
+        type: array
+      total:
+        type: integer
+    type: object
+  github_com_shurco_mycart_internal_models.Seo:
+    properties:
+      description:
+        type: string
+      keywords:
+        type: string
+      title:
+        type: string
+    type: object
+  github_com_shurco_mycart_pkg_csvimport.Error:
+    properties:
+      line:
+        type: integer
+      message:
+        type: string
+    type: object
+  github_com_shurco_mycart_pkg_csvimport.ImportResult:
+    properties:
+      errors:
+        items:
+          $ref: '#/definitions/github_com_shurco_mycart_pkg_csvimport.Error'
+        type: array
+      imported:
+        type: integer
+      skipped:
+        type: integer
+      to_add:
+        description: Preview only
+        type: integer
+      to_update:
+        description: Preview only
+        type: integer
+      total_rows:
+        type: integer
+      updated:
+        type: integer
+    type: object
+  github_com_shurco_mycart_pkg_litepay.PaymentSystem:
+    enum:
+    - stripe
+    - paypal
+    - spectrocoin
+    - coinbase
+    - dummy
+    type: string
+    x-enum-comments:
+      COINBASE: Coinbase Commerce cryptocurrency payment provider
+      DUMMY: Dummy provider for testing (always succeeds, only for free items)
+      PAYPAL: PayPal payment provider
+      SPECTROCOIN: SpectroCoin cryptocurrency payment provider
+      STRIPE: Stripe payment provider (credit/debit cards)
+    x-enum-descriptions:
+    - Stripe payment provider (credit/debit cards)
+    - PayPal payment provider
+    - SpectroCoin cryptocurrency payment provider
+    - Coinbase Commerce cryptocurrency payment provider
+    - Dummy provider for testing (always succeeds, only for free items)
+    x-enum-varnames:
+    - STRIPE
+    - PAYPAL
+    - SPECTROCOIN
+    - COINBASE
+    - DUMMY
+  github_com_shurco_mycart_pkg_webutil.HTTPResponse:
+    properties:
+      message:
+        type: string
+      result: {}
+      success:
+        type: boolean
+    type: object
+  internal_handlers_private.installStatus:
+    properties:
+      installed:
+        type: boolean
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@mycart.com
+    name: API Support
+    url: https://github.com/shurco/mycart/issues
+  description: Open source shopping-cart backend API - a single-binary e-commerce
+    solution
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: https://github.com/shurco/mycart
+  title: myCart API
+  version: "1.0"
+paths:
+  /api/_/carts:
+    get:
+      description: Get paginated list of all carts
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Carts list with pagination
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: List carts
+      tags:
+      - Carts
+  /api/_/carts/{cart_id}:
+    get:
+      description: Get detailed cart information including product items
+      parameters:
+      - description: Cart ID
+        in: path
+        name: cart_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cart details
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "400":
+          description: Missing cart_id
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "404":
+          description: Cart not found
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Get cart
+      tags:
+      - Carts
+  /api/_/carts/{cart_id}/mail:
+    post:
+      description: Re-send purchase confirmation email for a cart
+      parameters:
+      - description: Cart ID
+        in: path
+        name: cart_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Email sent
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Send cart email
+      tags:
+      - Carts
+  /api/_/pages:
+    get:
+      description: Get paginated list of all pages (including inactive)
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Pages list with pagination
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: List pages
+      tags:
+      - Pages
+    post:
+      consumes:
+      - application/json
+      description: Create a new page with name, slug, and optional content
+      parameters:
+      - description: Page data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.Page'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Created page
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  $ref: '#/definitions/github_com_shurco_mycart_internal_models.Page'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Create page
+      tags:
+      - Pages
+  /api/_/pages/{page_id}:
+    delete:
+      description: Delete a page by its ID
+      parameters:
+      - description: Page ID
+        in: path
+        name: page_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Page deleted
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete page
+      tags:
+      - Pages
+    get:
+      description: Get a single page by its ID
+      parameters:
+      - description: Page ID
+        in: path
+        name: page_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Page details
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  $ref: '#/definitions/github_com_shurco_mycart_internal_models.Page'
+              type: object
+        "404":
+          description: Page not found
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Get page
+      tags:
+      - Pages
+    patch:
+      consumes:
+      - application/json
+      description: Update page metadata (name, slug, position, SEO)
+      parameters:
+      - description: Page ID
+        in: path
+        name: page_id
+        required: true
+        type: string
+      - description: Page data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.Page'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Page updated
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Update page
+      tags:
+      - Pages
+  /api/_/pages/{page_id}/active:
+    patch:
+      description: Toggle the active/inactive status of a page
+      parameters:
+      - description: Page ID
+        in: path
+        name: page_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated page
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  $ref: '#/definitions/github_com_shurco_mycart_internal_models.Page'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Toggle page active
+      tags:
+      - Pages
+  /api/_/pages/{page_id}/content:
+    patch:
+      consumes:
+      - application/json
+      description: Update only the HTML content of a page
+      parameters:
+      - description: Page ID
+        in: path
+        name: page_id
+        required: true
+        type: string
+      - description: Content
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            content:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Content updated
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Update page content
+      tags:
+      - Pages
+  /api/_/products:
+    get:
+      description: Get paginated list of all products (including inactive)
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Products list
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  $ref: '#/definitions/github_com_shurco_mycart_internal_models.Products'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: List products
+      tags:
+      - Products
+    post:
+      consumes:
+      - application/json
+      description: Create a new product with name, slug, price, and digital type
+      parameters:
+      - description: Product data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.Product'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Created product
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  $ref: '#/definitions/github_com_shurco_mycart_internal_models.Product'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Create product
+      tags:
+      - Products
+  /api/_/products/{product_id}:
+    delete:
+      description: Delete a product by its ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: product_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product deleted
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete product
+      tags:
+      - Products
+    get:
+      description: Get a single product by its ID (including inactive)
+      parameters:
+      - description: Product ID
+        in: path
+        name: product_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product details
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  $ref: '#/definitions/github_com_shurco_mycart_internal_models.Product'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Get product
+      tags:
+      - Products
+    patch:
+      consumes:
+      - application/json
+      description: Update product metadata and return the updated product
+      parameters:
+      - description: Product ID
+        in: path
+        name: product_id
+        required: true
+        type: string
+      - description: Product data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.Product'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated product
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  $ref: '#/definitions/github_com_shurco_mycart_internal_models.Product'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Update product
+      tags:
+      - Products
+  /api/_/products/{product_id}/active:
+    patch:
+      description: Toggle the active/inactive status of a product
+      parameters:
+      - description: Product ID
+        in: path
+        name: product_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product active updated
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Toggle product active
+      tags:
+      - Products
+  /api/_/products/{product_id}/digital:
+    get:
+      description: Get digital files or license keys for a product
+      parameters:
+      - description: Product ID
+        in: path
+        name: product_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Digital content
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  $ref: '#/definitions/github_com_shurco_mycart_internal_models.Digital'
+              type: object
+        "404":
+          description: Product not found
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Get product digital content
+      tags:
+      - Products
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a digital file or create a license key entry
+      parameters:
+      - description: Product ID
+        in: path
+        name: product_id
+        required: true
+        type: string
+      - description: Digital file
+        in: formData
+        name: document
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Digital content added
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Add product digital content
+      tags:
+      - Products
+  /api/_/products/{product_id}/digital/{digital_id}:
+    delete:
+      description: Delete a digital content entry by product and digital ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: product_id
+        required: true
+        type: string
+      - description: Digital ID
+        in: path
+        name: digital_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Digital content deleted
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete product digital content
+      tags:
+      - Products
+    patch:
+      consumes:
+      - application/json
+      description: Update the content of a digital data entry (license key)
+      parameters:
+      - description: Product ID
+        in: path
+        name: product_id
+        required: true
+        type: string
+      - description: Digital ID
+        in: path
+        name: digital_id
+        required: true
+        type: string
+      - description: Digital data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.Data'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Digital content updated
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Update product digital content
+      tags:
+      - Products
+  /api/_/products/{product_id}/digital/{digital_id}/download:
+    get:
+      description: Download a digital file associated with a product
+      parameters:
+      - description: Product ID
+        in: path
+        name: product_id
+        required: true
+        type: string
+      - description: Digital file ID
+        in: path
+        name: digital_id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: Digital file content
+          schema:
+            type: file
+        "404":
+          description: File not found
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Download product digital file
+      tags:
+      - Products
+  /api/_/products/{product_id}/image:
+    get:
+      description: Get all images for a product
+      parameters:
+      - description: Product ID
+        in: path
+        name: product_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product images
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  items:
+                    $ref: '#/definitions/github_com_shurco_mycart_internal_models.File'
+                  type: array
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: List product images
+      tags:
+      - Products
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload an image (PNG/JPEG) and create sm (147x147) and md (400x400)
+        variants
+      parameters:
+      - description: Product ID
+        in: path
+        name: product_id
+        required: true
+        type: string
+      - description: Image file (PNG or JPEG)
+        in: formData
+        name: document
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Added image
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  $ref: '#/definitions/github_com_shurco_mycart_internal_models.File'
+              type: object
+        "400":
+          description: Invalid file format
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload product image
+      tags:
+      - Products
+  /api/_/products/{product_id}/image/{image_id}:
+    delete:
+      description: Delete a product image by product and image ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: product_id
+        required: true
+        type: string
+      - description: Image ID
+        in: path
+        name: image_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Image deleted
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete product image
+      tags:
+      - Products
+  /api/_/products/export:
+    get:
+      description: Download all products as CSV file
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV file
+          schema:
+            type: file
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Export products to CSV
+      tags:
+      - Products
+  /api/_/products/import:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Execute CSV import after preview validation
+      parameters:
+      - description: CSV file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Import results
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  $ref: '#/definitions/github_com_shurco_mycart_pkg_csvimport.ImportResult'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Import products from CSV
+      tags:
+      - Products
+  /api/_/products/import/preview:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Validate CSV file and preview what will be imported
+      parameters:
+      - description: CSV file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Preview results
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  $ref: '#/definitions/github_com_shurco_mycart_pkg_csvimport.ImportResult'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Preview CSV import
+      tags:
+      - Products
+  /api/_/products/slug/generate:
+    post:
+      consumes:
+      - application/json
+      description: Generate URL-friendly slug from product name with uniqueness check
+      parameters:
+      - description: Slug generation request
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            exclude_id:
+              type: string
+            name:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Generated slug
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  properties:
+                    slug:
+                      type: string
+                  type: object
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Generate product slug
+      tags:
+      - Products
+  /api/_/settings/{setting_key}:
+    get:
+      description: Get a setting group or individual setting by key
+      parameters:
+      - description: Setting key (main, social, auth, jwt, webhook, payment, stripe,
+          paypal, spectrocoin, coinbase, dummy, mail, or custom key)
+        in: path
+        name: setting_key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Setting value
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "404":
+          description: Setting not found
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Get setting
+      tags:
+      - Settings
+    patch:
+      consumes:
+      - application/json
+      description: Update a setting group or individual setting by key
+      parameters:
+      - description: Setting key
+        in: path
+        name: setting_key
+        required: true
+        type: string
+      - description: Setting value (structure depends on key)
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Setting updated
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Update setting
+      tags:
+      - Settings
+  /api/_/test/letter/{letter_name}:
+    get:
+      description: Send a test email using configured SMTP settings
+      parameters:
+      - description: Letter template name
+        in: path
+        name: letter_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Message sent
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  type: string
+              type: object
+        "400":
+          description: Sending failed
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Send test letter
+      tags:
+      - Settings
+  /api/_/version:
+    get:
+      description: Get current app version and available updates (cached 24h)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Version info
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Get version
+      tags:
+      - Settings
+  /api/cart/{cart_id}:
+    get:
+      description: Get cart details including product items by cart ID
+      parameters:
+      - description: Cart ID
+        in: path
+        name: cart_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cart details
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "400":
+          description: Missing cart_id
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "404":
+          description: Cart not found
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: Get cart (public)
+      tags:
+      - Cart
+  /api/cart/create:
+    post:
+      consumes:
+      - application/json
+      description: Create a cart record and return its ID for browser-based payment
+        (PortOne)
+      parameters:
+      - description: Cart creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.CartPayment'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cart created
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: Create cart
+      tags:
+      - Cart
+  /api/cart/payment:
+    get:
+      description: Get active/inactive status of all payment providers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Payment provider statuses
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: List payment providers
+      tags:
+      - Cart
+  /api/cart/portone-config:
+    get:
+      description: Get public PortOne configuration for browser SDK
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: PortOne public config
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: Get PortOne config
+      tags:
+      - Cart
+  /api/install:
+    post:
+      consumes:
+      - application/json
+      description: Perform initial setup with admin credentials and domain
+      parameters:
+      - description: Installation data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.Install'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cart installed
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: Install application
+      tags:
+      - Install
+  /api/install/status:
+    get:
+      description: Returns whether the cart has been installed
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  $ref: '#/definitions/internal_handlers_private.installStatus'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: Installation status
+      tags:
+      - Install
+  /api/pages/{page_slug}:
+    get:
+      description: Get an active page by its URL slug
+      parameters:
+      - description: Page slug
+        in: path
+        name: page_slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Page content
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  $ref: '#/definitions/github_com_shurco_mycart_internal_models.Page'
+              type: object
+        "404":
+          description: Page not found
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: Get page by slug
+      tags:
+      - Public
+  /api/products:
+    get:
+      description: Get paginated list of active products visible to customers
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Products list
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  $ref: '#/definitions/github_com_shurco_mycart_internal_models.Products'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: List active products
+      tags:
+      - Public
+  /api/products/{product_id}:
+    get:
+      description: Get a single active product by its ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: product_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product details
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+            - properties:
+                result:
+                  $ref: '#/definitions/github_com_shurco_mycart_internal_models.Product'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: Get active product
+      tags:
+      - Public
+  /api/sellerinfo:
+    get:
+      description: Get Korean seller information (requires captcha verification)
+      parameters:
+      - description: Access token from captcha verification
+        in: header
+        name: X-Access-Token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Seller information
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "404":
+          description: Seller info not enabled
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: Get seller info
+      tags:
+      - Public
+  /api/sellerinfo/captcha:
+    get:
+      description: Generate rotate captcha for seller info access
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Captcha data
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: Generate captcha
+      tags:
+      - Public
+  /api/sellerinfo/verify:
+    post:
+      consumes:
+      - application/json
+      description: Verify rotate captcha answer and issue access token
+      parameters:
+      - description: Captcha verification data
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Verification result
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: Verify captcha
+      tags:
+      - Public
+  /api/settings:
+    get:
+      description: Get site name, domain, currency, social links, and published pages
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Public settings
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: Get public settings
+      tags:
+      - Public
+  /api/sign/out:
+    post:
+      description: Invalidate current session and clear token cookie
+      responses:
+        "204":
+          description: Session invalidated
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Sign out
+      tags:
+      - Auth
+  /cart/payment:
+    post:
+      consumes:
+      - application/json
+      description: Create a payment session and return a redirect URL for the selected
+        provider
+      parameters:
+      - description: Payment request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_shurco_mycart_internal_models.CartPayment'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Payment URL
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "400":
+          description: Validation error or dummy provider for paid cart
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: Initiate payment
+      tags:
+      - Cart
+  /cart/payment/callback:
+    post:
+      consumes:
+      - application/json
+      description: Webhook endpoint for payment providers to report status changes
+      parameters:
+      - description: Cart ID
+        in: query
+        name: cart_id
+        required: true
+        type: string
+      - description: Payment system
+        in: query
+        name: payment_system
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: '*ok*'
+          schema:
+            type: string
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: Payment callback
+      tags:
+      - Cart
+  /cart/payment/cancel:
+    get:
+      description: Handle canceled payment, update cart status, and redirect to SPA
+      parameters:
+      - description: Cart ID
+        in: query
+        name: cart_id
+        type: string
+      - description: Payment system
+        in: query
+        name: payment_system
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirect to cancel page
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: Payment cancel
+      tags:
+      - Cart
+  /cart/payment/success:
+    get:
+      description: Handle successful payment redirect, verify with provider, and update
+        cart
+      parameters:
+      - description: Cart ID
+        in: query
+        name: cart_id
+        required: true
+        type: string
+      - description: Payment system
+        in: query
+        name: payment_system
+        required: true
+        type: string
+      - description: Stripe session ID
+        in: query
+        name: session
+        type: string
+      - description: PayPal token
+        in: query
+        name: token
+        type: string
+      - description: Coinbase charge ID
+        in: query
+        name: charge_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Passes to SPA handler
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: Payment success
+      tags:
+      - Cart
+  /ping:
+    get:
+      description: Returns pong for liveness probes
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Pong
+          schema:
+            $ref: '#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse'
+      summary: Health check
+      tags:
+      - Public
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

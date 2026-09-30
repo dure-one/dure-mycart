@@ -18,7 +18,16 @@ updates:
     include: "scope"
 
 - package-ecosystem: "npm"
-  directory: "/web"
+  directory: "/web/admin"
+  schedule:
+    interval: weekly
+  open-pull-requests-limit: 2
+  commit-message:
+    prefix: "🔧 build"
+    include: "scope"
+
+- package-ecosystem: "npm"
+  directory: "/web/site"
   schedule:
     interval: weekly
   open-pull-requests-limit: 2

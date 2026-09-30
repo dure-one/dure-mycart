@@ -5,9 +5,9 @@ go 1.26.1
 require (
 	github.com/disintegration/imaging v1.6.2
 	github.com/go-ozzo/ozzo-validation/v4 v4.4.1
-	github.com/gofiber/contrib/v3/jwt v1.2.1
+	github.com/gofiber/contrib/v3/jwt v1.2.4
 	github.com/gofiber/contrib/v3/websocket v1.2.6
-	github.com/gofiber/contrib/v3/zerolog v1.1.3
+	github.com/gofiber/contrib/v3/zerolog v1.1.5
 	github.com/gofiber/fiber/v3 v3.5.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
@@ -46,8 +46,8 @@ require (
 	github.com/go-openapi/swag/typeutils v0.29.0 // indirect
 	github.com/go-openapi/swag/yamlutils v0.29.0 // indirect
 	github.com/go-test/deep v1.1.1 // indirect
-	github.com/gofiber/schema v1.8.6 // indirect
-	github.com/gofiber/utils/v2 v2.5.1 // indirect
+	github.com/gofiber/schema v1.8.7 // indirect
+	github.com/gofiber/utils/v2 v2.5.2 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -58,7 +58,7 @@ require (
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
-	github.com/molecule-man/go-brrr v1.0.1 // indirect
+	github.com/molecule-man/go-brrr v1.1.0 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
