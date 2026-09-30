@@ -1,6 +1,7 @@
 package imageutil
 
 import (
+	"errors"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -12,70 +13,83 @@ import (
 	"golang.org/x/image/draw"
 )
 
-// Open decodes an image file (PNG or JPEG only).
-// Returns the decoded image or an error if the file is not a valid PNG/JPEG.
+var (
+	// ErrUnsupportedFormat is returned when trying to decode an unsupported image format.
+	ErrUnsupportedFormat = errors.New("unsupported image format")
+)
+
+// Open decodes an image from the file at path.
+// Only PNG and JPEG formats are supported; all others return ErrUnsupportedFormat.
+// This explicitly prevents TIFF and other formats from being processed.
 func Open(path string) (image.Image, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
-	img, format, err := image.Decode(f)
+	// Peek at format without decoding the whole image
+	_, format, err := image.DecodeConfig(f)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode image: %w", err)
+		return nil, err
 	}
 
-	// Only accept PNG and JPEG
+	// Only allow PNG and JPEG
 	if format != "png" && format != "jpeg" {
-		return nil, fmt.Errorf("unsupported format: %s (only PNG and JPEG allowed)", format)
+		return nil, fmt.Errorf("%w: %s (only PNG and JPEG allowed)", ErrUnsupportedFormat, format)
 	}
 
-	return img, nil
+	// Rewind and decode
+	if _, err := f.Seek(0, 0); err != nil {
+		return nil, err
+	}
+
+	img, _, err := image.Decode(f)
+	return img, err
 }
 
-// Fill resizes and crops an image to fill the target dimensions.
-// Uses Catmull-Rom interpolation (similar to Lanczos) for high-quality resizing.
+// Fill resizes and crops the image to fit the specified width and height.
+// Uses Catmull-Rom interpolation for high-quality resizing.
 func Fill(src image.Image, width, height int) image.Image {
 	srcBounds := src.Bounds()
-	srcWidth := srcBounds.Dx()
-	srcHeight := srcBounds.Dy()
+	srcW, srcH := srcBounds.Dx(), srcBounds.Dy()
 
-	// Calculate scale to fill the target dimensions
-	scaleX := float64(width) / float64(srcWidth)
-	scaleY := float64(height) / float64(srcHeight)
+	// Calculate scaling to fill the target dimensions
+	scaleX := float64(width) / float64(srcW)
+	scaleY := float64(height) / float64(srcH)
 	scale := scaleX
 	if scaleY > scaleX {
 		scale = scaleY
 	}
 
-	// Calculate scaled dimensions
-	scaledWidth := int(float64(srcWidth) * scale)
-	scaledHeight := int(float64(srcHeight) * scale)
+	// Scaled dimensions
+	scaledW := int(float64(srcW) * scale)
+	scaledH := int(float64(srcH) * scale)
 
 	// Create scaled image
-	scaledImg := image.NewRGBA(image.Rect(0, 0, scaledWidth, scaledHeight))
-	draw.CatmullRom.Scale(scaledImg, scaledImg.Bounds(), src, srcBounds, draw.Over, nil)
+	scaled := image.NewRGBA(image.Rect(0, 0, scaledW, scaledH))
+	draw.CatmullRom.Scale(scaled, scaled.Bounds(), src, srcBounds, draw.Over, nil)
 
-	// Crop to target dimensions (center)
-	offsetX := (scaledWidth - width) / 2
-	offsetY := (scaledHeight - height) / 2
-	cropRect := image.Rect(offsetX, offsetY, offsetX+width, offsetY+height)
+	// Crop to center
+	cropX := (scaledW - width) / 2
+	cropY := (scaledH - height) / 2
+	cropRect := image.Rect(cropX, cropY, cropX+width, cropY+height)
 
-	croppedImg := image.NewRGBA(image.Rect(0, 0, width, height))
-	draw.Draw(croppedImg, croppedImg.Bounds(), scaledImg, cropRect.Min, draw.Src)
+	cropped := image.NewRGBA(image.Rect(0, 0, width, height))
+	draw.Draw(cropped, cropped.Bounds(), scaled, cropRect.Min, draw.Src)
 
-	return croppedImg
+	return cropped
 }
 
-// Save encodes and saves an image to a file.
-// Format is determined by the file extension (.png or .jpg/.jpeg).
+// Save encodes the image to the file at path.
+// Format is determined by file extension: .png for PNG, .jpg/.jpeg for JPEG.
+// All other extensions return an error.
 func Save(img image.Image, path string) error {
 	f, err := os.Create(path)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	ext := strings.ToLower(filepath.Ext(path))
 	switch ext {
@@ -84,6 +98,6 @@ func Save(img image.Image, path string) error {
 	case ".jpg", ".jpeg":
 		return jpeg.Encode(f, img, &jpeg.Options{Quality: 90})
 	default:
-		return fmt.Errorf("unsupported file extension: %s", ext)
+		return fmt.Errorf("unsupported output format: %s (only .png, .jpg, .jpeg allowed)", ext)
 	}
 }
