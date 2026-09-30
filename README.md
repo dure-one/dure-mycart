@@ -156,3 +156,15 @@ Visit http://localhost:8080/_/install or run:
 ```bash
 ./mycart install --email admin@example.com --password yourpass --domain localhost
 ```
+
+---
+
+## Fork Hierarchy
+
+This repository is a three-tier fork with the following feature additions:
+
+| Repository | Branch | Added Features |
+|------------|--------|----------------|
+| `shurco/mycart` | `main` | Base project |
+| `nikescar/mycart` | `main_dure` | • Optional sqlc support with build tag |
+| `dure-one/dure-mycart` | `main` | • Seller info admin/site pages and API<br>• Responder (workflows, messages) admin/site pages and API<br>• Prosody docker-compose integrations |
