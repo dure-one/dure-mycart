@@ -3,7 +3,6 @@ module github.com/shurco/mycart
 go 1.26.1
 
 require (
-	github.com/disintegration/imaging v1.6.2
 	github.com/go-ozzo/ozzo-validation/v4 v4.4.1
 	github.com/gofiber/contrib/v3/jwt v1.2.4
 	github.com/gofiber/contrib/v3/websocket v1.2.6
@@ -26,6 +25,7 @@ require (
 	github.com/wenlng/go-captcha/v2 v2.0.5
 	github.com/xhit/go-simple-mail/v2 v2.16.0
 	golang.org/x/crypto v0.57.0
+	golang.org/x/image v0.46.0
 	modernc.org/sqlite v1.57.0
 )
 
@@ -72,7 +72,6 @@ require (
 	github.com/valyala/fasthttp v1.74.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/image v0.46.0 // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect

@@ -6,7 +6,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/disintegration/imaging"
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/shurco/mycart/internal/digitalfiles"
@@ -14,6 +13,7 @@ import (
 	"github.com/shurco/mycart/internal/queries"
 	"github.com/shurco/mycart/pkg/csvimport"
 	"github.com/shurco/mycart/pkg/errors"
+	"github.com/shurco/mycart/pkg/imageutil"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/security"
 	"github.com/shurco/mycart/pkg/webutil"
@@ -322,7 +322,7 @@ func AddProductImage(c fiber.Ctx) error {
 
 	// Validate that the payload really is a decodable image; otherwise remove
 	// the stored file so invalid content never persists on disk.
-	fileSource, err := imaging.Open(filePath)
+	fileSource, err := imageutil.Open(filePath)
 	if err != nil {
 		log.ErrorStack(err)
 		_ = os.Remove(filePath)
@@ -338,9 +338,9 @@ func AddProductImage(c fiber.Ctx) error {
 	}
 
 	for _, s := range sizes {
-		resizedImage := imaging.Fill(fileSource, s.dim, s.dim, imaging.Center, imaging.Lanczos)
+		resizedImage := imageutil.Fill(fileSource, s.dim, s.dim)
 		resizedPath := fmt.Sprintf("%s/%s_%s.%s", dirUploads, fileUUID, s.size, fileExt)
-		if err := imaging.Save(resizedImage, resizedPath); err != nil {
+		if err := imageutil.Save(resizedImage, resizedPath); err != nil {
 			log.ErrorStack(err)
 			_ = os.Remove(filePath)
 			_ = os.Remove(fmt.Sprintf("%s/%s_sm.%s", dirUploads, fileUUID, fileExt))

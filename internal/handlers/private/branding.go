@@ -5,11 +5,11 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/disintegration/imaging"
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/shurco/mycart/internal/models"
 	"github.com/shurco/mycart/internal/queries"
+	"github.com/shurco/mycart/pkg/imageutil"
 	"github.com/shurco/mycart/pkg/logging"
 	"github.com/shurco/mycart/pkg/webutil"
 )
@@ -128,7 +128,7 @@ func uploadBrandingFile(c fiber.Ctx, key, label string) error {
 
 	// A stored file that does not decode is one the storefront would draw as a
 	// broken picture, so it is refused before anything points at it.
-	if _, err := imaging.Open(filePath); err != nil {
+	if _, err := imageutil.Open(filePath); err != nil {
 		log.ErrorStack(err)
 		_ = os.Remove(filePath)
 		return webutil.StatusBadRequest(c, "file is not a valid image")
