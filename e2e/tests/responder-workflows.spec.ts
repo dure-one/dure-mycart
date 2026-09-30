@@ -176,11 +176,13 @@ test.describe('Responder - XMPP Settings', () => {
 
 		// Click test (will fail without real XMPP server)
 		await testButton.click()
-		await page.waitForTimeout(1000)
 
-		// Result should appear in .test-result div
+		// Wait for result to appear in .test-result div (up to 10s for API response)
 		const result = page.locator('.test-result')
-		await expect(result).toBeVisible()
+		await expect(result).toBeVisible({ timeout: 10000 })
+
+		// Verify result contains text (success or failure message)
+		await expect(result).not.toBeEmpty()
 	})
 })
 
