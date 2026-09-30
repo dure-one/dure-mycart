@@ -61,10 +61,10 @@ lc_base/
 lc_*/
 tmp/
 
-# Swagger documentation (auto-generated)
-docs/swagger/docs.go
-docs/swagger/swagger.json
-docs/swagger/swagger.yaml
+# Swagger documentation (auto-generated, but committed for Dependabot)
+# docs/swagger/docs.go
+# docs/swagger/swagger.json
+# docs/swagger/swagger.yaml
 
 # E2E test reports
 docs/e2e/
