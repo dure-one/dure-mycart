@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import Main from '$lib/layouts/Main.svelte'
-	import { Drawer, DrawerHeader, DrawerFooter, PageHeader, PageState, IconButton, FormInput, FormTextarea, FormGroup } from '$lib/components'
+	import { Drawer, DrawerHeader, DrawerFooter, PageHeader, PageState, IconButton, FormInput, FormTextarea, FormGroup, SvgIcon, MermaidViewer, MarkdownViewer, MarkdownEditor } from '$lib/components'
 	import { translate } from '$lib/i18n'
 	import { loadWorkflows as loadWorkflowsApi, saveWorkflow, deleteWorkflow } from '$lib/utils/responder'
 	import { formatDate, confirmDelete, showMessage } from '$lib/utils'
@@ -13,7 +13,7 @@
 	let workflows = $state<any[]>([])
 	let loading = $state(true)
 	let drawerOpen = $state(false)
-	let drawerMode = $state<'add' | 'edit'>('add')
+	let drawerMode = $state<'view' | 'add' | 'edit'>('view')
 	let drawerWorkflow = $state<any | null>(null)
 
 	let formData = $state({
@@ -44,6 +44,12 @@
 		} finally {
 			loading = false
 		}
+	}
+
+	function openView(workflow: any) {
+		drawerWorkflow = workflow
+		drawerMode = 'view'
+		drawerOpen = true
 	}
 
 	function openAdd() {
@@ -152,6 +158,23 @@
 			handleDelete(drawerWorkflow)
 		}
 	}
+
+	async function toggleEnabled(workflow: any) {
+		try {
+			const response = await saveWorkflow({
+				...workflow,
+				enabled: !workflow.enabled
+			})
+			if (response.success) {
+				await loadWorkflows()
+			} else {
+				showMessage(t('responder.failedToSaveWorkflow'), 'connextError')
+			}
+		} catch (err) {
+			console.error('Failed to toggle workflow:', err)
+			showMessage(t('responder.failedToSaveWorkflow'), 'connextError')
+		}
+	}
 </script>
 
 <Main>
@@ -174,6 +197,7 @@
 					<tr>
 						<th>{t('responder.workflowName')}</th>
 						<th class="w-64">{t('responder.workflowDescription')}</th>
+						<th class="w-32">{t('responder.workflowTags')}</th>
 						<th class="w-24">{t('responder.workflowEnabled')}</th>
 						<th class="w-48">{t('common.updated')}</th>
 						<th class="w-24"></th>
@@ -183,14 +207,25 @@
 					{#each workflows as workflow (workflow.id)}
 						<tr class:opacity-30={!workflow.enabled}>
 							<td>
-								<div class="font-medium">{workflow.name}</div>
-								{#if workflow.version}
-									<div class="text-xs text-gray-500">v{workflow.version}</div>
-								{/if}
+								<button
+									type="button"
+									onclick={() => openView(workflow)}
+									class="text-left hover:text-blue-600 transition-colors"
+								>
+									<div class="font-medium">{workflow.name}</div>
+									{#if workflow.version}
+										<div class="text-xs text-gray-500">v{workflow.version}</div>
+									{/if}
+								</button>
 							</td>
 							<td>
 								<div class="text-sm text-gray-600 truncate max-w-xs">
 									{workflow.description || '-'}
+								</div>
+							</td>
+							<td>
+								<div class="text-xs text-gray-500">
+									{workflow.tags || '-'}
 								</div>
 							</td>
 							<td>
@@ -211,6 +246,12 @@
 							</td>
 							<td>
 								<div class="flex items-center gap-2">
+									<SvgIcon
+										name={workflow.enabled ? 'eye' : 'eye-slash'}
+										className="h-5 w-5 cursor-pointer"
+										onclick={() => toggleEnabled(workflow)}
+										stroke="currentColor"
+									/>
 									<IconButton ico="pencil-square" label={t('common.edit')} onclick={() => openEdit(workflow)} />
 								</div>
 							</td>
@@ -224,11 +265,57 @@
 
 {#if drawerOpen}
 	<Drawer isOpen={drawerOpen} onclose={closeDrawer} maxWidth="710px">
-		<DrawerHeader title={drawerMode === 'add' ? t('responder.addWorkflow') : t('responder.editWorkflow')} />
+		<DrawerHeader
+			title={drawerMode === 'view' ? drawerWorkflow?.name : drawerMode === 'add' ? t('responder.addWorkflow') : t('responder.editWorkflow')}
+		/>
 
-		<form onsubmit={(e) => { e.preventDefault(); handleSubmit() }}>
-			<div class="flow-root">
-				<dl class="mx-auto -my-3 mt-4 mb-0 space-y-4 text-sm">
+		{#if drawerMode === 'view' && drawerWorkflow}
+			<div class="p-4">
+				<div class="mb-4 space-y-2">
+					<div class="text-sm">
+						<span class="font-medium text-gray-700">{t('responder.workflowDescription')}:</span>
+						<span class="text-gray-600 ml-2">{drawerWorkflow.description || '-'}</span>
+					</div>
+					{#if drawerWorkflow.tags}
+						<div class="text-sm">
+							<span class="font-medium text-gray-700">{t('responder.workflowTags')}:</span>
+							<span class="text-gray-600 ml-2">{drawerWorkflow.tags}</span>
+						</div>
+					{/if}
+					{#if drawerWorkflow.version}
+						<div class="text-sm">
+							<span class="font-medium text-gray-700">Version:</span>
+							<span class="text-gray-600 ml-2">v{drawerWorkflow.version}</span>
+						</div>
+					{/if}
+				</div>
+
+				<div class="border rounded-lg p-4 bg-gray-50 mb-4">
+					<h3 class="text-sm font-medium text-gray-700 mb-3">Workflow Diagram</h3>
+					<MermaidViewer content={drawerWorkflow.content || ''} />
+				</div>
+
+				<div class="border rounded-lg bg-white">
+					<h3 class="text-sm font-medium text-gray-700 p-4 border-b">
+						{t('responder.workflowContent')}
+					</h3>
+					<MarkdownViewer content={drawerWorkflow.content || ''} />
+				</div>
+
+				<div class="mt-4 flex justify-end gap-2">
+					<button
+						type="button"
+						onclick={() => openEdit(drawerWorkflow)}
+						class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+					>
+						{t('common.edit')}
+					</button>
+				</div>
+			</div>
+		{:else}
+			<form onsubmit={(e) => { e.preventDefault(); handleSubmit() }}>
+				<div class="flow-root">
+					<dl class="mx-auto -my-3 mt-4 mb-0 space-y-4 text-sm">
 					<FormInput
 						id="name"
 						title={t('responder.workflowName')}
@@ -256,15 +343,20 @@
 						</label>
 					</div>
 
+					<FormGroup label="Workflow Diagram Preview">
+						<div class="border rounded-lg p-4 bg-gray-50 mb-4">
+							<MermaidViewer content={formData.content || ''} />
+						</div>
+					</FormGroup>
+
 					<FormGroup label={t('responder.workflowContent')}>
-						<textarea
-							bind:value={formData.content}
-							rows="15"
-							class="w-full p-2 border border-gray-300 rounded font-mono text-sm"
-							placeholder="Enter mermaid diagram markdown..."
+						<MarkdownEditor
+							value={formData.content}
+							onchange={(content) => { formData.content = content }}
+							placeholder="Enter markdown content with mermaid diagrams, code blocks, etc..."
 						/>
 						<div class="text-xs text-gray-500 mt-1">
-							Documentation-only mermaid diagrams. Not executable in mycart.
+							Use markdown syntax. Code blocks with ```mermaid for diagrams, ```javascript for code.
 						</div>
 					</FormGroup>
 
@@ -298,13 +390,14 @@
 				deleteLabel={t('common.delete')}
 			/>
 		</form>
+		{/if}
 	</Drawer>
 {/if}
 
 <style>
 	.btn-primary {
 		padding: 0.5rem 1rem;
-		background: #3b82f6;
+		background: #10b981;
 		color: white;
 		border: none;
 		border-radius: 0.375rem;

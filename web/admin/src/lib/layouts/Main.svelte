@@ -88,7 +88,7 @@
         { name: 'settingsBranding', path: `${base}/settings/branding`, meta: { ico: 'pencil', title: () => t('settings.branding') } },
         { name: 'settingsSocials', path: `${base}/settings/socials`, meta: { ico: 'user-group', title: () => t('settings.social') } },
         { name: 'settingsMail', path: `${base}/settings/mail`, meta: { ico: 'at-symbol', title: () => t('settings.mail') } },
-        { name: 'settingsResponder', path: `${base}/settings/responder`, meta: { ico: 'chat', title: () => t('menu.responderSettings') } },
+        { name: 'settingsResponder', path: `${base}/settings/responder`, meta: { ico: 'chat', title: () => t('menu.responder') } },
         { name: 'settingsCrontab', path: `${base}/settings/crontab`, meta: { ico: 'clock', title: () => t('menu.crontab') } }
       ]
     }
@@ -164,7 +164,7 @@
   {#if mainMenuSections.length}
     <div class="h-screen w-52 flex-col justify-between border-e border-e-gray-200 bg-white px-2">
       <div class="px-2 py-5">
-        <h1><span class="text-gray-300">{t('settings.title')}</span></h1>
+        <h1><span class="text-gray-300">{currentRoute?.includes('/settings') ? t('settings.title') : t('menu.responder')}</span></h1>
       </div>
       <ul class="mt-1.5 space-y-1">
         {#each mainMenuSections as item (item.name)}

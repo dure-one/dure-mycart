@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import Main from '$lib/layouts/Main.svelte'
-	import { PageHeader, FormButton, FormInput, Section } from '$lib/components'
+	import { PageHeader, FormButton, FormInput, FormToggle, Section } from '$lib/components'
 	import { loadResponderSettings, saveResponderSettings, testXMPPConnection } from '$lib/utils/responder'
 	import { translate } from '$lib/i18n'
 
 	let t = $derived($translate)
 
 	let settings = $state({
+		enabled: false,
 		xmpp_jid: '',
 		xmpp_password: '',
 		xmpp_server: '',
@@ -57,13 +58,19 @@
 </script>
 
 <Main>
-	<PageHeader title={t('responder.settings')} />
+	<PageHeader title={t('menu.responder')} />
 
 	<Section>
 		<h2 class="text-lg font-medium mb-1">{t('responder.xmppConfiguration')}</h2>
 		<p class="text-sm text-gray-600 mb-4">{t('responder.xmppConfigDesc')}</p>
 
 		<form onsubmit={(e) => { e.preventDefault(); handleSave() }} class="max-w-2xl space-y-4">
+			<FormToggle
+				id="xmpp-service-enabled"
+				title={t('responder.useXmppService')}
+				bind:value={settings.enabled}
+			/>
+
 			<FormInput
 				id="xmpp_jid"
 				title={t('responder.xmppJid')}
