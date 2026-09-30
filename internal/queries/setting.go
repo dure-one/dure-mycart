@@ -127,6 +127,13 @@ func (q *SettingQueries) GroupFieldMap(settings any) map[string]any {
 			"dureone_ecommerce_license":   &s.EcommerceLicense,
 			"dureone_email":               &s.Email,
 		}
+	case *models.ResponderSettings:
+		return map[string]any{
+			"responder_xmpp_jid":      &s.XMPPJID,
+			"responder_xmpp_password": &s.XMPPPassword,
+			"responder_xmpp_server":   &s.XMPPServer,
+			"responder_xmpp_port":     &s.XMPPPort,
+		}
 	default:
 		return nil
 	}

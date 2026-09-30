@@ -33,6 +33,14 @@ func ApiPrivateRoutes(c *fiber.App) {
 	settings.Delete("/branding/logo", handlers.DeleteBrandingLogo)
 	settings.Post("/branding/favicon", handlers.UploadBrandingFavicon)
 	settings.Delete("/branding/favicon", handlers.DeleteBrandingFavicon)
+	settings.Get("/responder", handlers.GetResponderSettings)
+	settings.Patch("/responder", handlers.UpdateResponderSettings)
+	settings.Post("/responder/test-connection", handlers.XMPPConnectionTest)
+	settings.Get("/crontab", handlers.CrontabJobs)
+	settings.Patch("/crontab/:job_id<len(15)>", handlers.UpdateCrontabJobSettings)
+	settings.Get("/crontab/status", handlers.CheckCrontabStatus)
+	settings.Post("/crontab/install", handlers.InstallCrontab)
+	settings.Post("/crontab/uninstall", handlers.UninstallCrontab)
 	settings.Get("/:setting_key", handlers.GetSetting)
 	settings.Patch("/:setting_key", handlers.UpdateSetting)
 
@@ -88,4 +96,17 @@ func ApiPrivateRoutes(c *fiber.App) {
 	customers.Patch("/:customer_id<len(15)>/active", handlers.UpdateCustomerActive)
 	customers.Patch("/:customer_id<len(15)>/password", handlers.UpdateCustomerPassword)
 	customers.Delete("/:customer_id<len(15)>", handlers.DeleteCustomer)
+
+	responder := c.Group("/api/_/responder", middleware.JWTProtected())
+	responder.Get("/messages", handlers.MessageThreads)
+	responder.Get("/messages/:customer_id<len(15)>", handlers.MessagesByCustomer)
+	responder.Post("/messages", handlers.CreateMessage)
+	responder.Post("/messages/link-contact", handlers.LinkContact)
+	responder.Patch("/messages/:message_id<len(15)>/read", handlers.MarkMessageRead)
+
+	responder.Get("/workflows", handlers.Workflows)
+	responder.Get("/workflows/:workflow_id<len(15)>", handlers.GetWorkflow)
+	responder.Post("/workflows", handlers.CreateWorkflow)
+	responder.Patch("/workflows/:workflow_id<len(15)>", handlers.UpdateWorkflow)
+	responder.Delete("/workflows/:workflow_id<len(15)>", handlers.DeleteWorkflow)
 }

@@ -18,6 +18,8 @@ export default defineConfig({
     }
   },
   build: {
+    target: 'esnext',
+    minify: 'esbuild',
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -33,5 +35,8 @@ export default defineConfig({
       }
     },
     chunkSizeWarningLimit: 1000
+  },
+  esbuild: {
+    logOverride: { 'this-is-undefined-in-esm': 'silent' }
   }
 })
