@@ -14,7 +14,8 @@
   },
   "overrides": {
     "markdown-it": "14.3.1",
-    "extract-zip": "github:AIEpisteme/extract-zip"
+    "extract-zip": "github:AIEpisteme/extract-zip",
+    "lodash-es": "4.18.1"
   },
   "dependencies": {
     "patchright": "^1.63.0"
