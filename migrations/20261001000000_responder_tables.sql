@@ -70,12 +70,29 @@ INSERT INTO crontab_job (id, job_type, interval, enabled) VALUES
     ('xmpp_check_job', 'xmpp_check', '15min', true),
     ('cleanup_job', 'cleanup_inactive', 'daily', true);
 
-CREATE TABLE archived_customer AS SELECT * FROM customer WHERE 1=0;
-ALTER TABLE archived_customer ADD COLUMN archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE archived_customer ADD COLUMN archived_reason TEXT;
+CREATE TABLE archived_customer (
+    id              TEXT PRIMARY KEY NOT NULL,
+    email           TEXT NOT NULL,
+    password        TEXT NOT NULL,
+    name            TEXT,
+    active          BOOLEAN NOT NULL,
+    created         TIMESTAMP,
+    updated         TIMESTAMP,
+    archived_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    archived_reason TEXT
+);
 
-CREATE TABLE archived_message AS SELECT * FROM message WHERE 1=0;
-ALTER TABLE archived_message ADD COLUMN archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+CREATE TABLE archived_message (
+    id              TEXT PRIMARY KEY NOT NULL,
+    contact_id      TEXT NOT NULL,
+    content         TEXT NOT NULL,
+    direction       TEXT NOT NULL,
+    channel         TEXT NOT NULL,
+    delivery_status TEXT,
+    read_status     BOOLEAN NOT NULL,
+    created         TIMESTAMP,
+    archived_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 INSERT INTO setting (id, key, value) VALUES
     ('resp_xmpp_jid', 'responder_xmpp_jid', ''),
