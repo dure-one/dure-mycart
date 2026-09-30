@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "postinstall": "node scripts/patch-patchright-openbsd.js",
+    "postinstall": "node scripts/patch-patchright-openbsd.js && node scripts/patch-extract-zip.js",
     "build": "cd web/admin && npx vite build && cd ../site && npx vite build",
     "test:e2e": "npm run build && patchright test",
     "test:e2e:nobuild": "patchright test",
@@ -11,6 +11,9 @@
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
+  },
+  "overrides": {
+    "markdown-it": "14.3.1"
   },
   "dependencies": {
     "patchright": "^1.63.0"
