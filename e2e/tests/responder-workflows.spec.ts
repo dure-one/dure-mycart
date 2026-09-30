@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/test.fixture'
+import { useAdminSession } from '../utils/admin-page'
 
 /**
  * Responder E2E Tests: Workflows and Settings
@@ -7,7 +8,8 @@ import { test, expect } from '../fixtures/test.fixture'
  */
 
 test.describe('Responder - Workflows', () => {
-	test.beforeEach(async ({ page }) => {
+	test.beforeEach(async ({ page, baseURL }) => {
+		await useAdminSession(page, baseURL ?? '')
 		await page.goto('/_/responder/workflows')
 		await page.waitForLoadState('networkidle')
 	})
@@ -80,6 +82,10 @@ test.describe('Responder - Workflows', () => {
 })
 
 test.describe('Responder - XMPP Settings', () => {
+	test.beforeEach(async ({ page, baseURL }) => {
+		await useAdminSession(page, baseURL ?? '')
+	})
+
 	test('configure XMPP connection', async ({ page }) => {
 		await page.goto('/_/settings/responder')
 		await page.waitForLoadState('networkidle')
@@ -119,6 +125,10 @@ test.describe('Responder - XMPP Settings', () => {
 })
 
 test.describe('Responder - Crontab Settings', () => {
+	test.beforeEach(async ({ page, baseURL }) => {
+		await useAdminSession(page, baseURL ?? '')
+	})
+
 	test('view crontab jobs', async ({ page }) => {
 		await page.goto('/_/settings/crontab')
 		await page.waitForLoadState('networkidle')

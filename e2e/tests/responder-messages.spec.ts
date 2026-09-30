@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/test.fixture'
+import { useAdminSession } from '../utils/admin-page'
 
 /**
  * Responder E2E Tests: Messages
@@ -8,8 +9,8 @@ import { test, expect } from '../fixtures/test.fixture'
  */
 
 test.describe('Responder - Messages', () => {
-	test.beforeEach(async ({ page, context }) => {
-		// Navigate to messages page
+	test.beforeEach(async ({ page, baseURL }) => {
+		await useAdminSession(page, baseURL ?? '')
 		await page.goto('/_/responder/messages')
 		await page.waitForLoadState('networkidle')
 	})
