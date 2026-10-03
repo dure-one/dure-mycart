@@ -128,6 +128,10 @@ modules_enabled = {
 http_ports = { 5280 }
 http_interfaces = { "*", "::" }
 
+-- Trust reverse proxy (mycart) for X-Forwarded-For headers
+-- This preserves real client IPs in HTTP/BOSH connections (admin interface)
+trusted_proxies = { "172.19.0.3" }  -- mycart container IP on xmpp-internal network
+
 -- BOSH configuration
 consider_bosh_secure = true  -- Trust BOSH connections as secure (TLS handled by xmpp-proxy)
 bosh_max_inactivity = 60     -- Keep BOSH sessions alive for 60 seconds of inactivity
