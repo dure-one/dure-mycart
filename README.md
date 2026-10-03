@@ -1,4 +1,4 @@
-# myCart
+# dure-mycart
 
 ## How to Run
 
@@ -10,13 +10,13 @@ git clone https://github.com/dure-one/dure-mycart.git
 cd dure-mycart
 
 # Build
-go build -o mycart
+go build -o dure-mycart
 
 # Initialize
-./mycart init
+./dure-mycart init
 
 # Run
-./mycart serve
+./dure-mycart serve
 ```
 
 Access at http://localhost:8080
@@ -25,14 +25,14 @@ Access at http://localhost:8080
 
 ```bash
 # Download latest release
-curl -L https://github.com/dure-one/dure-mycart/releases/latest/download/dure-mycart-linux-amd64 -o mycart
-chmod +x mycart
+curl -L https://github.com/dure-one/dure-mycart/releases/latest/download/dure-mycart-linux-amd64 -o dure-mycart
+chmod +x dure-mycart
 
 # Initialize
-./mycart init
+./dure-mycart init
 
 # Run
-./mycart serve
+./dure-mycart serve
 ```
 
 ### 3. Docker
@@ -42,7 +42,7 @@ chmod +x mycart
 ```bash
 docker run -v ./lc_base:/lc_base -v ./lc_digitals:/lc_digitals -v ./lc_uploads:/lc_uploads --rm ghcr.io/dure-one/dure-mycart:latest init
 
-docker run --name mycart --restart unless-stopped -p 8080:8080 -v ./lc_base:/lc_base -v ./lc_digitals:/lc_digitals -v ./lc_uploads:/lc_uploads ghcr.io/dure-one/dure-mycart:latest
+docker run --name dure-mycart --restart unless-stopped -p 8080:8080 -v ./lc_base:/lc_base -v ./lc_digitals:/lc_digitals -v ./lc_uploads:/lc_uploads ghcr.io/dure-one/dure-mycart:latest
 ```
 
 **Image**: Built from `Dockerfile` → `ghcr.io/dure-one/dure-mycart:latest`
@@ -83,32 +83,32 @@ No configuration needed. Database stored in `./lc_base/data.db`.
 #### Installation
 
 ```bash
-./mycart install \
+./dure-mycart install \
   --email admin@example.com \
   --password yourpass \
   --domain localhost \
   --db postgres \
-  --db-dsn 'postgres://user:password@host:5432/mycart?sslmode=disable'
+  --db-dsn 'postgres://user:password@host:5432/dure-mycart?sslmode=disable'
 ```
 
 #### Runtime
 
 ```bash
 # Via command line
-./mycart serve --db postgres --db-dsn 'postgres://...'
+./dure-mycart serve --db postgres --db-dsn 'postgres://...'
 
 # Via environment variables
 export MYCART_DB_DRIVER=postgres
-export MYCART_DB_DSN='postgres://user:password@host:5432/mycart?sslmode=disable'
-./mycart serve
+export MYCART_DB_DSN='postgres://user:password@host:5432/dure-mycart?sslmode=disable'
+./dure-mycart serve
 ```
 
 #### Docker
 
 ```bash
-docker run --name mycart --restart unless-stopped -p 8080:8080 \
+docker run --name dure-mycart --restart unless-stopped -p 8080:8080 \
   -e MYCART_DB_DRIVER=postgres \
-  -e MYCART_DB_DSN='postgres://user:password@host:5432/mycart?sslmode=disable' \
+  -e MYCART_DB_DSN='postgres://user:password@host:5432/dure-mycart?sslmode=disable' \
   -v ./lc_base:/lc_base \
   -v ./lc_digitals:/lc_digitals \
   -v ./lc_uploads:/lc_uploads \
@@ -119,7 +119,7 @@ docker run --name mycart --restart unless-stopped -p 8080:8080 \
 
 ## Optional sqlc Support
 
-myCart supports two SQL backends (choose at build time):
+dure-mycart supports two SQL backends (choose at build time):
 
 1. **Raw SQL (default)** - Hand-written queries, fast builds
 2. **sqlc (optional)** - Compile-time type-safe queries
@@ -154,7 +154,7 @@ make test-queries-all
 Visit http://localhost:8080/_/install or run:
 
 ```bash
-./mycart install --email admin@example.com --password yourpass --domain localhost
+./dure-mycart install --email admin@example.com --password yourpass --domain localhost
 ```
 
 ---

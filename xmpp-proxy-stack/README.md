@@ -1,12 +1,12 @@
 # dure-mycart-prosody
 
-> Full-stack Docker image combining **mycart** e-commerce platform with **xmpp-proxy**, **fail2ban-rs**, and process management via **Horust**.
+> Full-stack Docker image combining **dure-mycart** e-commerce platform with **xmpp-proxy**, **fail2ban-rs**, and process management via **Horust**.
 
 ## What's Included
 
 This all-in-one container includes:
 
-- **mycart** - Lightweight e-commerce platform
+- **dure-mycart** - Lightweight e-commerce platform
 - **xmpp-proxy** - XMPP/Jabber proxy server
 - **fail2ban-rs** - Intrusion prevention system
 - **Horust** - Process supervisor managing all services
@@ -58,7 +58,7 @@ docker run -d \
   -p 5269:5269 \
   -v ./certs:/certs \
   -v ./logs:/logs \
-  --name mycart-prosody \
+  --name dure-mycart-prosody \
   ghcr.io/dure-one/dure-mycart-prosody:latest
 ```
 
@@ -110,7 +110,7 @@ Production XMPP deployment with Prosody server and myCart integration using Dock
 - **prosody-config-init** - Configuration renderer
 - **prosody-permissions-init** - Fixes directory permissions (UID 1000:1000)
 - **prosody** - XMPP server (Prosody 13.0)
-- **xmpp-proxy-stack** - myCart + XMPP proxy + fail2ban
+- **xmpp-proxy-stack** - dure-mycart + XMPP proxy + fail2ban
 
 ### Prerequisites
 
@@ -174,9 +174,9 @@ The xmpp-proxy-stack container uses host networking for PROXY protocol support:
 Configurable via `DATA_DIR` environment variable (default: `/srv/data`):
 
 - `${DATA_DIR}/prosody/` - XMPP database
-- `${DATA_DIR}/certs/` - TLS certificates (shared between Prosody and myCart)
+- `${DATA_DIR}/certs/` - TLS certificates (shared between Prosody and dure-mycart)
 - `${DATA_DIR}/logs/` - Application logs
-- `${DATA_DIR}/mycart/` - myCart data (database, uploads, digital products)
+- `${DATA_DIR}/mycart/` - dure-mycart data (database, uploads, digital products)
 
 ### Prosody Configuration
 
@@ -190,6 +190,7 @@ The xmpp-proxy-stack container connects to these backend ports and handles:
 - TLS termination with auto-renewed certificates
 - PROXY protocol for client IP preservation
 - fail2ban-rs for intrusion prevention
+- dure-mycart web application
 
 ### fail2ban-rs Configuration
 
@@ -204,7 +205,7 @@ docker exec xmpp-proxy-stack /usr/local/bin/fail2ban-rs status
 
 Default jails monitor:
 - **xmpp-auth** - Prosody authentication failures
-- **mycart-auth** - myCart HTTP authentication failures
+- **mycart-auth** - dure-mycart HTTP authentication failures
 
 **Default Settings:**
 - Ban time: 1 hour
