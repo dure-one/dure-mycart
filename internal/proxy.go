@@ -179,14 +179,23 @@ func SetupProxyRoutes(app *fiber.App) error {
 			Str("target", target).
 			Msg("Registering reverse proxy")
 
-		// Register WebSocket proxy route (only handles WebSocket upgrades)
-		app.Get(path, proxyWebSocketHandler(target))
+		// Register WebSocket proxy route (handles WebSocket upgrades)
+		wsHandler := proxyWebSocketHandler(target)
+		app.Get(path, wsHandler)
 
 		// Register HTTP proxy for non-WebSocket requests
 		routePath := path
 		if !strings.HasSuffix(routePath, "*") {
 			routePath = strings.TrimSuffix(routePath, "/") + "/*"
 		}
+
+		// Also register WebSocket handler for wildcard path (conditional)
+		app.Get(routePath, func(c fiber.Ctx) error {
+			if fiberws.IsWebSocketUpgrade(c) {
+				return wsHandler(c)
+			}
+			return c.Next()
+		})
 
 		app.All(routePath, func(c fiber.Ctx) error {
 			// Skip if WebSocket (already handled by WebSocket route)
