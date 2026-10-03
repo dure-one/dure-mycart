@@ -102,6 +102,7 @@ services:
       - /srv/data/mycart/lc_base:/app/lc_base
       - /srv/data/mycart/lc_uploads:/app/lc_uploads
       - /srv/data/mycart/lc_digitals:/app/lc_digitals
+      - ./fail2ban-rs-config.toml:/etc/fail2ban-rs/config.toml:ro
     depends_on:
       prosody:
         condition: service_healthy

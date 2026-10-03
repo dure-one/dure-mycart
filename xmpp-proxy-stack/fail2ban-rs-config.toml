@@ -1,43 +1,44 @@
-# fail2ban-rs minimal configuration
-# Monitors logs and bans IPs that exceed failure thresholds
+# fail2ban-rs configuration for dure-mycart + XMPP stack
+# Version: 1.5.3+ format
 
-[general]
-ban_time = 3600
-find_time = 600
-max_retry = 5
+[global]
+ban_count_decay = "30d"  # Reset escalation count after 30 quiet days
+state_file = "/var/lib/fail2ban-rs/state.bin"
+socket_path = "/var/run/fail2ban-rs/fail2ban-rs.sock"
+
+# [logging]
+# level = "info"
+# format = "logfmt"
 
 # Monitor XMPP authentication failures
-[[jails]]
-name = "xmpp-auth"
+[jail.xmpp-auth]
 enabled = true
-filter = "xmpp-auth"
-logpath = ["/logs/xmpp-proxy-stdout.log", "/logs/xmpp-proxy-stderr.log"]
-backend = "ipset"
-
-[jails.xmpp-auth.backend.ipset]
-chain = "DOCKER-USER"  # Required for host networking mode
-maxelem = 65536
+log_path = "/logs/prosody/prosody.log"
+date_format = "syslog"
+filter = [
+    # Match Prosody auth failures from mod_log_auth
+    'Failed authentication attempt .* from IP: <HOST>',
+]
+max_retry = 5
+find_time = "10m"
+ban_time = "1h"
+backend = "nftables"
+ignoreip = ["127.0.0.1/8", "::1/128"]
+ignoreself = true
 
 # Monitor mycart authentication failures
-[[jails]]
-name = "mycart-auth"
+[jail.mycart-auth]
 enabled = true
-filter = "http-auth"
-logpath = ["/logs/mycart-stdout.log", "/logs/mycart-stderr.log"]
-backend = "ipset"
-
-[jails.mycart-auth.backend.ipset]
-chain = "DOCKER-USER"  # Required for host networking mode
-maxelem = 65536
-
-# Filter definitions
-[filters.xmpp-auth]
-regex = 'authentication failed.*from ([0-9.]+)'
-
-[filters.http-auth]
-regex = 'authentication failed.*ip[=:]([0-9.]+)'
-
-# Ban action using nftables
-[actions.nftables]
-ban = "nft add element inet filter fail2ban { %IP% }"
-unban = "nft delete element inet filter fail2ban { %IP% }"
+log_path = "/logs/mycart-stderr.log"
+date_format = "iso8601"
+filter = [
+    # Match mycart auth failures - adjust regex based on actual log format
+    '"level":"warn".*"status":401.*"ip":"<HOST>"',
+    '"level":"error".*authentication.*"ip":"<HOST>"',
+]
+max_retry = 5
+find_time = "10m"
+ban_time = "1h"
+backend = "nftables"
+ignoreip = ["127.0.0.1/8", "::1/128"]
+ignoreself = true
