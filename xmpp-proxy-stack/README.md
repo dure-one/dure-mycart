@@ -102,7 +102,7 @@ docker run -d \
 
 ## Docker Compose Deployment
 
-Production XMPP deployment with Prosody server and myCart integration using Docker Compose.
+Production XMPP deployment with Prosody server and dure-mycart integration using Docker Compose.
 
 ### Services
 
@@ -120,29 +120,22 @@ export DATA_DIR=/srv/data  # or ./srv/data for development
 sudo mkdir -p ${DATA_DIR}/{prosody,certs,logs,fail2ban,mycart/{lc_base,lc_uploads,lc_digitals}}
 sudo chown -R 1000:1000 ${DATA_DIR}
 
-# Create .env file in project root
-cat > .env << EOF
-XMPP_DOMAIN=chat.example.com
-MYCART_DOMAIN=chat.example.com
-XMPP_ADMIN=admin@chat.example.com
-XMPP_PROXY_PROSODY_C2S=127.0.0.1:15222
-XMPP_PROXY_PROSODY_S2S=127.0.0.1:15269
-PROSODY_LOGLEVEL=info
-PROSODY_RETENTION_DAYS=90
-DATA_DIR=/srv/data  # Use ./srv/data for development
-MYCART_DEV_MODE=false
-GIN_MODE=release
-EOF
+# Create .env file in xmpp-proxy-stack directory
+cd xmpp-proxy-stack
+cp .env.example .env
+# Edit .env with your domain and settings
 ```
 
-### Usage
+### Production Usage (Pre-built Image)
+
+Uses the latest image from GitHub Container Registry:
 
 ```bash
 # Start all services
-docker-compose -f xmpp-proxy-stack/docker-compose.yml up -d
+docker compose -f xmpp-proxy-stack/docker-compose.yml up -d
 
 # Check status
-docker-compose -f xmpp-proxy-stack/docker-compose.yml ps
+docker compose -f xmpp-proxy-stack/docker-compose.yml ps
 docker exec prosody prosodyctl status
 
 # View logs
@@ -153,7 +146,23 @@ docker logs xmpp-proxy-stack
 ss -tnlup | grep -E '5222|5269|80|443'
 
 # Stop services
-docker-compose -f xmpp-proxy-stack/docker-compose.yml down
+docker compose -f xmpp-proxy-stack/docker-compose.yml down
+```
+
+### Development Usage (Local Build)
+
+Builds the xmpp-proxy-stack image locally from source:
+
+```bash
+# Build and start all services
+docker compose -f xmpp-proxy-stack/docker-compose.dev.yml up -d --build
+
+# Rebuild after code changes
+docker compose -f xmpp-proxy-stack/docker-compose.dev.yml build xmpp-proxy-stack
+docker compose -f xmpp-proxy-stack/docker-compose.dev.yml up -d
+
+# Stop services
+docker compose -f xmpp-proxy-stack/docker-compose.dev.yml down
 ```
 
 ### Ports (Host Network Mode)

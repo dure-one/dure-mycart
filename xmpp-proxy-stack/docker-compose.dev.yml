@@ -1,7 +1,8 @@
-# dure-mycart + XMPP Docker Compose (Production)
+# dure-mycart + XMPP Docker Compose (Development)
 # Merged stack: dure-mycart + xmpp-proxy + fail2ban-rs in single container
 # prosody runs separately on bridge network
-# For development builds, use docker-compose.dev.yml
+# This file builds the image locally for development
+# For production deployments, use docker-compose.yml
 
 services:
   # Init service to set up Prosody community modules
@@ -106,9 +107,11 @@ services:
         condition: service_completed_successfully
 
   # Merged stack: dure-mycart + xmpp-proxy + fail2ban-rs
-  # Production: pulls pre-built image from GitHub Container Registry
+  # Development: builds image locally from source
   xmpp-proxy-stack:
-    image: ghcr.io/dure-one/dure-mycart-prosody:latest
+    build:
+      context: ..
+      dockerfile: xmpp-proxy-stack/Dockerfile
     container_name: xmpp-proxy-stack
     restart: unless-stopped
     # Uses host networking for PROXY protocol support
