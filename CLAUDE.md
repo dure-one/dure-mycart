@@ -28,7 +28,7 @@ Three-tier fork:
 
 ## Current Work
 
-**Branch**: `feat/responder-system` (22 commits ahead of `origin/main`)
+**Branch**: `main`
 
 XMPP-based customer support responder system:
 - Database schema: `migrations/20261001000000_responder_tables.sql`
@@ -43,6 +43,13 @@ XMPP-based customer support responder system:
 2. Cron runner executes scheduled workflows
 3. Contact/message/workflow queries with SQLite/PostgreSQL dual support
 4. Admin panel for configuration and message viewing
+
+**XMPP Proxy Stack** (`xmpp-proxy-stack/`):
+- All-in-one Docker image: dure-mycart + xmpp-proxy + fail2ban-rs
+- PROXY protocol v1 for preserving real client IPs in Prosody logs
+- Bridge network with static IPs (172.19.0.0/16)
+- **xmpp-proxy limitation**: Only accepts IP:port format, not hostname:port
+- Prosody static IP: 172.19.0.2 (configured in docker-compose.yml)
 
 ## Development Commands
 

@@ -86,12 +86,9 @@ services:
       - ${DATA_DIR:-/srv/data}/logs/prosody:/var/log/prosody
       - ../generated/proxy.cfg.lua:/etc/prosody/conf.d/proxy.cfg.lua:ro
       - ../prosody-modules:/usr/lib/prosody/community:ro
-    ports:
-      - "127.0.0.1:15222:5222"  # C2S (localhost only)
-      - "127.0.0.1:15269:5269"  # S2S (localhost only)
-      - "127.0.0.1:15280:5280"  # HTTP/WebSocket (localhost only, proxied via mycart)
     networks:
-      - xmpp-internal
+      xmpp-internal:
+        ipv4_address: 172.19.0.2  # Static IP required for xmpp-proxy config
     healthcheck:
       test: ["CMD", "prosodyctl", "status"]
       interval: 30s
@@ -140,3 +137,7 @@ services:
 networks:
   xmpp-internal:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.19.0.0/16
+          gateway: 172.19.0.1

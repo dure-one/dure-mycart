@@ -188,14 +188,16 @@ Configurable via `DATA_DIR` environment variable (default: `/srv/data`):
 
 ### Prosody Configuration
 
-Prosody runs on internal bridge network (`xmpp-internal`):
-- `prosody:5222` - C2S (client-to-server) - xmpp-proxy connects here
-- `prosody:5269` - S2S (server-to-server) - xmpp-proxy connects here
+Prosody runs on internal bridge network (`xmpp-internal`) with static IP:
+- `172.19.0.2:5222` - C2S (client-to-server) - xmpp-proxy connects here
+- `172.19.0.2:5269` - S2S (server-to-server) - xmpp-proxy connects here
 - `prosody:5280` - HTTP/WebSocket - proxied via mycart reverse proxy
+
+**IMPORTANT:** xmpp-proxy requires IP:port format (hostname:port not supported). Prosody has static IP `172.19.0.2` assigned in docker-compose.yml.
 
 The xmpp-proxy-stack container:
 - Joins the same `xmpp-internal` bridge network as Prosody
-- Connects directly to Prosody using container hostname (no Docker port mapping)
+- Connects directly to Prosody using static IP (no Docker port mapping)
 - Sends PROXY protocol v1 headers with real client IPs
 - Handles public-facing XMPP ports (5222, 5223, 5269)
 - Performs TLS termination with auto-renewed certificates
@@ -302,6 +304,83 @@ Add to crontab for weekly updates:
 sudo crontab -e
 # Add: Weekly MaxMind database update (Wednesdays at 3 AM)
 0 3 * * 3 /usr/bin/geoipupdate && docker compose -f /srv/dure-mycart/xmpp-proxy-stack/docker-compose.yml restart xmpp-proxy-stack
+```
+
+## Troubleshooting
+
+### xmpp-proxy fails to start ("invalid config file")
+
+**Symptom:** Container logs show "invalid config file" and xmpp-proxy process not running.
+
+**Cause:** xmpp-proxy only supports IP:port format, not hostname:port.
+
+**Solution:** Verify `.env` file uses IP addresses:
+```bash
+XMPP_PROXY_PROSODY_C2S=172.19.0.2:5222
+XMPP_PROXY_PROSODY_S2S=172.19.0.2:5269
+```
+
+**Verify static IP assignment:**
+```bash
+docker network inspect xmpp-proxy-stack_xmpp-internal --format "{{range .Containers}}{{.Name}}: {{.IPv4Address}} {{end}}"
+# Should show: prosody: 172.19.0.2/16
+```
+
+### Prosody admin page redirect errors
+
+**Symptom:** BOSH connection fails, admin page doesn't load.
+
+**Cause:** xmpp-proxy not running (see above) or reverse proxy misconfigured.
+
+**Check:**
+```bash
+# Verify xmpp-proxy is running
+docker exec xmpp-proxy-stack /bin/busybox ps | grep xmpp-proxy
+
+# Test Prosody HTTP endpoint
+docker exec xmpp-proxy-stack /usr/bin/curl -s -o /dev/null -w "%{http_code}\n" http://172.19.0.2:5280/http-bind
+# Should return: 200
+```
+
+### Prosody logs show internal IP (172.18.0.1) instead of real client IP
+
+**Symptom:** Authentication failure logs show Docker gateway IP.
+
+**Cause:** PROXY protocol not configured or xmpp-proxy not running.
+
+**Solution:**
+1. Verify xmpp-proxy is running and connected to Prosody
+2. Check Prosody has mod_net_proxy enabled and proxy_trusted_proxies configured
+3. Verify xmpp-proxy config has `proxy = true`
+
+**Test PROXY protocol:**
+```bash
+# Trigger authentication failure and check logs
+docker logs prosody 2>&1 | grep "Failed authentication" | tail -5
+# Should show real client IP, not 172.x.x.x
+```
+
+### Container IP changed after restart
+
+**Symptom:** xmpp-proxy can't connect to Prosody after container recreation.
+
+**Cause:** Static IP not properly configured in docker-compose.yml.
+
+**Solution:** Ensure docker-compose.yml has:
+```yaml
+networks:
+  xmpp-internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.19.0.0/16
+          gateway: 172.19.0.1
+
+services:
+  prosody:
+    networks:
+      xmpp-internal:
+        ipv4_address: 172.19.0.2
 ```
 
 ## Architecture
