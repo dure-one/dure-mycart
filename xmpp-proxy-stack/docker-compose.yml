@@ -41,6 +41,29 @@ services:
       - ../:/workspace
     command: sh xmpp-proxy-stack/render-prosody-config.sh
 
+  # Fix permissions for Prosody data directories
+  prosody-permissions-init:
+    image: alpine:latest
+    container_name: prosody-permissions-init
+    restart: "no"
+    user: root
+    volumes:
+      - ${DATA_DIR:-/srv/data}/prosody:/data/prosody
+      - ${DATA_DIR:-/srv/data}/logs/prosody:/data/logs
+      - ${DATA_DIR:-/srv/data}/certs:/data/certs
+    command: >
+      sh -c '
+        echo "=== Fixing Prosody directory permissions ===" &&
+        chown -R 1000:1000 /data/prosody /data/logs /data/certs &&
+        chmod -R 775 /data/prosody /data/logs &&
+        chmod -R 755 /data/certs &&
+        echo "✓ Permissions fixed (UID 1000:1000)" &&
+        ls -la /data/logs
+      '
+    depends_on:
+      prosody-config-init:
+        condition: service_completed_successfully
+
   # Prosody XMPP server
   prosody:
     image: prosodyim/prosody:13.0
@@ -56,9 +79,9 @@ services:
       PROSODY_CERTIFICATES: /certs
       PROSODY_RETENTION_DAYS: ${PROSODY_RETENTION_DAYS:-90}
     volumes:
-      - /srv/data/prosody:/var/lib/prosody
-      - /srv/data/certs:/certs:ro
-      - /srv/data/logs/prosody:/var/log/prosody
+      - ${DATA_DIR:-/srv/data}/prosody:/var/lib/prosody
+      - ${DATA_DIR:-/srv/data}/certs:/certs:ro
+      - ${DATA_DIR:-/srv/data}/logs/prosody:/var/log/prosody
       - ../generated/proxy.cfg.lua:/etc/prosody/conf.d/proxy.cfg.lua:ro
       - ../prosody-modules:/usr/lib/prosody/community:ro
     ports:
@@ -78,6 +101,8 @@ services:
         condition: service_completed_successfully
       prosody-config-init:
         condition: service_completed_successfully
+      prosody-permissions-init:
+        condition: service_completed_successfully
 
   # Merged stack: mycart + xmpp-proxy + fail2ban-rs
   xmpp-proxy-stack:
@@ -96,13 +121,12 @@ services:
       - NET_ADMIN
     env_file: .env
     volumes:
-      - /srv/data/certs:/certs
-      - /srv/data/logs:/logs
-      - /srv/data/fail2ban:/var/lib/fail2ban-rs
-      - /srv/data/mycart/lc_base:/app/lc_base
-      - /srv/data/mycart/lc_uploads:/app/lc_uploads
-      - /srv/data/mycart/lc_digitals:/app/lc_digitals
-      - ./fail2ban-rs-config.toml:/etc/fail2ban-rs/config.toml:ro
+      - ${DATA_DIR:-/srv/data}/certs:/certs
+      - ${DATA_DIR:-/srv/data}/logs:/logs
+      - ${DATA_DIR:-/srv/data}/fail2ban:/var/lib/fail2ban-rs
+      - ${DATA_DIR:-/srv/data}/mycart/lc_base:/app/lc_base
+      - ${DATA_DIR:-/srv/data}/mycart/lc_uploads:/app/lc_uploads
+      - ${DATA_DIR:-/srv/data}/mycart/lc_digitals:/app/lc_digitals
     depends_on:
       prosody:
         condition: service_healthy

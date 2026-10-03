@@ -68,6 +68,7 @@ docker run -d \
 |----------|-------------|----------|---------|
 | `XMPP_DOMAIN` | XMPP server domain | **Yes** | - |
 | `MYCART_DOMAIN` | Mycart domain (must match XMPP_DOMAIN) | **Yes** | - |
+| `DATA_DIR` | Base directory for persistent data | No | `/srv/data` |
 | `XMPP_PROXY_PROSODY_C2S` | Backend Prosody c2s port | Yes | `127.0.0.1:5222` |
 | `XMPP_PROXY_PROSODY_S2S` | Backend Prosody s2s port | Yes | `127.0.0.1:5269` |
 | `MYCART_DEV_MODE` | Development mode | No | `false` |
@@ -76,7 +77,9 @@ docker run -d \
 | `GIN_MODE` | Gin framework mode | No | `release` |
 | `REVERSE_PROXY_BINDINGS` | Reverse proxy config | No | - |
 
-**Important:** `XMPP_DOMAIN` and `MYCART_DOMAIN` must match for shared SSL certificate functionality.
+**Important:**
+- `XMPP_DOMAIN` and `MYCART_DOMAIN` must match for shared SSL certificate functionality.
+- `DATA_DIR` can be absolute (`/srv/data` for production) or relative (`./srv/data` for development).
 
 ## Ports
 
@@ -105,6 +108,7 @@ Production XMPP deployment with Prosody server and myCart integration using Dock
 
 - **prosody-modules-init** - One-time module setup
 - **prosody-config-init** - Configuration renderer
+- **prosody-permissions-init** - Fixes directory permissions (UID 1000:1000)
 - **prosody** - XMPP server (Prosody 13.0)
 - **xmpp-proxy-stack** - myCart + XMPP proxy + fail2ban
 
@@ -112,8 +116,9 @@ Production XMPP deployment with Prosody server and myCart integration using Dock
 
 ```bash
 # Create data directories
-sudo mkdir -p /srv/data/{prosody,certs,logs,fail2ban,mycart/{lc_base,lc_uploads,lc_digitals}}
-sudo chown -R 1000:1000 /srv/data
+export DATA_DIR=/srv/data  # or ./srv/data for development
+sudo mkdir -p ${DATA_DIR}/{prosody,certs,logs,fail2ban,mycart/{lc_base,lc_uploads,lc_digitals}}
+sudo chown -R 1000:1000 ${DATA_DIR}
 
 # Create .env file in project root
 cat > .env << EOF
@@ -124,6 +129,7 @@ XMPP_PROXY_PROSODY_C2S=127.0.0.1:15222
 XMPP_PROXY_PROSODY_S2S=127.0.0.1:15269
 PROSODY_LOGLEVEL=info
 PROSODY_RETENTION_DAYS=90
+DATA_DIR=/srv/data  # Use ./srv/data for development
 MYCART_DEV_MODE=false
 GIN_MODE=release
 EOF
@@ -165,10 +171,12 @@ The xmpp-proxy-stack container uses host networking for PROXY protocol support:
 
 ### Data Volumes
 
-- `/srv/data/prosody/` - XMPP database
-- `/srv/data/certs/` - TLS certificates (shared between Prosody and myCart)
-- `/srv/data/logs/` - Application logs
-- `/srv/data/mycart/` - myCart data (database, uploads, digital products)
+Configurable via `DATA_DIR` environment variable (default: `/srv/data`):
+
+- `${DATA_DIR}/prosody/` - XMPP database
+- `${DATA_DIR}/certs/` - TLS certificates (shared between Prosody and myCart)
+- `${DATA_DIR}/logs/` - Application logs
+- `${DATA_DIR}/mycart/` - myCart data (database, uploads, digital products)
 
 ### Prosody Configuration
 
