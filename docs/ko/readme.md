@@ -212,10 +212,6 @@ docker-compose down
 Kubernetes에서 실행하기 위한 예제 매니페스트는 `/k8s/` 폴더에서 찾을 수 있습니다(<a href="https://github.com/vuisme" target="_blank">@vuisme</a>님 감사합니다)
 
 
-## 🔄&nbsp;&nbsp;litecart에서 마이그레이션
-
-이전 이름 **litecart**로 게시된 버전에서 업그레이드하는 경우 바이너리, Docker, Docker Compose, Kubernetes, Homebrew 및 Go 모듈 업데이트를 다루는 단계별 지침은 **[마이그레이션 가이드](/ko/migration-from-litecart)**를 참조하세요. 데이터와 데이터베이스는 완전히 호환됩니다. 스키마 마이그레이션이 필요하지 않습니다.
-
 ## ⬇️&nbsp;&nbsp;업데이트
 > [!WARNING]
 > 업데이트하기 전에 *./lc_base* 폴더와 *./site* 폴더를 백업하세요.
