@@ -92,7 +92,7 @@
           <a
             target="_blank"
             rel="noopener noreferrer"
-            href="https://github.com/shurco/mycart"
+            href="https://github.com/dure-one/dure-mycart"
             class="cursor-pointer text-xs font-black tracking-wider text-yellow-300 uppercase transition-colors duration-200 hover:text-white"
           >
             {t('footer.poweredBy')}

@@ -69,11 +69,18 @@ RUN /go/bin/swag init -g cmd/main.go --output docs/swagger --parseDependency --p
 COPY --from=frontend-builder /app/web/admin/build ./web/admin/build
 COPY --from=frontend-builder /app/web/site/build ./web/site/build
 
-# Build the binary
+# Build the binary with version info
 ARG TARGETARCH
+ARG VERSION=dev
+ARG GIT_COMMIT=unknown
+ARG BUILD_DATE=unknown
+
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build \
     -tags sqlc \
-    -ldflags="-w -s" \
+    -ldflags="-w -s \
+      -X 'main.version=${VERSION}' \
+      -X 'main.gitCommit=${GIT_COMMIT}' \
+      -X 'main.buildDate=${BUILD_DATE}'" \
     -o /go/bin/dure-mycart \
     ./cmd/main.go
 

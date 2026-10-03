@@ -51,7 +51,7 @@
   })
 
   const goToRelease = async () => {
-    const releaseUrl = version.release_url || 'https://github.com/shurco/mycart'
+    const releaseUrl = version.release_url || 'https://github.com/dure-one/dure-mycart'
     window.open(releaseUrl, '_blank')
   }
 

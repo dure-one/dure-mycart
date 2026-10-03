@@ -54,6 +54,10 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            VERSION=${{ github.ref_name }}
+            GIT_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
           labels: |
             ${{ steps.meta.outputs.labels }}
             io.artifacthub.package.readme-url=https://raw.githubusercontent.com/dure-one/dure-mycart/main/xmpp-proxy-stack/README.md
