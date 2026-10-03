@@ -1,47 +1,35 @@
 <p align="center">
     <a href="#" target="_blank" rel="noopener">
-        <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/banner.png" alt="myCart - 하나의 파일로 된 쇼핑카트" />
+        <img src="https://raw.githubusercontent.com/dure-one/dure-mycart/main/.github/media/banner.png" alt="myCart - 하나의 파일로 된 쇼핑카트" />
     </a>
 </p>
 
 
-<a href="https://github.com/shurco/mycart/releases"><img src="https://img.shields.io/github/v/release/shurco/mycart?sort=semver&label=Release&color=651FFF"></a>
-<a href="https://goreportcard.com/report/github.com/shurco/mycart"><img src="https://goreportcard.com/badge/github.com/shurco/mycart"></a>
-<a href="https://www.codefactor.io/repository/github/shurco/mycart"><img src="https://www.codefactor.io/repository/github/shurco/mycart/badge" alt="CodeFactor" /></a>
-<a href="https://github.com/shurco/mycart/actions/workflows/release.yml"><img src="https://github.com/shurco/mycart/actions/workflows/release.yml/badge.svg"></a>
-<a href="https://github.com/shurco/mycart/blob/master/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
+<a href="https://github.com/dure-one/dure-mycart/releases"><img src="https://img.shields.io/github/v/release/dure-one/dure-mycart?sort=semver&label=Release&color=651FFF"></a>
+<a href="https://goreportcard.com/report/github.com/dure-one/dure-mycart"><img src="https://goreportcard.com/badge/github.com/dure-one/dure-mycart"></a>
+<a href="https://www.codefactor.io/repository/github/dure-one/dure-mycart"><img src="https://www.codefactor.io/repository/github/dure-one/dure-mycart/badge" alt="CodeFactor" /></a>
+<a href="https://github.com/dure-one/dure-mycart/actions/workflows/release.yml"><img src="https://github.com/dure-one/dure-mycart/actions/workflows/release.yml/badge.svg"></a>
+<a href="https://github.com/dure-one/dure-mycart/blob/master/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
 
-> [!Important]
-> 이 저장소는 이름이 변경되고 있습니다.  
->이 프로젝트는 원래 litecart라는 이름으로 게시되었습니다. 최근 이 이름 사용과 관련된 상표권 주장을 받았습니다. 혼란과 잠재적인 법적 문제를 피하기 위해 프로젝트는 새로운 이름으로 계속됩니다.  
->코드베이스 자체는 변경되지 않습니다. 프로젝트 이름, 저장소 이름, 패키지 식별자 및 관련 참조만 업데이트됩니다.  
->이 저장소는 기존 사용자가 마이그레이션할 시간을 갖도록 리디렉션 및 메모와 함께 일정 기간 동안 사용 가능한 상태로 유지됩니다.  
->현재 저장소 이름에 의존하는 설정이 있는 경우 이름 변경이 완료되면 참조를 업데이트하세요.  
->프로젝트를 사용하고 피드백을 제공해 주신 모든 분들께 감사드립니다.  
-
-> [!NOTE]
-> **면책 조항:** 유사한 이름의 프로젝트나 브랜드와 관련이 없습니다.
-> 이것은 MIT 라이선스에 따라 라이선스가 부여된 독립적인 오픈 소스 프로젝트입니다.
 
 
 ## 🛒&nbsp;&nbsp;myCart란?
 
 myCart는 임베디드 데이터베이스(SQLite) 1개 파일, 편리한 대시보드 UI 및 간단한 사이트로 구성된 오픈 소스 쇼핑카트입니다.
-이전에는 **litecart**로 알려졌습니다(검색 시 발견 가능성을 위해 레거시 프로젝트 이름이 여기에 유지됨).
 
 > [!WARNING]
 > 현재 메이저 버전은 0(`v0.x.x`)이며, 사용자로부터 조기 피드백을 받는 동안 빠른 개발과 반복을 수용합니다. myCart는 여전히 활발히 개발 중이므로 v1.0.0에 도달하기 전까지는 완전한 하위 호환성이 보장되지 않습니다.
 
 ### 비디오 예제
-![예제](https://raw.githubusercontent.com/shurco/mycart/main/.github/media/demo.gif)
+![예제](https://raw.githubusercontent.com/dure-one/dure-mycart/main/.github/media/demo.gif)
 
 ### 관리자 패널 스크린샷
 <p align="center">
-  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/products.png" width="270">
-  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/product-edit.png" width="270">
-  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/carts.png" width="270">
-  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/pages.png" width="270">
-  <img src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/screenshots/settings.png" width="270">
+  <img src="https://raw.githubusercontent.com/dure-one/dure-mycart/main/.github/media/screenshots/products.png" width="270">
+  <img src="https://raw.githubusercontent.com/dure-one/dure-mycart/main/.github/media/screenshots/product-edit.png" width="270">
+  <img src="https://raw.githubusercontent.com/dure-one/dure-mycart/main/.github/media/screenshots/carts.png" width="270">
+  <img src="https://raw.githubusercontent.com/dure-one/dure-mycart/main/.github/media/screenshots/pages.png" width="270">
+  <img src="https://raw.githubusercontent.com/dure-one/dure-mycart/main/.github/media/screenshots/settings.png" width="270">
 </p>
 
 
@@ -74,7 +62,7 @@ myCart는 임베디드 데이터베이스(SQLite) 1개 파일, 편리한 대시�
 
 `mycart`는 터미널에서 단일 명령만 필요한 쉬운 설치 및 작동을 위해 설계되었습니다. 기존 설치 방법 외에도 `mycart`는 HomeBrew, Docker 또는 Docker Compose, Docker Swarm, Rancher 또는 Kubernetes와 같은 기타 컨테이너 오케스트레이션 도구를 통해 설정 및 작동할 수 있습니다.
 
-#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/apple.svg">&nbsp;macOS에 설치
+#### <img width="20" src="https://raw.githubusercontent.com/dure-one/dure-mycart/main/.github/media/platforms/apple.svg">&nbsp;macOS에 설치
 macOS에 `mycart`를 설치하는 가장 빠른 방법은 Homebrew를 사용하는 것입니다. 이렇게 하면 명령줄 도구와 `mycart` 서버가 결합된 실행 파일로 설치됩니다. Homebrew를 사용하지 않는 경우 아래 Linux 지침에 따라 `mycart`를 설치하세요.
 ```shell
 brew install shurco/tap/mycart
@@ -87,32 +75,32 @@ $ brew install mycart
 ```
 
 
-#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/linux.svg">&nbsp;Linux에 설치 
+#### <img width="20" src="https://raw.githubusercontent.com/dure-one/dure-mycart/main/.github/media/platforms/linux.svg">&nbsp;Linux에 설치 
 Unix 운영 체제에서 `mycart` 사용을 시작하는 가장 간단하고 권장되는 방법은 `mycart` 명령줄 도구를 설치하고 사용하는 것입니다. 터미널에서 다음 명령을 실행하고 화면에 표시된 지침을 따르세요.
 
 ```bash
-curl -L https://raw.githubusercontent.com/shurco/mycart/main/scripts/install | sh
+curl -L https://raw.githubusercontent.com/dure-one/dure-mycart/main/scripts/install | sh
 ```
 
-#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/windows.svg">&nbsp;Windows에 설치
+#### <img width="20" src="https://raw.githubusercontent.com/dure-one/dure-mycart/main/.github/media/platforms/windows.svg">&nbsp;Windows에 설치
 Windows에서 `mycart` 사용을 시작하는 가장 간단하고 권장되는 방법은 `mycart` 명령줄 도구를 설치하고 사용하는 것입니다. 터미널에서 다음 명령을 실행하고 화면에 표시된 지침을 따르세요.
 ```bash
-curl -L https://raw.githubusercontent.com/shurco/mycart/main/scripts/install | sh
+curl -L https://raw.githubusercontent.com/dure-one/dure-mycart/main/scripts/install | sh
 ```
-또는 Windows용 [최신 버전](https://github.com/shurco/mycart/releases/latest)을 다운로드하여 압축을 풉니다.
+또는 Windows용 [최신 버전](https://github.com/dure-one/dure-mycart/releases/latest)을 다운로드하여 압축을 풉니다.
 
 
-#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/docker.svg">&nbsp;Docker를 사용하여 실행
+#### <img width="20" src="https://raw.githubusercontent.com/dure-one/dure-mycart/main/.github/media/platforms/docker.svg">&nbsp;Docker를 사용하여 실행
 Docker를 사용하면 명령줄 도구를 설치할 필요 없이 `mycart` 인스턴스를 관리하고 작동할 수 있습니다. `mycart` Docker 컨테이너에는 필요한 모든 명령줄 도구 또는 서버 실행이 포함되어 있습니다.
 
-[Docker Hub](https://hub.docker.com/r/shurco/mycart)의 경우:
+[Docker Hub](https://hub.docker.com/r/dure-one/dure-mycart)의 경우:
 ```bash
 docker run \
   -v ./lc_base:/lc_base \
   -v ./lc_digitals:/lc_digitals \
   -v ./lc_uploads:/lc_uploads \
   -v ./site:/site \
-  --rm shurco/mycart:latest init
+  --rm dure-one/dure-mycart:latest init
 
 docker run \
   --name mycart \
@@ -122,9 +110,9 @@ docker run \
   -v ./lc_digitals:/lc_digitals \
   -v ./lc_uploads:/lc_uploads \
   -v ./site:/site \
-  shurco/mycart:latest
+  dure-one/dure-mycart:latest
 ```
-또는 [Github Packages Hub](https://github.com/shurco/mycart/pkgs/container/mycart)를 사용하는 경우:
+또는 [Github Packages Hub](https://github.com/dure-one/dure-mycart/pkgs/container/mycart)를 사용하는 경우:
 
 ```bash
 docker run \
@@ -132,7 +120,7 @@ docker run \
   -v ./lc_digitals:/lc_digitals \
   -v ./lc_uploads:/lc_uploads \
   -v ./site:/site \
-  --rm ghcr.io/shurco/mycart:latest init
+  --rm ghcr.io/dure-one/dure-mycart:latest init
 
 docker run \
   --name mycart \
@@ -142,10 +130,10 @@ docker run \
   -v ./lc_digitals:/lc_digitals \
   -v ./lc_uploads:/lc_uploads \
   -v ./site:/site \
-  ghcr.io/shurco/mycart:latest
+  ghcr.io/dure-one/dure-mycart:latest
 ```
 
-#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/docker.svg">&nbsp;Docker Compose를 사용하여 실행
+#### <img width="20" src="https://raw.githubusercontent.com/dure-one/dure-mycart/main/.github/media/platforms/docker.svg">&nbsp;Docker Compose를 사용하여 실행
 Docker Compose는 여러 컨테이너와 서비스를 관리하는 편리한 방법을 제공합니다. 프로젝트에는 다양한 사용 사례를 위한 여러 Docker Compose 구성이 포함되어 있습니다.
 
 **프로덕션 설정** (`docker/docker-compose.yml`):
@@ -220,7 +208,7 @@ ADMIN_EMAIL=admin@example.com
 docker-compose down
 ```
 
-#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/k8s.svg">&nbsp;Kubernetes를 사용하여 실행
+#### <img width="20" src="https://raw.githubusercontent.com/dure-one/dure-mycart/main/.github/media/platforms/k8s.svg">&nbsp;Kubernetes를 사용하여 실행
 Kubernetes에서 실행하기 위한 예제 매니페스트는 `/k8s/` 폴더에서 찾을 수 있습니다(<a href="https://github.com/vuisme" target="_blank">@vuisme</a>님 감사합니다)
 
 
@@ -245,12 +233,12 @@ Kubernetes에서 실행하기 위한 예제 매니페스트는 `/k8s/` 폴더에
 ```
 
 
-#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/docker.svg">&nbsp; Docker를 사용하여 업데이트
-우리의 만트라는 업데이트를 원활한 경험으로 만드는 것입니다. 새 이미지를 다운로드하고 평소처럼 컨테이너를 시작하기만 하면 됩니다. 예를 들어 [Docker Hub](https://hub.docker.com/r/shurco/mycart)를 사용하는 경우:
+#### <img width="20" src="https://raw.githubusercontent.com/dure-one/dure-mycart/main/.github/media/platforms/docker.svg">&nbsp; Docker를 사용하여 업데이트
+우리의 만트라는 업데이트를 원활한 경험으로 만드는 것입니다. 새 이미지를 다운로드하고 평소처럼 컨테이너를 시작하기만 하면 됩니다. 예를 들어 [Docker Hub](https://hub.docker.com/r/dure-one/dure-mycart)를 사용하는 경우:
 
 ```bash
 docker stop mycart
-docker pull shurco/mycart:latest # 새 이미지 다운로드
+docker pull dure-one/dure-mycart:latest # 새 이미지 다운로드
 docker rename mycart mycart-backup # 이미지 백업
 docker run \
   --name mycart \
@@ -260,7 +248,7 @@ docker run \
   -v ./lc_digitals:/lc_digitals \
   -v ./lc_uploads:/lc_uploads \
   -v ./site:/site \
-  shurco/mycart:latest
+  dure-one/dure-mycart:latest
 ```
 
 업데이트 중에 데이터베이스 구조에 변경 사항이 있는 경우 마이그레이션을 수행해야 합니다. 이를 위해 `mycart` 폴더에서 다음 명령을 실행해야 합니다:
@@ -268,10 +256,10 @@ docker run \
 docker run \
 -v ./lc_base:/lc_base \
 -v ./site:/site \
---rm shurco/mycart migrate
+--rm dure-one/dure-mycart migrate
 ```
 
-#### <img width="20" src="https://raw.githubusercontent.com/shurco/mycart/main/.github/media/platforms/k8s.svg">&nbsp;Kubernetes를 사용하여 실행
+#### <img width="20" src="https://raw.githubusercontent.com/dure-one/dure-mycart/main/.github/media/platforms/k8s.svg">&nbsp;Kubernetes를 사용하여 실행
 Kubernetes에서 실행하기 위한 예제 매니페스트는 `/k8s/` 폴더에서 찾을 수 있습니다(<a href="https://github.com/vuisme" target="_blank">@vuisme</a>님 감사합니다)
 
 ## 🚀&nbsp;&nbsp;시작하기
@@ -490,17 +478,17 @@ myCart는 무료 제품을 지원하므로 고객에게 무료로 디지털 콘�
 - [ ] Webhook을 통한 결제
 - [x] <a href="#spectrocoin">암호화폐를 사용한 결제 지원(SpectroCoin)</a>
 - [x] <a href="#coinbase">Coinbase Commerce 암호화 결제</a>
-- [x] WebHook 지원(<a href="https://github.com/msalbrain" target="_blank">@nicksnyder</a>님이 <a href="https://github.com/shurco/mycart/pull/61" target="_blank">#61</a>에서)
-- [x] <a href="#dummy-payment">Dummy Payment</a> (<a href="https://github.com/majiayu000" target="_blank">@majiayu000</a>님이 <a href="https://github.com/shurco/mycart/pull/261" target="_blank">#261</a>에서)
+- [x] WebHook 지원(<a href="https://github.com/msalbrain" target="_blank">@nicksnyder</a>님이 <a href="https://github.com/dure-one/dure-mycart/pull/61" target="_blank">#61</a>에서)
+- [x] <a href="#dummy-payment">Dummy Payment</a> (<a href="https://github.com/majiayu000" target="_blank">@majiayu000</a>님이 <a href="https://github.com/dure-one/dure-mycart/pull/261" target="_blank">#261</a>에서)
 
 
 ## 👍&nbsp;&nbsp;기여하기
 
 **감사하다**고 말하고 싶거나 `mycart`의 활발한 개발을 지원하고 싶다면:
 
-1. 프로젝트에 [GitHub Star](https://github.com/shurco/mycart/stargazers)를 추가하세요.
+1. 프로젝트에 [GitHub Star](https://github.com/dure-one/dure-mycart/stargazers)를 추가하세요.
 2. [Twitter에서](https://twitter.com/intent/tweet?text=%F0%9F%9B%92%20myCart%20-%20shopping-cart%20in%201%20file%20on%20%23Go%20https%3A%2F%2Fgithub.com%2Fshurco%2Fmycart) 프로젝트에 대해 트윗하세요.
 3. [Medium](https://medium.com/), [Dev.to](https://dev.to/) 또는 개인 블로그에 리뷰 또는 튜토리얼을 작성하세요.
 4. [커피 한 잔](https://github.com/sponsors/shurco)을 기부하여 프로젝트를 지원하세요.
 
-이 프로젝트에 기여하는 방법에 대한 자세한 내용은 [기여 가이드](https://github.com/shurco/mycart/blob/master/.github/CONTRIBUTING.md)에서 확인할 수 있습니다.
+이 프로젝트에 기여하는 방법에 대한 자세한 내용은 [기여 가이드](https://github.com/dure-one/dure-mycart/blob/master/.github/CONTRIBUTING.md)에서 확인할 수 있습니다.

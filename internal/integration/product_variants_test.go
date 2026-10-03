@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/testutil"
-	"github.com/shurco/mycart/pkg/csvimport"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/testutil"
+	"github.com/dure-one/dure-mycart/pkg/csvimport"
 
-	handlers "github.com/shurco/mycart/internal/handlers/private"
+	handlers "github.com/dure-one/dure-mycart/internal/handlers/private"
 )
 
 func TestIntegration_ProductWithVariants_FullLifecycle(t *testing.T) {

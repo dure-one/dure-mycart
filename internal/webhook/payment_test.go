@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/shurco/mycart/pkg/litepay"
+	"github.com/dure-one/dure-mycart/pkg/litepay"
 )
 
 func Test_send_payment_hook(t *testing.T) {

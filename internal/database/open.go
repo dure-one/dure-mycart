@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shurco/mycart/pkg/fsutil"
+	"github.com/dure-one/dure-mycart/pkg/fsutil"
 )
 
 // SQLite DSN pragmas. These are the values myCart has always used and they are

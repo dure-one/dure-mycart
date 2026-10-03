@@ -14,12 +14,12 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
-	"github.com/shurco/mycart/internal/digitalfiles"
-	"github.com/shurco/mycart/internal/middleware"
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/internal/testutil"
-	"github.com/shurco/mycart/pkg/jwtutil"
+	"github.com/dure-one/dure-mycart/internal/digitalfiles"
+	"github.com/dure-one/dure-mycart/internal/middleware"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/internal/testutil"
+	"github.com/dure-one/dure-mycart/pkg/jwtutil"
 )
 
 // cabinetApp wires the cabinet the way routes.ApiPublicRoutes does, minus the

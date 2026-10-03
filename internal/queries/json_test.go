@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shurco/mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/models"
 )
 
 // decodeJSONArray skips entries whose id decodes as empty. A real row always has

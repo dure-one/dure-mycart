@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/pkg/security"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/pkg/security"
 )
 
 // Product is the query behind both the admin edit form and the storefront

@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/shurco/mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/database"
 )
 
 // bookkeepingTables are never copied. The goose version table is the migration

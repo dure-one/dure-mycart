@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/pkg/errors"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/pkg/errors"
 )
 
 // ListCrontabJobs returns all crontab jobs

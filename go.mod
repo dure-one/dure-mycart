@@ -1,4 +1,4 @@
-module github.com/shurco/mycart
+module github.com/dure-one/dure-mycart
 
 go 1.26.1
 

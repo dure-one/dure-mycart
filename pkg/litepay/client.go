@@ -3,7 +3,7 @@ package litepay
 import (
 	"net/http"
 
-	"github.com/shurco/mycart/pkg/httpclient"
+	"github.com/dure-one/dure-mycart/pkg/httpclient"
 )
 
 // httpClient is the shared HTTP client used by every payment provider in this

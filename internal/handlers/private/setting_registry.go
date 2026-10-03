@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"github.com/shurco/mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/models"
 )
 
 // settingFactory returns a zero-valued pointer to the model that represents

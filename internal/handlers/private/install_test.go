@@ -6,7 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/shurco/mycart/internal/testutil"
+	"github.com/dure-one/dure-mycart/internal/testutil"
 )
 
 // setupCleanDB returns a Fiber app backed by a migrated but uninstalled

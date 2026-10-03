@@ -6,12 +6,12 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/pkg/jwtutil"
-	"github.com/shurco/mycart/pkg/logging"
-	"github.com/shurco/mycart/pkg/security"
-	"github.com/shurco/mycart/pkg/webutil"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/pkg/jwtutil"
+	"github.com/dure-one/dure-mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/pkg/security"
+	"github.com/dure-one/dure-mycart/pkg/webutil"
 )
 
 // SignIn authenticates a user and returns a JWT token.

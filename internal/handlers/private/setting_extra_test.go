@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/internal/testutil"
-	"github.com/shurco/mycart/pkg/update"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/internal/testutil"
+	"github.com/dure-one/dure-mycart/pkg/update"
 )
 
 func TestUpdateSetting_BadJSONReturns400(t *testing.T) {

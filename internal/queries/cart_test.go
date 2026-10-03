@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/pkg/litepay"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/pkg/litepay"
 )
 
 func TestCart_AddUpdateListAndFetch(t *testing.T) {

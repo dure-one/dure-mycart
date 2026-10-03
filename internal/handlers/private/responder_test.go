@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/testutil"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/testutil"
 )
 
 func TestMessageThreads(t *testing.T) {

@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for mycart + xmpp-proxy + fail2ban-rs (distroless)
+# Multi-stage Dockerfile for dure-mycart + xmpp-proxy + fail2ban-rs (distroless)
 
 ARG XMPP_PROXY_VERSION=latest
 ARG FAIL2BAN_RS_VERSION=latest
@@ -74,7 +74,7 @@ ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build \
     -tags sqlc \
     -ldflags="-w -s" \
-    -o /go/bin/mycart \
+    -o /go/bin/dure-mycart \
     ./cmd/main.go
 
 ##
@@ -206,8 +206,8 @@ FROM gcr.io/distroless/base-debian13:latest
 
 ARG TARGETARCH
 
-# Copy mycart binary
-COPY --from=backend-builder /go/bin/mycart /app/mycart
+# Copy dure-mycart binary
+COPY --from=backend-builder /go/bin/dure-mycart /app/dure-mycart
 
 # Copy xmpp binaries
 COPY --from=xmpp-binaries-builder /usr/local/bin/xmpp-proxy /usr/local/bin/xmpp-proxy

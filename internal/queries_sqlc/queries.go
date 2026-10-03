@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/shurco/mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/database"
 )
 
 // db holds the process-wide handle. It is an atomic pointer rather than a

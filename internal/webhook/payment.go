@@ -6,10 +6,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/pkg/litepay"
-	"github.com/shurco/mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/pkg/litepay"
+	"github.com/dure-one/dure-mycart/pkg/logging"
 )
 
 type Event string

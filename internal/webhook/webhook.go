@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/shurco/mycart/pkg/httpclient"
+	"github.com/dure-one/dure-mycart/pkg/httpclient"
 )
 
 // sharedClient is intentionally module-scoped: *http.Client is safe for

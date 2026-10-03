@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shurco/mycart/pkg/archive"
-	"github.com/shurco/mycart/pkg/httpclient"
+	"github.com/dure-one/dure-mycart/pkg/archive"
+	"github.com/dure-one/dure-mycart/pkg/httpclient"
 )
 
 // httpClient is shared across update.* functions so the connection pool is
@@ -46,7 +46,7 @@ func Init(cfg *Config) error {
 	}
 	if asset == nil {
 		// no update required
-		fmt.Printf("You already have the latest mycart %s\n", cfg.CurrentVersion)
+		fmt.Printf("You already have the latest dure-mycart %s\n", cfg.CurrentVersion)
 		return nil
 	}
 
@@ -115,7 +115,7 @@ func ReleaseInfo(ctx context.Context, cfg *Config) (*ReleaseAsset, error) {
 	}
 
 	if compareVersions(strings.TrimPrefix(cfg.CurrentVersion, "v"), strings.TrimPrefix(latest.Tag, "v")) <= 0 {
-		fmt.Printf("You already have the latest mycart %s\n", cfg.CurrentVersion)
+		fmt.Printf("You already have the latest dure-mycart %s\n", cfg.CurrentVersion)
 		return nil, nil
 	}
 

@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for distroless mycart
+# Multi-stage Dockerfile for distroless dure-mycart
 
 ##
 ## Stage 1: Build frontend assets
@@ -59,7 +59,7 @@ ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build \
     -tags sqlc \
     -ldflags="-w -s" \
-    -o /go/bin/mycart \
+    -o /go/bin/dure-mycart \
     ./cmd/main.go
 
 ##
@@ -72,7 +72,7 @@ WORKDIR /app
 # Copy the binary with proper ownership
 # The binary and its workdir are owned by nonroot so the app can create its
 # runtime-writable directories (lc_base, lc_uploads, lc_digitals, lc_certs).
-COPY --from=backend-builder --chown=nonroot:nonroot /go/bin/mycart /app/mycart
+COPY --from=backend-builder --chown=nonroot:nonroot /go/bin/dure-mycart /app/dure-mycart
 
 # Expose port
 EXPOSE 8080
@@ -80,5 +80,5 @@ EXPOSE 8080
 # Run as nonroot user (UID 65532) for enhanced security
 USER nonroot:nonroot
 
-ENTRYPOINT ["/app/mycart"]
+ENTRYPOINT ["/app/dure-mycart"]
 CMD ["serve"]

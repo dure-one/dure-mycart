@@ -5,7 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/shurco/mycart/web"
+	"github.com/dure-one/dure-mycart/web"
 )
 
 func AdminRoutes(c *fiber.App) {

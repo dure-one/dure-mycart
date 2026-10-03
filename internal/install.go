@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
 )
 
 // InstallAdmin performs first-time setup with the given admin credentials.

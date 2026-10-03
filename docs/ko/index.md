@@ -11,7 +11,7 @@ hero:
       link: /ko/readme
     - theme: alt
       text: GitHub에서 보기
-      link: https://github.com/shurco/mycart
+      link: https://github.com/dure-one/dure-mycart
     - theme: alt
       text: API 문서
       link: /swagger/
@@ -70,4 +70,4 @@ myCart는 다음으로 구성된 모놀리식 전자상거래 백엔드입니다
 - **[API 문서](/swagger/)** - 완전한 Swagger/OpenAPI 문서
 - **[E2E 테스트 리포트](/e2e/)** - Playwright 테스트 결과
 - **[커스터마이제이션](/ko/customization)** - 스토어 커스터마이즈
-- **[GitHub 저장소](https://github.com/shurco/mycart)** - 소스 코드 및 이슈
+- **[GitHub 저장소](https://github.com/dure-one/dure-mycart)** - 소스 코드 및 이슈

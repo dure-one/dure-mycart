@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/migrations"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/migrations"
 )
 
 // bootstrap initialises a fresh DB and returns the *Base for sqlc backend.

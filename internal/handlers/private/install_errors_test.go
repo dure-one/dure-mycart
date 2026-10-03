@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/testutil"
-	"github.com/shurco/mycart/internal/testutil/pgtest"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/testutil"
+	"github.com/dure-one/dure-mycart/internal/testutil/pgtest"
 )
 
 func TestInstallFailureStatus(t *testing.T) {

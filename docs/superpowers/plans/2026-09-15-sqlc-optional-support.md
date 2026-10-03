@@ -133,7 +133,7 @@ Create `internal/queries/queries_sqlc.go`:
 package queries
 
 import (
-	"github.com/shurco/mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/database"
 )
 
 // initSqlc initializes sqlc backend and injects it into all query groups.
@@ -155,7 +155,7 @@ Create `internal/queries/queries_stub.go`:
 
 package queries
 
-import "github.com/shurco/mycart/internal/database"
+import "github.com/dure-one/dure-mycart/internal/database"
 
 // initSqlc is a no-op when sqlc build tag is not active.
 func initSqlc(base *Base, conn *database.Conn) {

@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/shurco/mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/models"
 )
 
 const (

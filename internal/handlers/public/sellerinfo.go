@@ -9,10 +9,10 @@ import (
 	"github.com/wenlng/go-captcha-assets/resources/imagesv2"
 	"github.com/wenlng/go-captcha/v2/rotate"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/pkg/logging"
-	"github.com/shurco/mycart/pkg/webutil"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/pkg/webutil"
 )
 
 // captchaStore holds active captcha tokens with expiration

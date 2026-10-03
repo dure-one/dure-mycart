@@ -11,7 +11,7 @@ hero:
       link: /readme
     - theme: alt
       text: View on GitHub
-      link: https://github.com/shurco/mycart
+      link: https://github.com/dure-one/dure-mycart
     - theme: alt
       text: API Documentation
       link: /swagger/
@@ -72,4 +72,4 @@ All components are embedded into a single binary using `go:embed`.
 - **<a href="/mycart/swagger/" target="_blank" rel="noopener noreferrer">API Documentation</a>** - Complete Swagger/OpenAPI documentation
 - **[E2E Test Reports](/e2e/)** - Playwright test results
 - **[Customization](/customization)** - Customize your store
-- **[GitHub Repository](https://github.com/shurco/mycart)** - Source code and issues
+- **[GitHub Repository](https://github.com/dure-one/dure-mycart)** - Source code and issues

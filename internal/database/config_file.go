@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/shurco/mycart/pkg/fsutil"
+	"github.com/dure-one/dure-mycart/pkg/fsutil"
 )
 
 // fileConfig is the on-disk shape of lc_base/config.json. It is written by the

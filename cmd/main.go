@@ -1,13 +1,12 @@
 // +build !sqlc
 
-// @title           myCart API
+// @title           dure-mycart API
 // @version         1.0
 // @description     Open source shopping-cart backend API - a single-binary e-commerce solution
-// @termsOfService  https://github.com/shurco/mycart
+// @termsOfService  https://github.com/dure-one/dure-mycart
 
 // @contact.name   API Support
-// @contact.url    https://github.com/shurco/mycart/issues
-// @contact.email  support@mycart.com
+// @contact.url    https://github.com/dure-one/dure-mycart
 
 // @license.name  MIT
 // @license.url   https://opensource.org/licenses/MIT
@@ -31,13 +30,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	app "github.com/shurco/mycart/internal"
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/internal/dbtransfer"
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/pkg/update"
+	app "github.com/dure-one/dure-mycart/internal"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/dbtransfer"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/pkg/update"
 
-	_ "github.com/shurco/mycart/docs/swagger"
+	_ "github.com/dure-one/dure-mycart/docs/swagger"
 )
 
 var (
@@ -62,10 +61,10 @@ func resolveDB() database.Config {
 }
 
 var rootCmd = &cobra.Command{
-	Use:                "mycart",
-	Short:              "myCart CLI",
-	Long:               "🛒 myCart - shopping-cart in 1 file",
-	Version:            fmt.Sprintf("myCart %s (%s) from %s", version, gitCommit, buildDate),
+	Use:                "dure-mycart",
+	Short:              "dure-mycart CLI",
+	Long:               "🛒 dure-mycart - shopping-cart in 1 file",
+	Version:            fmt.Sprintf("dure-mycart %s (%s) from %s", version, gitCommit, buildDate),
 	FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 	CompletionOptions:  cobra.CompletionOptions{DisableDefaultCmd: true},
 }
@@ -177,10 +176,10 @@ func cmdUpdate() *cobra.Command {
 		Short: "Updating the application to the latest version",
 		Run: func(_ *cobra.Command, _ []string) {
 			cfg := &update.Config{
-				Owner:             "shurco",
-				Repo:              "mycart",
+				Owner:             "dure-one",
+				Repo:              "dure-mycart",
 				CurrentVersion:    version,
-				ArchiveExecutable: "mycart",
+				ArchiveExecutable: "dure-mycart",
 			}
 
 			if err := update.Init(cfg); err != nil {
@@ -221,12 +220,12 @@ func cmdDBBackup() *cobra.Command {
 		Short: "Write a dump of the PostgreSQL database to a file",
 		Long: "Write the contents of the configured PostgreSQL database to a file.\n\n" +
 			"The result is a SQL script: `psql -f FILE` replays it into a migrated, empty\n" +
-			"database, and `mycart db restore --from FILE` reads it back without psql.\n" +
+			"database, and `dure-mycart db restore --from FILE` reads it back without psql.\n" +
 			"A path ending in .gz is compressed.",
 		Run: func(_ *cobra.Command, _ []string) {
 			path := out
 			if path == "" {
-				path = fmt.Sprintf("mycart-%s.sql.gz", time.Now().Format("20060102-150405"))
+				path = fmt.Sprintf("dure-mycart-%s.sql.gz", time.Now().Format("20060102-150405"))
 			}
 
 			manifest, err := app.BackupDatabase(context.Background(), resolveDB(), path)
@@ -238,7 +237,7 @@ func cmdDBBackup() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&out, "out", "", "file to write (default mycart-<timestamp>.sql.gz)")
+	cmd.Flags().StringVar(&out, "out", "", "file to write (default dure-mycart-<timestamp>.sql.gz)")
 
 	return cmd
 }

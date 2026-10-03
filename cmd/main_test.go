@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/shurco/mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/database"
 )
 
 // dbConfigFrom decides what `db copy` is talking to. A connection string

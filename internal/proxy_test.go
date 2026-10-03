@@ -8,7 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gorilla/websocket"
-	"github.com/shurco/mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/pkg/logging"
 )
 
 // TestProxyWebSocketUpgrade tests that the reverse proxy correctly handles WebSocket upgrade requests

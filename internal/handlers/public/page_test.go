@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/internal/testutil"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/internal/testutil"
 )
 
 func TestPage(t *testing.T) {

@@ -387,4 +387,4 @@ The project uses Tailwind CSS. You can:
 
 ## Additional Help
 
-Or open an issue on GitHub: https://github.com/shurco/mycart/issues
+Or open an issue on GitHub: https://github.com/dure-one/dure-mycart/issues

@@ -3,8 +3,8 @@ package routes
 import (
 	"github.com/gofiber/fiber/v3"
 
-	handlers "github.com/shurco/mycart/internal/handlers/public"
-	"github.com/shurco/mycart/internal/middleware"
+	handlers "github.com/dure-one/dure-mycart/internal/handlers/public"
+	"github.com/dure-one/dure-mycart/internal/middleware"
 )
 
 // ApiPublicRoutes sets up public API routes accessible without authentication.

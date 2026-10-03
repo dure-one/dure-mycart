@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
 )
 
 // ensureSenderEmail ensures that sender email is set, using user email from Settings as fallback.

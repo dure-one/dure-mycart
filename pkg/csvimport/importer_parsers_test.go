@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shurco/mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/models"
 )
 
 // The variant string is a small grammar of its own:

@@ -1,11 +1,11 @@
 package app
 
 import (
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/internal/digitalfiles"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/migrations"
-	"github.com/shurco/mycart/pkg/fsutil"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/digitalfiles"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/migrations"
+	"github.com/dure-one/dure-mycart/pkg/fsutil"
 )
 
 var (

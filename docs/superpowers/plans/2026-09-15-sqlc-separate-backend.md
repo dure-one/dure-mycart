@@ -585,8 +585,8 @@ import (
 	
 	"github.com/jackc/pgx/v5/pgxpool"
 	pggen "github.com/shurco/litecart/internal/queries_sqlc/sqlc/postgres"
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/pkg/errors"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/pkg/errors"
 )
 
 type postgresBackend struct {

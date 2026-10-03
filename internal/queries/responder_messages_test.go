@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/shurco/mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/models"
 )
 
 func TestCreateMessage(t *testing.T) {

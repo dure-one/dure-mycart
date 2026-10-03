@@ -12,11 +12,11 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/internal/testutil"
-	"github.com/shurco/mycart/internal/webhook"
-	"github.com/shurco/mycart/pkg/litepay"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/internal/testutil"
+	"github.com/dure-one/dure-mycart/internal/webhook"
+	"github.com/dure-one/dure-mycart/pkg/litepay"
 )
 
 // freeCartID is a 15-character cart id, the length litepay.Payment.Validate

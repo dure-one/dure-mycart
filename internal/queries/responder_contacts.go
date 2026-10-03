@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/pkg/errors"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/pkg/errors"
 )
 
 // GetOrCreateContact returns existing contact or creates customer + contact if unknown address

@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/shurco/mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/database"
 )
 
 // pgQuerier is the part of a pgx connection or transaction that table

@@ -37,8 +37,8 @@ import (
 	"github.com/peterldowns/pgtestdb"
 	"github.com/peterldowns/pgtestdb/migrators/goosemigrator"
 
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/migrations"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/migrations"
 )
 
 // AdminDSN names the environment variable holding the administrative

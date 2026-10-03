@@ -12,10 +12,10 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/internal/testutil"
-	"github.com/shurco/mycart/migrations"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/internal/testutil"
+	"github.com/dure-one/dure-mycart/migrations"
 )
 
 // envelope mirrors webutil.HTTPResponse without pulling in its result type.

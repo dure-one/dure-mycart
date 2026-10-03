@@ -335,9 +335,9 @@ type UpsertSettingParams struct {
 package queries
 
 import (
-    "github.com/shurco/mycart/internal/database"
-    pggen "github.com/shurco/mycart/internal/queries/sqlc/postgres"
-    sqlitegen "github.com/shurco/mycart/internal/queries/sqlc/sqlite"
+    "github.com/dure-one/dure-mycart/internal/database"
+    pggen "github.com/dure-one/dure-mycart/internal/queries/sqlc/postgres"
+    sqlitegen "github.com/dure-one/dure-mycart/internal/queries/sqlc/sqlite"
 )
 
 func initSqlc(base *Base, conn *database.Conn) {
@@ -364,7 +364,7 @@ func initSqlc(base *Base, conn *database.Conn) {
 
 package queries
 
-import "github.com/shurco/mycart/internal/database"
+import "github.com/dure-one/dure-mycart/internal/database"
 
 func initSqlc(base *Base, conn *database.Conn) {
     // No-op when sqlc not enabled
@@ -382,7 +382,7 @@ package queries
 
 import (
     "context"
-    "github.com/shurco/mycart/pkg/errors"
+    "github.com/dure-one/dure-mycart/pkg/errors"
 )
 
 func (q *AuthQueries) GetPasswordByEmail(ctx context.Context, email string) (string, error) {

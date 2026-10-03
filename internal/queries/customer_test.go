@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/pkg/errors"
-	"github.com/shurco/mycart/pkg/litepay"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/pkg/errors"
+	"github.com/dure-one/dure-mycart/pkg/litepay"
 )
 
 func TestCustomerLifecycle(t *testing.T) {

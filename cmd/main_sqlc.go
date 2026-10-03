@@ -3,10 +3,10 @@
 // @title           myCart API
 // @version         1.0
 // @description     Open source shopping-cart backend API - a single-binary e-commerce solution
-// @termsOfService  https://github.com/shurco/mycart
+// @termsOfService  https://github.com/dure-one/dure-mycart
 
 // @contact.name   API Support
-// @contact.url    https://github.com/shurco/mycart/issues
+// @contact.url    https://github.com/dure-one/dure-mycart/issues
 // @contact.email  support@mycart.com
 
 // @license.name  MIT
@@ -31,13 +31,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	app "github.com/shurco/mycart/internal"
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/internal/dbtransfer"
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/pkg/update"
+	app "github.com/dure-one/dure-mycart/internal"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/dbtransfer"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/pkg/update"
 
-	_ "github.com/shurco/mycart/docs/swagger"
+	_ "github.com/dure-one/dure-mycart/docs/swagger"
 )
 
 var (

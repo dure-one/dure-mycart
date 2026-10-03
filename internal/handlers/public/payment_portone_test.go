@@ -16,11 +16,11 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/internal/testutil"
-	"github.com/shurco/mycart/pkg/litepay"
-	"github.com/shurco/mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/internal/testutil"
+	"github.com/dure-one/dure-mycart/pkg/litepay"
+	"github.com/dure-one/dure-mycart/pkg/logging"
 )
 
 // portoneSecret is the API secret the tests install for the PortOne settings.

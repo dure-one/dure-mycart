@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
 )
 
 // CronRunner executes scheduled responder jobs
