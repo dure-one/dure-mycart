@@ -7,7 +7,6 @@
 
 // @contact.name   API Support
 // @contact.url    https://github.com/dure-one/dure-mycart/issues
-// @contact.email  support@mycart.com
 
 // @license.name  MIT
 // @license.url   https://opensource.org/licenses/MIT

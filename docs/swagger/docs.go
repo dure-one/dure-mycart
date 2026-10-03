@@ -12,8 +12,7 @@ const docTemplate = `{
         "termsOfService": "https://github.com/dure-one/dure-mycart",
         "contact": {
             "name": "API Support",
-            "url": "https://github.com/dure-one/dure-mycart/issues",
-            "email": "support@mycart.com"
+            "url": "https://github.com/dure-one/dure-mycart/issues"
         },
         "license": {
             "name": "MIT",
@@ -59,13 +58,13 @@ const docTemplate = `{
                     "200": {
                         "description": "Carts list with pagination",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -99,25 +98,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Cart details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "400": {
                         "description": "Missing cart_id",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "404": {
                         "description": "Cart not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -151,13 +150,292 @@ const docTemplate = `{
                     "200": {
                         "description": "Email sent",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/customers": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a paginated list of the shop's customers: registered accounts and everyone who has paid, one row per address",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers"
+                ],
+                "summary": "List customers",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Match a substring of the email address or name",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Only customers with an account",
+                        "name": "registered",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Customers list with pagination",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.CustomerSummary"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/customers/carts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get every cart created for an email address, newest first, in any payment state",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers"
+                ],
+                "summary": "Get customer carts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Customer email address",
+                        "name": "email",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Customer carts",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Cart"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Missing email",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/customers/{customer_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a customer account and end its sessions; the carts stay as the record of what was paid",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers"
+                ],
+                "summary": "Delete customer",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Customer ID",
+                        "name": "customer_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Customer deleted",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/customers/{customer_id}/active": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Toggle the active status of a customer account; blocking also ends every session the customer has open",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers"
+                ],
+                "summary": "Toggle customer active",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Customer ID",
+                        "name": "customer_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated customer",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Customer"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Customer not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/customers/{customer_id}/password": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generate a new password for a customer account and return it once; every session the customer has open is ended",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Customers"
+                ],
+                "summary": "Reset customer password",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Customer ID",
+                        "name": "customer_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "New password",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Customer not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -198,13 +476,13 @@ const docTemplate = `{
                     "200": {
                         "description": "Pages list with pagination",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -233,7 +511,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Page"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Page"
                         }
                     }
                 ],
@@ -243,13 +521,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "result": {
-                                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Page"
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Page"
                                         }
                                     }
                                 }
@@ -259,13 +537,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -301,13 +579,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "result": {
-                                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Page"
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Page"
                                         }
                                     }
                                 }
@@ -317,13 +595,13 @@ const docTemplate = `{
                     "404": {
                         "description": "Page not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -355,13 +633,13 @@ const docTemplate = `{
                     "200": {
                         "description": "Page deleted",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -397,7 +675,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Page"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Page"
                         }
                     }
                 ],
@@ -405,19 +683,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Page updated",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -453,13 +731,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "result": {
-                                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Page"
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Page"
                                         }
                                     }
                                 }
@@ -469,7 +747,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -520,19 +798,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Content updated",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -575,13 +853,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "result": {
-                                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Products"
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Products"
                                         }
                                     }
                                 }
@@ -591,7 +869,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -620,7 +898,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Product"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Product"
                         }
                     }
                 ],
@@ -630,13 +908,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "result": {
-                                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Product"
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Product"
                                         }
                                     }
                                 }
@@ -646,13 +924,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -683,7 +961,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -722,13 +1000,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "result": {
-                                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_csvimport.ImportResult"
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_csvimport.ImportResult"
                                         }
                                     }
                                 }
@@ -738,7 +1016,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -777,13 +1055,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "result": {
-                                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_csvimport.ImportResult"
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_csvimport.ImportResult"
                                         }
                                     }
                                 }
@@ -793,7 +1071,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -842,7 +1120,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
@@ -863,7 +1141,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -899,13 +1177,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "result": {
-                                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Product"
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Product"
                                         }
                                     }
                                 }
@@ -915,7 +1193,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -947,13 +1225,13 @@ const docTemplate = `{
                     "200": {
                         "description": "Product deleted",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -989,7 +1267,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Product"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Product"
                         }
                     }
                 ],
@@ -999,13 +1277,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "result": {
-                                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Product"
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Product"
                                         }
                                     }
                                 }
@@ -1015,13 +1293,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1055,13 +1333,13 @@ const docTemplate = `{
                     "200": {
                         "description": "Product active updated",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1097,13 +1375,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "result": {
-                                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Digital"
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Digital"
                                         }
                                     }
                                 }
@@ -1113,13 +1391,13 @@ const docTemplate = `{
                     "404": {
                         "description": "Product not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1160,13 +1438,13 @@ const docTemplate = `{
                     "200": {
                         "description": "Digital content added",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1207,13 +1485,13 @@ const docTemplate = `{
                     "200": {
                         "description": "Digital content deleted",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1256,7 +1534,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Data"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Data"
                         }
                     }
                 ],
@@ -1264,19 +1542,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Digital content updated",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1289,14 +1567,11 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Download a digital file associated with a product",
-                "produces": [
-                    "application/octet-stream"
-                ],
+                "description": "Stream a product digital file as an attachment",
                 "tags": [
                     "Products"
                 ],
-                "summary": "Download product digital file",
+                "summary": "Download digital file",
                 "parameters": [
                     {
                         "type": "string",
@@ -1315,7 +1590,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Digital file content",
+                        "description": "File content",
                         "schema": {
                             "type": "file"
                         }
@@ -1323,13 +1598,13 @@ const docTemplate = `{
                     "404": {
                         "description": "File not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1365,7 +1640,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1373,7 +1648,7 @@ const docTemplate = `{
                                         "result": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/github_com_shurco_mycart_internal_models.File"
+                                                "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.File"
                                             }
                                         }
                                     }
@@ -1384,7 +1659,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1428,13 +1703,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "result": {
-                                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.File"
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.File"
                                         }
                                     }
                                 }
@@ -1444,13 +1719,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid file format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1491,13 +1766,1168 @@ const docTemplate = `{
                     "200": {
                         "description": "Image deleted",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/products/{product_id}/images/reorder": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update the position of multiple product images in a batch operation",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Reorder product images",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Product ID",
+                        "name": "product_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Position updates",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "updates": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "imageId": {
+                                                "type": "string"
+                                            },
+                                            "position": {
+                                                "type": "integer"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Positions updated",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/products/{product_id}/images/{image_id}/representative": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mark a specific product image as the representative (primary) image",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Set representative product image",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Product ID",
+                        "name": "product_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Image ID",
+                        "name": "image_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Image marked as representative",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Image not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/responder/messages": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get list of message threads grouped by customer",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responder"
+                ],
+                "summary": "List message threads",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by channel (sms, xmpp)",
+                        "name": "channel",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Message threads list",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new message (auto-creates customer and contact on unknown address)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responder"
+                ],
+                "summary": "Create message",
+                "parameters": [
+                    {
+                        "description": "Message data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.MessageCreate"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Created message",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Message"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/responder/messages/link-contact": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Reassign a contact to a different customer",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responder"
+                ],
+                "summary": "Link contact to customer",
+                "parameters": [
+                    {
+                        "description": "Contact ID and new customer ID",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Contact linked",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/responder/messages/{customer_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all messages for a specific customer ordered by created DESC",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responder"
+                ],
+                "summary": "Get customer messages",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Customer ID",
+                        "name": "customer_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Customer messages",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/responder/messages/{message_id}/read": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mark a message as read by its ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responder"
+                ],
+                "summary": "Mark message read",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Message ID",
+                        "name": "message_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Message marked as read",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/responder/workflows": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get paginated list of workflows with optional enabled filter",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responder"
+                ],
+                "summary": "List workflows",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by enabled status (true/false)",
+                        "name": "enabled",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Workflows list",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new workflow with mermaid content",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responder"
+                ],
+                "summary": "Create workflow",
+                "parameters": [
+                    {
+                        "description": "Workflow data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Workflow"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Created workflow",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Workflow"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/responder/workflows/{workflow_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a single workflow by its ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responder"
+                ],
+                "summary": "Get workflow",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow ID",
+                        "name": "workflow_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Workflow details",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Workflow"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Workflow not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a workflow by its ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responder"
+                ],
+                "summary": "Delete workflow",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow ID",
+                        "name": "workflow_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Workflow deleted",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Workflow not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update workflow details",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responder"
+                ],
+                "summary": "Update workflow",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow ID",
+                        "name": "workflow_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Workflow data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Workflow"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Workflow updated",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Workflow not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/settings/branding/favicon": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Store a PNG or JPEG as the icon the storefront hands the browser",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Upload the shop favicon",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Favicon file (PNG or JPEG)",
+                        "name": "document",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Favicon uploaded",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Branding"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid file format",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Clear the favicon and remove the stored file",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Delete the shop favicon",
+                "responses": {
+                    "200": {
+                        "description": "Favicon deleted",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Branding"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/settings/branding/logo": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Store a PNG or JPEG as the logo the storefront draws in its header",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Upload the shop logo",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Logo file (PNG or JPEG)",
+                        "name": "document",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Logo uploaded",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Branding"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid file format",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Clear the logo and remove the stored file",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Delete the shop logo",
+                "responses": {
+                    "200": {
+                        "description": "Logo deleted",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Branding"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/settings/crontab": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get list of all crontab jobs",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "List crontab jobs",
+                "responses": {
+                    "200": {
+                        "description": "Crontab jobs list",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/settings/crontab/install": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Install mycart crontab entries for enabled jobs",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responder"
+                ],
+                "summary": "Install system crontab",
+                "responses": {
+                    "200": {
+                        "description": "Crontab installed",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/settings/crontab/status": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Check if mycart system crontab is installed",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responder"
+                ],
+                "summary": "Check crontab status",
+                "responses": {
+                    "200": {
+                        "description": "Crontab status",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/settings/crontab/uninstall": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove mycart crontab entries from system",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responder"
+                ],
+                "summary": "Uninstall system crontab",
+                "responses": {
+                    "200": {
+                        "description": "Crontab uninstalled",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/settings/crontab/{job_id}": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update crontab job settings (enabled, interval)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Update crontab job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "job_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Job settings",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Job updated",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/settings/responder": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get XMPP configuration settings",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Get responder settings",
+                "responses": {
+                    "200": {
+                        "description": "Responder settings",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.ResponderSettings"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update XMPP configuration settings",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Update responder settings",
+                "parameters": [
+                    {
+                        "description": "Responder settings",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.ResponderSettings"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Settings updated",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/_/settings/responder/test-connection": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Test XMPP connection with current settings",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Test XMPP connection",
+                "responses": {
+                    "200": {
+                        "description": "Connection successful",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Connection failed",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1531,19 +2961,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Setting value",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "404": {
                         "description": "Setting not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1587,19 +3017,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Setting updated",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1635,7 +3065,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1651,13 +3081,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Sending failed",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1682,13 +3112,13 @@ const docTemplate = `{
                     "200": {
                         "description": "Version info",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1714,7 +3144,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.CartPayment"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.CartPayment"
                         }
                     }
                 ],
@@ -1722,19 +3152,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Cart created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1754,13 +3184,13 @@ const docTemplate = `{
                     "200": {
                         "description": "Payment provider statuses",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "400": {
                         "description": "Bad request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1780,13 +3210,13 @@ const docTemplate = `{
                     "200": {
                         "description": "PortOne public config",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1815,25 +3245,301 @@ const docTemplate = `{
                     "200": {
                         "description": "Cart details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "400": {
                         "description": "Missing cart_id",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "404": {
                         "description": "Cart not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/customer/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Return the account behind the cabinet session",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Current customer",
+                "responses": {
+                    "200": {
+                        "description": "Customer",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Not signed in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "The cabinet is disabled",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/customer/purchases": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Paid orders of the cabinet session, with the products in them and the files and keys each one hands over",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Purchases of the signed-in customer",
+                "responses": {
+                    "200": {
+                        "description": "Purchases",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Not signed in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "The cabinet is disabled",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/customer/purchases/{file_id}/download": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Stream a product digital file as an attachment, if the cabinet session's address has paid for the product",
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Download a purchased digital file",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Digital file ID",
+                        "name": "file_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "File content",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "401": {
+                        "description": "Not signed in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "The cabinet is disabled, or the file is not one this customer bought",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/customer/signin": {
+            "post": {
+                "description": "Authenticate a customer and set the session cookie",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Sign in to the cabinet",
+                "parameters": [
+                    {
+                        "description": "Credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.SignIn"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Signed in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Wrong credentials or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "The cabinet is disabled",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/customer/signout": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete the current session row and clear the cabinet cookie",
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Sign out of the cabinet",
+                "responses": {
+                    "204": {
+                        "description": "Session invalidated"
+                    },
+                    "401": {
+                        "description": "Not signed in",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "The cabinet is disabled",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/customer/signup": {
+            "post": {
+                "description": "Register a customer account for the cabinet. Available only while the cabinet is enabled.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Create a storefront account",
+                "parameters": [
+                    {
+                        "description": "Account details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.CustomerSignUp"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Account created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error or address already registered",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "The cabinet is disabled",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1859,7 +3565,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Install"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Install"
                         }
                     }
                 ],
@@ -1867,19 +3573,71 @@ const docTemplate = `{
                     "200": {
                         "description": "Cart installed",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/install/db/test": {
+            "post": {
+                "description": "Connects to the selected database and reports what was found",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Install"
+                ],
+                "summary": "Test database connection",
+                "parameters": [
+                    {
+                        "description": "Database to test",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers_private.installDatabaseTest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "$ref": "#/definitions/internal_handlers_private.installDatabaseTestResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Connection failed",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1901,7 +3659,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1917,7 +3675,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -1948,13 +3706,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "result": {
-                                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Page"
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Page"
                                         }
                                     }
                                 }
@@ -1964,13 +3722,105 @@ const docTemplate = `{
                     "404": {
                         "description": "Page not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/payment/portone/complete": {
+            "post": {
+                "description": "Verify payment with PortOne API and update cart status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Complete PortOne payment",
+                "parameters": [
+                    {
+                        "description": "Payment completion request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "cart_id": {
+                                    "type": "string"
+                                },
+                                "payment_id": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Payment verified",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/payment/portone/webhook": {
+            "post": {
+                "description": "Handle PortOne webhook notifications for payment events",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "PortOne webhook",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Webhook signature",
+                        "name": "PortOne-Signature",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }
@@ -2008,13 +3858,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "result": {
-                                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Products"
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Products"
                                         }
                                     }
                                 }
@@ -2024,15 +3874,15 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
             }
         },
-        "/api/products/{product_id}": {
+        "/api/products/{product_slug}": {
             "get": {
-                "description": "Get a single active product by its ID",
+                "description": "Get a single active product by its slug",
                 "produces": [
                     "application/json"
                 ],
@@ -2043,8 +3893,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Product ID",
-                        "name": "product_id",
+                        "description": "Product slug",
+                        "name": "product_slug",
                         "in": "path",
                         "required": true
                     }
@@ -2055,23 +3905,29 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "result": {
-                                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Product"
+                                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Product"
                                         }
                                     }
                                 }
                             ]
                         }
                     },
+                    "404": {
+                        "description": "Product not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -2100,25 +3956,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Seller information",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "404": {
                         "description": "Seller info not enabled",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -2138,13 +3994,13 @@ const docTemplate = `{
                     "200": {
                         "description": "Captcha data",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -2178,19 +4034,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Verification result",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -2210,13 +4066,71 @@ const docTemplate = `{
                     "200": {
                         "description": "Public settings",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/sign/in": {
+            "post": {
+                "description": "Authenticate admin user with email and password, returns JWT token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Sign in",
+                "parameters": [
+                    {
+                        "description": "Credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.SignIn"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "JWT token",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid credentials or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -2241,7 +4155,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -2267,7 +4181,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_internal_models.CartPayment"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.CartPayment"
                         }
                     }
                 ],
@@ -2275,19 +4189,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Payment URL",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error or dummy provider for paid cart",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -2332,13 +4246,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -2375,7 +4289,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -2432,13 +4346,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -2458,7 +4372,48 @@ const docTemplate = `{
                     "200": {
                         "description": "Pong",
                         "schema": {
-                            "$ref": "#/definitions/github_com_shurco_mycart_pkg_webutil.HTTPResponse"
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/{slug}.png": {
+            "get": {
+                "description": "Serves the first/representative product image, converted to PNG format",
+                "produces": [
+                    "image/png"
+                ],
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Get product representative image",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Product slug (without .png extension)",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Product image in PNG format",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "404": {
+                        "description": "Product or image not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse"
                         }
                     }
                 }
@@ -2466,7 +4421,61 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_shurco_mycart_internal_models.CartPayment": {
+        "github_com_dure-one_dure-mycart_internal_models.Branding": {
+            "type": "object",
+            "properties": {
+                "favicon": {
+                    "type": "string"
+                },
+                "logo": {
+                    "description": "The three fields are always sent, empty strings included. A group that\ndropped its empty members would answer a shop with a blank tagline with\n{}, and a client binding a field to that gets undefined rather than a\nstring — which is a crash, not an empty field.",
+                    "type": "string"
+                },
+                "tagline": {
+                    "description": "Tagline is printed beside the logo. Empty leaves the header with the mark\nalone, which is how a shop that has uploaded nothing is drawn.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_dure-one_dure-mycart_internal_models.Cart": {
+            "type": "object",
+            "properties": {
+                "amount_total": {
+                    "type": "integer"
+                },
+                "cart": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.CartProduct"
+                    }
+                },
+                "created": {
+                    "type": "integer"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payment_id": {
+                    "type": "string"
+                },
+                "payment_status": {
+                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_litepay.Status"
+                },
+                "payment_system": {
+                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_litepay.PaymentSystem"
+                },
+                "updated": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_dure-one_dure-mycart_internal_models.CartPayment": {
             "type": "object",
             "properties": {
                 "email": {
@@ -2475,15 +4484,15 @@ const docTemplate = `{
                 "products": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_shurco_mycart_internal_models.CartProduct"
+                        "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.CartProduct"
                     }
                 },
                 "provider": {
-                    "$ref": "#/definitions/github_com_shurco_mycart_pkg_litepay.PaymentSystem"
+                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_litepay.PaymentSystem"
                 }
             }
         },
-        "github_com_shurco_mycart_internal_models.CartProduct": {
+        "github_com_dure-one_dure-mycart_internal_models.CartProduct": {
             "type": "object",
             "properties": {
                 "id": {
@@ -2501,7 +4510,82 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_shurco_mycart_internal_models.Data": {
+        "github_com_dure-one_dure-mycart_internal_models.Customer": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "created": {
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_dure-one_dure-mycart_internal_models.CustomerSignUp": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_dure-one_dure-mycart_internal_models.CustomerSummary": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "created": {
+                    "type": "integer"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_order": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "purchases": {
+                    "type": "integer"
+                },
+                "registered": {
+                    "type": "boolean"
+                },
+                "spent": {
+                    "type": "integer"
+                },
+                "updated": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_dure-one_dure-mycart_internal_models.Data": {
             "type": "object",
             "properties": {
                 "cart_id": {
@@ -2515,19 +4599,30 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_shurco_mycart_internal_models.Digital": {
+        "github_com_dure-one_dure-mycart_internal_models.DatabaseChoice": {
+            "type": "object",
+            "properties": {
+                "driver": {
+                    "type": "string"
+                },
+                "dsn": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_dure-one_dure-mycart_internal_models.Digital": {
             "type": "object",
             "properties": {
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Data"
+                        "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Data"
                     }
                 },
                 "files": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_shurco_mycart_internal_models.File"
+                        "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.File"
                     }
                 },
                 "filled": {
@@ -2538,7 +4633,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_shurco_mycart_internal_models.File": {
+        "github_com_dure-one_dure-mycart_internal_models.File": {
             "type": "object",
             "properties": {
                 "ext": {
@@ -2547,24 +4642,30 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "is_representative": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
                 },
                 "orig_name": {
                     "type": "string"
+                },
+                "position": {
+                    "type": "integer"
                 }
             }
         },
-        "github_com_shurco_mycart_internal_models.Install": {
+        "github_com_dure-one_dure-mycart_internal_models.Install": {
             "type": "object",
             "properties": {
-                "databaseUrl": {
-                    "description": "PostgreSQL connection string",
-                    "type": "string"
-                },
-                "dbType": {
-                    "description": "\"sqlite\" or \"postgres\"",
-                    "type": "string"
+                "database": {
+                    "description": "Database is the optional database selection from the install wizard.\nAbsent means \"keep the database the process is already configured for\",\nwhich is what every installation did before PostgreSQL support existed.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.DatabaseChoice"
+                        }
+                    ]
                 },
                 "domain": {
                     "type": "string"
@@ -2574,14 +4675,68 @@ const docTemplate = `{
                 },
                 "password": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_dure-one_dure-mycart_internal_models.Message": {
+            "type": "object",
+            "properties": {
+                "channel": {
+                    "description": "sms, xmpp",
+                    "type": "string"
                 },
-                "sqlitePath": {
-                    "description": "SQLite database path",
+                "contact_id": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "created": {
+                    "type": "integer"
+                },
+                "delivery_status": {
+                    "description": "pending, delivered, failed",
+                    "type": "string"
+                },
+                "direction": {
+                    "description": "inbound, outbound",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "read_status": {
+                    "type": "boolean"
+                },
+                "updated": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_dure-one_dure-mycart_internal_models.MessageCreate": {
+            "type": "object",
+            "properties": {
+                "channel": {
+                    "type": "string"
+                },
+                "contact_address": {
+                    "type": "string"
+                },
+                "contact_type": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "delivery_status": {
+                    "type": "string"
+                },
+                "direction": {
                     "type": "string"
                 }
             }
         },
-        "github_com_shurco_mycart_internal_models.Metadata": {
+        "github_com_dure-one_dure-mycart_internal_models.Metadata": {
             "type": "object",
             "properties": {
                 "key": {
@@ -2592,7 +4747,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_shurco_mycart_internal_models.Page": {
+        "github_com_dure-one_dure-mycart_internal_models.Page": {
             "type": "object",
             "properties": {
                 "active": {
@@ -2614,7 +4769,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "seo": {
-                    "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Seo"
+                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Seo"
                 },
                 "slug": {
                     "type": "string"
@@ -2624,7 +4779,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_shurco_mycart_internal_models.Product": {
+        "github_com_dure-one_dure-mycart_internal_models.Product": {
             "type": "object",
             "properties": {
                 "active": {
@@ -2649,7 +4804,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "digital": {
-                    "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Digital"
+                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Digital"
                 },
                 "has_variants": {
                     "description": "NEW",
@@ -2661,13 +4816,13 @@ const docTemplate = `{
                 "images": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_shurco_mycart_internal_models.File"
+                        "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.File"
                     }
                 },
                 "metadata": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Metadata"
+                        "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Metadata"
                     }
                 },
                 "name": {
@@ -2677,7 +4832,7 @@ const docTemplate = `{
                     "description": "NEW",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_shurco_mycart_internal_models.ProductOption"
+                        "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.ProductOption"
                     }
                 },
                 "quantity": {
@@ -2685,7 +4840,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "seo": {
-                    "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Seo"
+                    "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Seo"
                 },
                 "sku": {
                     "description": "NEW",
@@ -2701,12 +4856,12 @@ const docTemplate = `{
                     "description": "NEW",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_shurco_mycart_internal_models.ProductVariant"
+                        "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.ProductVariant"
                     }
                 }
             }
         },
-        "github_com_shurco_mycart_internal_models.ProductOption": {
+        "github_com_dure-one_dure-mycart_internal_models.ProductOption": {
             "type": "object",
             "properties": {
                 "created": {
@@ -2727,12 +4882,12 @@ const docTemplate = `{
                 "values": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_shurco_mycart_internal_models.ProductOptionValue"
+                        "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.ProductOptionValue"
                     }
                 }
             }
         },
-        "github_com_shurco_mycart_internal_models.ProductOptionValue": {
+        "github_com_dure-one_dure-mycart_internal_models.ProductOptionValue": {
             "type": "object",
             "properties": {
                 "id": {
@@ -2749,7 +4904,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_shurco_mycart_internal_models.ProductVariant": {
+        "github_com_dure-one_dure-mycart_internal_models.ProductVariant": {
             "type": "object",
             "properties": {
                 "active": {
@@ -2764,7 +4919,7 @@ const docTemplate = `{
                 "images": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_shurco_mycart_internal_models.File"
+                        "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.File"
                     }
                 },
                 "option_values": {
@@ -2792,7 +4947,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_shurco_mycart_internal_models.Products": {
+        "github_com_dure-one_dure-mycart_internal_models.Products": {
             "type": "object",
             "properties": {
                 "currency": {
@@ -2801,7 +4956,7 @@ const docTemplate = `{
                 "products": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_shurco_mycart_internal_models.Product"
+                        "$ref": "#/definitions/github_com_dure-one_dure-mycart_internal_models.Product"
                     }
                 },
                 "total": {
@@ -2809,7 +4964,24 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_shurco_mycart_internal_models.Seo": {
+        "github_com_dure-one_dure-mycart_internal_models.ResponderSettings": {
+            "type": "object",
+            "properties": {
+                "xmpp_jid": {
+                    "type": "string"
+                },
+                "xmpp_password": {
+                    "type": "string"
+                },
+                "xmpp_port": {
+                    "type": "integer"
+                },
+                "xmpp_server": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_dure-one_dure-mycart_internal_models.Seo": {
             "type": "object",
             "properties": {
                 "description": {
@@ -2823,7 +4995,55 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_shurco_mycart_pkg_csvimport.Error": {
+        "github_com_dure-one_dure-mycart_internal_models.SignIn": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_dure-one_dure-mycart_internal_models.Workflow": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "type": "string"
+                },
+                "content": {
+                    "description": "mermaid markdown",
+                    "type": "string"
+                },
+                "created": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "tags": {
+                    "description": "JSON array",
+                    "type": "string"
+                },
+                "updated": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_dure-one_dure-mycart_pkg_csvimport.Error": {
             "type": "object",
             "properties": {
                 "line": {
@@ -2834,13 +5054,13 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_shurco_mycart_pkg_csvimport.ImportResult": {
+        "github_com_dure-one_dure-mycart_pkg_csvimport.ImportResult": {
             "type": "object",
             "properties": {
                 "errors": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_shurco_mycart_pkg_csvimport.Error"
+                        "$ref": "#/definitions/github_com_dure-one_dure-mycart_pkg_csvimport.Error"
                     }
                 },
                 "imported": {
@@ -2865,7 +5085,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_shurco_mycart_pkg_litepay.PaymentSystem": {
+        "github_com_dure-one_dure-mycart_pkg_litepay.PaymentSystem": {
             "type": "string",
             "enum": [
                 "stripe",
@@ -2896,7 +5116,46 @@ const docTemplate = `{
                 "DUMMY"
             ]
         },
-        "github_com_shurco_mycart_pkg_webutil.HTTPResponse": {
+        "github_com_dure-one_dure-mycart_pkg_litepay.Status": {
+            "type": "string",
+            "enum": [
+                "new",
+                "unpaid",
+                "paid",
+                "canceled",
+                "failed",
+                "processed",
+                "test"
+            ],
+            "x-enum-comments": {
+                "CANCELED": "Payment has been canceled (final)",
+                "FAILED": "Payment has failed (final)",
+                "NEW": "Payment has been created",
+                "PAID": "Payment has been successfully completed (final)",
+                "PROCESSED": "Payment is being processed",
+                "TEST": "Test payment",
+                "UNPAID": "Payment is awaiting payment"
+            },
+            "x-enum-descriptions": [
+                "Payment has been created",
+                "Payment is awaiting payment",
+                "Payment has been successfully completed (final)",
+                "Payment has been canceled (final)",
+                "Payment has failed (final)",
+                "Payment is being processed",
+                "Test payment"
+            ],
+            "x-enum-varnames": [
+                "NEW",
+                "UNPAID",
+                "PAID",
+                "CANCELED",
+                "FAILED",
+                "PROCESSED",
+                "TEST"
+            ]
+        },
+        "github_com_dure-one_dure-mycart_pkg_webutil.HTTPResponse": {
             "type": "object",
             "properties": {
                 "message": {
@@ -2908,9 +5167,57 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handlers_private.installDatabase": {
+            "type": "object",
+            "properties": {
+                "driver": {
+                    "type": "string"
+                },
+                "dsn": {
+                    "type": "string"
+                },
+                "locked": {
+                    "type": "boolean"
+                },
+                "source": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers_private.installDatabaseTest": {
+            "type": "object",
+            "properties": {
+                "driver": {
+                    "type": "string"
+                },
+                "dsn": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers_private.installDatabaseTestResult": {
+            "type": "object",
+            "properties": {
+                "driver": {
+                    "type": "string"
+                },
+                "has_existing_schema": {
+                    "type": "boolean"
+                },
+                "ok": {
+                    "type": "boolean"
+                },
+                "server_version": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handlers_private.installStatus": {
             "type": "object",
             "properties": {
+                "database": {
+                    "$ref": "#/definitions/internal_handlers_private.installDatabase"
+                },
                 "installed": {
                     "type": "boolean"
                 }
