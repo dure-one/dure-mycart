@@ -212,6 +212,10 @@ func SetupProxyRoutes(app *fiber.App) error {
 				proxyURL += "?" + string(c.Request().URI().QueryString())
 			}
 
+			// Set X-Forwarded-For header to preserve real client IP
+			clientIP := c.IP()
+			c.Request().Header.Set("X-Forwarded-For", clientIP)
+
 			// Proxy to internal services (AllowPrivateIPs is enabled in init())
 			if err := proxy.Do(c, proxyURL); err != nil {
 				return err
