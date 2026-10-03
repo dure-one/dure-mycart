@@ -8,7 +8,7 @@ import (
 	"net/textproto"
 	"testing"
 
-	"github.com/shurco/mycart/internal/testutil"
+	"github.com/dure-one/dure-mycart/internal/testutil"
 )
 
 func TestAddProduct_MalformedJSON(t *testing.T) {

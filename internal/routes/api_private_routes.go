@@ -3,8 +3,8 @@ package routes
 import (
 	"github.com/gofiber/fiber/v3"
 
-	handlers "github.com/shurco/mycart/internal/handlers/private"
-	"github.com/shurco/mycart/internal/middleware"
+	handlers "github.com/dure-one/dure-mycart/internal/handlers/private"
+	"github.com/dure-one/dure-mycart/internal/middleware"
 )
 
 // ApiPrivateRoutes sets up private API routes that require authentication.

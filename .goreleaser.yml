@@ -33,7 +33,7 @@ builds:
       - -X "main.gitCommit={{.ShortCommit}}"
       - -X "main.buildDate={{.Now.Format "2006-01-02"}}"
     main: ./cmd/main.go
-    binary: mycart
+    binary: dure-mycart
 
 archives:
   - name_template: '{{.ProjectName}}_{{.Version}}_{{.Os}}-{{.Arch}}'
@@ -119,7 +119,7 @@ dockers_v2:
 release:
   name_template: "v{{ .Version }}"
   header: |
-    > *To update the prebuilt executable you can run `./mycart update`*
+    > *To update the prebuilt executable you can run `./dure-mycart update`*
 
   footer: |
     **Full Changelog**: https://github.com/dure-one/dure-mycart/compare/{{ .PreviousTag }}...{{ .Tag }}
@@ -130,5 +130,5 @@ release:
 announce:
   mastodon:
     enabled: false
-    message_template: "#mycart {{ .Tag }} is out! Check it out: https://github.com/dure-one/dure-mycart/releases/tag/{{ .Tag }}"
+    message_template: "#dure-mycart {{ .Tag }} is out! Check it out: https://github.com/dure-one/dure-mycart/releases/tag/{{ .Tag }}"
     server: https://mastodon.social

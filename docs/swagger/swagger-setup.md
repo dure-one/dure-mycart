@@ -172,7 +172,7 @@ If Swagger cannot find a model type, ensure the package is imported:
 
 ```go
 import (
-    _ "github.com/shurco/mycart/internal/models"
+    _ "github.com/dure-one/dure-mycart/internal/models"
 )
 ```
 

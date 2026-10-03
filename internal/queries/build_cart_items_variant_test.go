@@ -3,7 +3,7 @@ package queries
 import (
 	"testing"
 
-	"github.com/shurco/mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/models"
 )
 
 // A cart line for a variant carries the variant identity, not the product's:

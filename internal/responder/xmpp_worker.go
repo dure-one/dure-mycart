@@ -9,8 +9,8 @@ import (
 	xmpp "github.com/meszmate/xmpp-go"
 	"github.com/meszmate/xmpp-go/jid"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
 )
 
 // XMPPWorker handles XMPP message synchronization via MAM

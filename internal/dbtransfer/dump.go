@@ -10,8 +10,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/pkg/fsutil"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/pkg/fsutil"
 )
 
 // The dump format is versioned so a future change can be detected instead of

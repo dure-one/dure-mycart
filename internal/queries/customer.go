@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/pkg/errors"
-	"github.com/shurco/mycart/pkg/litepay"
-	"github.com/shurco/mycart/pkg/security"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/pkg/errors"
+	"github.com/dure-one/dure-mycart/pkg/litepay"
+	"github.com/dure-one/dure-mycart/pkg/security"
 )
 
 // DefaultAccountExpireHours is how long a cabinet session lasts when the

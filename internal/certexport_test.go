@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/shurco/mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/pkg/logging"
 )
 
 // TestGenerateSelfSignedCert_DevMode tests self-signed certificate generation in dev mode

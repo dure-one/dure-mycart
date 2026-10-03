@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/migrations"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/migrations"
 )
 
 // installBody builds the wizard's payload for a database selection.

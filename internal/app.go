@@ -20,15 +20,15 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/static"
 
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/internal/middleware"
-	"github.com/shurco/mycart/migrations"
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/internal/responder"
-	"github.com/shurco/mycart/internal/routes"
-	"github.com/shurco/mycart/pkg/logging"
-	"github.com/shurco/mycart/pkg/webutil"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/middleware"
+	"github.com/dure-one/dure-mycart/migrations"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/internal/responder"
+	"github.com/dure-one/dure-mycart/internal/routes"
+	"github.com/dure-one/dure-mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/pkg/webutil"
 )
 
 const (

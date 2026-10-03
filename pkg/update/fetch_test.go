@@ -61,7 +61,7 @@ func TestFetchLatestRelease_HappyPath(t *testing.T) {
 	t.Cleanup(srv.Close)
 	installFakeGitHub(t, srv)
 
-	rel, err := FetchLatestRelease(context.Background(), "shurco", "mycart")
+	rel, err := FetchLatestRelease(context.Background(), "dure-one", "dure-mycart")
 	if err != nil {
 		t.Fatalf("FetchLatestRelease: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestFetchLatestRelease_Non2xxReturnsError(t *testing.T) {
 	t.Cleanup(srv.Close)
 	installFakeGitHub(t, srv)
 
-	_, err := FetchLatestRelease(context.Background(), "shurco", "missing")
+	_, err := FetchLatestRelease(context.Background(), "dure-one", "missing")
 	if err == nil {
 		t.Fatal("expected error on 404, got nil")
 	}

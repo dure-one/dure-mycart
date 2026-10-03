@@ -9,10 +9,10 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "termsOfService": "https://github.com/shurco/mycart",
+        "termsOfService": "https://github.com/dure-one/dure-mycart",
         "contact": {
             "name": "API Support",
-            "url": "https://github.com/shurco/mycart/issues",
+            "url": "https://github.com/dure-one/dure-mycart/issues",
             "email": "support@mycart.com"
         },
         "license": {

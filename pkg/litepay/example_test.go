@@ -3,7 +3,7 @@ package litepay_test
 import (
 	"fmt"
 
-	"github.com/shurco/mycart/pkg/litepay"
+	"github.com/dure-one/dure-mycart/pkg/litepay"
 )
 
 // Example demonstrates basic usage of the litepay package with Stripe.

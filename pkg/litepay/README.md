@@ -101,7 +101,7 @@ const (
 ### 1. Initialization
 
 ```go
-import "github.com/shurco/mycart/pkg/litepay"
+import "github.com/dure-one/dure-mycart/pkg/litepay"
 
 // Create base configuration
 pay := litepay.New(
@@ -496,7 +496,7 @@ package main
 
 import (
     "fmt"
-    "github.com/shurco/mycart/pkg/litepay"
+    "github.com/dure-one/dure-mycart/pkg/litepay"
 )
 
 func main() {
@@ -708,5 +708,5 @@ See LICENSE file in the project root.
 ## Support
 
 For questions and suggestions:
-- GitHub Issues: https://github.com/shurco/mycart/issues
-- Documentation: https://github.com/shurco/mycart
+- GitHub Issues: https://github.com/dure-one/dure-mycart/issues
+- Documentation: https://github.com/dure-one/dure-mycart

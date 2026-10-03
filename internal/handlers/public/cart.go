@@ -12,15 +12,15 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/shurco/mycart/internal/mailer"
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/internal/webhook"
-	"github.com/shurco/mycart/pkg/errors"
-	"github.com/shurco/mycart/pkg/litepay"
-	"github.com/shurco/mycart/pkg/logging"
-	"github.com/shurco/mycart/pkg/security"
-	"github.com/shurco/mycart/pkg/webutil"
+	"github.com/dure-one/dure-mycart/internal/mailer"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/internal/webhook"
+	"github.com/dure-one/dure-mycart/pkg/errors"
+	"github.com/dure-one/dure-mycart/pkg/litepay"
+	"github.com/dure-one/dure-mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/pkg/security"
+	"github.com/dure-one/dure-mycart/pkg/webutil"
 )
 
 // cancelToken derives an HMAC-SHA256 capability token that authorizes the

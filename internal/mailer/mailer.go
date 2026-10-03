@@ -8,8 +8,8 @@ import (
 
 	mailer "github.com/xhit/go-simple-mail/v2"
 
-	"github.com/shurco/mycart/internal/digitalfiles"
-	"github.com/shurco/mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/digitalfiles"
+	"github.com/dure-one/dure-mycart/internal/models"
 )
 
 var EncryptionTypes = map[string]mailer.Encryption{

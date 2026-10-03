@@ -1,7 +1,7 @@
 {
   "common": {
     "loading": "LOADING...",
-    "poweredBy": "Powered by myCart",
+    "poweredBy": "Powered by dure-mycart",
     "backToHome": "BACK TO HOME"
   },
   "languages": {
@@ -22,7 +22,7 @@
   "footer": {
     "follow": "Follow:",
     "allRightsReserved": "All Rights Reserved",
-    "poweredBy": "Powered by myCart",
+    "poweredBy": "Powered by dure-mycart",
     "sellerInfo": "Seller Info"
   },
   "home": {

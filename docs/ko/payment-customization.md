@@ -387,4 +387,4 @@ PortOne은 신용카드, 가상계좌, 모바일 결제를 지원하는 한국 �
 
 ## 추가 도움말
 
-또는 GitHub에 이슈를 열어주세요: https://github.com/shurco/mycart/issues
+또는 GitHub에 이슈를 열어주세요: https://github.com/dure-one/dure-mycart/issues

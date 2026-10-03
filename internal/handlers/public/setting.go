@@ -3,10 +3,10 @@ package handlers
 import (
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/pkg/logging"
-	"github.com/shurco/mycart/pkg/webutil"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/pkg/webutil"
 )
 
 // Ping returns a pong response for health checks.

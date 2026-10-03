@@ -12,7 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/shurco/mycart/pkg/fsutil"
+	"github.com/dure-one/dure-mycart/pkg/fsutil"
 )
 
 const dirUploads = "./lc_uploads"

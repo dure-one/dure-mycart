@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/internal/dbtransfer"
-	"github.com/shurco/mycart/internal/testutil/pgtest"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/dbtransfer"
+	"github.com/dure-one/dure-mycart/internal/testutil/pgtest"
 )
 
 // requirePostgres skips a test unless the suite is pointed at a test server.

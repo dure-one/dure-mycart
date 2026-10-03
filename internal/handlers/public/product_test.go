@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/shurco/mycart/internal/testutil"
+	"github.com/dure-one/dure-mycart/internal/testutil"
 )
 
 func TestProducts(t *testing.T) {

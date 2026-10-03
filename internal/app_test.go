@@ -11,10 +11,10 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/migrations"
-	"github.com/shurco/mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/migrations"
+	"github.com/dure-one/dure-mycart/pkg/logging"
 )
 
 func TestDetermineSchemaAndAddr(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/shurco/mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/database"
 )
 
 // CopyOptions are the extras a copy cannot infer from the databases.

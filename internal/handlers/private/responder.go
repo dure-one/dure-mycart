@@ -5,12 +5,12 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/internal/responder"
-	"github.com/shurco/mycart/pkg/errors"
-	"github.com/shurco/mycart/pkg/logging"
-	"github.com/shurco/mycart/pkg/webutil"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/internal/responder"
+	"github.com/dure-one/dure-mycart/pkg/errors"
+	"github.com/dure-one/dure-mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/pkg/webutil"
 )
 
 // MessageThreads returns a list of message threads with optional channel filter.

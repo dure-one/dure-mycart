@@ -8,7 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/shurco/mycart/internal/testutil"
+	"github.com/dure-one/dure-mycart/internal/testutil"
 )
 
 // csrfProbe mounts the middleware in front of a handler that answers 200, and

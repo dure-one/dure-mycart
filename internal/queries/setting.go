@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/pkg/errors"
-	"github.com/shurco/mycart/pkg/security"
-	"github.com/shurco/mycart/pkg/strutil"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/pkg/errors"
+	"github.com/dure-one/dure-mycart/pkg/security"
+	"github.com/dure-one/dure-mycart/pkg/strutil"
 )
 
 // SettingQueries holds a dialect-aware handle allowing for easy querying and interaction

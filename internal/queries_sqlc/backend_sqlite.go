@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/shurco/mycart/internal/database"
-	sqlitegen "github.com/shurco/mycart/internal/queries_sqlc/sqlc/sqlite"
-	"github.com/shurco/mycart/pkg/errors"
+	"github.com/dure-one/dure-mycart/internal/database"
+	sqlitegen "github.com/dure-one/dure-mycart/internal/queries_sqlc/sqlc/sqlite"
+	"github.com/dure-one/dure-mycart/pkg/errors"
 )
 
 type sqliteBackend struct {

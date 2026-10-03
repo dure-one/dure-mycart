@@ -152,7 +152,7 @@ func TestInit_AlreadyLatest(t *testing.T) {
 		}
 	})
 
-	if !strings.Contains(out, "You already have the latest mycart v1.0.0") {
+	if !strings.Contains(out, "You already have the latest dure-mycart v1.0.0") {
 		t.Errorf("Init did not report being up to date, output: %q", out)
 	}
 	if _, err := os.Stat(".lc_temp_to_delete"); !os.IsNotExist(err) {

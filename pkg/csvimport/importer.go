@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/pkg/security"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/pkg/security"
 )
 
 // Querier is the database surface CSVImporter needs. It is declared here, on

@@ -3,9 +3,9 @@ package handlers
 import (
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/pkg/logging"
-	"github.com/shurco/mycart/pkg/webutil"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/pkg/webutil"
 )
 
 // SetProductRepresentativeImage marks a product image as the representative image.

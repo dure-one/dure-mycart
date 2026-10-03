@@ -45,7 +45,7 @@ export default withMermaid(defineConfig({
           { text: 'Docs', link: '/' },
           { text: 'API', link: '/swagger/', target: '_blank', rel: 'noopener noreferrer' },
           { text: 'E2E', link: '/e2e/', target: '_blank', rel: 'noopener noreferrer' },
-          { text: 'GitHub', link: 'https://github.com/shurco/mycart' }
+          { text: 'GitHub', link: 'https://github.com/dure-one/dure-mycart' }
         ],
         sidebar: [
           {
@@ -56,13 +56,12 @@ export default withMermaid(defineConfig({
               { text: 'Customization', link: '/customization' },
               { text: 'Payment Customization', link: '/payment-customization' },
               { text: 'Using PostgreSQL', link: '/using-postgresql' },
-              { text: 'Migration from LiteCart', link: '/migration-from-litecart' },
               { text: 'Development on BSD', link: '/development-on-bsd' }
             ]
           }
         ],
         editLink: {
-          pattern: 'https://github.com/shurco/mycart/edit/main/docs/:path',
+          pattern: 'https://github.com/dure-one/dure-mycart/edit/main/docs/:path',
           text: 'Edit this page on GitHub'
         },
         footer: {
@@ -80,7 +79,7 @@ export default withMermaid(defineConfig({
           { text: '문서', link: '/ko/' },
           { text: 'API', link: '/swagger/', target: '_blank', rel: 'noopener noreferrer' },
           { text: 'E2E', link: '/e2e/', target: '_blank', rel: 'noopener noreferrer' },
-          { text: 'GitHub', link: 'https://github.com/shurco/mycart' }
+          { text: 'GitHub', link: 'https://github.com/dure-one/dure-mycart' }
         ],
         sidebar: [
           {
@@ -90,13 +89,12 @@ export default withMermaid(defineConfig({
               { text: '시작하기', link: '/ko/readme' },
               { text: '커스터마이제이션', link: '/ko/customization' },
               { text: '결제 커스터마이제이션', link: '/ko/payment-customization' },
-              { text: 'LiteCart에서 마이그레이션', link: '/ko/migration-from-litecart' },
               { text: 'BSD 개발', link: '/ko/development-on-bsd' }
             ]
           }
         ],
         editLink: {
-          pattern: 'https://github.com/shurco/mycart/edit/main/docs/:path',
+          pattern: 'https://github.com/dure-one/dure-mycart/edit/main/docs/:path',
           text: 'GitHub에서 이 페이지 편집'
         },
         footer: {
@@ -154,7 +152,7 @@ export default withMermaid(defineConfig({
   // Shared theme config (applies to all locales)
   themeConfig: {
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/shurco/mycart' }
+      { icon: 'github', link: 'https://github.com/dure-one/dure-mycart' }
     ],
     search: {
       provider: 'local'

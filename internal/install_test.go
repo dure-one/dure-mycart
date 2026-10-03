@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
 )
 
 func TestInstallAdmin_CreatesAdminAccount(t *testing.T) {

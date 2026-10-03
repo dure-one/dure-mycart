@@ -14,11 +14,11 @@ import (
 	"github.com/pressly/goose/v3"
 	goosedb "github.com/pressly/goose/v3/database"
 
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/internal/testutil/pgtest"
-	"github.com/shurco/mycart/migrations"
-	"github.com/shurco/mycart/pkg/jwtutil"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/internal/testutil/pgtest"
+	"github.com/dure-one/dure-mycart/migrations"
+	"github.com/dure-one/dure-mycart/pkg/jwtutil"
 )
 
 const (

@@ -9,10 +9,10 @@ import (
 	"github.com/gofiber/fiber/v3/extractors"
 	"github.com/golang-jwt/jwt/v5"
 
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/pkg/errors"
-	"github.com/shurco/mycart/pkg/logging"
-	"github.com/shurco/mycart/pkg/webutil"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/pkg/errors"
+	"github.com/dure-one/dure-mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/pkg/webutil"
 )
 
 // CookieCustomerToken is the cookie a storefront session is carried in.

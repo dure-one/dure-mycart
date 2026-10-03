@@ -1,7 +1,7 @@
 {
   "common": {
     "loading": "CARGANDO...",
-    "poweredBy": "Desarrollado por myCart",
+    "poweredBy": "Desarrollado por dure-mycart",
     "backToHome": "VOLVER AL INICIO"
   },
   "languages": {
@@ -22,7 +22,7 @@
   "footer": {
     "follow": "Síguenos:",
     "allRightsReserved": "Todos los derechos reservados",
-    "poweredBy": "Desarrollado por myCart"
+    "poweredBy": "Desarrollado por dure-mycart"
   },
   "home": {
     "products": "PRODUCTOS",

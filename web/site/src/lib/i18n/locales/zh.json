@@ -1,7 +1,7 @@
 {
   "common": {
     "loading": "加载中...",
-    "poweredBy": "由 myCart 提供支持",
+    "poweredBy": "由 dure-mycart 提供支持",
     "backToHome": "返回首页"
   },
   "languages": {
@@ -22,7 +22,7 @@
   "footer": {
     "follow": "关注：",
     "allRightsReserved": "版权所有",
-    "poweredBy": "由 myCart 提供支持"
+    "poweredBy": "由 dure-mycart 提供支持"
   },
   "home": {
     "products": "商品",

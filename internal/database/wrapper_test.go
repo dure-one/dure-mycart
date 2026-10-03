@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shurco/mycart/migrations"
+	"github.com/dure-one/dure-mycart/migrations"
 )
 
 // newTestConn opens a migrated SQLite database in a temporary directory.

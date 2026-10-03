@@ -9,13 +9,13 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/shurco/mycart/internal/mailer"
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/pkg/errors"
-	"github.com/shurco/mycart/pkg/logging"
-	"github.com/shurco/mycart/pkg/update"
-	"github.com/shurco/mycart/pkg/webutil"
+	"github.com/dure-one/dure-mycart/internal/mailer"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/pkg/errors"
+	"github.com/dure-one/dure-mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/pkg/update"
+	"github.com/dure-one/dure-mycart/pkg/webutil"
 )
 
 // versionCacheTTL is how long the fetched release info is cached in the session store.
@@ -43,7 +43,7 @@ func Version(c fiber.Ctx) error {
 	}
 
 	version := currentVersion()
-	if release, fetchErr := update.FetchLatestRelease(c.Context(), "shurco", "mycart"); fetchErr != nil {
+	if release, fetchErr := update.FetchLatestRelease(c.Context(), "dure-one", "dure-mycart"); fetchErr != nil {
 		log.ErrorStack(fetchErr)
 	} else if release != nil && version.CurrentVersion != release.Name {
 		version.NewVersion = release.Name

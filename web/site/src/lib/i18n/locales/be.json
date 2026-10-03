@@ -1,7 +1,7 @@
 {
   "common": {
     "loading": "ЗАГРУЗКА...",
-    "poweredBy": "Працуе на myCart",
+    "poweredBy": "Працуе на dure-mycart",
     "backToHome": "ВЯРНУЦЦА НА ГАЛОЎНУЮ"
   },
   "languages": {
@@ -22,7 +22,7 @@
   "footer": {
     "follow": "Сачыце за намі:",
     "allRightsReserved": "Усе правы абаронены",
-    "poweredBy": "Працуе на myCart"
+    "poweredBy": "Працуе на dure-mycart"
   },
   "home": {
     "products": "ТАВАРЫ",

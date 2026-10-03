@@ -11,10 +11,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/internal/dbtransfer"
-	"github.com/shurco/mycart/pkg/fsutil"
-	"github.com/shurco/mycart/pkg/update"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/dbtransfer"
+	"github.com/dure-one/dure-mycart/pkg/fsutil"
+	"github.com/dure-one/dure-mycart/pkg/update"
 )
 
 // gzipMagic is the two bytes every gzip stream starts with. A dump is read

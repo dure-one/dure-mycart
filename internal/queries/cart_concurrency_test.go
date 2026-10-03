@@ -7,11 +7,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/shurco/mycart/internal/models"
-	"github.com/shurco/mycart/internal/queries"
-	"github.com/shurco/mycart/internal/testutil"
-	"github.com/shurco/mycart/pkg/litepay"
-	"github.com/shurco/mycart/pkg/security"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/internal/testutil"
+	"github.com/dure-one/dure-mycart/pkg/litepay"
+	"github.com/dure-one/dure-mycart/pkg/security"
 )
 
 // TestDigitalKeysAreClaimedOnce is the regression test for the key-allocation

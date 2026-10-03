@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/shurco/mycart/internal/testutil"
+	"github.com/dure-one/dure-mycart/internal/testutil"
 )
 
 func TestSignIn_MalformedJSON(t *testing.T) {
