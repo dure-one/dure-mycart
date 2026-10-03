@@ -165,18 +165,17 @@ docker compose -f xmpp-proxy-stack/docker-compose.dev.yml up -d
 docker compose -f xmpp-proxy-stack/docker-compose.dev.yml down
 ```
 
-### Ports (Host Network Mode)
+### Ports (Bridge Network Mode)
 
-The xmpp-proxy-stack container uses host networking for PROXY protocol support:
+The xmpp-proxy-stack container uses bridge networking to connect directly to Prosody (preserving PROXY protocol headers):
 
 - **80** - HTTP (ACME challenges)
 - **443** - HTTPS
 - **5222** - XMPP C2S (StartTLS)
 - **5223** - XMPP C2S (Direct TLS)
 - **5269** - XMPP S2S (Server-to-Server)
-- **443/udp** - XMPP over QUIC
 
-**Note:** Ports won't show in `docker ps` - use `ss -tnlup` to verify listening ports.
+**Important:** Direct container-to-container communication bypasses Docker port mapping, allowing PROXY protocol headers to reach Prosody with real client IPs.
 
 ### Data Volumes
 
@@ -189,14 +188,17 @@ Configurable via `DATA_DIR` environment variable (default: `/srv/data`):
 
 ### Prosody Configuration
 
-Prosody runs on internal bridge network with ports exposed only to localhost:
-- `127.0.0.1:15222` - C2S (client-to-server)
-- `127.0.0.1:15269` - S2S (server-to-server)
-- `127.0.0.1:15280` - HTTP/WebSocket (proxied via myCart)
+Prosody runs on internal bridge network (`xmpp-internal`):
+- `prosody:5222` - C2S (client-to-server) - xmpp-proxy connects here
+- `prosody:5269` - S2S (server-to-server) - xmpp-proxy connects here
+- `prosody:5280` - HTTP/WebSocket - proxied via mycart reverse proxy
 
-The xmpp-proxy-stack container connects to these backend ports and handles:
-- Public-facing XMPP ports (5222, 5269)
-- TLS termination with auto-renewed certificates
+The xmpp-proxy-stack container:
+- Joins the same `xmpp-internal` bridge network as Prosody
+- Connects directly to Prosody using container hostname (no Docker port mapping)
+- Sends PROXY protocol v1 headers with real client IPs
+- Handles public-facing XMPP ports (5222, 5223, 5269)
+- Performs TLS termination with auto-renewed certificates
 - PROXY protocol for client IP preservation
 - fail2ban-rs for intrusion prevention
 - dure-mycart web application

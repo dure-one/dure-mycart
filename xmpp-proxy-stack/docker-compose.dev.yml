@@ -114,14 +114,13 @@ services:
       dockerfile: xmpp-proxy-stack/Dockerfile
     container_name: xmpp-proxy-stack
     restart: unless-stopped
-    # Uses host networking for PROXY protocol support
-    # Ports won't show in 'docker ps' - use 'ss -tnlup' to see listening ports:
-    #   80/tcp    - HTTP (for ACME challenge)
-    #   5222/tcp  - XMPP C2S (StartTLS)
-    #   5223/tcp  - XMPP C2S (Direct TLS)
-    #   5269/tcp  - XMPP S2S (Server-to-Server)
-    #   443/udp   - XMPP over QUIC
-    network_mode: host
+    # Bridge network allows direct container communication, preserving PROXY headers
+    ports:
+      - "80:80"       # HTTP (ACME challenge)
+      - "443:443"     # HTTPS
+      - "5222:5222"   # XMPP C2S (StartTLS)
+      - "5223:5223"   # XMPP C2S (Direct TLS)
+      - "5269:5269"   # XMPP S2S (Server-to-Server)
     cap_add:
       - NET_ADMIN
     env_file: .env
@@ -132,6 +131,8 @@ services:
       - ${DATA_DIR:-/srv/data}/mycart/lc_base:/app/lc_base
       - ${DATA_DIR:-/srv/data}/mycart/lc_uploads:/app/lc_uploads
       - ${DATA_DIR:-/srv/data}/mycart/lc_digitals:/app/lc_digitals
+    networks:
+      - xmpp-internal
     depends_on:
       prosody:
         condition: service_healthy
