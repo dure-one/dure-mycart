@@ -183,6 +183,107 @@ The xmpp-proxy-stack container connects to these backend ports and handles:
 - PROXY protocol for client IP preservation
 - fail2ban-rs for intrusion prevention
 
+### fail2ban-rs Configuration
+
+The container includes fail2ban-rs for automatic IP banning based on authentication failures.
+
+**Check Status:**
+```bash
+docker exec xmpp-proxy-stack /usr/local/bin/fail2ban-rs status
+```
+
+**Configuration File:** `xmpp-proxy-stack/fail2ban-rs-config.toml`
+
+Default jails monitor:
+- **xmpp-auth** - Prosody authentication failures
+- **mycart-auth** - myCart HTTP authentication failures
+
+**Default Settings:**
+- Ban time: 1 hour
+- Find time: 10 minutes (look-back window)
+- Max retry: 5 failures before ban
+- Backend: nftables (automatic firewall rules)
+
+#### Optional: MaxMind GeoIP Enrichment
+
+Add geographic information to ban logs for better attack pattern analysis.
+
+**1. Sign Up for MaxMind GeoLite2 (Free):**
+
+Visit https://www.maxmind.com/en/geolite2/signup and generate a license key.
+
+**2. Download Databases:**
+
+```bash
+# On production server
+sudo mkdir -p /srv/data/maxmind
+
+# Method 1: Using geoipupdate (recommended - auto-updates)
+sudo apt-get install geoipupdate
+
+sudo tee /etc/GeoIP.conf > /dev/null <<EOF
+AccountID YOUR_ACCOUNT_ID
+LicenseKey YOUR_LICENSE_KEY
+EditionIDs GeoLite2-ASN GeoLite2-Country GeoLite2-City
+DatabaseDirectory /srv/data/maxmind
+EOF
+
+sudo geoipupdate
+
+# Method 2: Manual download (one-time, no auto-updates)
+cd /srv/data/maxmind
+wget "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-ASN&license_key=YOUR_KEY&suffix=tar.gz" -O asn.tar.gz
+wget "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=YOUR_KEY&suffix=tar.gz" -O country.tar.gz
+tar -xzf asn.tar.gz --strip-components=1 --wildcards '*.mmdb'
+tar -xzf country.tar.gz --strip-components=1 --wildcards '*.mmdb'
+```
+
+**3. Update docker-compose.yml:**
+
+Add MaxMind volume mount to `xmpp-proxy-stack` service:
+```yaml
+volumes:
+  - /srv/data/maxmind:/maxmind:ro
+```
+
+**4. Enable in fail2ban-rs-config.toml:**
+
+Uncomment the MaxMind paths in `[global]` section:
+```toml
+[global]
+maxmind_asn = "/maxmind/GeoLite2-ASN.mmdb"
+maxmind_country = "/maxmind/GeoLite2-Country.mmdb"
+# maxmind_city = "/maxmind/GeoLite2-City.mmdb"  # Optional
+```
+
+Enable per-jail enrichment:
+```toml
+[jail.xmpp-auth]
+maxmind = ["asn", "country"]
+
+[jail.mycart-auth]
+maxmind = ["asn", "country"]
+```
+
+**5. Restart Container:**
+```bash
+docker compose restart xmpp-proxy-stack
+```
+
+**Example Ban Log with GeoIP:**
+```
+banned ip=1.2.3.4 jail=xmpp-auth asn="AS15169 Google LLC" country="United States"
+```
+
+**Automatic Updates:**
+
+Add to crontab for weekly updates:
+```bash
+sudo crontab -e
+# Add: Weekly MaxMind database update (Wednesdays at 3 AM)
+0 3 * * 3 /usr/bin/geoipupdate && docker compose -f /srv/dure-mycart/xmpp-proxy-stack/docker-compose.yml restart xmpp-proxy-stack
+```
+
 ## Architecture
 
 Built on **distroless** base for minimal attack surface:

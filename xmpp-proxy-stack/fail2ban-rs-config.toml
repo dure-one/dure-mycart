@@ -6,6 +6,11 @@ ban_count_decay = "30d"  # Reset escalation count after 30 quiet days
 state_file = "/var/lib/fail2ban-rs/state.bin"
 socket_path = "/var/run/fail2ban-rs/fail2ban-rs.sock"
 
+# MaxMind GeoIP databases (optional)
+# maxmind_asn = "/maxmind/GeoLite2-ASN.mmdb"
+# maxmind_country = "/maxmind/GeoLite2-Country.mmdb"
+# maxmind_city = "/maxmind/GeoLite2-City.mmdb"
+
 # [logging]
 # level = "info"
 # format = "logfmt"
@@ -25,6 +30,7 @@ ban_time = "1h"
 backend = "nftables"
 ignoreip = ["127.0.0.1/8", "::1/128"]
 ignoreself = true
+# maxmind = ["asn", "country"]  # Enable GeoIP logging (requires databases)
 
 # Monitor mycart authentication failures
 [jail.mycart-auth]
