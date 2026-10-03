@@ -40,9 +40,9 @@ import (
 )
 
 var (
-	version   = "v0.0.1"
+	version   = "v0.0.0"
 	gitCommit = "00000000"
-	buildDate = "14.07.2023"
+	buildDate = "0000-00-00"
 )
 
 // dbOverrides carries the persistent --db-* flags. Values left empty fall
