@@ -58,7 +58,9 @@ func (r *ALPNRouter) acceptLoop() {
 		tlsConn, ok := conn.(*tls.Conn)
 		if !ok {
 			// Non-TLS connection, pass through to HTTP handler
-			r.acceptChan <- acceptResult{conn, nil}
+			go func(c net.Conn) {
+				r.acceptChan <- acceptResult{c, nil}
+			}(conn)
 			continue
 		}
 
@@ -92,7 +94,10 @@ func (r *ALPNRouter) acceptLoop() {
 				Str("remote", tlsConn.RemoteAddr().String()).
 				Str("alpn", alpn).
 				Msg("Routing to HTTP handler")
-			r.acceptChan <- acceptResult{tlsConn, nil}
+			// Send in goroutine to avoid blocking accept loop
+			go func(conn *tls.Conn) {
+				r.acceptChan <- acceptResult{conn, nil}
+			}(tlsConn)
 		}
 	}
 }
