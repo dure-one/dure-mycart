@@ -13,7 +13,7 @@ set -eu
 : "${XMPP_DOMAIN:?XMPP_DOMAIN must be set in .env}"
 
 repo_root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-template="$repo_root/xmpp-proxy-stack/templates/prosody-proxy.cfg.lua.template"
+template="$repo_root/prosody-mycart-stack/templates/prosody-proxy.cfg.lua.template"
 out_dir="$repo_root/generated"
 out_file="$out_dir/proxy.cfg.lua"
 
