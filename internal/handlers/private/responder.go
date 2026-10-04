@@ -502,9 +502,13 @@ func XMPPConnectionTest(c fiber.Ctx) error {
 	log := logging.New()
 
 	var settings models.ResponderSettings
-	if _, err := db.GetSettingByGroup(c.Context(), &settings); err != nil {
-		log.ErrorStack(err)
-		return webutil.StatusInternalServerError(c)
+	// Try to read from request body first (test before save)
+	if err := c.Bind().Body(&settings); err != nil || settings.XMPPJID == "" {
+		// Fall back to database if no body or empty JID
+		if _, err := db.GetSettingByGroup(c.Context(), &settings); err != nil {
+			log.ErrorStack(err)
+			return webutil.StatusInternalServerError(c)
+		}
 	}
 
 	if settings.XMPPJID == "" || settings.XMPPPassword == "" {

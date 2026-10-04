@@ -48,3 +48,39 @@ func TestXMPPWorker_Start(t *testing.T) {
 	err := worker.Start(ctx)
 	assert.NoError(t, err)
 }
+
+func TestXMPPConnection_DureCo_DirectTLS_ALPN(t *testing.T) {
+	settings := &models.ResponderSettings{
+		XMPPJID:      "admin@dure.co",
+		XMPPPassword: "dkwkddkwkd!23",
+		XMPPServer:   "dure.co",
+		XMPPPort:     443,
+	}
+
+	worker := NewXMPPWorker(settings, nil)
+
+	err := worker.Connect()
+	require.NoError(t, err, "Failed to connect to dure.co with Direct TLS + ALPN")
+	defer worker.Disconnect()
+
+	t.Log("✓ Successfully connected to dure.co (port 443, Direct TLS, ALPN 'xmpp-client')")
+}
+
+func TestXMPPConnection_ConversationsIm_STARTTLS(t *testing.T) {
+	t.Skip("conversations.im test requires valid credentials")
+
+	settings := &models.ResponderSettings{
+		XMPPJID:      "test@conversations.im",
+		XMPPPassword: "testpass",
+		XMPPServer:   "conversations.im",
+		XMPPPort:     5222,
+	}
+
+	worker := NewXMPPWorker(settings, nil)
+
+	err := worker.Connect()
+	require.NoError(t, err, "Failed to connect to conversations.im with STARTTLS")
+	defer worker.Disconnect()
+
+	t.Log("✓ Successfully connected to conversations.im (port 5222, STARTTLS)")
+}

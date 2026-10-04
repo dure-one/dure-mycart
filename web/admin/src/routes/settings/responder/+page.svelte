@@ -45,10 +45,10 @@
 		testing = true
 		testResult = null
 		try {
-			const response = await testXMPPConnection()
+			const response = await testXMPPConnection(settings)
 			// Check result.success (actual XMPP connection), not top-level success (HTTP status)
 			testSuccess = response.result?.success ?? false
-			testResult = testSuccess ? t('responder.connectionSuccessful') : t('responder.connectionFailed')
+			testResult = testSuccess ? t('responder.connectionSuccessful') : (response.result?.error || t('responder.connectionFailed'))
 		} catch (err) {
 			console.error('Connection test failed:', err)
 			testSuccess = false
