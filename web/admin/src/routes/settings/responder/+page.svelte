@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import Main from '$lib/layouts/Main.svelte'
-	import { PageHeader, FormButton, FormInput, FormToggle, Section } from '$lib/components'
+	import { PageHeader, FormButton, FormInput, FormSelect, FormToggle, Section } from '$lib/components'
 	import { loadResponderSettings, saveResponderSettings, testXMPPConnection } from '$lib/utils/responder'
 	import { translate } from '$lib/i18n'
 
@@ -13,7 +13,10 @@
 		xmpp_password: '',
 		xmpp_server: '',
 		xmpp_port: 0,
-		xmpp_connect_addr: ''
+		xmpp_connect_addr: '',
+		xmpp_connection_mode: 'auto',
+		xmpp_websocket_url: '',
+		xmpp_bosh_url: ''
 	})
 	let saving = $state(false)
 	let testing = $state(false)
@@ -89,32 +92,62 @@
 				ico="lock-closed"
 			/>
 
-			<div class="grid grid-cols-2 gap-4">
+			<FormSelect
+				id="xmpp_connection_mode"
+				title="Connection Mode"
+				bind:value={settings.xmpp_connection_mode}
+			>
+				<option value="auto">Auto (detect from settings)</option>
+				<option value="direct-tls">Direct TLS + ALPN (XEP-0368, port 443)</option>
+				<option value="starttls">STARTTLS (traditional, port 5222)</option>
+				<option value="websocket">WebSocket (RFC 7395)</option>
+				<option value="bosh">BOSH / HTTP Binding (XEP-0206)</option>
+			</FormSelect>
+
+			{#if settings.xmpp_connection_mode === 'websocket'}
 				<FormInput
-					id="xmpp_server"
-					title={t('responder.xmppServer')}
-					bind:value={settings.xmpp_server}
-					placeholder="Optional: defaults to JID domain"
-					ico="server"
+					id="xmpp_websocket_url"
+					title="WebSocket URL"
+					bind:value={settings.xmpp_websocket_url}
+					placeholder="wss://example.com/xmpp-websocket"
+					ico="link"
 				/>
+			{:else if settings.xmpp_connection_mode === 'bosh'}
+				<FormInput
+					id="xmpp_bosh_url"
+					title="BOSH Endpoint URL"
+					bind:value={settings.xmpp_bosh_url}
+					placeholder="https://example.com/http-bind"
+					ico="link"
+				/>
+			{:else}
+				<div class="grid grid-cols-2 gap-4">
+					<FormInput
+						id="xmpp_server"
+						title={t('responder.xmppServer')}
+						bind:value={settings.xmpp_server}
+						placeholder="Optional: defaults to JID domain"
+						ico="server"
+					/>
+
+					<FormInput
+						id="xmpp_port"
+						title={t('responder.xmppPort')}
+						type="number"
+						bind:value={settings.xmpp_port}
+						placeholder="Optional: defaults to 443"
+						ico="hashtag"
+					/>
+				</div>
 
 				<FormInput
-					id="xmpp_port"
-					title={t('responder.xmppPort')}
-					type="number"
-					bind:value={settings.xmpp_port}
-					placeholder="Optional: defaults to 443"
-					ico="hashtag"
+					id="xmpp_connect_addr"
+					title={t('responder.xmppConnectAddr')}
+					bind:value={settings.xmpp_connect_addr}
+					placeholder="Optional: override connection address"
+					ico="link"
 				/>
-			</div>
-
-			<FormInput
-				id="xmpp_connect_addr"
-				title={t('responder.xmppConnectAddr')}
-				bind:value={settings.xmpp_connect_addr}
-				placeholder="Optional: override connection address"
-				ico="link"
-			/>
+			{/if}
 
 			<div class="flex gap-2 pt-4">
 				<FormButton

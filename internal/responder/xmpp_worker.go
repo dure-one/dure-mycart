@@ -99,9 +99,41 @@ func (w *XMPPWorker) connect() error {
 		connectAddr = w.settings.XMPPConnectAddr
 	}
 
-	// Configure ALPN for direct TLS on port 443 (XEP-0368), STARTTLS for other ports
+	// Determine connection mode
+	mode := w.settings.XMPPConnectionMode
+	if mode == "" || mode == "auto" {
+		// Auto-detect based on available settings
+		if w.settings.XMPPWebSocketURL != "" {
+			mode = "websocket"
+		} else if w.settings.XMPPBOSHURL != "" {
+			mode = "bosh"
+		} else if port == 443 {
+			mode = "direct-tls"
+		} else {
+			mode = "starttls"
+		}
+	}
+
+	// Configure connection options based on mode
 	var options []xmpp.ClientOption
-	if port == 443 {
+
+	switch mode {
+	case "websocket":
+		// RFC 7395: XMPP over WebSocket
+		if w.settings.XMPPWebSocketURL == "" {
+			return fmt.Errorf("websocket mode requires xmpp_websocket_url")
+		}
+		options = append(options, xmpp.WithWebSocket(w.settings.XMPPWebSocketURL))
+
+	case "bosh":
+		// XEP-0206: BOSH (HTTP binding)
+		if w.settings.XMPPBOSHURL == "" {
+			return fmt.Errorf("bosh mode requires xmpp_bosh_url")
+		}
+		options = append(options, xmpp.WithBOSH(w.settings.XMPPBOSHURL))
+
+	case "direct-tls":
+		// XEP-0368: Direct TLS with ALPN on port 443
 		tlsConfig := &tls.Config{
 			ServerName: server,
 			NextProtos: []string{"xmpp-client"}, // ALPN protocol for C2S
@@ -110,8 +142,15 @@ func (w *XMPPWorker) connect() error {
 			xmpp.WithDirectTLS(),
 			xmpp.WithClientTLS(tlsConfig),
 		)
+		options = append(options, xmpp.WithConnectAddr(fmt.Sprintf("%s:%d", connectAddr, port)))
+
+	case "starttls":
+		// Traditional STARTTLS on port 5222
+		options = append(options, xmpp.WithConnectAddr(fmt.Sprintf("%s:%d", connectAddr, port)))
+
+	default:
+		return fmt.Errorf("unsupported connection mode: %s", mode)
 	}
-	options = append(options, xmpp.WithConnectAddr(fmt.Sprintf("%s:%d", connectAddr, port)))
 
 	// Create client
 	client, err := xmpp.NewClient(
@@ -126,7 +165,7 @@ func (w *XMPPWorker) connect() error {
 	// Connect and authenticate
 	ctx := context.Background()
 	if err := client.Connect(ctx); err != nil {
-		return fmt.Errorf("connect to %s:%d: %w", connectAddr, port, err)
+		return fmt.Errorf("connect (mode=%s): %w", mode, err)
 	}
 
 	w.client = client
