@@ -1,6 +1,6 @@
 # interfaces to listen for reverse proxy STARTTLS/Direct TLS XMPP connections on
-# Port 443 supports ALPN-based C2S/S2S multiplexing (XEP-0368)
-incoming_listen = [ "0.0.0.0:5222", "0.0.0.0:5223", "0.0.0.0:5269", "0.0.0.0:443" ]
+# Port 443 is handled by mycart's ALPN router (forwards xmpp-client/xmpp-server here)
+incoming_listen = [ "127.0.0.1:5222", "127.0.0.1:5223", "127.0.0.1:5269" ]
 
 # interfaces to listen for reverse proxy QUIC XMPP connections on
 quic_listen = [ ]
