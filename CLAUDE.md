@@ -44,12 +44,17 @@ XMPP-based customer support responder system:
 3. Contact/message/workflow queries with SQLite/PostgreSQL dual support
 4. Admin panel for configuration and message viewing
 
-**XMPP Proxy Stack** (`xmpp-proxy-stack/`):
-- All-in-one Docker image: dure-mycart + xmpp-proxy + fail2ban-rs
+**Prosody-myCart Stack** (`prosody-mycart-stack/`):
+- All-in-one Docker image: dure-mycart + fail2ban-rs + Horust
+- **ALPN Router**: Routes XMPP/HTTP on port 443 based on TLS ALPN protocol
 - PROXY protocol v1 for preserving real client IPs in Prosody logs
 - Bridge network with static IPs (172.19.0.0/16)
-- **xmpp-proxy limitation**: Only accepts IP:port format, not hostname:port
 - Prosody static IP: 172.19.0.2 (configured in docker-compose.yml)
+
+**Hybrid S2S Federation**:
+- **Modern servers** (XEP-0368): Port 443 with `xmpp-server` ALPN → Prosody 5270
+- **Legacy servers**: Direct S2S on port 5269 (exposed from Prosody container)
+- DNS SRV: `_xmpps-server._tcp` → port 443, `_xmpp-server._tcp` → port 5269
 
 ## Development Commands
 

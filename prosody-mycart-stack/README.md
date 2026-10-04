@@ -1,13 +1,13 @@
-# dure-mycart-prosody
+# dure-mycart Prosody Stack
 
-> Full-stack Docker image combining **dure-mycart** e-commerce platform with **xmpp-proxy**, **fail2ban-rs**, and process management via **Horust**.
+> Full-stack Docker image combining **dure-mycart** e-commerce platform with **ALPN-based XMPP routing**, **fail2ban-rs**, and process management via **Horust**.
 
 ## What's Included
 
 This all-in-one container includes:
 
-- **dure-mycart** - Lightweight e-commerce platform
-- **xmpp-proxy** - XMPP/Jabber proxy server
+- **dure-mycart** - Lightweight e-commerce platform with ALPN router
+- **ALPN Router** - TLS ALPN-based routing for XMPP (C2S/S2S) and HTTP on port 443
 - **fail2ban-rs** - Intrusion prevention system
 - **Horust** - Process supervisor managing all services
 
@@ -83,12 +83,20 @@ docker run -d \
 
 ## Ports
 
-| Port | Service | Protocol |
-|------|---------|----------|
-| 80 | HTTP | TCP |
-| 443 | HTTPS | TCP |
-| 5222 | XMPP Client | TCP |
-| 5269 | XMPP Server-to-Server | TCP |
+| Port | Service | Protocol | Notes |
+|------|---------|----------|-------|
+| 80 | HTTP | TCP | ACME challenges, redirects to HTTPS |
+| 443 | HTTPS + XMPP (ALPN) | TCP | HTTP/1.1, xmpp-client, xmpp-server via ALPN |
+| 5269 | XMPP S2S (legacy) | TCP | Standard S2S for non-XEP-0368 servers |
+
+**ALPN Routing on Port 443:**
+- `http/1.1` → dure-mycart HTTP handler
+- `xmpp-client` → Prosody C2S (172.19.0.2:5222 with PROXY protocol)
+- `xmpp-server` → Prosody S2S (172.19.0.2:5270 with PROXY protocol)
+
+**Hybrid S2S Federation:**
+- Modern XMPP servers use XEP-0368 Direct TLS on port 443
+- Legacy servers use standard S2S on port 5269
 
 ## Volumes
 
@@ -169,13 +177,19 @@ docker compose -f prosody-mycart-stack/docker-compose.dev.yml down
 
 The prosody-mycart-stack container uses bridge networking to connect directly to Prosody (preserving PROXY protocol headers):
 
-- **80** - HTTP (ACME challenges)
-- **443** - HTTPS
-- **5222** - XMPP C2S (StartTLS)
-- **5223** - XMPP C2S (Direct TLS)
-- **5269** - XMPP S2S (Server-to-Server)
+**Exposed from prosody-mycart-stack:**
+- **80** - HTTP (ACME challenges, redirects to HTTPS)
+- **443** - HTTPS + XMPP via ALPN (multiplexed based on TLS ALPN protocol)
 
-**Important:** Direct container-to-container communication bypasses Docker port mapping, allowing PROXY protocol headers to reach Prosody with real client IPs.
+**Exposed from Prosody:**
+- **5269** - Standard S2S (for legacy XMPP servers)
+
+**Internal (bridge network only):**
+- `172.19.0.2:5222` - Prosody C2S (receives PROXY protocol from ALPN router)
+- `172.19.0.2:5269` - Prosody S2S (Direct TLS for legacy servers)  
+- `172.19.0.2:5270` - Prosody S2S (receives PROXY protocol from ALPN router)
+
+**Important:** The ALPN router terminates TLS on port 443 and routes based on negotiated protocol, then forwards to Prosody with PROXY headers preserving real client IPs.
 
 ### Data Volumes
 
@@ -188,22 +202,29 @@ Configurable via `DATA_DIR` environment variable (default: `/srv/data`):
 
 ### Prosody Configuration
 
-Prosody runs on internal bridge network (`xmpp-internal`) with static IP:
-- `172.19.0.2:5222` - C2S (client-to-server) - xmpp-proxy connects here
-- `172.19.0.2:5269` - S2S (server-to-server) - xmpp-proxy connects here
-- `prosody:5280` - HTTP/WebSocket - proxied via mycart reverse proxy
+Prosody runs on internal bridge network (`xmpp-internal`) with static IP `172.19.0.2`:
 
-**IMPORTANT:** xmpp-proxy requires IP:port format (hostname:port not supported). Prosody has static IP `172.19.0.2` assigned in docker-compose.yml.
+**Incoming Connections (with PROXY protocol):**
+- `172.19.0.2:5222` - C2S from ALPN router (port 443 → `xmpp-client` ALPN)
+- `172.19.0.2:5270` - S2S from ALPN router (port 443 → `xmpp-server` ALPN, XEP-0368)
+
+**Standard S2S (Direct TLS, no PROXY):**
+- `172.19.0.2:5269` - S2S for legacy servers (exposed as host port 5269)
+
+**HTTP Services:**
+- `prosody:5280` - HTTP/WebSocket (proxied via mycart)
+
+**IMPORTANT:** The ALPN router in dure-mycart uses static IP `172.19.0.2` to connect to Prosody.
 
 The prosody-mycart-stack container:
 - Joins the same `xmpp-internal` bridge network as Prosody
-- Connects directly to Prosody using static IP (no Docker port mapping)
-- Sends PROXY protocol v1 headers with real client IPs
-- Handles public-facing XMPP ports (5222, 5223, 5269)
-- Performs TLS termination with auto-renewed certificates
-- PROXY protocol for client IP preservation
-- fail2ban-rs for intrusion prevention
-- dure-mycart web application
+- **ALPN Router**: Terminates TLS on port 443, routes based on ALPN protocol
+  - `http/1.1` → mycart HTTP handler
+  - `xmpp-client` → Prosody 5222 (PROXY v1 headers)
+  - `xmpp-server` → Prosody 5270 (PROXY v1 headers)
+- **fail2ban-rs**: Monitors Prosody/mycart logs, bans abusive IPs
+- **Auto TLS**: Let's Encrypt certificates via autocert
+- **dure-mycart**: Web application and API
 
 ### fail2ban-rs Configuration
 
