@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -45,9 +46,14 @@ func Version(c fiber.Ctx) error {
 	version := currentVersion()
 	if release, fetchErr := update.FetchLatestRelease(c.Context(), "dure-one", "dure-mycart"); fetchErr != nil {
 		log.ErrorStack(fetchErr)
-	} else if release != nil && version.CurrentVersion != release.Name {
-		version.NewVersion = release.Name
-		version.ReleaseURL = release.GetUrl()
+	} else if release != nil {
+		// Only show update if current is a tagged release and older than latest
+		// Dev builds (with -g in version) are ahead of any release
+		currentIsDevBuild := strings.Contains(version.CurrentVersion, "-g")
+		if !currentIsDevBuild && version.CurrentVersion != release.Name {
+			version.NewVersion = release.Name
+			version.ReleaseURL = release.GetUrl()
+		}
 	}
 
 	if err := cacheVersion(c.Context(), db, version); err != nil {

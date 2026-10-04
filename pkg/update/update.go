@@ -114,7 +114,21 @@ func ReleaseInfo(ctx context.Context, cfg *Config) (*ReleaseAsset, error) {
 		return nil, err
 	}
 
-	if compareVersions(strings.TrimPrefix(cfg.CurrentVersion, "v"), strings.TrimPrefix(latest.Tag, "v")) <= 0 {
+	currentVer := strings.TrimPrefix(cfg.CurrentVersion, "v")
+	latestVer := strings.TrimPrefix(latest.Tag, "v")
+
+	// If current version is git-describe format (e.g., v0.0.14-17-gabcdef),
+	// it's a dev build ahead of any release
+	if isGitDescribeVersion(cfg.CurrentVersion) {
+		baseVer := strings.TrimPrefix(extractBaseVersion(cfg.CurrentVersion), "v")
+		// If base version >= latest, no update available
+		if compareVersions(baseVer, latestVer) <= 0 {
+			fmt.Printf("You are running a development build %s (no update needed)\n", cfg.CurrentVersion)
+			return nil, nil
+		}
+	}
+
+	if compareVersions(currentVer, latestVer) <= 0 {
 		fmt.Printf("You already have the latest dure-mycart %s\n", cfg.CurrentVersion)
 		return nil, nil
 	}
@@ -202,6 +216,22 @@ func downloadFile(ctx context.Context, url string, destPath string) error {
 	}
 
 	return nil
+}
+
+// isGitDescribeVersion checks if version follows git-describe format: v0.0.14-17-gabcdef
+func isGitDescribeVersion(v string) bool {
+	parts := strings.Split(v, "-")
+	return len(parts) >= 3 && strings.HasPrefix(parts[len(parts)-1], "g")
+}
+
+// extractBaseVersion extracts base tag from git-describe format
+// "v0.0.14-17-g990fc9ad" -> "v0.0.14"
+func extractBaseVersion(v string) string {
+	if !isGitDescribeVersion(v) {
+		return v
+	}
+	parts := strings.Split(v, "-")
+	return parts[0]
 }
 
 func compareVersions(a, b string) int {
