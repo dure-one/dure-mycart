@@ -28,6 +28,7 @@ import (
 	"github.com/dure-one/dure-mycart/internal/responder"
 	"github.com/dure-one/dure-mycart/internal/routes"
 	"github.com/dure-one/dure-mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/pkg/update"
 	"github.com/dure-one/dure-mycart/pkg/webutil"
 )
 
@@ -176,6 +177,16 @@ func setupRoutes(app *fiber.App, noSite bool) {
 // server goroutines also write to.
 func printStartupInfo(w io.Writer, schema, mainAddr string, noSite bool, dbCfg database.Config) {
 	fmt.Fprint(w, "🛒 myCart - open source shopping-cart in 1 file\n")
+
+	// Show version info if available
+	if ver := update.VersionInfo(); ver != nil && ver.GitCommit != "" {
+		gitShort := ver.GitCommit
+		if len(gitShort) > 8 {
+			gitShort = gitShort[:8]
+		}
+		fmt.Fprintf(w, "├─ Version: %s (%s)\n", ver.CurrentVersion, gitShort)
+	}
+
 	if !noSite {
 		fmt.Fprintf(w, "├─ Cart UI: %s://%s/\n", schema, mainAddr)
 	}
