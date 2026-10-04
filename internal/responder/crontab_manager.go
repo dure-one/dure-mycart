@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -18,13 +19,32 @@ const (
 // CrontabManager manages system crontab entries
 type CrontabManager struct {
 	binaryPath string
+	crontabCmd string // "busybox" or "crontab"
 }
 
 // NewCrontabManager creates a new crontab manager
 func NewCrontabManager(binaryPath string) *CrontabManager {
+	crontabCmd := detectCrontabCommand()
+
+	// Ensure crontab directories exist (busybox needs this)
+	if crontabCmd == "busybox" {
+		os.MkdirAll("/var/spool/cron/crontabs", 0755)
+	}
+
 	return &CrontabManager{
 		binaryPath: binaryPath,
+		crontabCmd: crontabCmd,
 	}
+}
+
+// detectCrontabCommand returns the crontab command to use
+func detectCrontabCommand() string {
+	// Try busybox first (distroless environment)
+	if _, err := exec.LookPath("busybox"); err == nil {
+		return "busybox"
+	}
+	// Fall back to standard crontab
+	return "crontab"
 }
 
 // IsInstalled checks if mycart crontab entries exist
@@ -87,7 +107,13 @@ func (m *CrontabManager) Uninstall(ctx context.Context) error {
 
 // getCurrentCrontab reads current crontab
 func (m *CrontabManager) getCurrentCrontab(ctx context.Context) (string, error) {
-	cmd := exec.CommandContext(ctx, "crontab", "-l")
+	var cmd *exec.Cmd
+	if m.crontabCmd == "busybox" {
+		cmd = exec.CommandContext(ctx, "busybox", "crontab", "-l")
+	} else {
+		cmd = exec.CommandContext(ctx, "crontab", "-l")
+	}
+
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -102,7 +128,13 @@ func (m *CrontabManager) getCurrentCrontab(ctx context.Context) (string, error) 
 
 // writeCrontab writes new crontab content
 func (m *CrontabManager) writeCrontab(ctx context.Context, content string) error {
-	cmd := exec.CommandContext(ctx, "crontab", "-")
+	var cmd *exec.Cmd
+	if m.crontabCmd == "busybox" {
+		cmd = exec.CommandContext(ctx, "busybox", "crontab", "-")
+	} else {
+		cmd = exec.CommandContext(ctx, "crontab", "-")
+	}
+
 	cmd.Stdin = strings.NewReader(content)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

@@ -33,6 +33,12 @@ done
 
 echo "✓ Volume permissions OK"
 
+# Ensure busybox crontab directory exists
+if [ ! -d /var/spool/cron/crontabs ]; then
+    mkdir -p /var/spool/cron/crontabs
+    echo "✓ Created crontab directory"
+fi
+
 # Create symlink for mycart's autocert cache
 # mycart writes to ./lc_certs (relative to /app), but we want it in /certs
 # Remove any incorrect symlink first

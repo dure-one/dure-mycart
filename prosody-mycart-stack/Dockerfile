@@ -227,6 +227,7 @@ RUN ["/bin/busybox", "mkdir", "-p", \
     "/etc/fail2ban-rs", \
     "/var/run/acme/acme-challenge", \
     "/var/lib/fail2ban-rs", \
+    "/var/spool/cron/crontabs", \
     "/app/lc_base", \
     "/app/lc_uploads", \
     "/app/lc_digitals", \
@@ -240,6 +241,7 @@ RUN ["/bin/busybox", "ln", "-s", "/bin/busybox", "/usr/bin/mktemp"]
 RUN ["/bin/busybox", "ln", "-s", "/bin/busybox", "/usr/bin/mv"]
 RUN ["/bin/busybox", "ln", "-s", "/bin/busybox", "/usr/bin/rm"]
 RUN ["/bin/busybox", "ln", "-s", "/bin/busybox", "/usr/bin/cat"]
+RUN ["/bin/busybox", "ln", "-s", "/bin/busybox", "/usr/bin/crontab"]
 
 # Expose ports (informational only with host networking)
 EXPOSE 80 443
