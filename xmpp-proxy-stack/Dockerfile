@@ -14,9 +14,9 @@ WORKDIR /app
 # Copy scripts directory needed by postinstall
 COPY scripts ./scripts
 
-# Copy package files for better caching
-COPY web/admin/package*.json ./web/admin/
-COPY web/site/package*.json ./web/site/
+# Copy package files for better caching (bun needs package.json + bun.lockb)
+COPY web/admin/package.json web/admin/bun.lockb ./web/admin/
+COPY web/site/package.json web/site/bun.lockb ./web/site/
 
 # Install dependencies
 # Note: postinstall script checks platform and exits early on non-BSD systems
