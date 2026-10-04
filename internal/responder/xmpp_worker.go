@@ -65,25 +65,45 @@ func extractLocal(jid string) string {
 	return jid
 }
 
+// extractDomain extracts domain from full JID (user@domain → domain)
+func extractDomain(jid string) string {
+	if idx := strings.Index(jid, "@"); idx > 0 && idx < len(jid)-1 {
+		return jid[idx+1:]
+	}
+	return jid
+}
+
 // connect establishes XMPP connection
 func (w *XMPPWorker) connect() error {
+	// Extract domain from JID if XMPPServer not provided
+	server := w.settings.XMPPServer
+	if server == "" {
+		server = extractDomain(w.settings.XMPPJID)
+	}
+
+	// Default to port 443 (XMPP-over-TLS) if not specified
+	port := w.settings.XMPPPort
+	if port == 0 {
+		port = 443
+	}
+
 	// Build JID from settings
-	userJID, err := jid.New(extractLocal(w.settings.XMPPJID), w.settings.XMPPServer, "")
+	userJID, err := jid.New(extractLocal(w.settings.XMPPJID), server, "")
 	if err != nil {
 		return fmt.Errorf("parse JID: %w", err)
 	}
 
-	// Determine connection address: use XMPPConnectAddr if set, otherwise XMPPServer
-	connectAddr := w.settings.XMPPServer
+	// Determine connection address: use XMPPConnectAddr if set, otherwise server
+	connectAddr := server
 	if w.settings.XMPPConnectAddr != "" {
 		connectAddr = w.settings.XMPPConnectAddr
 	}
 
-	// Configure ALPN for direct TLS on port 443 (XEP-0368)
+	// Configure ALPN for direct TLS on port 443 (XEP-0368), STARTTLS for other ports
 	var options []xmpp.ClientOption
-	if w.settings.XMPPPort == 443 {
+	if port == 443 {
 		tlsConfig := &tls.Config{
-			ServerName: w.settings.XMPPServer,
+			ServerName: server,
 			NextProtos: []string{"xmpp-client"}, // ALPN protocol for C2S
 		}
 		options = append(options,
@@ -91,7 +111,7 @@ func (w *XMPPWorker) connect() error {
 			xmpp.WithClientTLS(tlsConfig),
 		)
 	}
-	options = append(options, xmpp.WithConnectAddr(fmt.Sprintf("%s:%d", connectAddr, w.settings.XMPPPort)))
+	options = append(options, xmpp.WithConnectAddr(fmt.Sprintf("%s:%d", connectAddr, port)))
 
 	// Create client
 	client, err := xmpp.NewClient(
@@ -106,7 +126,7 @@ func (w *XMPPWorker) connect() error {
 	// Connect and authenticate
 	ctx := context.Background()
 	if err := client.Connect(ctx); err != nil {
-		return fmt.Errorf("connect to %s:%d: %w", connectAddr, w.settings.XMPPPort, err)
+		return fmt.Errorf("connect to %s:%d: %w", connectAddr, port, err)
 	}
 
 	w.client = client

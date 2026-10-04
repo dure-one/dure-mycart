@@ -106,15 +106,16 @@ func (l LinkContactRequest) Validate() error {
 type ResponderSettings struct {
 	XMPPJID         string `json:"xmpp_jid"`
 	XMPPPassword    string `json:"xmpp_password"`
-	XMPPServer      string `json:"xmpp_server"`       // XMPP domain for JID (e.g., dure.co)
-	XMPPPort        int    `json:"xmpp_port"`
+	XMPPServer      string `json:"xmpp_server"`       // Optional: defaults to JID domain (e.g., dure.co)
+	XMPPPort        int    `json:"xmpp_port"`         // Optional: defaults to 443 (XMPP-over-TLS)
 	XMPPConnectAddr string `json:"xmpp_connect_addr"` // Optional: override connection address (e.g., prosody, 172.19.0.2)
 }
 
 // Validate responder settings
 func (r ResponderSettings) Validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.XMPPPort, validation.Min(1), validation.Max(65535)),
+		// XMPPPort only validated if provided (non-zero)
+		validation.Field(&r.XMPPPort, validation.When(r.XMPPPort != 0, validation.Min(1), validation.Max(65535))),
 	)
 }
 

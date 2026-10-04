@@ -12,7 +12,7 @@
 		xmpp_jid: '',
 		xmpp_password: '',
 		xmpp_server: '',
-		xmpp_port: 5222,
+		xmpp_port: 0,
 		xmpp_connect_addr: ''
 	})
 	let saving = $state(false)
@@ -94,7 +94,7 @@
 					id="xmpp_server"
 					title={t('responder.xmppServer')}
 					bind:value={settings.xmpp_server}
-					placeholder="example.com"
+					placeholder="Optional: defaults to JID domain"
 					ico="server"
 				/>
 
@@ -103,6 +103,7 @@
 					title={t('responder.xmppPort')}
 					type="number"
 					bind:value={settings.xmpp_port}
+					placeholder="Optional: defaults to 443"
 					ico="hashtag"
 				/>
 			</div>
@@ -111,7 +112,7 @@
 				id="xmpp_connect_addr"
 				title={t('responder.xmppConnectAddr')}
 				bind:value={settings.xmpp_connect_addr}
-				placeholder="Optional: leave empty to use XMPP Server"
+				placeholder="Optional: override connection address"
 				ico="link"
 			/>
 
