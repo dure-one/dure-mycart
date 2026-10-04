@@ -12,7 +12,8 @@
 		xmpp_jid: '',
 		xmpp_password: '',
 		xmpp_server: '',
-		xmpp_port: 5222
+		xmpp_port: 5222,
+		xmpp_connect_addr: ''
 	})
 	let saving = $state(false)
 	let testing = $state(false)
@@ -105,6 +106,14 @@
 					ico="hashtag"
 				/>
 			</div>
+
+			<FormInput
+				id="xmpp_connect_addr"
+				title={t('responder.xmppConnectAddr')}
+				bind:value={settings.xmpp_connect_addr}
+				placeholder="Optional: leave empty to use XMPP Server"
+				ico="link"
+			/>
 
 			<div class="flex gap-2 pt-4">
 				<FormButton

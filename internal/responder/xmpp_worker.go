@@ -2,6 +2,7 @@ package responder
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"strings"
 	"time"
@@ -72,11 +73,31 @@ func (w *XMPPWorker) connect() error {
 		return fmt.Errorf("parse JID: %w", err)
 	}
 
-	// Create client with TLS (enabled by default)
+	// Determine connection address: use XMPPConnectAddr if set, otherwise XMPPServer
+	connectAddr := w.settings.XMPPServer
+	if w.settings.XMPPConnectAddr != "" {
+		connectAddr = w.settings.XMPPConnectAddr
+	}
+
+	// Configure ALPN for direct TLS on port 443 (XEP-0368)
+	var options []xmpp.ClientOption
+	if w.settings.XMPPPort == 443 {
+		tlsConfig := &tls.Config{
+			ServerName: w.settings.XMPPServer,
+			NextProtos: []string{"xmpp-client"}, // ALPN protocol for C2S
+		}
+		options = append(options,
+			xmpp.WithDirectTLS(),
+			xmpp.WithClientTLS(tlsConfig),
+		)
+	}
+	options = append(options, xmpp.WithConnectAddr(fmt.Sprintf("%s:%d", connectAddr, w.settings.XMPPPort)))
+
+	// Create client
 	client, err := xmpp.NewClient(
 		userJID,
 		w.settings.XMPPPassword,
-		xmpp.WithConnectAddr(fmt.Sprintf("%s:%d", w.settings.XMPPServer, w.settings.XMPPPort)),
+		options...,
 	)
 	if err != nil {
 		return fmt.Errorf("new client: %w", err)
@@ -85,7 +106,7 @@ func (w *XMPPWorker) connect() error {
 	// Connect and authenticate
 	ctx := context.Background()
 	if err := client.Connect(ctx); err != nil {
-		return fmt.Errorf("connect to %s:%d: %w", w.settings.XMPPServer, w.settings.XMPPPort, err)
+		return fmt.Errorf("connect to %s:%d: %w", connectAddr, w.settings.XMPPPort, err)
 	}
 
 	w.client = client

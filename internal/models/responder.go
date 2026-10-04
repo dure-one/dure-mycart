@@ -104,10 +104,11 @@ func (l LinkContactRequest) Validate() error {
 
 // ResponderSettings holds XMPP configuration
 type ResponderSettings struct {
-	XMPPJID      string `json:"xmpp_jid"`
-	XMPPPassword string `json:"xmpp_password"`
-	XMPPServer   string `json:"xmpp_server"`
-	XMPPPort     int    `json:"xmpp_port"`
+	XMPPJID         string `json:"xmpp_jid"`
+	XMPPPassword    string `json:"xmpp_password"`
+	XMPPServer      string `json:"xmpp_server"`       // XMPP domain for JID (e.g., dure.co)
+	XMPPPort        int    `json:"xmpp_port"`
+	XMPPConnectAddr string `json:"xmpp_connect_addr"` // Optional: override connection address (e.g., prosody, 172.19.0.2)
 }
 
 // Validate responder settings

@@ -526,6 +526,7 @@
     "xmppPassword": "XMPP Password",
     "xmppServer": "XMPP Server",
     "xmppPort": "XMPP Port",
+    "xmppConnectAddr": "XMPP Connection Address",
     "testConnection": "Test Connection",
     "testing": "Testing...",
     "connectionSuccessful": "Connection successful!",

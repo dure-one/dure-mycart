@@ -513,6 +513,7 @@
     "xmppPassword": "XMPP 비밀번호",
     "xmppServer": "XMPP 서버",
     "xmppPort": "XMPP 포트",
+    "xmppConnectAddr": "XMPP 연결 주소",
     "testConnection": "연결 테스트",
     "testing": "테스트 중...",
     "connectionSuccessful": "연결 성공!",
