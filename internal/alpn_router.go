@@ -12,6 +12,10 @@ import (
 // ALPNRouter wraps a TLS listener and routes connections based on ALPN protocol.
 // HTTP connections (http/1.1, h2) are passed to the underlying application,
 // while XMPP connections (xmpp-client, xmpp-server) are proxied to Prosody with PROXY protocol.
+//
+// Hybrid S2S setup:
+// - Port 5269 (standard): Direct S2S for legacy servers
+// - Port 5270 (PROXY): S2S via ALPN (XEP-0368) for modern servers
 type ALPNRouter struct {
 	listener      net.Listener
 	xmppC2STarget string
@@ -30,7 +34,7 @@ func NewALPNRouter(listener net.Listener) *ALPNRouter {
 	return &ALPNRouter{
 		listener:      listener,
 		xmppC2STarget: getEnvOrDefault("XMPP_C2S_TARGET", "172.19.0.2:5222"),
-		xmppS2STarget: getEnvOrDefault("XMPP_S2S_TARGET", "172.19.0.2:5269"),
+		xmppS2STarget: getEnvOrDefault("XMPP_S2S_TARGET", "172.19.0.2:5270"),
 		acceptChan:    make(chan acceptResult, 10),
 	}
 }

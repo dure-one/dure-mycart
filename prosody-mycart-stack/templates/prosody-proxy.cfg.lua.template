@@ -48,7 +48,7 @@ proxy_trusted_proxies = {
 -- Configure which ports expect PROXY protocol headers
 proxy_port_mappings = {
     [5222] = "c2s",  -- Client-to-server connections
-    [5269] = "s2s"   -- Server-to-server connections
+    [5270] = "s2s"   -- Server-to-server via ALPN (XEP-0368) with PROXY protocol
 }
 
 -- Mark incoming connections from proxy as secure (xmpp-proxy guarantees this)
@@ -57,9 +57,10 @@ proxy_secure_in = true
 -- Disable regular c2s ports (mod_net_proxy will handle incoming c2s)
 c2s_ports = {}
 
--- MUST have at least one s2s_port for outgoing S2S to work
--- Prosody will make outgoing S2S connections from this port (with TLS)
-s2s_ports = {15268}
+-- S2S ports: standard incoming (5269) + outgoing (15268)
+-- Port 5269: Standard S2S with Direct TLS (for legacy servers)
+-- Port 15268: Outgoing S2S only (high port to avoid conflicts)
+s2s_ports = {5269, 15268}
 
 -- Don't require encryption for INCOMING connections (xmpp-proxy handled TLS)
 c2s_require_encryption = false
