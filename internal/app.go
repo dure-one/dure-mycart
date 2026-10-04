@@ -208,8 +208,7 @@ func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {
 	cfgTLS := &tls.Config{
 		GetCertificate: manager.GetCertificate,
 		NextProtos: []string{
-			"h2",           // HTTP/2
-			"http/1.1",     // HTTP/1.1
+			"http/1.1",     // HTTP/1.1 (h2 removed: Fiber v3 via custom listener doesn't support HTTP/2)
 			"acme-tls/1",   // ACME TLS-ALPN-01 challenge
 			"xmpp-client",  // XMPP C2S (XEP-0368)
 			"xmpp-server",  // XMPP S2S (XEP-0368)
@@ -277,8 +276,7 @@ func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
 		cfgTLS := &tls.Config{
 			GetCertificate: manager.GetCertificate,
 			NextProtos: []string{
-				"h2",           // HTTP/2
-				"http/1.1",     // HTTP/1.1
+				"http/1.1",     // HTTP/1.1 (h2 removed: Fiber v3 via custom listener doesn't support HTTP/2)
 				"acme-tls/1",   // ACME TLS-ALPN-01 challenge
 				"xmpp-client",  // XMPP C2S (XEP-0368)
 				"xmpp-server",  // XMPP S2S (XEP-0368)
