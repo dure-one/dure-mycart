@@ -207,7 +207,13 @@ func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {
 
 	cfgTLS := &tls.Config{
 		GetCertificate: manager.GetCertificate,
-		NextProtos:     []string{"http/1.1", "acme-tls/1"},
+		NextProtos: []string{
+			"h2",           // HTTP/2
+			"http/1.1",     // HTTP/1.1
+			"acme-tls/1",   // ACME TLS-ALPN-01 challenge
+			"xmpp-client",  // XMPP C2S (XEP-0368)
+			"xmpp-server",  // XMPP S2S (XEP-0368)
+		},
 	}
 
 	listenAddr := DefaultHTTPSPort
@@ -221,7 +227,10 @@ func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {
 		os.Exit(1)
 	}
 
-	if err := app.Listener(ln, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
+	// Wrap listener with ALPN router for XMPP/HTTP multiplexing
+	router := NewALPNRouter(ln)
+
+	if err := app.Listener(router, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
 		logger().Err(err).Send()
 		os.Exit(1)
 	}
@@ -267,7 +276,13 @@ func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
 		logger().Info().Msgf("Starting HTTPS server on %s", httpsAddr)
 		cfgTLS := &tls.Config{
 			GetCertificate: manager.GetCertificate,
-			NextProtos:     []string{"http/1.1", "acme-tls/1"},
+			NextProtos: []string{
+				"h2",           // HTTP/2
+				"http/1.1",     // HTTP/1.1
+				"acme-tls/1",   // ACME TLS-ALPN-01 challenge
+				"xmpp-client",  // XMPP C2S (XEP-0368)
+				"xmpp-server",  // XMPP S2S (XEP-0368)
+			},
 		}
 
 		ln, err := tls.Listen("tcp", httpsAddr, cfgTLS)
@@ -276,7 +291,10 @@ func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
 			return
 		}
 
-		if err := app.Listener(ln, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
+		// Wrap listener with ALPN router for XMPP/HTTP multiplexing
+		router := NewALPNRouter(ln)
+
+		if err := app.Listener(router, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
 			errCh <- fmt.Errorf("HTTPS server error: %w", err)
 		}
 	}()
