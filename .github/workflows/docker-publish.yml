@@ -19,8 +19,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - image: dure-mycart-prosody
-            dockerfile: xmpp-proxy-stack/Dockerfile
+          - image: prosody-mycart
+            dockerfile: prosody-mycart-stack/Dockerfile
             context: .
     steps:
       - name: Check out the repo

@@ -1,6 +1,5 @@
-# Multi-stage Dockerfile for dure-mycart + xmpp-proxy + fail2ban-rs (distroless)
+# Multi-stage Dockerfile for dure-mycart + Prosody + fail2ban-rs (distroless)
 
-ARG XMPP_PROXY_VERSION=latest
 ARG FAIL2BAN_RS_VERSION=latest
 ARG HORUST_VERSION=0.1.13
 
@@ -85,12 +84,11 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build \
     ./cmd/main.go
 
 ##
-## Stage 3: xmpp-binaries-builder (Debian)
+## Stage 3: fail2ban-builder (Debian)
 ##
-FROM debian:13-slim AS xmpp-binaries-builder
+FROM debian:13-slim AS fail2ban-builder
 
 ARG TARGETARCH
-ARG XMPP_PROXY_VERSION
 ARG FAIL2BAN_RS_VERSION
 
 RUN apt-get update && \
@@ -98,24 +96,6 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
-
-# Download xmpp-proxy
-RUN if [ "$TARGETARCH" = "amd64" ]; then \
-        XMPP_ARCH="x86_64"; \
-    elif [ "$TARGETARCH" = "arm64" ]; then \
-        XMPP_ARCH="aarch64"; \
-    else \
-        echo "Unsupported architecture: $TARGETARCH" >&2; \
-        exit 1; \
-    fi && \
-    if [ "$XMPP_PROXY_VERSION" = "latest" ]; then \
-        DOWNLOAD_URL="https://github.com/nikescar/xmpp-proxy/releases/latest/download/xmpp-proxy-${XMPP_ARCH}-unknown-linux-musl"; \
-    else \
-        DOWNLOAD_URL="https://github.com/nikescar/xmpp-proxy/releases/download/${XMPP_PROXY_VERSION}/xmpp-proxy-${XMPP_ARCH}-unknown-linux-musl"; \
-    fi && \
-    echo "Downloading xmpp-proxy from ${DOWNLOAD_URL}..." && \
-    curl -fsSL "$DOWNLOAD_URL" -o /usr/local/bin/xmpp-proxy && \
-    chmod +x /usr/local/bin/xmpp-proxy
 
 # Download fail2ban-rs
 RUN if [ "$TARGETARCH" = "amd64" ]; then \
@@ -194,17 +174,15 @@ RUN apt-get update && \
 WORKDIR /build
 
 # Copy our scripts and configs
-COPY xmpp-proxy-stack/docker-entrypoint.sh /docker-entrypoint.sh
-COPY xmpp-proxy-stack/xmpp-proxy-wrapper.sh /usr/local/bin/xmpp-proxy-wrapper.sh
-COPY xmpp-proxy-stack/mycart-wrapper.sh /usr/local/bin/mycart-wrapper.sh
-COPY xmpp-proxy-stack/horust-services/ /etc/horust/services/
+COPY prosody-mycart-stack/docker-entrypoint.sh /docker-entrypoint.sh
+COPY prosody-mycart-stack/mycart-wrapper.sh /usr/local/bin/mycart-wrapper.sh
+COPY prosody-mycart-stack/horust-services/ /etc/horust/services/
 
 RUN mkdir -p /etc/fail2ban-rs && \
-    chmod +x /docker-entrypoint.sh /usr/local/bin/xmpp-proxy-wrapper.sh /usr/local/bin/mycart-wrapper.sh && \
+    chmod +x /docker-entrypoint.sh /usr/local/bin/mycart-wrapper.sh && \
     cp /bin/busybox /bin/busybox-static
 
-COPY xmpp-proxy-stack/fail2ban-rs-config.toml /etc/fail2ban-rs/config.toml
-COPY xmpp-proxy-stack/xmpp-proxy-config.toml /etc/xmpp-proxy/config.toml
+COPY prosody-mycart-stack/fail2ban-rs-config.toml /etc/fail2ban-rs/config.toml
 
 ##
 ## Final Stage: distroless
@@ -216,20 +194,17 @@ ARG TARGETARCH
 # Copy dure-mycart binary
 COPY --from=backend-builder /go/bin/dure-mycart /app/dure-mycart
 
-# Copy xmpp binaries
-COPY --from=xmpp-binaries-builder /usr/local/bin/xmpp-proxy /usr/local/bin/xmpp-proxy
-COPY --from=xmpp-binaries-builder /usr/local/bin/fail2ban-rs /usr/local/bin/fail2ban-rs
+# Copy fail2ban-rs binary
+COPY --from=fail2ban-builder /usr/local/bin/fail2ban-rs /usr/local/bin/fail2ban-rs
 
 # Copy Horust
 COPY --from=horust-builder /usr/local/bin/horust /usr/local/bin/horust
 
 # Copy our tools and configs
 COPY --from=tools-builder /docker-entrypoint.sh /docker-entrypoint.sh
-COPY --from=tools-builder /usr/local/bin/xmpp-proxy-wrapper.sh /usr/local/bin/xmpp-proxy-wrapper.sh
 COPY --from=tools-builder /usr/local/bin/mycart-wrapper.sh /usr/local/bin/mycart-wrapper.sh
 COPY --from=tools-builder /etc/horust/services /etc/horust/services
 COPY --from=tools-builder /etc/fail2ban-rs/config.toml /etc/fail2ban-rs/config.toml
-COPY --from=tools-builder /etc/xmpp-proxy/config.toml /etc/xmpp-proxy/config.toml
 COPY --from=tools-builder /bin/busybox-static /bin/busybox
 
 # Copy openssl, curl, envsubst, nft
@@ -249,7 +224,6 @@ COPY --from=tools-builder /usr/lib/ssl /usr/lib/ssl
 RUN ["/bin/busybox", "mkdir", "-p", \
     "/certs", \
     "/logs", \
-    "/etc/xmpp-proxy", \
     "/etc/fail2ban-rs", \
     "/var/run/acme/acme-challenge", \
     "/var/lib/fail2ban-rs", \
@@ -268,7 +242,7 @@ RUN ["/bin/busybox", "ln", "-s", "/bin/busybox", "/usr/bin/rm"]
 RUN ["/bin/busybox", "ln", "-s", "/bin/busybox", "/usr/bin/cat"]
 
 # Expose ports (informational only with host networking)
-EXPOSE 80 443 5222 5223 5269
+EXPOSE 80 443
 
 # Entrypoint
 ENTRYPOINT ["/docker-entrypoint.sh"]

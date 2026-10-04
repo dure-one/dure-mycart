@@ -102,19 +102,16 @@ services:
       prosody-permissions-init:
         condition: service_completed_successfully
 
-  # Merged stack: dure-mycart + xmpp-proxy + fail2ban-rs
+  # Merged stack: dure-mycart + Prosody + fail2ban-rs
   # Production: pulls pre-built image from GitHub Container Registry
-  xmpp-proxy-stack:
-    image: ghcr.io/dure-one/dure-mycart-prosody:latest
-    container_name: xmpp-proxy-stack
+  prosody-mycart-stack:
+    image: ghcr.io/dure-one/prosody-mycart:latest
+    container_name: prosody-mycart-stack
     restart: unless-stopped
     # Bridge network allows direct container communication, preserving PROXY headers
     ports:
       - "80:80"       # HTTP (ACME challenge)
-      - "443:443"     # HTTPS
-      - "5222:5222"   # XMPP C2S (StartTLS)
-      - "5223:5223"   # XMPP C2S (Direct TLS)
-      - "5269:5269"   # XMPP S2S (Server-to-Server)
+      - "443:443"     # HTTPS + XMPP ALPN (C2S/S2S multiplexed)
     cap_add:
       - NET_ADMIN
     env_file: .env

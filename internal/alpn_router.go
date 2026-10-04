@@ -2,6 +2,7 @@ package app
 
 import (
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -10,7 +11,7 @@ import (
 
 // ALPNRouter wraps a TLS listener and routes connections based on ALPN protocol.
 // HTTP connections (http/1.1, h2) are passed to the underlying application,
-// while XMPP connections (xmpp-client, xmpp-server) are proxied to xmpp-proxy.
+// while XMPP connections (xmpp-client, xmpp-server) are proxied to Prosody with PROXY protocol.
 type ALPNRouter struct {
 	listener      net.Listener
 	xmppC2STarget string
@@ -28,8 +29,8 @@ type acceptResult struct {
 func NewALPNRouter(listener net.Listener) *ALPNRouter {
 	return &ALPNRouter{
 		listener:      listener,
-		xmppC2STarget: getEnvOrDefault("XMPP_C2S_TARGET", "127.0.0.1:5222"),
-		xmppS2STarget: getEnvOrDefault("XMPP_S2S_TARGET", "127.0.0.1:5269"),
+		xmppC2STarget: getEnvOrDefault("XMPP_C2S_TARGET", "172.19.0.2:5222"),
+		xmppS2STarget: getEnvOrDefault("XMPP_S2S_TARGET", "172.19.0.2:5269"),
 		acceptChan:    make(chan acceptResult, 10),
 	}
 }
@@ -96,9 +97,8 @@ func (r *ALPNRouter) acceptLoop() {
 	}
 }
 
-// proxyXMPP proxies a TLS connection to the XMPP backend (xmpp-proxy).
-// The TLS connection is terminated here and forwarded as plaintext to xmpp-proxy,
-// which then forwards to Prosody with PROXY protocol headers.
+// proxyXMPP proxies a TLS connection to Prosody XMPP server.
+// The TLS connection is terminated here and forwarded as plaintext with PROXY protocol v1 header.
 func (r *ALPNRouter) proxyXMPP(client net.Conn, target, connType string) {
 	defer client.Close()
 
@@ -108,16 +108,26 @@ func (r *ALPNRouter) proxyXMPP(client net.Conn, target, connType string) {
 			Err(err).
 			Str("target", target).
 			Str("type", connType).
-			Msg("Failed to connect to XMPP backend")
+			Msg("Failed to connect to Prosody")
 		return
 	}
 	defer backend.Close()
+
+	// Send PROXY protocol v1 header to preserve real client IP
+	proxyHeader := generateProxyV1Header(client.RemoteAddr(), client.LocalAddr())
+	if _, err := backend.Write(proxyHeader); err != nil {
+		logger().Error().
+			Err(err).
+			Str("type", connType).
+			Msg("Failed to send PROXY header to Prosody")
+		return
+	}
 
 	logger().Debug().
 		Str("client", client.RemoteAddr().String()).
 		Str("backend", target).
 		Str("type", connType).
-		Msg("XMPP proxy established")
+		Msg("XMPP proxy to Prosody established")
 
 	// Bidirectional copy between client and backend
 	done := make(chan error, 2)
@@ -157,6 +167,38 @@ func (r *ALPNRouter) Close() error {
 // Addr returns the listener's network address.
 func (r *ALPNRouter) Addr() net.Addr {
 	return r.listener.Addr()
+}
+
+// generateProxyV1Header creates a PROXY protocol v1 header.
+// Format: PROXY TCP4 <client-ip> <proxy-ip> <client-port> <proxy-port>\r\n
+// See: https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
+func generateProxyV1Header(clientAddr, proxyAddr net.Addr) []byte {
+	clientTCP, ok := clientAddr.(*net.TCPAddr)
+	if !ok {
+		// Fallback for non-TCP (shouldn't happen in practice)
+		return []byte(fmt.Sprintf("PROXY UNKNOWN\r\n"))
+	}
+
+	proxyTCP, ok := proxyAddr.(*net.TCPAddr)
+	if !ok {
+		return []byte(fmt.Sprintf("PROXY UNKNOWN\r\n"))
+	}
+
+	// Detect IPv4 vs IPv6
+	protocol := "TCP4"
+	if clientTCP.IP.To4() == nil {
+		protocol = "TCP6"
+	}
+
+	header := fmt.Sprintf("PROXY %s %s %s %d %d\r\n",
+		protocol,
+		clientTCP.IP.String(),
+		proxyTCP.IP.String(),
+		clientTCP.Port,
+		proxyTCP.Port,
+	)
+
+	return []byte(header)
 }
 
 // getEnvOrDefault returns the environment variable value or a default if not set.

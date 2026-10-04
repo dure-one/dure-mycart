@@ -7,7 +7,7 @@ Test Docker images built in GitHub CI on dure.co server without creating release
 ## How It Works
 
 1. **Push to `test` branch** → GitHub Actions builds image
-2. **Image tagged as:** `ghcr.io/dure-one/dure-mycart-prosody:test`
+2. **Image tagged as:** `ghcr.io/dure-one/prosody-mycart:test`
 3. **Pull on server:** Use `pull-test-image.sh` script
 4. **Test:** Runs on separate ports (no conflict with production)
 
@@ -97,7 +97,7 @@ docker stop dure-mycart-test
 docker rm dure-mycart-test
 
 # Remove test image
-docker rmi ghcr.io/dure-one/dure-mycart-prosody:test
+docker rmi ghcr.io/dure-one/prosody-mycart:test
 ```
 
 ## Troubleshooting
@@ -140,5 +140,5 @@ If you prefer manual control instead of auto-trigger:
 gh workflow run docker-publish.yml --ref test
 
 # Or pull by specific SHA
-docker pull ghcr.io/dure-one/dure-mycart-prosody:sha-abc1234
+docker pull ghcr.io/dure-one/prosody-mycart:sha-abc1234
 ```

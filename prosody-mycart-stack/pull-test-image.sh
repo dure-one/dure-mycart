@@ -4,7 +4,7 @@
 
 set -e
 
-IMAGE="ghcr.io/dure-one/dure-mycart-prosody:test"
+IMAGE="ghcr.io/dure-one/prosody-mycart:test"
 CONTAINER_NAME="dure-mycart-test"
 
 # Colors

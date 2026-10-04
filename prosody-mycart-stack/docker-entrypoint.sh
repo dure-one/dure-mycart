@@ -1,7 +1,7 @@
 #!/bin/busybox sh
 set -e
 
-echo "=== xmpp-proxy-stack initialization (mycart edition) ==="
+echo "=== prosody-mycart-stack initialization ==="
 
 # Check required environment variables
 if [ -z "${XMPP_DOMAIN:-}" ]; then
@@ -50,7 +50,7 @@ fi
 
 # Process horust service configs and wrapper scripts with envsubst
 echo "Processing service configs and wrappers..."
-for file in /etc/horust/services/*.toml /usr/local/bin/mycart-wrapper.sh /etc/xmpp-proxy/config.toml; do
+for file in /etc/horust/services/*.toml /usr/local/bin/mycart-wrapper.sh; do
     if [ -f "$file" ]; then
         envsubst < "$file" > "$file.tmp" && mv "$file.tmp" "$file"
         chmod +x "$file" 2>/dev/null || true
@@ -59,32 +59,4 @@ done
 echo "✓ Service configs and wrappers processed"
 
 echo "Starting services via Horust..."
-/usr/local/bin/horust --services-path /etc/horust/services &
-HORUST_PID=$!
-
-# Start background process to wait for certificates and launch xmpp-proxy
-# Workaround: Horust isn't starting xmpp-proxy, so start it manually when certs available
-(
-    echo "Waiting for SSL certificates before starting xmpp-proxy..."
-    RETRY_COUNT=0
-    MAX_RETRIES=60  # 60 * 5s = 5 minutes max wait
-
-    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-        if [ -f /certs/fullchain.pem ] && [ -f /certs/privkey.pem ]; then
-            echo "✓ SSL certificates found, starting xmpp-proxy"
-            /usr/local/bin/xmpp-proxy /etc/xmpp-proxy/config.toml
-            exit 0
-        fi
-
-        RETRY_COUNT=$((RETRY_COUNT + 1))
-        echo "Waiting for certificates... ($RETRY_COUNT/$MAX_RETRIES)"
-        sleep 5
-    done
-
-    echo "ERROR: Timeout waiting for SSL certificates after 5 minutes" >&2
-    echo "xmpp-proxy will not start until certificates are available" >&2
-) &
-XMPP_PROXY_WAITER_PID=$!
-
-# Wait for Horust to complete
-wait $HORUST_PID
+exec /usr/local/bin/horust --services-path /etc/horust/services
