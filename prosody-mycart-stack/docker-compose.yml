@@ -40,7 +40,7 @@ services:
     env_file: .env
     volumes:
       - ../:/workspace
-    command: sh xmpp-proxy-stack/render-prosody-config.sh
+    command: sh prosody-mycart-stack/render-prosody-config.sh
 
   # Fix permissions for Prosody data directories
   prosody-permissions-init:
