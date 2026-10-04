@@ -110,7 +110,7 @@ Production XMPP deployment with Prosody server and dure-mycart integration using
 - **prosody-config-init** - Configuration renderer
 - **prosody-permissions-init** - Fixes directory permissions (UID 1000:1000)
 - **prosody** - XMPP server (Prosody 13.0)
-- **xmpp-proxy-stack** - dure-mycart + XMPP proxy + fail2ban
+- **prosody-mycart-stack** - dure-mycart + XMPP proxy + fail2ban
 
 ### Prerequisites
 
@@ -120,8 +120,8 @@ export DATA_DIR=/srv/data  # or ./srv/data for development
 sudo mkdir -p ${DATA_DIR}/{prosody,certs,logs,fail2ban,mycart/{lc_base,lc_uploads,lc_digitals}}
 sudo chown -R 1000:1000 ${DATA_DIR}
 
-# Create .env file in xmpp-proxy-stack directory
-cd xmpp-proxy-stack
+# Create .env file in prosody-mycart-stack directory
+cd prosody-mycart-stack
 cp .env.example .env
 # Edit .env with your domain and settings
 ```
@@ -132,42 +132,42 @@ Uses the latest image from GitHub Container Registry:
 
 ```bash
 # Start all services
-docker compose -f xmpp-proxy-stack/docker-compose.yml up -d
+docker compose -f prosody-mycart-stack/docker-compose.yml up -d
 
 # Check status
-docker compose -f xmpp-proxy-stack/docker-compose.yml ps
+docker compose -f prosody-mycart-stack/docker-compose.yml ps
 docker exec prosody prosodyctl status
 
 # View logs
 docker logs prosody
-docker logs xmpp-proxy-stack
+docker logs prosody-mycart-stack
 
 # Check listening ports (using host network)
 ss -tnlup | grep -E '5222|5269|80|443'
 
 # Stop services
-docker compose -f xmpp-proxy-stack/docker-compose.yml down
+docker compose -f prosody-mycart-stack/docker-compose.yml down
 ```
 
 ### Development Usage (Local Build)
 
-Builds the xmpp-proxy-stack image locally from source:
+Builds the prosody-mycart-stack image locally from source:
 
 ```bash
 # Build and start all services
-docker compose -f xmpp-proxy-stack/docker-compose.dev.yml up -d --build
+docker compose -f prosody-mycart-stack/docker-compose.dev.yml up -d --build
 
 # Rebuild after code changes
-docker compose -f xmpp-proxy-stack/docker-compose.dev.yml build xmpp-proxy-stack
-docker compose -f xmpp-proxy-stack/docker-compose.dev.yml up -d
+docker compose -f prosody-mycart-stack/docker-compose.dev.yml build prosody-mycart-stack
+docker compose -f prosody-mycart-stack/docker-compose.dev.yml up -d
 
 # Stop services
-docker compose -f xmpp-proxy-stack/docker-compose.dev.yml down
+docker compose -f prosody-mycart-stack/docker-compose.dev.yml down
 ```
 
 ### Ports (Bridge Network Mode)
 
-The xmpp-proxy-stack container uses bridge networking to connect directly to Prosody (preserving PROXY protocol headers):
+The prosody-mycart-stack container uses bridge networking to connect directly to Prosody (preserving PROXY protocol headers):
 
 - **80** - HTTP (ACME challenges)
 - **443** - HTTPS
@@ -195,7 +195,7 @@ Prosody runs on internal bridge network (`xmpp-internal`) with static IP:
 
 **IMPORTANT:** xmpp-proxy requires IP:port format (hostname:port not supported). Prosody has static IP `172.19.0.2` assigned in docker-compose.yml.
 
-The xmpp-proxy-stack container:
+The prosody-mycart-stack container:
 - Joins the same `xmpp-internal` bridge network as Prosody
 - Connects directly to Prosody using static IP (no Docker port mapping)
 - Sends PROXY protocol v1 headers with real client IPs
@@ -211,10 +211,10 @@ The container includes fail2ban-rs for automatic IP banning based on authenticat
 
 **Check Status:**
 ```bash
-docker exec xmpp-proxy-stack /usr/local/bin/fail2ban-rs status
+docker exec prosody-mycart-stack /usr/local/bin/fail2ban-rs status
 ```
 
-**Configuration File:** `xmpp-proxy-stack/fail2ban-rs-config.toml`
+**Configuration File:** `prosody-mycart-stack/fail2ban-rs-config.toml`
 
 Default jails monitor:
 - **xmpp-auth** - Prosody authentication failures
@@ -262,7 +262,7 @@ tar -xzf country.tar.gz --strip-components=1 --wildcards '*.mmdb'
 
 **3. Update docker-compose.yml:**
 
-Add MaxMind volume mount to `xmpp-proxy-stack` service:
+Add MaxMind volume mount to `prosody-mycart-stack` service:
 ```yaml
 volumes:
   - /srv/data/maxmind:/maxmind:ro
@@ -289,7 +289,7 @@ maxmind = ["asn", "country"]
 
 **5. Restart Container:**
 ```bash
-docker compose restart xmpp-proxy-stack
+docker compose restart prosody-mycart-stack
 ```
 
 **Example Ban Log with GeoIP:**
@@ -303,7 +303,7 @@ Add to crontab for weekly updates:
 ```bash
 sudo crontab -e
 # Add: Weekly MaxMind database update (Wednesdays at 3 AM)
-0 3 * * 3 /usr/bin/geoipupdate && docker compose -f /srv/dure-mycart/xmpp-proxy-stack/docker-compose.yml restart xmpp-proxy-stack
+0 3 * * 3 /usr/bin/geoipupdate && docker compose -f /srv/dure-mycart/prosody-mycart-stack/docker-compose.yml restart prosody-mycart-stack
 ```
 
 ## Troubleshooting
@@ -322,7 +322,7 @@ XMPP_PROXY_PROSODY_S2S=172.19.0.2:5269
 
 **Verify static IP assignment:**
 ```bash
-docker network inspect xmpp-proxy-stack_xmpp-internal --format "{{range .Containers}}{{.Name}}: {{.IPv4Address}} {{end}}"
+docker network inspect prosody-mycart-stack_xmpp-internal --format "{{range .Containers}}{{.Name}}: {{.IPv4Address}} {{end}}"
 # Should show: prosody: 172.19.0.2/16
 ```
 
@@ -335,10 +335,10 @@ docker network inspect xmpp-proxy-stack_xmpp-internal --format "{{range .Contain
 **Check:**
 ```bash
 # Verify xmpp-proxy is running
-docker exec xmpp-proxy-stack /bin/busybox ps | grep xmpp-proxy
+docker exec prosody-mycart-stack /bin/busybox ps | grep xmpp-proxy
 
 # Test Prosody HTTP endpoint
-docker exec xmpp-proxy-stack /usr/bin/curl -s -o /dev/null -w "%{http_code}\n" http://172.19.0.2:5280/http-bind
+docker exec prosody-mycart-stack /usr/bin/curl -s -o /dev/null -w "%{http_code}\n" http://172.19.0.2:5280/http-bind
 # Should return: 200
 ```
 
@@ -394,7 +394,7 @@ Built on **distroless** base for minimal attack surface:
 ## Source Code
 
 - Repository: https://github.com/dure-one/dure-mycart
-- Dockerfile: `xmpp-proxy-stack/Dockerfile`
+- Dockerfile: `prosody-mycart-stack/Dockerfile`
 
 ## License
 

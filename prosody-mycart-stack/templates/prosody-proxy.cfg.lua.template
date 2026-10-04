@@ -17,7 +17,7 @@ pidfile = "/var/run/prosody/prosody.pid"
 -- Re-adds console (so `docker logs prosody` keeps working) and adds a file
 -- sink other tools can tail - notably fail2ban-rs's xmpp-auth/xmpp-s2s-abuse
 -- jails, which read /var/log/prosody/prosody.log (mounted through to
--- xmpp-proxy-stack as /logs/prosody/prosody.log) and had nothing to read
+-- prosody-mycart-stack as /logs/prosody/prosody.log) and had nothing to read
 -- before this, since Prosody never wrote to a file at all.
 log = {
     { to = "console", levels = { min = "info" } };
@@ -30,8 +30,8 @@ plugin_paths = { "/usr/lib/prosody/community" }
 
 ---------- PROXY PROTOCOL CONFIGURATION (MUST BE GLOBAL) ----------
 
--- Trust connections from xmpp-proxy-stack (Docker bridge network)
--- The xmpp-proxy-stack container connects via the bridge network gateway
+-- Trust connections from prosody-mycart-stack (Docker bridge network)
+-- The prosody-mycart-stack container connects via the bridge network gateway
 -- This MUST be set before proxy_port_mappings
 proxy_trusted_proxies = {
     "127.0.0.1",      -- localhost
@@ -147,7 +147,7 @@ http_default_host = "${XMPP_DOMAIN}"
 http_external_url = "https://${XMPP_DOMAIN}/"
 
 -- Mount admin_web2 under /prosody/admin to match the nginx reverse-proxy
--- path (see xmpp-proxy-stack/nginx-proxy-ctl). This makes Prosody's own
+-- path (see prosody-mycart-stack/nginx-proxy-ctl). This makes Prosody's own
 -- request path (and its trailing-slash redirect) match the external URL,
 -- so nginx doesn't need to rewrite response headers to compensate.
 -- bosh is intentionally left at its default "/http-bind" since admin_web2's

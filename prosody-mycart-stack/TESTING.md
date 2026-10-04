@@ -36,7 +36,7 @@ echo $GITHUB_PAT | docker login ghcr.io -u YOUR_USERNAME --password-stdin
 
 ```bash
 # On dure.co server
-scp xmpp-proxy-stack/pull-test-image.sh dure.co:/opt/dure-mycart/
+scp prosody-mycart-stack/pull-test-image.sh dure.co:/opt/dure-mycart/
 chmod +x /opt/dure-mycart/pull-test-image.sh
 ```
 
