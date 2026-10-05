@@ -14,6 +14,13 @@ import (
 	"github.com/dure-one/dure-mycart/internal/queries"
 )
 
+// ConnectionAttempt tracks a single connection attempt
+type ConnectionAttempt struct {
+	Mode    string
+	Address string
+	Error   error
+}
+
 // XMPPWorker handles XMPP message synchronization via MAM
 type XMPPWorker struct {
 	settings *models.ResponderSettings
@@ -65,51 +72,170 @@ func extractLocal(jid string) string {
 	return jid
 }
 
-// connect establishes XMPP connection
-func (w *XMPPWorker) connect() error {
-	// Build JID from settings
-	userJID, err := jid.New(extractLocal(w.settings.XMPPJID), w.settings.XMPPServer, "")
+// extractDomain extracts domain from full JID (user@domain → domain)
+func extractDomain(jid string) string {
+	if idx := strings.Index(jid, "@"); idx > 0 && idx < len(jid)-1 {
+		return jid[idx+1:]
+	}
+	return jid
+}
+
+// ConnectWithAllMethods tries all connection methods in order and returns attempts
+func (w *XMPPWorker) ConnectWithAllMethods() (*xmpp.Client, []ConnectionAttempt) {
+	server := w.settings.XMPPServer
+	if server == "" {
+		server = extractDomain(w.settings.XMPPJID)
+	}
+
+	attempts := []ConnectionAttempt{}
+
+	// Auto-construct WebSocket and BOSH URLs from domain if not provided
+	websocketURL := w.settings.XMPPWebSocketURL
+	if websocketURL == "" {
+		websocketURL = fmt.Sprintf("wss://%s/ws", server)
+	}
+
+	boshURL := w.settings.XMPPBOSHURL
+	if boshURL == "" {
+		boshURL = fmt.Sprintf("https://%s/http-bind/", server)
+	}
+
+	// Try in order: websocket → bosh → direct-tls → starttls
+	modes := []struct {
+		name string
+		url  string
+	}{
+		{"websocket", websocketURL},
+		{"bosh", boshURL},
+		{"direct-tls", ""},
+		{"starttls", ""},
+	}
+
+	for _, m := range modes {
+		var client *xmpp.Client
+		var addr string
+		var err error
+
+		if m.url != "" {
+			client, addr, err = w.tryConnectWithURL(m.name, server, m.url)
+		} else {
+			client, addr, err = w.tryConnect(m.name, server)
+		}
+
+		attempts = append(attempts, ConnectionAttempt{
+			Mode:    m.name,
+			Address: addr,
+			Error:   err,
+		})
+
+		if err == nil {
+			w.client = client
+			return client, attempts
+		}
+	}
+
+	return nil, attempts
+}
+
+// tryConnectWithURL attempts connection with WebSocket or BOSH using provided URL
+func (w *XMPPWorker) tryConnectWithURL(mode, server, url string) (*xmpp.Client, string, error) {
+	userJID, err := jid.New(extractLocal(w.settings.XMPPJID), server, "")
 	if err != nil {
-		return fmt.Errorf("parse JID: %w", err)
+		return nil, "", fmt.Errorf("parse JID: %w", err)
 	}
 
-	// Determine connection address: use XMPPConnectAddr if set, otherwise XMPPServer
-	connectAddr := w.settings.XMPPServer
-	if w.settings.XMPPConnectAddr != "" {
-		connectAddr = w.settings.XMPPConnectAddr
-	}
-
-	// Configure ALPN for direct TLS on port 443 (XEP-0368)
 	var options []xmpp.ClientOption
-	if w.settings.XMPPPort == 443 {
+
+	switch mode {
+	case "websocket":
+		options = append(options, xmpp.WithWebSocket(url))
+	case "bosh":
+		options = append(options, xmpp.WithBOSH(url))
+	default:
+		return nil, "", fmt.Errorf("unsupported URL mode: %s", mode)
+	}
+
+	client, err := xmpp.NewClient(userJID, w.settings.XMPPPassword, options...)
+	if err != nil {
+		return nil, url, fmt.Errorf("create client: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := client.Connect(ctx); err != nil {
+		return nil, url, err
+	}
+
+	return client, url, nil
+}
+
+// tryConnect attempts connection with specific mode
+func (w *XMPPWorker) tryConnect(mode, server string) (*xmpp.Client, string, error) {
+	port := w.settings.XMPPPort
+	if port == 0 {
+		if mode == "direct-tls" {
+			port = 443
+		} else if mode == "starttls" {
+			port = 5222
+		}
+	}
+
+	userJID, err := jid.New(extractLocal(w.settings.XMPPJID), server, "")
+	if err != nil {
+		return nil, "", fmt.Errorf("parse JID: %w", err)
+	}
+
+	var options []xmpp.ClientOption
+	var addr string
+
+	switch mode {
+	case "direct-tls":
+		addr = fmt.Sprintf("%s:%d", server, port)
 		tlsConfig := &tls.Config{
-			ServerName: w.settings.XMPPServer,
-			NextProtos: []string{"xmpp-client"}, // ALPN protocol for C2S
+			ServerName: server,
+			NextProtos: []string{"xmpp-client"},
 		}
 		options = append(options,
 			xmpp.WithDirectTLS(),
 			xmpp.WithClientTLS(tlsConfig),
+			xmpp.WithConnectAddr(addr),
 		)
-	}
-	options = append(options, xmpp.WithConnectAddr(fmt.Sprintf("%s:%d", connectAddr, w.settings.XMPPPort)))
 
-	// Create client
-	client, err := xmpp.NewClient(
-		userJID,
-		w.settings.XMPPPassword,
-		options...,
-	)
+	case "starttls":
+		addr = fmt.Sprintf("%s:%d", server, port)
+		options = append(options, xmpp.WithConnectAddr(addr))
+
+	default:
+		return nil, "", fmt.Errorf("unsupported mode: %s", mode)
+	}
+
+	client, err := xmpp.NewClient(userJID, w.settings.XMPPPassword, options...)
 	if err != nil {
-		return fmt.Errorf("new client: %w", err)
+		return nil, addr, fmt.Errorf("create client: %w", err)
 	}
 
-	// Connect and authenticate
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	if err := client.Connect(ctx); err != nil {
-		return fmt.Errorf("connect to %s:%d: %w", connectAddr, w.settings.XMPPPort, err)
+		return nil, addr, err
 	}
 
-	w.client = client
+	return client, addr, nil
+}
+
+// connect establishes XMPP connection (uses first successful method)
+func (w *XMPPWorker) connect() error {
+	client, attempts := w.ConnectWithAllMethods()
+	if client == nil {
+		var errMsg strings.Builder
+		errMsg.WriteString("all connection methods failed:")
+		for _, a := range attempts {
+			errMsg.WriteString(fmt.Sprintf("\n  %s (%s): %v", a.Mode, a.Address, a.Error))
+		}
+		return fmt.Errorf("%s", errMsg.String())
+	}
 	return nil
 }
 

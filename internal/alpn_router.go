@@ -9,211 +9,192 @@ import (
 	"sync"
 )
 
-// ALPNRouter wraps a TLS listener and routes connections based on ALPN protocol.
-// HTTP connections (http/1.1, h2) are passed to the underlying application,
-// while XMPP connections (xmpp-client, xmpp-server) are proxied to Prosody with PROXY protocol.
-//
-// Hybrid S2S setup:
-// - Port 5269 (standard): Direct S2S for legacy servers
-// - Port 5270 (PROXY): S2S via ALPN (XEP-0368) for modern servers
+// ALPNRouter routes incoming TLS connections based on negotiated ALPN protocol.
+// - xmpp-client → Prosody C2S (with PROXY protocol v1)
+// - xmpp-server → Prosody S2S (with PROXY protocol v1)
+// - http/1.1, acme-tls/1 → Fiber (pass through)
 type ALPNRouter struct {
-	listener      net.Listener
-	xmppC2STarget string
-	xmppS2STarget string
-	acceptChan    chan acceptResult
-	once          sync.Once
-}
-
-type acceptResult struct {
-	conn net.Conn
-	err  error
+	listener    net.Listener
+	connChan    chan net.Conn
+	closeCh     chan struct{}
+	closeOnce   sync.Once
+	prosodyC2S  string // Prosody C2S backend address
+	prosodyS2S  string // Prosody S2S backend address
 }
 
 // NewALPNRouter creates a new ALPN-based connection router.
-func NewALPNRouter(listener net.Listener) *ALPNRouter {
-	return &ALPNRouter{
-		listener:      listener,
-		xmppC2STarget: getEnvOrDefault("XMPP_C2S_TARGET", "172.19.0.2:5222"),
-		xmppS2STarget: getEnvOrDefault("XMPP_S2S_TARGET", "172.19.0.2:5270"),
-		acceptChan:    make(chan acceptResult, 10),
+func NewALPNRouter(ln net.Listener) *ALPNRouter {
+	// Get Prosody backend addresses from environment
+	prosodyC2S := os.Getenv("XMPP_PROXY_PROSODY_C2S")
+	if prosodyC2S == "" {
+		prosodyC2S = "127.0.0.1:5222" // Default C2S port
 	}
+
+	prosodyS2S := os.Getenv("XMPP_PROXY_PROSODY_S2S")
+	if prosodyS2S == "" {
+		prosodyS2S = "127.0.0.1:5269" // Standard S2S STARTTLS port
+	}
+
+	router := &ALPNRouter{
+		listener:   ln,
+		connChan:   make(chan net.Conn),
+		closeCh:    make(chan struct{}),
+		prosodyC2S: prosodyC2S,
+		prosodyS2S: prosodyS2S,
+	}
+
+	go router.route()
+	return router
 }
 
-// Accept implements net.Listener interface. It accepts the next connection
-// and routes it based on the negotiated ALPN protocol.
+// Accept returns the next HTTP connection (XMPP connections are proxied separately).
 func (r *ALPNRouter) Accept() (net.Conn, error) {
-	r.once.Do(func() {
-		go r.acceptLoop()
-	})
-
-	result := <-r.acceptChan
-	return result.conn, result.err
-}
-
-// acceptLoop continuously accepts connections and routes them based on ALPN.
-func (r *ALPNRouter) acceptLoop() {
-	for {
-		conn, err := r.listener.Accept()
-		if err != nil {
-			r.acceptChan <- acceptResult{nil, err}
-			return
-		}
-
-		tlsConn, ok := conn.(*tls.Conn)
-		if !ok {
-			// Non-TLS connection, pass through to HTTP handler
-			go func(c net.Conn) {
-				r.acceptChan <- acceptResult{c, nil}
-			}(conn)
-			continue
-		}
-
-		// Force TLS handshake to read ALPN protocol
-		if err := tlsConn.Handshake(); err != nil {
-			tlsConn.Close()
-			logger().Warn().Err(err).Msg("TLS handshake failed")
-			continue
-		}
-
-		alpn := tlsConn.ConnectionState().NegotiatedProtocol
-
-		switch alpn {
-		case "xmpp-client":
-			logger().Info().
-				Str("remote", tlsConn.RemoteAddr().String()).
-				Str("alpn", alpn).
-				Msg("Routing to XMPP C2S")
-			go r.proxyXMPP(tlsConn, r.xmppC2STarget, "c2s")
-
-		case "xmpp-server":
-			logger().Info().
-				Str("remote", tlsConn.RemoteAddr().String()).
-				Str("alpn", alpn).
-				Msg("Routing to XMPP S2S")
-			go r.proxyXMPP(tlsConn, r.xmppS2STarget, "s2s")
-
-		default:
-			// HTTP/1.1, h2, or other protocols - pass to Fiber
-			logger().Debug().
-				Str("remote", tlsConn.RemoteAddr().String()).
-				Str("alpn", alpn).
-				Msg("Routing to HTTP handler")
-			// Send in goroutine to avoid blocking accept loop
-			go func(conn *tls.Conn) {
-				r.acceptChan <- acceptResult{conn, nil}
-			}(tlsConn)
-		}
-	}
-}
-
-// proxyXMPP proxies a TLS connection to Prosody XMPP server.
-// The TLS connection is terminated here and forwarded as plaintext with PROXY protocol v1 header.
-func (r *ALPNRouter) proxyXMPP(client net.Conn, target, connType string) {
-	defer client.Close()
-
-	backend, err := net.Dial("tcp", target)
-	if err != nil {
-		logger().Error().
-			Err(err).
-			Str("target", target).
-			Str("type", connType).
-			Msg("Failed to connect to Prosody")
-		return
-	}
-	defer backend.Close()
-
-	// Send PROXY protocol v1 header to preserve real client IP
-	proxyHeader := generateProxyV1Header(client.RemoteAddr(), client.LocalAddr())
-	if _, err := backend.Write(proxyHeader); err != nil {
-		logger().Error().
-			Err(err).
-			Str("type", connType).
-			Msg("Failed to send PROXY header to Prosody")
-		return
-	}
-
-	logger().Debug().
-		Str("client", client.RemoteAddr().String()).
-		Str("backend", target).
-		Str("type", connType).
-		Msg("XMPP proxy to Prosody established")
-
-	// Bidirectional copy between client and backend
-	done := make(chan error, 2)
-
-	// Client → Backend
-	go func() {
-		_, err := io.Copy(backend, client)
-		done <- err
-	}()
-
-	// Backend → Client
-	go func() {
-		_, err := io.Copy(client, backend)
-		done <- err
-	}()
-
-	// Wait for either direction to complete
-	err = <-done
-
-	if err != nil && err != io.EOF {
-		logger().Debug().
-			Err(err).
-			Str("type", connType).
-			Msg("XMPP proxy connection closed with error")
-	} else {
-		logger().Debug().
-			Str("type", connType).
-			Msg("XMPP proxy connection closed")
+	select {
+	case conn := <-r.connChan:
+		return conn, nil
+	case <-r.closeCh:
+		return nil, net.ErrClosed
 	}
 }
 
 // Close closes the underlying listener.
 func (r *ALPNRouter) Close() error {
-	return r.listener.Close()
+	var err error
+	r.closeOnce.Do(func() {
+		close(r.closeCh)
+		err = r.listener.Close()
+	})
+	return err
 }
 
-// Addr returns the listener's network address.
+// Addr returns the underlying listener's address.
 func (r *ALPNRouter) Addr() net.Addr {
 	return r.listener.Addr()
 }
 
-// generateProxyV1Header creates a PROXY protocol v1 header.
+// route accepts connections and routes based on ALPN protocol.
+func (r *ALPNRouter) route() {
+	for {
+		conn, err := r.listener.Accept()
+		if err != nil {
+			select {
+			case <-r.closeCh:
+				return
+			default:
+				logger().Err(err).Msg("ALPN router accept error")
+				continue
+			}
+		}
+
+		go r.handleConnection(conn)
+	}
+}
+
+// handleConnection inspects ALPN and routes to appropriate backend.
+func (r *ALPNRouter) handleConnection(conn net.Conn) {
+	tlsConn, ok := conn.(*tls.Conn)
+	if !ok {
+		logger().Warn().Msg("Non-TLS connection on ALPN router")
+		conn.Close()
+		return
+	}
+
+	// Force TLS handshake to complete so we can read negotiated protocol
+	if err := tlsConn.Handshake(); err != nil {
+		logger().Err(err).Msg("TLS handshake failed")
+		conn.Close()
+		return
+	}
+
+	proto := tlsConn.ConnectionState().NegotiatedProtocol
+
+	logger().Debug().
+		Str("protocol", proto).
+		Str("remote", conn.RemoteAddr().String()).
+		Msg("ALPN protocol negotiated")
+
+	switch proto {
+	case "xmpp-client":
+		r.proxyToXMPP(tlsConn, r.prosodyC2S, "C2S")
+	case "xmpp-server":
+		logger().Info().
+			Str("remote", conn.RemoteAddr().String()).
+			Str("backend", r.prosodyS2S).
+			Msg("Routing S2S connection")
+		r.proxyToXMPP(tlsConn, r.prosodyS2S, "S2S")
+	case "http/1.1", "acme-tls/1", "":
+		// HTTP traffic → pass to Fiber
+		select {
+		case r.connChan <- tlsConn:
+		case <-r.closeCh:
+			tlsConn.Close()
+		}
+	default:
+		logger().Warn().Str("protocol", proto).Msg("Unknown ALPN protocol")
+		tlsConn.Close()
+	}
+}
+
+// proxyToXMPP forwards connection to Prosody with PROXY protocol v1 header.
+func (r *ALPNRouter) proxyToXMPP(clientConn *tls.Conn, backend, connType string) {
+	defer clientConn.Close()
+
+	// Connect to Prosody backend
+	backendConn, err := net.Dial("tcp", backend)
+	if err != nil {
+		logger().Err(err).Str("backend", backend).Str("type", connType).Msg("Failed to connect to Prosody")
+		return
+	}
+	defer backendConn.Close()
+
+	// Send PROXY protocol v1 header to preserve client IP
+	if err := sendProxyProtocol(backendConn, clientConn); err != nil {
+		logger().Err(err).Str("type", connType).Msg("Failed to send PROXY protocol header")
+		return
+	}
+
+	logger().Debug().
+		Str("client", clientConn.RemoteAddr().String()).
+		Str("backend", backend).
+		Str("type", connType).
+		Msg("ALPN routed XMPP connection")
+
+	// Bidirectional copy
+	done := make(chan struct{}, 2)
+
+	go func() {
+		io.Copy(backendConn, clientConn)
+		done <- struct{}{}
+	}()
+
+	go func() {
+		io.Copy(clientConn, backendConn)
+		done <- struct{}{}
+	}()
+
+	<-done // Wait for one direction to finish
+}
+
+// sendProxyProtocol sends PROXY protocol v1 header.
 // Format: PROXY TCP4 <client-ip> <proxy-ip> <client-port> <proxy-port>\r\n
-// See: https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
-func generateProxyV1Header(clientAddr, proxyAddr net.Addr) []byte {
-	clientTCP, ok := clientAddr.(*net.TCPAddr)
-	if !ok {
-		// Fallback for non-TCP (shouldn't happen in practice)
-		return []byte(fmt.Sprintf("PROXY UNKNOWN\r\n"))
-	}
+func sendProxyProtocol(backend net.Conn, client net.Conn) error {
+	clientAddr := client.RemoteAddr().(*net.TCPAddr)
+	proxyAddr := client.LocalAddr().(*net.TCPAddr)
 
-	proxyTCP, ok := proxyAddr.(*net.TCPAddr)
-	if !ok {
-		return []byte(fmt.Sprintf("PROXY UNKNOWN\r\n"))
-	}
-
-	// Detect IPv4 vs IPv6
-	protocol := "TCP4"
-	if clientTCP.IP.To4() == nil {
-		protocol = "TCP6"
+	// Determine protocol family
+	family := "TCP4"
+	if clientAddr.IP.To4() == nil {
+		family = "TCP6"
 	}
 
 	header := fmt.Sprintf("PROXY %s %s %s %d %d\r\n",
-		protocol,
-		clientTCP.IP.String(),
-		proxyTCP.IP.String(),
-		clientTCP.Port,
-		proxyTCP.Port,
+		family,
+		clientAddr.IP.String(),
+		proxyAddr.IP.String(),
+		clientAddr.Port,
+		proxyAddr.Port,
 	)
 
-	return []byte(header)
-}
-
-// getEnvOrDefault returns the environment variable value or a default if not set.
-func getEnvOrDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
+	_, err := backend.Write([]byte(header))
+	return err
 }

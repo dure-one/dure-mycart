@@ -28,6 +28,8 @@ import (
 	"github.com/dure-one/dure-mycart/internal/responder"
 	"github.com/dure-one/dure-mycart/internal/routes"
 	"github.com/dure-one/dure-mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/pkg/security"
+	"github.com/dure-one/dure-mycart/pkg/update"
 	"github.com/dure-one/dure-mycart/pkg/webutil"
 )
 
@@ -176,6 +178,16 @@ func setupRoutes(app *fiber.App, noSite bool) {
 // server goroutines also write to.
 func printStartupInfo(w io.Writer, schema, mainAddr string, noSite bool, dbCfg database.Config) {
 	fmt.Fprint(w, "🛒 myCart - open source shopping-cart in 1 file\n")
+
+	// Show version info if available
+	if ver := update.VersionInfo(); ver != nil && ver.GitCommit != "" {
+		gitShort := ver.GitCommit
+		if len(gitShort) > 8 {
+			gitShort = gitShort[:8]
+		}
+		fmt.Fprintf(w, "├─ Version: %s (%s)\n", ver.CurrentVersion, gitShort)
+	}
+
 	if !noSite {
 		fmt.Fprintf(w, "├─ Cart UI: %s://%s/\n", schema, mainAddr)
 	}
@@ -477,9 +489,15 @@ func RunCronJob(dbcfg database.Config, jobType string) error {
 		return fmt.Errorf("load settings: %w", err)
 	}
 
-	// Create XMPP worker if settings are configured
+	// Create XMPP worker ONLY if all conditions are met
 	var xmppWorker *responder.XMPPWorker
-	if settings.XMPPJID != "" && settings.XMPPPassword != "" {
+	if shouldEnableXMPP(ctx, db, &settings, jobType) {
+		// Decrypt password before use
+		decryptedPwd, err := security.DecryptPassword(settings.XMPPPassword, security.GetEncryptionKey())
+		if err != nil {
+			return fmt.Errorf("decrypt password: %w", err)
+		}
+		settings.XMPPPassword = decryptedPwd
 		xmppWorker = responder.NewXMPPWorker(&settings, db)
 	}
 
@@ -492,4 +510,36 @@ func RunCronJob(dbcfg database.Config, jobType string) error {
 	}
 
 	return nil
+}
+
+// shouldEnableXMPP checks all conditions before enabling XMPP connection
+func shouldEnableXMPP(ctx context.Context, db *queries.Base, settings *models.ResponderSettings, jobType string) bool {
+	// Condition 1: Only for xmpp_check job type
+	if jobType != "xmpp_check" {
+		return false
+	}
+
+	// Condition 2: XMPP toggle must be enabled
+	if !settings.Enabled {
+		return false
+	}
+
+	// Condition 3: Credentials must be configured
+	if settings.XMPPJID == "" || settings.XMPPPassword == "" {
+		return false
+	}
+
+	// Condition 4: xmpp_check job must be enabled in crontab
+	jobs, err := db.ListCrontabJobs(ctx)
+	if err != nil {
+		return false
+	}
+
+	for _, job := range jobs {
+		if job.JobType == "xmpp_check" && job.Enabled {
+			return true
+		}
+	}
+
+	return false
 }

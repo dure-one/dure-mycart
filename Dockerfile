@@ -63,7 +63,16 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build \
     ./cmd/main.go
 
 ##
-## Stage 3: Deploy into ultra-secure Distroless image
+## Stage 3: Tools builder (for busybox and crontab support)
+##
+FROM debian:13-slim AS tools-builder
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends busybox-static && \
+    rm -rf /var/lib/apt/lists/*
+
+##
+## Stage 4: Deploy into ultra-secure Distroless image
 ##
 FROM gcr.io/distroless/static-debian13:nonroot
 
@@ -73,6 +82,16 @@ WORKDIR /app
 # The binary and its workdir are owned by nonroot so the app can create its
 # runtime-writable directories (lc_base, lc_uploads, lc_digitals, lc_certs).
 COPY --from=backend-builder --chown=nonroot:nonroot /go/bin/dure-mycart /app/dure-mycart
+
+# Copy busybox for crontab support
+COPY --from=tools-builder /bin/busybox /bin/busybox
+
+# Create crontab directories with proper ownership for nonroot user (UID 65532)
+RUN ["/bin/busybox", "mkdir", "-p", "/var/spool/cron/crontabs"]
+RUN ["/bin/busybox", "chown", "-R", "65532:65532", "/var/spool/cron/crontabs"]
+
+# Create crontab symlink
+RUN ["/bin/busybox", "ln", "-s", "/bin/busybox", "/usr/bin/crontab"]
 
 # Expose port
 EXPOSE 8080

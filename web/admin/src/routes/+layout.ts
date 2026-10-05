@@ -3,97 +3,118 @@ import { browser } from '$app/environment'
 import { base } from '$app/paths'
 import type { LayoutLoad } from './$types'
 
+// Cache keys and TTLs
+const INSTALL_STATUS_KEY = 'mycart:install_status'
+const INSTALL_STATUS_TTL = 5 * 60 * 1000 // 5 minutes
+const VERSION_KEY = 'mycart:version'
+const VERSION_TTL = 60 * 60 * 1000 // 1 hour
+
+interface CachedData<T> {
+  data: T
+  timestamp: number
+}
+
+function getCached<T>(key: string, ttl: number): T | null {
+  if (!browser) return null
+  try {
+    const cached = localStorage.getItem(key)
+    if (!cached) return null
+
+    const parsed: CachedData<T> = JSON.parse(cached)
+    if (Date.now() - parsed.timestamp > ttl) {
+      localStorage.removeItem(key)
+      return null
+    }
+    return parsed.data
+  } catch {
+    return null
+  }
+}
+
+function setCache<T>(key: string, data: T): void {
+  if (!browser) return
+  try {
+    const cached: CachedData<T> = {
+      data,
+      timestamp: Date.now()
+    }
+    localStorage.setItem(key, JSON.stringify(cached))
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function clearCache(key: string): void {
+  if (!browser) return
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    // Ignore
+  }
+}
+
 export const load: LayoutLoad = async ({ url, fetch }) => {
   const pathname = url.pathname
 
   // Allow signin and install pages without authentication
-  // pathname includes base path (e.g., /_/signin or /_/install)
-  // Check if pathname ends with these routes
   if (pathname.endsWith('/signin') || pathname.endsWith('/install')) {
     return {}
   }
 
-  // Only check authentication on client side where cookies are available
-  // On server side (SSR), backend middleware InstallCheck will handle redirects
   if (!browser) {
     return {}
   }
 
-  try {
-    const statusResponse = await fetch('/api/install/status', {
-      method: 'GET',
-      credentials: 'include'
-    })
-
-    if (statusResponse.ok) {
-      const statusData = await statusResponse.json()
-      if (!statusData?.result?.installed) {
-        throw redirect(302, `${base}/install`)
-      }
-    }
-  } catch (error) {
-    // If it's already a redirect, rethrow it
-    if (error && typeof error === 'object' && 'status' in error && error.status === 302) {
-      throw error
-    }
-  }
-
-  // Check if application is installed and user is authenticated
-  // Backend middleware InstallCheck redirects to /_/install if not installed
-  // We check here for client-side navigation to ensure proper redirects
-  let isAuthenticated = false
-
-  try {
-    // Try version endpoint to check authentication
-    // If app is not installed, backend middleware should redirect this request
-    const versionResponse = await fetch('/api/_/version', {
-      method: 'GET',
-      credentials: 'include'
-    })
-
-    if (versionResponse.ok) {
-      const versionData = await versionResponse.json()
-      if (versionData?.success) {
-        isAuthenticated = true
-      }
-    } else if (versionResponse.status === 400 || versionResponse.status === 401 || versionResponse.status === 403) {
-      // 400 = missing/malformed token (app installed but not authenticated)
-      // 401/403 = unauthorized (app installed but not authenticated)
-      isAuthenticated = false
-    }
-  } catch (error) {
-    // If it's already a redirect, rethrow it
-    if (error && typeof error === 'object' && 'status' in error && error.status === 302) {
-      throw error
-    }
-    // Network error or other issue - try products endpoint as fallback
-  }
-
-  // If not authenticated yet, try products endpoint
-  if (!isAuthenticated) {
+  // Check install status (cached)
+  let installed = getCached<boolean>(INSTALL_STATUS_KEY, INSTALL_STATUS_TTL)
+  if (installed === null) {
     try {
-      const productsResponse = await fetch('/api/_/products', {
+      const statusResponse = await fetch('/api/install/status', {
         method: 'GET',
         credentials: 'include'
       })
 
-      if (productsResponse.ok) {
-        isAuthenticated = true
-      } else if (
-        productsResponse.status === 400 ||
-        productsResponse.status === 401 ||
-        productsResponse.status === 403
-      ) {
-        // 400 = missing/malformed token (app installed but not authenticated)
-        // 401/403 = unauthorized (app installed but not authenticated)
-        throw redirect(302, `${base}/signin`)
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json()
+        installed = statusData?.result?.installed ?? false
+        setCache(INSTALL_STATUS_KEY, installed)
+
+        if (!installed) {
+          throw redirect(302, `${base}/install`)
+        }
       }
     } catch (error) {
-      // If it's already a redirect, rethrow it
       if (error && typeof error === 'object' && 'status' in error && error.status === 302) {
         throw error
       }
-      // If products endpoint also fails, assume not authenticated
+    }
+  } else if (!installed) {
+    throw redirect(302, `${base}/install`)
+  }
+
+  // Check authentication via version endpoint (cached)
+  let isAuthenticated = getCached<boolean>(VERSION_KEY, VERSION_TTL)
+  if (isAuthenticated === null) {
+    try {
+      const versionResponse = await fetch('/api/_/version', {
+        method: 'GET',
+        credentials: 'include'
+      })
+
+      if (versionResponse.ok) {
+        const versionData = await versionResponse.json()
+        isAuthenticated = versionData?.success ?? false
+        setCache(VERSION_KEY, isAuthenticated)
+      } else if (versionResponse.status === 400 || versionResponse.status === 401 || versionResponse.status === 403) {
+        isAuthenticated = false
+        clearCache(VERSION_KEY)
+        throw redirect(302, `${base}/signin`)
+      }
+    } catch (error) {
+      if (error && typeof error === 'object' && 'status' in error && error.status === 302) {
+        throw error
+      }
+      clearCache(VERSION_KEY)
       throw redirect(302, `${base}/signin`)
     }
   }

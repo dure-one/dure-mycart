@@ -10,6 +10,7 @@ import (
 	"github.com/dure-one/dure-mycart/internal/responder"
 	"github.com/dure-one/dure-mycart/pkg/errors"
 	"github.com/dure-one/dure-mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/pkg/security"
 	"github.com/dure-one/dure-mycart/pkg/webutil"
 )
 
@@ -449,7 +450,13 @@ func GetResponderSettings(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
-	return webutil.Response(c, fiber.StatusOK, "Responder settings", result)
+	// Mask password - never send encrypted password to client
+	resultSettings := result.(*models.ResponderSettings)
+	if resultSettings.XMPPPassword != "" {
+		resultSettings.XMPPPassword = "********"
+	}
+
+	return webutil.Response(c, fiber.StatusOK, "Responder settings", resultSettings)
 }
 
 // UpdateResponderSettings updates responder XMPP settings.
@@ -479,12 +486,36 @@ func UpdateResponderSettings(c fiber.Ctx) error {
 		return webutil.StatusBadRequest(c, err.Error())
 	}
 
+	// Handle password encryption
+	// If password is empty or masked, load existing password from DB
+	if settings.XMPPPassword == "" || settings.XMPPPassword == "********" {
+		existingSettings := &models.ResponderSettings{}
+		if _, err := db.GetSettingByGroup(c.Context(), existingSettings); err == nil {
+			settings.XMPPPassword = existingSettings.XMPPPassword // Keep existing encrypted password
+		}
+	} else {
+		// New password provided - encrypt it
+		encryptedPwd, err := security.EncryptPassword(settings.XMPPPassword, security.GetEncryptionKey())
+		if err != nil {
+			log.ErrorStack(err)
+			return webutil.StatusInternalServerError(c)
+		}
+		settings.XMPPPassword = encryptedPwd
+	}
+
 	if err := db.UpdateSettingByGroup(c.Context(), settings); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
 
 	return webutil.Response(c, fiber.StatusOK, "Responder settings updated", nil)
+}
+
+// ConnectionAttemptInfo contains details about a single connection attempt
+type ConnectionAttemptInfo struct {
+	Mode    string `json:"mode"`
+	Address string `json:"address"`
+	Error   string `json:"error,omitempty"`
 }
 
 // XMPPConnectionTest tests the XMPP connection with provided settings.
@@ -502,9 +533,13 @@ func XMPPConnectionTest(c fiber.Ctx) error {
 	log := logging.New()
 
 	var settings models.ResponderSettings
-	if _, err := db.GetSettingByGroup(c.Context(), &settings); err != nil {
-		log.ErrorStack(err)
-		return webutil.StatusInternalServerError(c)
+	// Try to read from request body first (test before save)
+	if err := c.Bind().Body(&settings); err != nil || settings.XMPPJID == "" {
+		// Fall back to database if no body or empty JID
+		if _, err := db.GetSettingByGroup(c.Context(), &settings); err != nil {
+			log.ErrorStack(err)
+			return webutil.StatusInternalServerError(c)
+		}
 	}
 
 	if settings.XMPPJID == "" || settings.XMPPPassword == "" {
@@ -514,17 +549,46 @@ func XMPPConnectionTest(c fiber.Ctx) error {
 		})
 	}
 
+	// Decrypt password if it looks encrypted (not from request body test)
+	// Request body will have plain text password for testing before save
+	if settings.XMPPPassword != "" && settings.XMPPPassword != "********" {
+		// If it's base64 and not a simple password, try to decrypt
+		if len(settings.XMPPPassword) > 20 {
+			decryptedPwd, err := security.DecryptPassword(settings.XMPPPassword, security.GetEncryptionKey())
+			if err == nil {
+				settings.XMPPPassword = decryptedPwd
+			}
+			// If decryption fails, assume it's already plain text (from test request)
+		}
+	}
+
 	worker := responder.NewXMPPWorker(&settings, nil)
-	if err := worker.Connect(); err != nil {
-		return webutil.Response(c, fiber.StatusOK, "XMPP connection failed", map[string]any{
-			"success": false,
-			"error":   err.Error(),
+	client, rawAttempts := worker.ConnectWithAllMethods()
+
+	// Convert attempts to response format
+	attempts := make([]ConnectionAttemptInfo, len(rawAttempts))
+	for i, a := range rawAttempts {
+		attempts[i] = ConnectionAttemptInfo{
+			Mode:    a.Mode,
+			Address: a.Address,
+		}
+		if a.Error != nil {
+			attempts[i].Error = a.Error.Error()
+		}
+	}
+
+	if client == nil {
+		return webutil.Response(c, fiber.StatusOK, "All connection methods failed", map[string]any{
+			"success":  false,
+			"error":    "Unable to connect using any method",
+			"attempts": attempts,
 		})
 	}
 	defer worker.Disconnect()
 
 	return webutil.Response(c, fiber.StatusOK, "XMPP connection successful", map[string]any{
-		"success": true,
+		"success":  true,
+		"attempts": attempts,
 	})
 }
 
@@ -580,9 +644,8 @@ func InstallCrontab(c fiber.Ctx) error {
 
 	if err := manager.Install(c.Context(), jobs); err != nil {
 		log.ErrorStack(err)
-		return webutil.Response(c, fiber.StatusOK, "Failed to install crontab", map[string]any{
-			"success": false,
-			"error":   err.Error(),
+		return webutil.Response(c, fiber.StatusInternalServerError, "Failed to install crontab", map[string]any{
+			"error": err.Error(),
 		})
 	}
 
@@ -609,9 +672,8 @@ func UninstallCrontab(c fiber.Ctx) error {
 
 	if err := manager.Uninstall(c.Context()); err != nil {
 		log.ErrorStack(err)
-		return webutil.Response(c, fiber.StatusOK, "Failed to uninstall crontab", map[string]any{
-			"success": false,
-			"error":   err.Error(),
+		return webutil.Response(c, fiber.StatusInternalServerError, "Failed to uninstall crontab", map[string]any{
+			"error": err.Error(),
 		})
 	}
 

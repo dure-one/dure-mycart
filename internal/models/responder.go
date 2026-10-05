@@ -104,17 +104,20 @@ func (l LinkContactRequest) Validate() error {
 
 // ResponderSettings holds XMPP configuration
 type ResponderSettings struct {
-	XMPPJID         string `json:"xmpp_jid"`
-	XMPPPassword    string `json:"xmpp_password"`
-	XMPPServer      string `json:"xmpp_server"`       // XMPP domain for JID (e.g., dure.co)
-	XMPPPort        int    `json:"xmpp_port"`
-	XMPPConnectAddr string `json:"xmpp_connect_addr"` // Optional: override connection address (e.g., prosody, 172.19.0.2)
+	Enabled          bool   `json:"enabled"`            // Enable/disable XMPP connection
+	XMPPJID          string `json:"xmpp_jid"`
+	XMPPPassword     string `json:"xmpp_password"`
+	XMPPServer       string `json:"xmpp_server"`        // Optional: defaults to JID domain (e.g., dure.co)
+	XMPPPort         int    `json:"xmpp_port"`          // Optional: defaults to 443 for direct-tls, 5222 for starttls
+	XMPPWebSocketURL string `json:"xmpp_websocket_url"` // Optional: WebSocket URL (e.g., wss://example.com/xmpp-websocket)
+	XMPPBOSHURL      string `json:"xmpp_bosh_url"`      // Optional: BOSH endpoint URL (e.g., https://example.com/http-bind)
 }
 
 // Validate responder settings
 func (r ResponderSettings) Validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.XMPPPort, validation.Min(1), validation.Max(65535)),
+		// XMPPPort only validated if provided (non-zero)
+		validation.Field(&r.XMPPPort, validation.When(r.XMPPPort != 0, validation.Min(1), validation.Max(65535))),
 	)
 }
 

@@ -54,6 +54,7 @@
 					alert(t('crontab.serviceDisabled'))
 				} else {
 					alert(t('crontab.failedToDisable'))
+					await checkStatus() // Re-fetch actual state on failure
 				}
 			} else {
 				const response = await installCrontab()
@@ -62,11 +63,13 @@
 					alert(t('crontab.serviceEnabled'))
 				} else {
 					alert(t('crontab.failedToEnable'))
+					await checkStatus() // Re-fetch actual state on failure
 				}
 			}
 		} catch (err) {
 			console.error('Failed to toggle crontab service:', err)
 			alert(t('crontab.operationFailed'))
+			await checkStatus() // Re-fetch actual state on error
 		} finally {
 			serviceLoading = false
 		}

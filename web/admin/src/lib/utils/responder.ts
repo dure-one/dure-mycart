@@ -74,16 +74,23 @@ export async function loadResponderSettings() {
 }
 
 export async function saveResponderSettings(settings: {
+	enabled?: boolean
 	xmpp_jid: string
 	xmpp_password: string
-	xmpp_server: string
-	xmpp_port: number
+	xmpp_server?: string
+	xmpp_port?: number
 }) {
 	return await apiUpdate('/api/_/settings/responder', settings)
 }
 
-export async function testXMPPConnection() {
-	return await apiPost('/api/_/settings/responder/test-connection', {})
+export async function testXMPPConnection(settings: {
+	enabled?: boolean
+	xmpp_jid: string
+	xmpp_password: string
+	xmpp_server?: string
+	xmpp_port?: number
+}) {
+	return await apiPost('/api/_/settings/responder/test-connection', settings)
 }
 
 export async function checkCrontabStatus() {

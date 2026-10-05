@@ -129,6 +129,7 @@ func (q *SettingQueries) GroupFieldMap(settings any) map[string]any {
 		}
 	case *models.ResponderSettings:
 		return map[string]any{
+			"responder_xmpp_enabled":  &s.Enabled,
 			"responder_xmpp_jid":      &s.XMPPJID,
 			"responder_xmpp_password": &s.XMPPPassword,
 			"responder_xmpp_server":   &s.XMPPServer,
