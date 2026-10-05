@@ -607,9 +607,8 @@ func InstallCrontab(c fiber.Ctx) error {
 
 	if err := manager.Install(c.Context(), jobs); err != nil {
 		log.ErrorStack(err)
-		return webutil.Response(c, fiber.StatusOK, "Failed to install crontab", map[string]any{
-			"success": false,
-			"error":   err.Error(),
+		return webutil.Response(c, fiber.StatusInternalServerError, "Failed to install crontab", map[string]any{
+			"error": err.Error(),
 		})
 	}
 
@@ -636,9 +635,8 @@ func UninstallCrontab(c fiber.Ctx) error {
 
 	if err := manager.Uninstall(c.Context()); err != nil {
 		log.ErrorStack(err)
-		return webutil.Response(c, fiber.StatusOK, "Failed to uninstall crontab", map[string]any{
-			"success": false,
-			"error":   err.Error(),
+		return webutil.Response(c, fiber.StatusInternalServerError, "Failed to uninstall crontab", map[string]any{
+			"error": err.Error(),
 		})
 	}
 
