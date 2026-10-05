@@ -32,7 +32,7 @@ func NewALPNRouter(ln net.Listener) *ALPNRouter {
 
 	prosodyS2S := os.Getenv("XMPP_PROXY_PROSODY_S2S")
 	if prosodyS2S == "" {
-		prosodyS2S = "127.0.0.1:5270" // Default S2S Direct TLS port (XEP-0368)
+		prosodyS2S = "127.0.0.1:5269" // Standard S2S STARTTLS port
 	}
 
 	router := &ALPNRouter{
@@ -108,10 +108,19 @@ func (r *ALPNRouter) handleConnection(conn net.Conn) {
 
 	proto := tlsConn.ConnectionState().NegotiatedProtocol
 
+	logger().Debug().
+		Str("protocol", proto).
+		Str("remote", conn.RemoteAddr().String()).
+		Msg("ALPN protocol negotiated")
+
 	switch proto {
 	case "xmpp-client":
 		r.proxyToXMPP(tlsConn, r.prosodyC2S, "C2S")
 	case "xmpp-server":
+		logger().Info().
+			Str("remote", conn.RemoteAddr().String()).
+			Str("backend", r.prosodyS2S).
+			Msg("Routing S2S connection")
 		r.proxyToXMPP(tlsConn, r.prosodyS2S, "S2S")
 	case "http/1.1", "acme-tls/1", "":
 		// HTTP traffic → pass to Fiber
