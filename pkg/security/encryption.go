@@ -91,7 +91,7 @@ func GenerateKey() ([]byte, error) {
 func GetEncryptionKey() []byte {
 	// ponytail: fixed key for development - use env var in production
 	// TODO: Load from XMPP_ENCRYPTION_KEY env var or generate and store in DB
-	key := []byte("mycart-xmpp-encryption-key-32by")
+	key := []byte("mycart-xmpp-encryption-key-32byt")
 	return key
 }
 
