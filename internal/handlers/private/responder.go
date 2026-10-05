@@ -10,6 +10,7 @@ import (
 	"github.com/dure-one/dure-mycart/internal/responder"
 	"github.com/dure-one/dure-mycart/pkg/errors"
 	"github.com/dure-one/dure-mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/pkg/security"
 	"github.com/dure-one/dure-mycart/pkg/webutil"
 )
 
@@ -449,7 +450,13 @@ func GetResponderSettings(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
-	return webutil.Response(c, fiber.StatusOK, "Responder settings", result)
+	// Mask password - never send encrypted password to client
+	resultSettings := result.(*models.ResponderSettings)
+	if resultSettings.XMPPPassword != "" {
+		resultSettings.XMPPPassword = "********"
+	}
+
+	return webutil.Response(c, fiber.StatusOK, "Responder settings", resultSettings)
 }
 
 // UpdateResponderSettings updates responder XMPP settings.
@@ -477,6 +484,23 @@ func UpdateResponderSettings(c fiber.Ctx) error {
 
 	if err := settings.Validate(); err != nil {
 		return webutil.StatusBadRequest(c, err.Error())
+	}
+
+	// Handle password encryption
+	// If password is empty or masked, load existing password from DB
+	if settings.XMPPPassword == "" || settings.XMPPPassword == "********" {
+		existingSettings := &models.ResponderSettings{}
+		if _, err := db.GetSettingByGroup(c.Context(), existingSettings); err == nil {
+			settings.XMPPPassword = existingSettings.XMPPPassword // Keep existing encrypted password
+		}
+	} else {
+		// New password provided - encrypt it
+		encryptedPwd, err := security.EncryptPassword(settings.XMPPPassword, security.GetEncryptionKey())
+		if err != nil {
+			log.ErrorStack(err)
+			return webutil.StatusInternalServerError(c)
+		}
+		settings.XMPPPassword = encryptedPwd
 	}
 
 	if err := db.UpdateSettingByGroup(c.Context(), settings); err != nil {
@@ -523,6 +547,19 @@ func XMPPConnectionTest(c fiber.Ctx) error {
 			"success": false,
 			"error":   "XMPP JID and password required",
 		})
+	}
+
+	// Decrypt password if it looks encrypted (not from request body test)
+	// Request body will have plain text password for testing before save
+	if settings.XMPPPassword != "" && settings.XMPPPassword != "********" {
+		// If it's base64 and not a simple password, try to decrypt
+		if len(settings.XMPPPassword) > 20 {
+			decryptedPwd, err := security.DecryptPassword(settings.XMPPPassword, security.GetEncryptionKey())
+			if err == nil {
+				settings.XMPPPassword = decryptedPwd
+			}
+			// If decryption fails, assume it's already plain text (from test request)
+		}
 	}
 
 	worker := responder.NewXMPPWorker(&settings, nil)

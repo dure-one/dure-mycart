@@ -15,6 +15,10 @@
 		xmpp_port: 0
 	})
 
+	let passwordChanged = $state(false)
+	let newPassword = $state('')
+	let hasExistingPassword = $state(false)
+
 	let autoWebSocketURL = $derived(`wss://${settings.xmpp_server || extractDomain(settings.xmpp_jid)}/ws`)
 	let autoBOSHURL = $derived(`https://${settings.xmpp_server || extractDomain(settings.xmpp_jid)}/http-bind/`)
 
@@ -33,15 +37,41 @@
 		const response = await loadResponderSettings()
 		if (response.success && response.result) {
 			settings = { ...settings, ...response.result }
+			// Check if password exists (will be masked as '********')
+			hasExistingPassword = settings.xmpp_password === '********'
 		}
 	})
+
+	function handlePasswordInput(event: Event) {
+		const target = event.target as HTMLInputElement
+		const value = target.value
+
+		if (value && value !== '********') {
+			passwordChanged = true
+			newPassword = value
+		}
+	}
 
 	async function handleSave() {
 		saving = true
 		testResult = null
 		try {
-			await saveResponderSettings(settings)
+			const payload = { ...settings }
+
+			// Only send password if user changed it
+			if (passwordChanged) {
+				payload.xmpp_password = newPassword
+			} else if (hasExistingPassword) {
+				payload.xmpp_password = '********' // Signal to keep existing
+			}
+
+			await saveResponderSettings(payload)
 			alert(t('responder.settingsSaved'))
+
+			// Reset password change tracking
+			passwordChanged = false
+			newPassword = ''
+			hasExistingPassword = true
 		} catch (err) {
 			console.error('Failed to save settings:', err)
 			alert(t('responder.failedToSave'))
@@ -64,7 +94,20 @@
 		testResult = null
 		testAttempts = []
 		try {
-			const response = await testXMPPConnection(settings)
+			// Build test payload with current password
+			const testPayload = { ...settings }
+
+			// If password was changed, use new password for test
+			if (passwordChanged) {
+				testPayload.xmpp_password = newPassword
+			} else if (!hasExistingPassword && !settings.xmpp_password) {
+				testResult = t('responder.passwordRequired')
+				testing = false
+				return
+			}
+			// If password exists in DB but not changed, backend will use stored password
+
+			const response = await testXMPPConnection(testPayload)
 			// Check result.success (actual XMPP connection), not top-level success (HTTP status)
 			testSuccess = response.result?.success ?? false
 			testAttempts = response.result?.attempts ?? []
@@ -111,9 +154,14 @@
 				id="xmpp_password"
 				title={t('responder.xmppPassword')}
 				type="password"
-				bind:value={settings.xmpp_password}
+				value={passwordChanged ? newPassword : (hasExistingPassword ? '' : settings.xmpp_password)}
+				placeholder={hasExistingPassword ? '••••••••••••' : 'Enter XMPP password'}
+				oninput={handlePasswordInput}
 				ico="lock-closed"
 			/>
+			{#if hasExistingPassword && !passwordChanged}
+				<p class="text-xs text-gray-500 -mt-2">Password is set. Enter a new password to change it.</p>
+			{/if}
 
 			<hr class="my-4 border-gray-300" />
 			<p class="text-xs text-gray-500 mb-3">Optional settings (auto-detected if not provided)</p>

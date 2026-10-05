@@ -104,6 +104,7 @@ func (l LinkContactRequest) Validate() error {
 
 // ResponderSettings holds XMPP configuration
 type ResponderSettings struct {
+	Enabled          bool   `json:"enabled"`            // Enable/disable XMPP connection
 	XMPPJID          string `json:"xmpp_jid"`
 	XMPPPassword     string `json:"xmpp_password"`
 	XMPPServer       string `json:"xmpp_server"`        // Optional: defaults to JID domain (e.g., dure.co)
