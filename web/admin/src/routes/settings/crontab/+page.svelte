@@ -4,6 +4,7 @@
 	import { PageHeader, PageState, Section, FormToggle } from '$lib/components'
 	import { loadCrontabJobs, updateCrontabJob, checkCrontabStatus, installCrontab, uninstallCrontab } from '$lib/utils/responder'
 	import { translate } from '$lib/i18n'
+	import { showMessage } from '$lib/utils/message'
 
 	let t = $derived($translate)
 
@@ -51,24 +52,24 @@
 				const response = await uninstallCrontab()
 				if (response.success) {
 					serviceInstalled = false
-					alert(t('crontab.serviceDisabled'))
+					showMessage(t('crontab.serviceDisabled'), 'connextSuccess')
 				} else {
-					alert(t('crontab.failedToDisable'))
+					showMessage(t('crontab.failedToDisable'), 'connextError')
 					await checkStatus() // Re-fetch actual state on failure
 				}
 			} else {
 				const response = await installCrontab()
 				if (response.success) {
 					serviceInstalled = true
-					alert(t('crontab.serviceEnabled'))
+					showMessage(t('crontab.serviceEnabled'), 'connextSuccess')
 				} else {
-					alert(t('crontab.failedToEnable'))
+					showMessage(t('crontab.failedToEnable'), 'connextError')
 					await checkStatus() // Re-fetch actual state on failure
 				}
 			}
 		} catch (err) {
 			console.error('Failed to toggle crontab service:', err)
-			alert(t('crontab.operationFailed'))
+			showMessage(t('crontab.operationFailed'), 'connextError')
 			await checkStatus() // Re-fetch actual state on error
 		} finally {
 			serviceLoading = false
