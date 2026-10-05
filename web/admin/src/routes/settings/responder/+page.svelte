@@ -12,10 +12,17 @@
 		xmpp_jid: '',
 		xmpp_password: '',
 		xmpp_server: '',
-		xmpp_port: 0,
-		xmpp_websocket_url: '',
-		xmpp_bosh_url: ''
+		xmpp_port: 0
 	})
+
+	let autoWebSocketURL = $derived(`wss://${settings.xmpp_server || extractDomain(settings.xmpp_jid)}/ws`)
+	let autoBOSHURL = $derived(`https://${settings.xmpp_server || extractDomain(settings.xmpp_jid)}/http-bind/`)
+
+	function extractDomain(jid: string): string {
+		if (!jid) return ''
+		const atIndex = jid.indexOf('@')
+		return atIndex > 0 ? jid.substring(atIndex + 1) : ''
+	}
 	let saving = $state(false)
 	let testing = $state(false)
 	let testResult = $state<string | null>(null)
@@ -130,21 +137,13 @@
 				/>
 			</div>
 
-			<FormInput
-				id="xmpp_websocket_url"
-				title="WebSocket URL (optional)"
-				bind:value={settings.xmpp_websocket_url}
-				placeholder="wss://example.com/xmpp-websocket"
-				ico="link"
-			/>
-
-			<FormInput
-				id="xmpp_bosh_url"
-				title="BOSH Endpoint URL (optional)"
-				bind:value={settings.xmpp_bosh_url}
-				placeholder="https://example.com/http-bind"
-				ico="link"
-			/>
+			<div class="auto-detected-endpoints mt-4 p-3 bg-gray-50 rounded border border-gray-200">
+				<p class="text-xs font-medium text-gray-700 mb-2">Auto-detected connection endpoints:</p>
+				<div class="space-y-1 text-xs text-gray-600">
+					<div><span class="font-mono">WebSocket:</span> {autoWebSocketURL}</div>
+					<div><span class="font-mono">BOSH:</span> {autoBOSHURL}</div>
+				</div>
+			</div>
 
 			<div class="flex gap-2 pt-4">
 				<FormButton

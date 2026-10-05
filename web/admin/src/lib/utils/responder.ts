@@ -78,8 +78,6 @@ export async function saveResponderSettings(settings: {
 	xmpp_password: string
 	xmpp_server?: string
 	xmpp_port?: number
-	xmpp_websocket_url?: string
-	xmpp_bosh_url?: string
 }) {
 	return await apiUpdate('/api/_/settings/responder', settings)
 }
@@ -89,8 +87,6 @@ export async function testXMPPConnection(settings: {
 	xmpp_password: string
 	xmpp_server?: string
 	xmpp_port?: number
-	xmpp_websocket_url?: string
-	xmpp_bosh_url?: string
 }) {
 	return await apiPost('/api/_/settings/responder/test-connection', settings)
 }

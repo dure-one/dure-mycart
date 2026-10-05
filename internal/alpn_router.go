@@ -32,7 +32,7 @@ func NewALPNRouter(ln net.Listener) *ALPNRouter {
 
 	prosodyS2S := os.Getenv("XMPP_PROXY_PROSODY_S2S")
 	if prosodyS2S == "" {
-		prosodyS2S = "127.0.0.1:5269" // Default S2S port
+		prosodyS2S = "127.0.0.1:5270" // Default S2S Direct TLS port (XEP-0368)
 	}
 
 	router := &ALPNRouter{
