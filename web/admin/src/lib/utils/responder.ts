@@ -74,6 +74,7 @@ export async function loadResponderSettings() {
 }
 
 export async function saveResponderSettings(settings: {
+	enabled?: boolean
 	xmpp_jid: string
 	xmpp_password: string
 	xmpp_server?: string
@@ -83,6 +84,7 @@ export async function saveResponderSettings(settings: {
 }
 
 export async function testXMPPConnection(settings: {
+	enabled?: boolean
 	xmpp_jid: string
 	xmpp_password: string
 	xmpp_server?: string
