@@ -233,6 +233,10 @@ RUN ["/bin/busybox", "mkdir", "-p", \
     "/app/lc_digitals", \
     "/run"]
 
+# Create root crontab file with proper permissions
+RUN ["/bin/busybox", "touch", "/var/spool/cron/crontabs/root"]
+RUN ["/bin/busybox", "chmod", "0600", "/var/spool/cron/crontabs/root"]
+
 # Create utility symlinks for tools (no shell symlinks for security)
 RUN ["/bin/busybox", "ln", "-s", "/bin/busybox", "/usr/bin/grep"]
 RUN ["/bin/busybox", "ln", "-s", "/bin/busybox", "/usr/bin/awk"]

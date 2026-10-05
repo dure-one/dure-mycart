@@ -86,9 +86,9 @@ COPY --from=backend-builder --chown=nonroot:nonroot /go/bin/dure-mycart /app/dur
 # Copy busybox for crontab support
 COPY --from=tools-builder /bin/busybox /bin/busybox
 
-# Create crontab directories and files (busybox crontab needs these)
+# Create crontab directories with proper ownership for nonroot user (UID 65532)
 RUN ["/bin/busybox", "mkdir", "-p", "/var/spool/cron/crontabs"]
-RUN ["/bin/busybox", "touch", "/var/spool/cron/crontabs/root"]
+RUN ["/bin/busybox", "chown", "-R", "65532:65532", "/var/spool/cron/crontabs"]
 
 # Create crontab symlink
 RUN ["/bin/busybox", "ln", "-s", "/bin/busybox", "/usr/bin/crontab"]
