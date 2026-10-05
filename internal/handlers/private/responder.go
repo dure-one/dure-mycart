@@ -487,6 +487,13 @@ func UpdateResponderSettings(c fiber.Ctx) error {
 	return webutil.Response(c, fiber.StatusOK, "Responder settings updated", nil)
 }
 
+// ConnectionAttemptInfo contains details about a single connection attempt
+type ConnectionAttemptInfo struct {
+	Mode    string `json:"mode"`
+	Address string `json:"address"`
+	Error   string `json:"error,omitempty"`
+}
+
 // XMPPConnectionTest tests the XMPP connection with provided settings.
 //
 // @Summary      Test XMPP connection
@@ -519,16 +526,32 @@ func XMPPConnectionTest(c fiber.Ctx) error {
 	}
 
 	worker := responder.NewXMPPWorker(&settings, nil)
-	if err := worker.Connect(); err != nil {
-		return webutil.Response(c, fiber.StatusOK, "XMPP connection failed", map[string]any{
-			"success": false,
-			"error":   err.Error(),
+	client, rawAttempts := worker.ConnectWithAllMethods()
+
+	// Convert attempts to response format
+	attempts := make([]ConnectionAttemptInfo, len(rawAttempts))
+	for i, a := range rawAttempts {
+		attempts[i] = ConnectionAttemptInfo{
+			Mode:    a.Mode,
+			Address: a.Address,
+		}
+		if a.Error != nil {
+			attempts[i].Error = a.Error.Error()
+		}
+	}
+
+	if client == nil {
+		return webutil.Response(c, fiber.StatusOK, "All connection methods failed", map[string]any{
+			"success":  false,
+			"error":    "Unable to connect using any method",
+			"attempts": attempts,
 		})
 	}
 	defer worker.Disconnect()
 
 	return webutil.Response(c, fiber.StatusOK, "XMPP connection successful", map[string]any{
-		"success": true,
+		"success":  true,
+		"attempts": attempts,
 	})
 }
 

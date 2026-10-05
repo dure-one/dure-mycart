@@ -13,8 +13,6 @@
 		xmpp_password: '',
 		xmpp_server: '',
 		xmpp_port: 0,
-		xmpp_connect_addr: '',
-		xmpp_connection_mode: 'auto',
 		xmpp_websocket_url: '',
 		xmpp_bosh_url: ''
 	})
@@ -22,6 +20,7 @@
 	let testing = $state(false)
 	let testResult = $state<string | null>(null)
 	let testSuccess = $state(false)
+	let testAttempts = $state<Array<{mode: string, address: string, error?: string}>>([])
 
 	onMount(async () => {
 		const response = await loadResponderSettings()
@@ -44,14 +43,30 @@
 		}
 	}
 
+	function handleJidBlur() {
+		if (settings.xmpp_jid && !settings.xmpp_server) {
+			const domain = settings.xmpp_jid.split('@')[1]
+			if (domain) {
+				settings.xmpp_server = domain
+			}
+		}
+	}
+
 	async function handleTest() {
 		testing = true
 		testResult = null
+		testAttempts = []
 		try {
 			const response = await testXMPPConnection(settings)
 			// Check result.success (actual XMPP connection), not top-level success (HTTP status)
 			testSuccess = response.result?.success ?? false
-			testResult = testSuccess ? t('responder.connectionSuccessful') : (response.result?.error || t('responder.connectionFailed'))
+			testAttempts = response.result?.attempts ?? []
+
+			if (testSuccess) {
+				testResult = t('responder.connectionSuccessful')
+			} else {
+				testResult = response.result?.error || t('responder.connectionFailed')
+			}
 		} catch (err) {
 			console.error('Connection test failed:', err)
 			testSuccess = false
@@ -80,7 +95,8 @@
 				id="xmpp_jid"
 				title={t('responder.xmppJid')}
 				bind:value={settings.xmpp_jid}
-				placeholder="bot@example.com"
+				onblur={handleJidBlur}
+				placeholder="admin@dure.co"
 				ico="at-symbol"
 			/>
 
@@ -92,62 +108,43 @@
 				ico="lock-closed"
 			/>
 
-			<FormSelect
-				id="xmpp_connection_mode"
-				title="Connection Mode"
-				bind:value={settings.xmpp_connection_mode}
-			>
-				<option value="auto">Auto (detect from settings)</option>
-				<option value="direct-tls">Direct TLS + ALPN (XEP-0368, port 443)</option>
-				<option value="starttls">STARTTLS (traditional, port 5222)</option>
-				<option value="websocket">WebSocket (RFC 7395)</option>
-				<option value="bosh">BOSH / HTTP Binding (XEP-0206)</option>
-			</FormSelect>
+			<hr class="my-4 border-gray-300" />
+			<p class="text-xs text-gray-500 mb-3">Optional settings (auto-detected if not provided)</p>
 
-			{#if settings.xmpp_connection_mode === 'websocket'}
+			<div class="grid grid-cols-2 gap-4">
 				<FormInput
-					id="xmpp_websocket_url"
-					title="WebSocket URL"
-					bind:value={settings.xmpp_websocket_url}
-					placeholder="wss://example.com/xmpp-websocket"
-					ico="link"
+					id="xmpp_server"
+					title={t('responder.xmppServer')}
+					bind:value={settings.xmpp_server}
+					placeholder="Auto-filled from JID domain"
+					ico="server"
 				/>
-			{:else if settings.xmpp_connection_mode === 'bosh'}
-				<FormInput
-					id="xmpp_bosh_url"
-					title="BOSH Endpoint URL"
-					bind:value={settings.xmpp_bosh_url}
-					placeholder="https://example.com/http-bind"
-					ico="link"
-				/>
-			{:else}
-				<div class="grid grid-cols-2 gap-4">
-					<FormInput
-						id="xmpp_server"
-						title={t('responder.xmppServer')}
-						bind:value={settings.xmpp_server}
-						placeholder="Optional: defaults to JID domain"
-						ico="server"
-					/>
-
-					<FormInput
-						id="xmpp_port"
-						title={t('responder.xmppPort')}
-						type="number"
-						bind:value={settings.xmpp_port}
-						placeholder="Optional: defaults to 443"
-						ico="hashtag"
-					/>
-				</div>
 
 				<FormInput
-					id="xmpp_connect_addr"
-					title={t('responder.xmppConnectAddr')}
-					bind:value={settings.xmpp_connect_addr}
-					placeholder="Optional: override connection address"
-					ico="link"
+					id="xmpp_port"
+					title={t('responder.xmppPort')}
+					type="number"
+					bind:value={settings.xmpp_port}
+					placeholder="443 (direct) or 5222 (starttls)"
+					ico="hashtag"
 				/>
-			{/if}
+			</div>
+
+			<FormInput
+				id="xmpp_websocket_url"
+				title="WebSocket URL (optional)"
+				bind:value={settings.xmpp_websocket_url}
+				placeholder="wss://example.com/xmpp-websocket"
+				ico="link"
+			/>
+
+			<FormInput
+				id="xmpp_bosh_url"
+				title="BOSH Endpoint URL (optional)"
+				bind:value={settings.xmpp_bosh_url}
+				placeholder="https://example.com/http-bind"
+				ico="link"
+			/>
 
 			<div class="flex gap-2 pt-4">
 				<FormButton
@@ -170,6 +167,25 @@
 					{testResult}
 				</div>
 			{/if}
+
+			{#if testAttempts.length > 0}
+				<div class="test-attempts">
+					<h4 class="text-sm font-medium mb-2">Connection Attempts:</h4>
+					{#each testAttempts as attempt}
+						<div class="attempt" class:failed={attempt.error}>
+							<div class="flex items-center gap-2">
+								<span class="font-mono text-xs uppercase px-2 py-1 rounded bg-gray-100">{attempt.mode}</span>
+								<span class="text-sm text-gray-600">{attempt.address}</span>
+								{#if attempt.error}
+									<span class="text-red-600 text-sm ml-auto">✗ {attempt.error}</span>
+								{:else}
+									<span class="text-green-600 text-sm ml-auto">✓ Connected</span>
+								{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
+			{/if}
 		</form>
 	</Section>
 </Main>
@@ -186,5 +202,27 @@
 	.test-result.success {
 		background: #d1fae5;
 		color: #065f46;
+	}
+
+	.test-attempts {
+		margin-top: 1rem;
+		padding: 1rem;
+		border-radius: 0.25rem;
+		background: #f9fafb;
+		border: 1px solid #e5e7eb;
+	}
+
+	.test-attempts .attempt {
+		padding: 0.5rem;
+		margin-bottom: 0.5rem;
+		border-radius: 0.25rem;
+	}
+
+	.test-attempts .attempt:last-child {
+		margin-bottom: 0;
+	}
+
+	.test-attempts .attempt.failed {
+		background: #fef2f2;
 	}
 </style>

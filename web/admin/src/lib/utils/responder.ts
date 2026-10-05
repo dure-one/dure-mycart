@@ -76,10 +76,8 @@ export async function loadResponderSettings() {
 export async function saveResponderSettings(settings: {
 	xmpp_jid: string
 	xmpp_password: string
-	xmpp_server: string
-	xmpp_port: number
-	xmpp_connect_addr?: string
-	xmpp_connection_mode?: string
+	xmpp_server?: string
+	xmpp_port?: number
 	xmpp_websocket_url?: string
 	xmpp_bosh_url?: string
 }) {
@@ -89,9 +87,10 @@ export async function saveResponderSettings(settings: {
 export async function testXMPPConnection(settings: {
 	xmpp_jid: string
 	xmpp_password: string
-	xmpp_server: string
-	xmpp_port: number
-	xmpp_connect_addr?: string
+	xmpp_server?: string
+	xmpp_port?: number
+	xmpp_websocket_url?: string
+	xmpp_bosh_url?: string
 }) {
 	return await apiPost('/api/_/settings/responder/test-connection', settings)
 }
