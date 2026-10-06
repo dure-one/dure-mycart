@@ -96,6 +96,7 @@ services:
       - ${DATA_DIR:-/srv/data}/logs/prosody:/var/log/prosody
       - ../generated/proxy.cfg.lua:/etc/prosody/conf.d/proxy.cfg.lua:ro
       - ../prosody-modules:/usr/lib/prosody/community:ro
+      - ../prosody-mycart-stack/custom-modules:/usr/lib/prosody/custom:ro
     networks:
       xmpp-internal:
         ipv4_address: 172.19.0.2  # Static IP for backend routing

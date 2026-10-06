@@ -24,9 +24,9 @@ log = {
     { to = "file", filename = "/var/log/prosody/prosody.log", levels = { min = "info" } };
 }
 
--- PROXY protocol support via mod_net_proxy from prosody-modules
--- Community modules mounted at: /usr/lib/prosody/community
-plugin_paths = { "/usr/lib/prosody/community" }
+-- PROXY protocol support via custom mod_net_proxy (supports proxy_out)
+-- Custom modules take priority over community modules
+plugin_paths = { "/usr/lib/prosody/custom", "/usr/lib/prosody/community" }
 
 ---------- PROXY PROTOCOL CONFIGURATION (MUST BE GLOBAL) ----------
 
@@ -69,9 +69,10 @@ proxy_secure = true
 -- Don't require encryption for INCOMING connections (xmpp-proxy handled TLS)
 c2s_require_encryption = false
 
--- For OUTGOING S2S: Keep encryption enabled (prosody makes direct TLS connections)
--- Remove s2s_require_encryption = false and s2s_secure_auth = false
--- Prosody needs to do TLS for outgoing server-to-server connections!
+-- For OUTGOING S2S: Disable encryption (xmpp-proxy handles TLS via proxy_out)
+-- Prosody sends plain-text to xmpp-proxy:15270, which then connects with TLS to remote servers
+s2s_require_encryption = false
+s2s_secure_auth = false
 
 -- Allow plaintext auth for incoming C2S (TLS already handled by xmpp-proxy)
 allow_unencrypted_plain_auth = true
