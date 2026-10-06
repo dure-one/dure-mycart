@@ -121,6 +121,7 @@ services:
     restart: unless-stopped
     ports:
       - "80:80/tcp"        # HTTP (ACME challenge + web traffic)
+      - "443:443/tcp"      # HTTPS (mycart web + ACME TLS-ALPN)
       - "443:443/udp"      # XMPP QUIC (XEP-0467)
       - "5222:5222/tcp"    # XMPP C2S Direct TLS
       - "5223:5223/tcp"    # XMPP C2S Legacy SSL
