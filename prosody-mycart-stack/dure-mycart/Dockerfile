@@ -232,7 +232,7 @@ ARG TARGETARCH
 COPY --from=backend-builder /go/bin/dure-mycart /app/dure-mycart
 
 # Copy fail2ban-rs binary
-COPY --from=fail2ban-rs /usr/local/bin/fail2ban-rs /usr/local/bin/fail2ban-rs
+COPY --from=fail2ban-builder /usr/local/bin/fail2ban-rs /usr/local/bin/fail2ban-rs
 
 # Copy xmpp-proxy binary
 COPY --from=xmpp-proxy-builder /usr/local/bin/xmpp-proxy /usr/local/bin/xmpp-proxy
