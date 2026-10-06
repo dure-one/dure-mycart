@@ -11,9 +11,9 @@ quic_listen = [ "[::]:443" ]
 outgoing_listen = [ "0.0.0.0:15270" ]
 
 # Backend targets (Prosody container on Docker bridge network)
-# Use container hostname for Docker DNS resolution
-c2s_target = "prosody:5222"
-s2s_target = "prosody:5269"
+# Use Prosody static IP (xmpp-proxy requires IP addresses, not DNS names)
+c2s_target = "172.19.0.2:5222"
+s2s_target = "172.19.0.2:5269"
 
 # Send PROXY protocol v1 headers to preserve client IP
 proxy = true

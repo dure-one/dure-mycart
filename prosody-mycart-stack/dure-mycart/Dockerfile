@@ -262,6 +262,7 @@ RUN ["/bin/busybox", "mkdir", "-p", \
     "/certs", \
     "/logs", \
     "/etc/fail2ban-rs", \
+    "/etc/xmpp-proxy", \
     "/var/run/acme/acme-challenge", \
     "/var/lib/fail2ban-rs", \
     "/var/spool/cron/crontabs", \
