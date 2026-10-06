@@ -158,10 +158,8 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
         TAG="$XMPP_PROXY_VERSION"; \
     fi && \
     echo "Downloading xmpp-proxy ${TAG} for ${ARCH}..." && \
-    DOWNLOAD_URL="https://github.com/nikescar/xmpp-proxy/releases/download/${TAG}/xmpp-proxy-${ARCH}-unknown-linux-musl.tar.gz" && \
-    curl -fsSL "$DOWNLOAD_URL" -o /tmp/xmpp-proxy.tar.gz && \
-    tar -xzf /tmp/xmpp-proxy.tar.gz -C /tmp && \
-    find /tmp -type f -name "xmpp-proxy" -exec mv {} /usr/local/bin/xmpp-proxy \; && \
+    DOWNLOAD_URL="https://github.com/nikescar/xmpp-proxy/releases/download/${TAG}/xmpp-proxy-${ARCH}-unknown-linux-musl" && \
+    curl -fsSL "$DOWNLOAD_URL" -o /usr/local/bin/xmpp-proxy && \
     chmod +x /usr/local/bin/xmpp-proxy && \
     /usr/local/bin/xmpp-proxy --version
 
