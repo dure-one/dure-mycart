@@ -106,7 +106,7 @@ docker run -d \
   -v ./certs:/certs \
   -v ./logs:/logs \
   -v ./data:/app/lc_base \
-  ghcr.io/dure-one/dure-mycart-prosody:latest
+  ghcr.io/dure-one/prosody-mycart:latest
 ```
 
 ## Docker Compose Deployment

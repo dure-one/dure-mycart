@@ -116,7 +116,7 @@ services:
   # dure-mycart: Merged stack (HTTP + XMPP + fail2ban)
   # Production: pulls pre-built image from GitHub Container Registry
   dure-mycart:
-    image: ghcr.io/dure-one/dure-mycart:${MYCART_IMAGE_TAG:-latest}
+    image: ghcr.io/dure-one/prosody-mycart:${MYCART_IMAGE_TAG:-latest}
     container_name: dure-mycart
     restart: unless-stopped
     ports:
