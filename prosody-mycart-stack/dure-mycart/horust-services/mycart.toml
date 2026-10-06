@@ -17,8 +17,11 @@ MYCART_HTTP_ADDR = "${MYCART_HTTP_ADDR}"
 MYCART_HTTPS_ADDR = "${MYCART_HTTPS_ADDR}"
 REVERSE_PROXY_BINDINGS = "${REVERSE_PROXY_BINDINGS}"
 
-[healthiness]
-http-endpoint = "http://127.0.0.1:80/health"
+# [healthiness]
+# http-endpoint = "http://127.0.0.1:80/health"
+# NOTE: Disabled - /health endpoint not implemented yet, causing connection resets.
+# Horust waits forever for health, blocking fail2ban-rs startup (start-after dependency).
+# TODO: Implement /health endpoint in mycart, then re-enable.
 
 [termination]
 signal = "TERM"
