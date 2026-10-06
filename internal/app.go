@@ -134,6 +134,11 @@ func setupFiberApp(noSite bool) (*fiber.App, error) {
 
 // setupRoutes configures application routes.
 func setupRoutes(app *fiber.App, noSite bool) {
+	// Health check endpoint for liveness probes (Horust, k8s, load balancers)
+	app.Get("/health", func(c fiber.Ctx) error {
+		return c.JSON(fiber.Map{"status": "ok"})
+	})
+
 	// Public image uploads only. Digital products (lc_digitals) are
 	// intentionally NOT served statically: purchased files are delivered by
 	// email and admins download them via an authenticated endpoint
