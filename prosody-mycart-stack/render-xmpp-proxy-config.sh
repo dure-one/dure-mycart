@@ -14,8 +14,8 @@ fi
 # Create generated directory if it doesn't exist
 mkdir -p generated
 
-# Use envsubst to replace ${XMPP_DOMAIN} in template
-envsubst < prosody-mycart-stack/templates/xmpp-proxy.toml.template > generated/xmpp-proxy.toml
+# Use sed to replace ${XMPP_DOMAIN} in template
+sed "s/\${XMPP_DOMAIN}/$XMPP_DOMAIN/g" prosody-mycart-stack/templates/xmpp-proxy.toml.template > generated/xmpp-proxy.toml
 
 echo "✓ xmpp-proxy.toml rendered with XMPP_DOMAIN=${XMPP_DOMAIN}"
 cat generated/xmpp-proxy.toml

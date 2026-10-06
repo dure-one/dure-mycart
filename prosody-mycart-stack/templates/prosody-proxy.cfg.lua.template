@@ -57,8 +57,8 @@ proxy_secure_in = true
 -- Disable regular c2s ports (mod_net_proxy will handle incoming c2s)
 c2s_ports = {}
 
--- S2S ports: incoming on 5269 (via xmpp-proxy), outgoing on 15268
-s2s_ports = {5269, 15268}
+-- Disable regular s2s ports (mod_net_proxy will handle incoming s2s via proxy_port_mappings)
+s2s_ports = {}
 
 -- Outgoing S2S via xmpp-proxy outgoing listener (for federation)
 proxy_out = { "xmpp-proxy", 15270 }
