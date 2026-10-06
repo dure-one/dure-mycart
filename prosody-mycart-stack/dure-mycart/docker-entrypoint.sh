@@ -54,6 +54,11 @@ fi
 # mycart's autocert will handle SSL certificates automatically
 # No need to generate self-signed certs or run acme.sh
 
+# DEBUG: Show environment variables before envsubst
+echo "=== DEBUG: Environment variables ==="
+env | grep -E "MYCART_|FAIL2BAN_|REVERSE_PROXY" | sort
+echo "=== END DEBUG ==="
+
 # Process horust service configs and wrapper scripts with envsubst
 echo "Processing service configs and wrappers..."
 for file in /etc/horust/services/*.toml /usr/local/bin/mycart-wrapper.sh; do
@@ -63,6 +68,15 @@ for file in /etc/horust/services/*.toml /usr/local/bin/mycart-wrapper.sh; do
     fi
 done
 echo "✓ Service configs and wrappers processed"
+
+# DEBUG: Dump processed configs
+echo "=== DEBUG: Processed Horust configs ==="
+for file in /etc/horust/services/*.toml; do
+    echo "--- $file ---"
+    cat "$file"
+    echo ""
+done
+echo "=== END DEBUG ==="
 
 echo "Starting services via Horust..."
 exec /usr/local/bin/horust --services-path /etc/horust/services
