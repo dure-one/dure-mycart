@@ -129,7 +129,44 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
     /usr/local/bin/fail2ban-rs --version
 
 ##
-## Stage 4: horust-builder (Alpine)
+## Stage 4: xmpp-proxy-builder (Debian)
+##
+FROM debian:13-slim AS xmpp-proxy-builder
+
+ARG TARGETARCH
+ARG XMPP_PROXY_VERSION=latest
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# Download xmpp-proxy binary from nikescar/xmpp-proxy releases
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+        ARCH="x86_64"; \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
+        ARCH="aarch64"; \
+    else \
+        echo "Unsupported architecture: $TARGETARCH" >&2; \
+        exit 1; \
+    fi && \
+    if [ "$XMPP_PROXY_VERSION" = "latest" ]; then \
+        TAG=$(curl -fsSL https://api.github.com/repos/nikescar/xmpp-proxy/releases/latest | \
+            grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'); \
+    else \
+        TAG="$XMPP_PROXY_VERSION"; \
+    fi && \
+    echo "Downloading xmpp-proxy ${TAG} for ${ARCH}..." && \
+    DOWNLOAD_URL="https://github.com/nikescar/xmpp-proxy/releases/download/${TAG}/xmpp-proxy-${ARCH}-unknown-linux-musl.tar.gz" && \
+    curl -fsSL "$DOWNLOAD_URL" -o /tmp/xmpp-proxy.tar.gz && \
+    tar -xzf /tmp/xmpp-proxy.tar.gz -C /tmp && \
+    find /tmp -type f -name "xmpp-proxy" -exec mv {} /usr/local/bin/xmpp-proxy \; && \
+    chmod +x /usr/local/bin/xmpp-proxy && \
+    /usr/local/bin/xmpp-proxy --version
+
+##
+## Stage 5: horust-builder (Alpine)
 ##
 FROM alpine:latest AS horust-builder
 
@@ -157,7 +194,7 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
     chmod +x /usr/local/bin/horust
 
 ##
-## Stage 5: tools-builder (Debian)
+## Stage 6: tools-builder (Debian)
 ##
 FROM debian:13-slim AS tools-builder
 
@@ -195,7 +232,10 @@ ARG TARGETARCH
 COPY --from=backend-builder /go/bin/dure-mycart /app/dure-mycart
 
 # Copy fail2ban-rs binary
-COPY --from=fail2ban-builder /usr/local/bin/fail2ban-rs /usr/local/bin/fail2ban-rs
+COPY --from=fail2ban-rs /usr/local/bin/fail2ban-rs /usr/local/bin/fail2ban-rs
+
+# Copy xmpp-proxy binary
+COPY --from=xmpp-proxy-builder /usr/local/bin/xmpp-proxy /usr/local/bin/xmpp-proxy
 
 # Copy Horust
 COPY --from=horust-builder /usr/local/bin/horust /usr/local/bin/horust

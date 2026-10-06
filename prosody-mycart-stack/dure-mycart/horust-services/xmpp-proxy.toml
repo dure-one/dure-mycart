@@ -1,0 +1,13 @@
+[xmpp-proxy]
+command = "/usr/local/bin/xmpp-proxy --config /etc/xmpp-proxy/xmpp-proxy.toml"
+start_delay = "0s"
+restart_strategy = "on-failure"
+restart_backoff = "10s"
+restart_attempts = 5
+
+[xmpp-proxy.healthiness]
+http_endpoint = ""
+file_path = ""
+
+[xmpp-proxy.environment]
+RUST_LOG = "info"

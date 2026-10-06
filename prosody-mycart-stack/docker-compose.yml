@@ -113,38 +113,18 @@ services:
       prosody-permissions-init:
         condition: service_completed_successfully
 
-  # xmpp-proxy: Handles QUIC (443/udp) and standard Direct TLS ports
-  xmpp-proxy:
-    image: ghcr.io/dure-one/xmpp-proxy:${XMPP_PROXY_IMAGE_TAG:-latest}
-    container_name: xmpp-proxy
-    restart: unless-stopped
-    env_file: .env
-    ports:
-      - "443:443/udp"    # XMPP QUIC (XEP-0467)
-      - "5222:5222/tcp"  # XMPP C2S Direct TLS
-      - "5223:5223/tcp"  # XMPP C2S Legacy SSL
-      - "5269:5269/tcp"  # XMPP S2S Direct TLS
-    volumes:
-      - ${DATA_DIR:-/srv/data}/certs:/certs:ro
-      - ${DATA_DIR:-/srv/data}/logs/xmpp-proxy:/var/log/xmpp-proxy
-      - ../generated/xmpp-proxy.toml:/etc/xmpp-proxy/xmpp-proxy.toml:ro
-    networks:
-      xmpp-internal:
-        ipv4_address: 172.19.0.3
-    depends_on:
-      prosody:
-        condition: service_healthy
-      xmpp-proxy-config-init:
-        condition: service_completed_successfully
-
-  # dure-mycart: Pure HTTP/HTTPS server (no XMPP)
+  # dure-mycart: Merged stack (HTTP + XMPP + fail2ban)
   # Production: pulls pre-built image from GitHub Container Registry
   dure-mycart:
     image: ghcr.io/dure-one/dure-mycart:${MYCART_IMAGE_TAG:-latest}
     container_name: dure-mycart
     restart: unless-stopped
     ports:
-      - "80:80/tcp"       # HTTP (ACME challenge + web traffic)
+      - "80:80/tcp"        # HTTP (ACME challenge + web traffic)
+      - "443:443/udp"      # XMPP QUIC (XEP-0467)
+      - "5222:5222/tcp"    # XMPP C2S Direct TLS
+      - "5223:5223/tcp"    # XMPP C2S Legacy SSL
+      - "5269:5269/tcp"    # XMPP S2S Direct TLS
     cap_add:
       - NET_ADMIN
     env_file: .env
@@ -153,17 +133,19 @@ services:
     volumes:
       - ${DATA_DIR:-/srv/data}/certs:/certs
       - ${DATA_DIR:-/srv/data}/logs:/logs
+      - ${DATA_DIR:-/srv/data}/logs/xmpp-proxy:/var/log/xmpp-proxy
       - ${DATA_DIR:-/srv/data}/fail2ban:/var/lib/fail2ban-rs
       - ${DATA_DIR:-/srv/data}/mycart/lc_base:/app/lc_base
       - ${DATA_DIR:-/srv/data}/mycart/lc_uploads:/app/lc_uploads
       - ${DATA_DIR:-/srv/data}/mycart/lc_digitals:/app/lc_digitals
+      - ../generated/xmpp-proxy.toml:/etc/xmpp-proxy/xmpp-proxy.toml:ro
     networks:
       - xmpp-internal
     depends_on:
       prosody:
         condition: service_healthy
-      xmpp-proxy:
-        condition: service_started
+      xmpp-proxy-config-init:
+        condition: service_completed_successfully
 
 networks:
   xmpp-internal:

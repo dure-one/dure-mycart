@@ -22,9 +22,6 @@ jobs:
           - image: prosody-mycart
             dockerfile: prosody-mycart-stack/dure-mycart/Dockerfile
             context: .
-          - image: xmpp-proxy
-            dockerfile: prosody-mycart-stack/xmpp-proxy/Dockerfile
-            context: .
     steps:
       - name: Check out the repo
         uses: actions/checkout@v7

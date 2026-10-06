@@ -1,13 +1,12 @@
 # dure-mycart XMPP Stack
 
-> **3-container architecture**: dure-mycart (HTTP/HTTPS with ALPN) + xmpp-proxy (QUIC + Direct XMPP) + Prosody (XMPP server)
+> **2-container architecture**: dure-mycart (HTTP + XMPP + fail2ban) + Prosody (XMPP server)
 
 ## Architecture
 
 ### Services
 
-- **dure-mycart** - Pure HTTP e-commerce platform (port 80/tcp)
-- **xmpp-proxy** - XMPP reverse proxy handling QUIC and Direct TLS connections
+- **dure-mycart** - Merged stack: HTTP server + xmpp-proxy + fail2ban-rs
 - **prosody** - XMPP server backend (Prosody 13.0)
 
 ### Traffic Flow
@@ -25,14 +24,12 @@
 ### Pull Images
 
 ```bash
-docker pull ghcr.io/dure-one/dure-mycart:latest
-docker pull ghcr.io/dure-one/xmpp-proxy:latest
+docker pull ghcr.io/dure-one/prosody-mycart:latest
 docker pull prosodyim/prosody:13.0
 ```
 
 **Package URLs:**
-- dure-mycart: https://github.com/dure-one/dure-mycart/pkgs/container/dure-mycart
-- xmpp-proxy: https://github.com/dure-one/dure-mycart/pkgs/container/xmpp-proxy
+- prosody-mycart: https://github.com/dure-one/dure-mycart/pkgs/container/prosody-mycart
 
 ### Configuration with .env File
 
@@ -46,17 +43,12 @@ cp .env.example .env
 2. Edit `.env` with your configuration:
 
 ```bash
-# Image tags (latest/test/custom)
+# Image tag (latest/test/custom)
 MYCART_IMAGE_TAG=latest
-XMPP_PROXY_IMAGE_TAG=latest
 
 # Required: Set your domain (must match for both services)
 XMPP_DOMAIN=example.com
 MYCART_DOMAIN=example.com
-
-# ALPN routing targets (dure-mycart → Prosody)
-XMPP_C2S_TARGET=prosody:5222
-XMPP_S2S_TARGET=prosody:5270
 
 # Admin user
 XMPP_ADMIN=admin@example.com
@@ -65,22 +57,21 @@ XMPP_ADMIN=admin@example.com
 3. Start the stack:
 
 ```bash
-# Production (pull images)
+# Production (pull latest image)
 docker compose up -d
 
 # Development (build from source)
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
-# Testing (test images)
-docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
+# Testing (pull test image)
+MYCART_IMAGE_TAG=test docker compose up -d
 ```
 
 ## Environment Variables
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `MYCART_IMAGE_TAG` | dure-mycart image tag | No | `latest` |
-| `XMPP_PROXY_IMAGE_TAG` | xmpp-proxy image tag | No | `latest` |
+| `MYCART_IMAGE_TAG` | prosody-mycart image tag | No | `latest` |
 | `XMPP_DOMAIN` | XMPP server domain | **Yes** | - |
 | `MYCART_DOMAIN` | Mycart domain (must match XMPP_DOMAIN) | **Yes** | - |
 | `XMPP_ADMIN` | Admin JID | **Yes** | `admin@${XMPP_DOMAIN}` |
@@ -90,19 +81,19 @@ docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
 
 **Important:**
 - `XMPP_DOMAIN` and `MYCART_DOMAIN` must match for shared SSL certificate functionality.
-- Image tags control deployment mode: `latest` (production), `test` (testing), or custom tag.
+- Image tag controls deployment mode: `latest` (production), `test` (testing), or custom tag.
 
 ## Ports
 
 | Port | Service | Container | Protocol | Notes |
 |------|---------|-----------|----------|-------|
 | 80 | HTTP | dure-mycart | TCP | ACME challenges, web traffic |
-| 443 | XMPP QUIC | xmpp-proxy | UDP | XMPP over QUIC (XEP-0467) |
-| 5222 | XMPP C2S Direct TLS | xmpp-proxy | TCP | Standard client connections |
-| 5223 | XMPP C2S Legacy SSL | xmpp-proxy | TCP | Legacy clients |
-| 5269 | XMPP S2S Direct TLS | xmpp-proxy | TCP | Server-to-server federation |
+| 443 | XMPP QUIC | dure-mycart | UDP | XMPP over QUIC (XEP-0467) |
+| 5222 | XMPP C2S Direct TLS | dure-mycart | TCP | Standard client connections |
+| 5223 | XMPP C2S Legacy SSL | dure-mycart | TCP | Legacy clients |
+| 5269 | XMPP S2S Direct TLS | dure-mycart | TCP | Server-to-server federation |
 
-**xmpp-proxy Routing:**
+**dure-mycart → Prosody Routing:**
 - 443/udp (QUIC) → Prosody C2S/S2S (XEP-0467 with PROXY protocol)
 - 5222/tcp (C2S) → Prosody C2S (with PROXY protocol)
 - 5223/tcp (Legacy) → Prosody C2S (with PROXY protocol)
@@ -129,8 +120,7 @@ Production XMPP deployment with Prosody server and dure-mycart integration using
 - **xmpp-proxy-config-init** - Renders xmpp-proxy configuration template
 - **prosody-permissions-init** - Fixes directory permissions (UID 1000:1000)
 - **prosody** - XMPP server (Prosody 13.0)
-- **xmpp-proxy** - XMPP reverse proxy with QUIC support
-- **dure-mycart** - HTTP/HTTPS server + ALPN router + fail2ban-rs
+- **dure-mycart** - Merged stack: HTTP server + xmpp-proxy + fail2ban-rs
 
 ### Prerequisites
 
@@ -160,7 +150,7 @@ docker exec prosody prosodyctl status
 
 # View logs
 docker logs prosody
-docker logs prosody-mycart-stack
+docker logs dure-mycart
 
 # Check listening ports (using host network)
 ss -tnlup | grep -E '5222|5269|80|443'
@@ -171,14 +161,14 @@ docker compose -f prosody-mycart-stack/docker-compose.yml down
 
 ### Development Usage (Local Build)
 
-Builds the prosody-mycart-stack image locally from source:
+Builds the dure-mycart image locally from source:
 
 ```bash
 # Build and start all services
 docker compose -f prosody-mycart-stack/docker-compose.dev.yml up -d --build
 
 # Rebuild after code changes
-docker compose -f prosody-mycart-stack/docker-compose.dev.yml build prosody-mycart-stack
+docker compose -f prosody-mycart-stack/docker-compose.dev.yml build dure-mycart
 docker compose -f prosody-mycart-stack/docker-compose.dev.yml up -d
 
 # Stop services
@@ -187,9 +177,9 @@ docker compose -f prosody-mycart-stack/docker-compose.dev.yml down
 
 ### Ports (Bridge Network Mode)
 
-The prosody-mycart-stack container uses bridge networking to connect directly to Prosody (preserving PROXY protocol headers):
+The dure-mycart container uses bridge networking to connect directly to Prosody (preserving PROXY protocol headers):
 
-**Exposed from prosody-mycart-stack:**
+**Exposed from dure-mycart:**
 - **80** - HTTP (ACME challenges, redirects to HTTPS)
 - **443** - HTTPS + XMPP via ALPN (multiplexed based on TLS ALPN protocol)
 
@@ -228,13 +218,10 @@ Prosody runs on internal bridge network (`xmpp-internal`) with static IP `172.19
 
 **IMPORTANT:** The ALPN router in dure-mycart uses static IP `172.19.0.2` to connect to Prosody.
 
-The prosody-mycart-stack container:
+The dure-mycart container:
 - Joins the same `xmpp-internal` bridge network as Prosody
-- **ALPN Router**: Terminates TLS on port 443, routes based on ALPN protocol
-  - `http/1.1` → mycart HTTP handler
-  - `xmpp-client` → Prosody 5222 (PROXY v1 headers)
-  - `xmpp-server` → Prosody 5270 (PROXY v1 headers)
-- **fail2ban-rs**: Monitors Prosody/mycart logs, bans abusive IPs
+- **xmpp-proxy**: Handles XMPP protocols (QUIC, Direct TLS on 5222, 5223, 5269)
+- **fail2ban-rs**: Monitors Prosody/mycart/xmpp-proxy logs, bans abusive IPs
 - **Auto TLS**: Let's Encrypt certificates via autocert
 - **dure-mycart**: Web application and API
 
@@ -244,7 +231,7 @@ The container includes fail2ban-rs for automatic IP banning based on authenticat
 
 **Check Status:**
 ```bash
-docker exec prosody-mycart-stack /usr/local/bin/fail2ban-rs status
+docker exec dure-mycart /usr/local/bin/fail2ban-rs status
 ```
 
 **Configuration File:** `prosody-mycart-stack/fail2ban-rs-config.toml`
@@ -295,7 +282,7 @@ tar -xzf country.tar.gz --strip-components=1 --wildcards '*.mmdb'
 
 **3. Update docker-compose.yml:**
 
-Add MaxMind volume mount to `prosody-mycart-stack` service:
+Add MaxMind volume mount to `dure-mycart` service:
 ```yaml
 volumes:
   - /srv/data/maxmind:/maxmind:ro
@@ -322,7 +309,7 @@ maxmind = ["asn", "country"]
 
 **5. Restart Container:**
 ```bash
-docker compose restart prosody-mycart-stack
+docker compose restart dure-mycart
 ```
 
 **Example Ban Log with GeoIP:**
@@ -336,7 +323,7 @@ Add to crontab for weekly updates:
 ```bash
 sudo crontab -e
 # Add: Weekly MaxMind database update (Wednesdays at 3 AM)
-0 3 * * 3 /usr/bin/geoipupdate && docker compose -f /srv/dure-mycart/prosody-mycart-stack/docker-compose.yml restart prosody-mycart-stack
+0 3 * * 3 /usr/bin/geoipupdate && docker compose -f /srv/dure-mycart/prosody-mycart-stack/docker-compose.yml restart dure-mycart
 ```
 
 ## Troubleshooting
@@ -368,10 +355,10 @@ docker network inspect prosody-mycart-stack_xmpp-internal --format "{{range .Con
 **Check:**
 ```bash
 # Verify xmpp-proxy is running
-docker exec prosody-mycart-stack /bin/busybox ps | grep xmpp-proxy
+docker exec dure-mycart /bin/busybox ps | grep xmpp-proxy
 
 # Test Prosody HTTP endpoint
-docker exec prosody-mycart-stack /usr/bin/curl -s -o /dev/null -w "%{http_code}\n" http://172.19.0.2:5280/http-bind
+docker exec dure-mycart /usr/bin/curl -s -o /dev/null -w "%{http_code}\n" http://172.19.0.2:5280/http-bind
 # Should return: 200
 ```
 
@@ -427,7 +414,7 @@ Built on **distroless** base for minimal attack surface:
 ## Source Code
 
 - Repository: https://github.com/dure-one/dure-mycart
-- Dockerfile: `prosody-mycart-stack/Dockerfile`
+- Dockerfile: `prosody-mycart-stack/dure-mycart/Dockerfile`
 
 ## License
 

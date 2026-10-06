@@ -48,3 +48,37 @@ ban_time = "1h"
 backend = "nftables"
 ignoreip = ["127.0.0.1/8", "::1/128"]
 ignoreself = true
+
+# Monitor xmpp-proxy C2S connection failures
+[jail.xmpp-proxy-c2s]
+enabled = true
+log_path = "/var/log/xmpp-proxy/xmpp-proxy.log"
+date_format = "iso8601"
+filter = [
+    # Match C2S authentication failures - adjust based on xmpp-proxy log format
+    'c2s.*auth.*failed.*<HOST>',
+    'c2s.*connection.*rejected.*<HOST>',
+]
+max_retry = 5
+find_time = "10m"
+ban_time = "1h"
+backend = "nftables"
+ignoreip = ["127.0.0.1/8", "::1/128"]
+ignoreself = true
+
+# Monitor xmpp-proxy S2S connection failures
+[jail.xmpp-proxy-s2s]
+enabled = true
+log_path = "/var/log/xmpp-proxy/xmpp-proxy.log"
+date_format = "iso8601"
+filter = [
+    # Match S2S connection failures - adjust based on xmpp-proxy log format
+    's2s.*connection.*failed.*<HOST>',
+    's2s.*rejected.*<HOST>',
+]
+max_retry = 10
+find_time = "10m"
+ban_time = "1h"
+backend = "nftables"
+ignoreip = ["127.0.0.1/8", "::1/128"]
+ignoreself = true
