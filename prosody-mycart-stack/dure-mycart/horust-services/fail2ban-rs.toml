@@ -11,6 +11,11 @@ strategy = "always"
 backoff = "10s"
 attempts = 0
 
+[environment]
+FAIL2BAN_MAX_RETRY = "5"
+FAIL2BAN_FIND_TIME = "10m"
+FAIL2BAN_BAN_TIME = "1h"
+
 [termination]
 signal = "TERM"
 wait = "5s"
