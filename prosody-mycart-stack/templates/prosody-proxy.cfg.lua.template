@@ -61,9 +61,9 @@ c2s_ports = {}
 -- Empty s2s_ports causes Prosody to fall back to default 5269, conflicting with proxy_port_mappings
 s2s_ports = {15268}
 
--- Outgoing S2S via xmpp-proxy outgoing listener (for federation)
-proxy_out = { "xmpp-proxy", 15270 }
-proxy_secure = true
+-- Outgoing S2S: Direct connections (xmpp-proxy handles incoming only)
+-- Prosody makes direct outbound TLS connections for S2S federation
+-- If behind NAT, ensure outbound 5269/tcp is allowed
 
 -- Don't require encryption for INCOMING connections (xmpp-proxy handled TLS)
 c2s_require_encryption = false
