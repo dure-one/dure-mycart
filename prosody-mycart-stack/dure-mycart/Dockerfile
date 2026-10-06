@@ -160,8 +160,7 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
     echo "Downloading xmpp-proxy ${TAG} for ${ARCH}..." && \
     DOWNLOAD_URL="https://github.com/nikescar/xmpp-proxy/releases/download/${TAG}/xmpp-proxy-${ARCH}-unknown-linux-musl" && \
     curl -fsSL "$DOWNLOAD_URL" -o /usr/local/bin/xmpp-proxy && \
-    chmod +x /usr/local/bin/xmpp-proxy && \
-    /usr/local/bin/xmpp-proxy --version
+    chmod +x /usr/local/bin/xmpp-proxy
 
 ##
 ## Stage 5: horust-builder (Alpine)
