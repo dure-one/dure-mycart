@@ -26,13 +26,13 @@
 
 ```bash
 docker pull ghcr.io/dure-one/dure-mycart:latest
-docker pull ghcr.io/nikescar/xmpp-proxy:latest
+docker pull ghcr.io/dure-one/xmpp-proxy:latest
 docker pull prosodyim/prosody:13.0
 ```
 
 **Package URLs:**
 - dure-mycart: https://github.com/dure-one/dure-mycart/pkgs/container/dure-mycart
-- xmpp-proxy: https://github.com/nikescar/xmpp-proxy/pkgs/container/xmpp-proxy
+- xmpp-proxy: https://github.com/dure-one/dure-mycart/pkgs/container/xmpp-proxy
 
 ### Configuration with .env File
 

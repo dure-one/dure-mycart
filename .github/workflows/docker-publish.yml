@@ -20,7 +20,10 @@ jobs:
       matrix:
         include:
           - image: prosody-mycart
-            dockerfile: prosody-mycart-stack/Dockerfile
+            dockerfile: prosody-mycart-stack/dure-mycart/Dockerfile
+            context: .
+          - image: xmpp-proxy
+            dockerfile: prosody-mycart-stack/xmpp-proxy/Dockerfile
             context: .
     steps:
       - name: Check out the repo

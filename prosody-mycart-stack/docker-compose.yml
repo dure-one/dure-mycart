@@ -115,7 +115,7 @@ services:
 
   # xmpp-proxy: Handles QUIC (443/udp) and standard Direct TLS ports
   xmpp-proxy:
-    image: ghcr.io/nikescar/xmpp-proxy:${XMPP_PROXY_IMAGE_TAG:-latest}
+    image: ghcr.io/dure-one/xmpp-proxy:${XMPP_PROXY_IMAGE_TAG:-latest}
     container_name: xmpp-proxy
     restart: unless-stopped
     env_file: .env

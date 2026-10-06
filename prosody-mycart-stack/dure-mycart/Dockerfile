@@ -174,15 +174,15 @@ RUN apt-get update && \
 WORKDIR /build
 
 # Copy our scripts and configs
-COPY prosody-mycart-stack/docker-entrypoint.sh /docker-entrypoint.sh
-COPY prosody-mycart-stack/mycart-wrapper.sh /usr/local/bin/mycart-wrapper.sh
-COPY prosody-mycart-stack/horust-services/ /etc/horust/services/
+COPY prosody-mycart-stack/dure-mycart/docker-entrypoint.sh /docker-entrypoint.sh
+COPY prosody-mycart-stack/dure-mycart/mycart-wrapper.sh /usr/local/bin/mycart-wrapper.sh
+COPY prosody-mycart-stack/dure-mycart/horust-services/ /etc/horust/services/
 
 RUN mkdir -p /etc/fail2ban-rs && \
     chmod +x /docker-entrypoint.sh /usr/local/bin/mycart-wrapper.sh && \
     cp /bin/busybox /bin/busybox-static
 
-COPY prosody-mycart-stack/fail2ban-rs-config.toml /etc/fail2ban-rs/config.toml
+COPY prosody-mycart-stack/dure-mycart/fail2ban-rs-config.toml /etc/fail2ban-rs/config.toml
 
 ##
 ## Final Stage: distroless

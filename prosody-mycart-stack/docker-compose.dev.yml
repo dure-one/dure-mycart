@@ -119,7 +119,7 @@ services:
   xmpp-proxy:
     build:
       context: ..
-      dockerfile: xmpp-proxy-stack/Dockerfile
+      dockerfile: prosody-mycart-stack/xmpp-proxy/Dockerfile
     container_name: xmpp-proxy
     restart: unless-stopped
     env_file: .env
@@ -146,7 +146,7 @@ services:
   dure-mycart:
     build:
       context: ..
-      dockerfile: prosody-mycart-stack/Dockerfile
+      dockerfile: prosody-mycart-stack/dure-mycart/Dockerfile
     container_name: dure-mycart
     restart: unless-stopped
     ports:

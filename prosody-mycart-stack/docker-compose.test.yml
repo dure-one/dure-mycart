@@ -5,7 +5,7 @@
 services:
   # xmpp-proxy: Pull test image
   xmpp-proxy:
-    image: ghcr.io/nikescar/xmpp-proxy:test
+    image: ghcr.io/dure-one/xmpp-proxy:test
 
   # dure-mycart: Pull test image
   dure-mycart:
