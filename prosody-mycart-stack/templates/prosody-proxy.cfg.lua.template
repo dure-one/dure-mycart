@@ -57,8 +57,9 @@ proxy_secure_in = true
 -- Disable regular c2s ports (mod_net_proxy will handle incoming c2s)
 c2s_ports = {}
 
--- Disable regular s2s ports (mod_net_proxy will handle incoming s2s via proxy_port_mappings)
-s2s_ports = {}
+-- MUST have at least one s2s_port for outgoing S2S to work
+-- Empty s2s_ports causes Prosody to fall back to default 5269, conflicting with proxy_port_mappings
+s2s_ports = {15268}
 
 -- Outgoing S2S via xmpp-proxy outgoing listener (for federation)
 proxy_out = { "xmpp-proxy", 15270 }
