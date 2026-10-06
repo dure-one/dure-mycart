@@ -1,0 +1,30 @@
+# xmpp-proxy configuration for dure-mycart stack
+# This template is rendered by render-xmpp-proxy-config.sh with ${XMPP_DOMAIN} substitution
+
+# Reverse proxy for incoming XMPP connections (standard Direct TLS ports only)
+incoming_listen = [ "[::]:5222", "[::]:5223", "[::]:5269" ]
+
+# QUIC listener (443/udp, XEP-0467)
+quic_listen = [ "[::]:443" ]
+
+# Outgoing proxy for Prosody's outbound S2S connections
+outgoing_listen = [ "0.0.0.0:15270" ]
+
+# Backend targets (Prosody container on Docker bridge network)
+# Use container hostname for Docker DNS resolution
+c2s_target = "prosody:5222"
+s2s_target = "prosody:5269"
+
+# Send PROXY protocol v1 headers to preserve client IP
+proxy = true
+
+# Limit incoming stanzas to 256KB (ejabberd default)
+max_stanza_size_bytes = 262_144
+
+# TLS certificates (shared from dure-mycart via /certs volume)
+# mycart issues certificates via ACME and exports to standard Let's Encrypt naming
+tls_key = "/certs/privkey.pem"
+tls_cert = "/certs/fullchain.pem"
+
+# Logging configuration
+log_level = "info"

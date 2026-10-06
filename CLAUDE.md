@@ -19,6 +19,7 @@ Three-tier fork:
 - **Backend**: Go 1.26, Fiber v3, SQLite/PostgreSQL
 - **Frontend**: SvelteKit, Svelte 5 (runes), TailwindCSS v4
 - **Build**: Single binary with embedded frontends (`go:embed`)
+- **XMPP**: Prosody 13.0, xmpp-proxy (QUIC support)
 
 ## Key Files
 
@@ -44,17 +45,19 @@ XMPP-based customer support responder system:
 3. Contact/message/workflow queries with SQLite/PostgreSQL dual support
 4. Admin panel for configuration and message viewing
 
-**Prosody-myCart Stack** (`prosody-mycart-stack/`):
-- All-in-one Docker image: dure-mycart + fail2ban-rs + Horust
-- **ALPN Router**: Routes XMPP/HTTP on port 443 based on TLS ALPN protocol
-- PROXY protocol v1 for preserving real client IPs in Prosody logs
-- Bridge network with static IPs (172.19.0.0/16)
-- Prosody static IP: 172.19.0.2 (configured in docker-compose.yml)
+**XMPP Stack** (`prosody-mycart-stack/`):
+- **3-container architecture**:
+  - `dure-mycart`: Pure HTTP server (80/tcp)
+  - `xmpp-proxy`: XMPP - QUIC (443/udp), Direct TLS (5222, 5223, 5269/tcp)
+  - `prosody`: XMPP server backend (172.19.0.2)
+- **xmpp-proxy**: Handles XMPP protocols (XEP-0467 QUIC, standard Direct TLS)
+- PROXY protocol v1 for preserving real client IPs
+- TLS certificates: Issued by dure-mycart (ACME), shared via /certs volume
 
-**Hybrid S2S Federation**:
-- **Modern servers** (XEP-0368): Port 443 with `xmpp-server` ALPN → Prosody 5270
-- **Legacy servers**: Direct S2S on port 5269 (exposed from Prosody container)
-- DNS SRV: `_xmpps-server._tcp` → port 443, `_xmpp-server._tcp` → port 5269
+**S2S Federation**:
+- **Standard Direct TLS**: 5269/tcp via xmpp-proxy → Prosody 5269
+- **QUIC** (XEP-0467): 443/udp via xmpp-proxy → Prosody 5222/5269
+- DNS SRV: `_xmpp-server._tcp` → 5269
 
 ## Development Commands
 

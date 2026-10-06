@@ -220,10 +220,8 @@ func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {
 	cfgTLS := &tls.Config{
 		GetCertificate: manager.GetCertificate,
 		NextProtos: []string{
-			"http/1.1",     // HTTP/1.1 (h2 removed: Fiber v3 via custom listener doesn't support HTTP/2)
-			"acme-tls/1",   // ACME TLS-ALPN-01 challenge
-			"xmpp-client",  // XMPP C2S (XEP-0368)
-			"xmpp-server",  // XMPP S2S (XEP-0368)
+			"http/1.1",   // HTTP/1.1 (h2 removed: Fiber v3 via custom listener doesn't support HTTP/2)
+			"acme-tls/1", // ACME TLS-ALPN-01 challenge
 		},
 	}
 
@@ -238,10 +236,7 @@ func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {
 		os.Exit(1)
 	}
 
-	// Wrap listener with ALPN router for XMPP/HTTP multiplexing
-	router := NewALPNRouter(ln)
-
-	if err := app.Listener(router, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
+	if err := app.Listener(ln, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
 		logger().Err(err).Send()
 		os.Exit(1)
 	}
@@ -288,10 +283,8 @@ func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
 		cfgTLS := &tls.Config{
 			GetCertificate: manager.GetCertificate,
 			NextProtos: []string{
-				"http/1.1",     // HTTP/1.1 (h2 removed: Fiber v3 via custom listener doesn't support HTTP/2)
-				"acme-tls/1",   // ACME TLS-ALPN-01 challenge
-				"xmpp-client",  // XMPP C2S (XEP-0368)
-				"xmpp-server",  // XMPP S2S (XEP-0368)
+				"http/1.1",   // HTTP/1.1 (h2 removed: Fiber v3 via custom listener doesn't support HTTP/2)
+				"acme-tls/1", // ACME TLS-ALPN-01 challenge
 			},
 		}
 
@@ -301,10 +294,7 @@ func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
 			return
 		}
 
-		// Wrap listener with ALPN router for XMPP/HTTP multiplexing
-		router := NewALPNRouter(ln)
-
-		if err := app.Listener(router, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
+		if err := app.Listener(ln, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
 			errCh <- fmt.Errorf("HTTPS server error: %w", err)
 		}
 	}()

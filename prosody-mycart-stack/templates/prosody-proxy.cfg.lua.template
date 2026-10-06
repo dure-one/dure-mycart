@@ -30,8 +30,8 @@ plugin_paths = { "/usr/lib/prosody/community" }
 
 ---------- PROXY PROTOCOL CONFIGURATION (MUST BE GLOBAL) ----------
 
--- Trust connections from prosody-mycart-stack (Docker bridge network)
--- The prosody-mycart-stack container connects via the bridge network gateway
+-- Trust connections from xmpp-proxy only
+-- xmpp-proxy handles ALL XMPP traffic (ALPN, QUIC, Direct TLS)
 -- This MUST be set before proxy_port_mappings
 proxy_trusted_proxies = {
     "127.0.0.1",      -- localhost
@@ -48,7 +48,7 @@ proxy_trusted_proxies = {
 -- Configure which ports expect PROXY protocol headers
 proxy_port_mappings = {
     [5222] = "c2s",  -- Client-to-server connections
-    [5270] = "s2s"   -- Server-to-server via ALPN (XEP-0368) with PROXY protocol
+    [5269] = "s2s"   -- Server-to-server with PROXY protocol (from xmpp-proxy)
 }
 
 -- Mark incoming connections from proxy as secure (xmpp-proxy guarantees this)
@@ -57,10 +57,12 @@ proxy_secure_in = true
 -- Disable regular c2s ports (mod_net_proxy will handle incoming c2s)
 c2s_ports = {}
 
--- S2S ports: standard incoming (5269) + outgoing (15268)
--- Port 5269: Standard S2S with Direct TLS (for legacy servers)
--- Port 15268: Outgoing S2S only (high port to avoid conflicts)
+-- S2S ports: incoming on 5269 (via xmpp-proxy), outgoing on 15268
 s2s_ports = {5269, 15268}
+
+-- Outgoing S2S via xmpp-proxy outgoing listener (for federation)
+proxy_out = { "xmpp-proxy", 15270 }
+proxy_secure = true
 
 -- Don't require encryption for INCOMING connections (xmpp-proxy handled TLS)
 c2s_require_encryption = false

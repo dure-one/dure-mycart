@@ -43,6 +43,17 @@ services:
       - ../:/workspace
     command: sh prosody-mycart-stack/render-prosody-config.sh
 
+  # Renders xmpp-proxy config template with XMPP_DOMAIN substitution
+  xmpp-proxy-config-init:
+    image: alpine:latest
+    container_name: xmpp-proxy-config-init
+    restart: "no"
+    working_dir: /workspace
+    env_file: .env
+    volumes:
+      - ../:/workspace
+    command: sh prosody-mycart-stack/render-xmpp-proxy-config.sh
+
   # Fix permissions for Prosody data directories
   prosody-permissions-init:
     image: alpine:latest
@@ -88,7 +99,7 @@ services:
       - ../prosody-modules:/usr/lib/prosody/community:ro
     networks:
       xmpp-internal:
-        ipv4_address: 172.19.0.2  # Static IP required for xmpp-proxy config
+        ipv4_address: 172.19.0.2  # Static IP for backend routing
     healthcheck:
       test: ["CMD", "prosodyctl", "status"]
       interval: 30s
@@ -103,22 +114,48 @@ services:
       prosody-permissions-init:
         condition: service_completed_successfully
 
-  # Merged stack: dure-mycart + Prosody + fail2ban-rs
+  # xmpp-proxy: Handles QUIC (443/udp) and standard Direct TLS ports
   # Development: builds image locally from source
-  prosody-mycart-stack:
+  xmpp-proxy:
+    build:
+      context: ..
+      dockerfile: xmpp-proxy-stack/Dockerfile
+    container_name: xmpp-proxy
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "443:443/udp"    # XMPP QUIC (XEP-0467)
+      - "5222:5222/tcp"  # XMPP C2S Direct TLS
+      - "5223:5223/tcp"  # XMPP C2S Legacy SSL
+      - "5269:5269/tcp"  # XMPP S2S Direct TLS
+    volumes:
+      - ${DATA_DIR:-/srv/data}/certs:/certs:ro
+      - ${DATA_DIR:-/srv/data}/logs/xmpp-proxy:/var/log/xmpp-proxy
+      - ../generated/xmpp-proxy.toml:/etc/xmpp-proxy/xmpp-proxy.toml:ro
+    networks:
+      xmpp-internal:
+        ipv4_address: 172.19.0.3
+    depends_on:
+      prosody:
+        condition: service_healthy
+      xmpp-proxy-config-init:
+        condition: service_completed_successfully
+
+  # dure-mycart: Pure HTTP/HTTPS server (no XMPP)
+  # Development: builds image locally from source
+  dure-mycart:
     build:
       context: ..
       dockerfile: prosody-mycart-stack/Dockerfile
-    container_name: prosody-mycart-stack
+    container_name: dure-mycart
     restart: unless-stopped
-    # Bridge network allows direct container communication, preserving PROXY headers
     ports:
-      - "80:80"       # HTTP (ACME challenge)
-      - "443:443"     # HTTPS + XMPP ALPN (C2S/S2S multiplexed)
-      - "5269:5269"   # XMPP S2S (Server-to-Server)
+      - "80:80/tcp"       # HTTP (ACME challenge + web traffic)
     cap_add:
       - NET_ADMIN
     env_file: .env
+    environment:
+      MYCART_DOMAIN: ${MYCART_DOMAIN}
     volumes:
       - ${DATA_DIR:-/srv/data}/certs:/certs
       - ${DATA_DIR:-/srv/data}/logs:/logs
@@ -131,6 +168,8 @@ services:
     depends_on:
       prosody:
         condition: service_healthy
+      xmpp-proxy:
+        condition: service_started
 
 networks:
   xmpp-internal:

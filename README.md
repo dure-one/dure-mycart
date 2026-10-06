@@ -47,28 +47,41 @@ docker run --name dure-mycart --restart unless-stopped -p 8080:8080 -v ./lc_base
 
 **Image**: Built from `Dockerfile` → `ghcr.io/dure-one/dure-mycart:latest`
 
-#### With Prosody (XMPP)
+#### With XMPP Stack (Prosody + xmpp-proxy)
+
+**3-Container Architecture:**
+- `dure-mycart`: Pure HTTP server (port 80/tcp)
+- `xmpp-proxy`: XMPP traffic - QUIC (443/udp), Direct TLS (5222, 5223, 5269/tcp)
+- `prosody`: XMPP server backend
 
 ```bash
-cd xmpp-proxy-stack
+cd prosody-mycart-stack
 
 # Copy and configure environment
 cp .env.example .env
 # Edit .env with your domain and settings
 
-# Start services
+# Production (pull images)
 docker compose up -d
+
+# Development (build from source)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+# Testing (use test images)
+docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
 ```
 
 **Environment Variables** (`.env`):
+- `MYCART_IMAGE_TAG` - Image tag (latest/test/custom)
+- `XMPP_PROXY_IMAGE_TAG` - xmpp-proxy image tag
 - `XMPP_DOMAIN` - Your domain (required)
 - `MYCART_DOMAIN` - Must match XMPP_DOMAIN for shared SSL
 - `XMPP_ADMIN` - Admin user (e.g., admin@example.com)
-- `PROSODY_LOGLEVEL` - Logging level (info/debug/warn/error)
-- `PROSODY_RETENTION_DAYS` - Message retention (default: 90)
 
-**Image**: Built from `xmpp-proxy-stack/Dockerfile` → `ghcr.io/dure-one/dure-mycart-prosody:0.0`  
-Includes mycart + xmpp-proxy + fail2ban-rs + Prosody configurations
+**Images:**
+- `ghcr.io/dure-one/dure-mycart:latest` - Main application
+- `ghcr.io/nikescar/xmpp-proxy:latest` - XMPP reverse proxy
+- `prosodyim/prosody:13.0` - XMPP server
 
 ---
 
