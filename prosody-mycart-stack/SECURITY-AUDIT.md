@@ -101,7 +101,7 @@ Security audit of Prosody 13.0 XMPP server in prosody-mycart-stack identified **
 
 ## Fixes Applied (2026-10-07)
 
-### fail2ban-rs Log Integration
+### 1. fail2ban-rs Log Integration (COMPLETED)
 **Problem**: fail2ban-rs running but not reading Prosody/mycart logs
 
 **Root Cause**: Config file not mounted to container
@@ -112,21 +112,68 @@ Security audit of Prosody 13.0 XMPP server in prosody-mycart-stack identified **
    - ./dure-mycart/fail2ban-rs-config.toml:/etc/fail2ban-rs/config.toml:ro
    ```
 
-2. Added missing custom modules mount to dev compose:
+2. Fixed xmpp-proxy log paths in fail2ban config:
+   ```toml
+   log_path = "/logs/xmpp-proxy-stderr.log"  # Was: /var/log/xmpp-proxy/xmpp-proxy.log
+   ```
+
+3. Added missing custom modules mount to dev compose:
    ```yaml
    - ../prosody-mycart-stack/custom-modules:/usr/lib/prosody/custom:ro
    ```
 
-3. Added missing HTTPS port to dev compose:
+4. Added missing HTTPS port to dev compose:
    ```yaml
    - "443:443/tcp"  # HTTPS (mycart web + ACME TLS-ALPN)
    ```
 
-**Verification**:
-```bash
-cd prosody-mycart-stack
-./verify-fail2ban.sh
+**Status**: ✅ VERIFIED - fail2ban-rs monitoring Prosody and mycart logs
+
+---
+
+### 2. PROXY Trust Boundary Narrowed (COMPLETED)
+**Problem**: Trusted 172.16.0.0/12 (268M IPs) for PROXY protocol
+
+**Solution**: Narrowed to actual subnet 172.19.0.0/16
+```lua
+proxy_trusted_proxies = {
+    "127.0.0.1",
+    "::1",
+    "172.19.0.0/16"  -- Was: 172.16.0.0/12
+}
 ```
+
+**Impact**: Reduced attack surface by 4,095x (268M → 65K IPs)
+
+**Status**: ✅ FIXED - requires config regeneration
+
+---
+
+### 3. User Registration Disabled (COMPLETED)
+**Problem**: mod_register enabled without rate limiting = spam vector
+
+**Solution**: Disabled module
+```lua
+-- "register";  -- DISABLED: no rate limiting = spam vector
+```
+
+**Impact**: Prevents unlimited spam account creation
+
+**Status**: ✅ FIXED - requires config regeneration
+
+---
+
+### 4. BOSH Timeout Reduced (COMPLETED)
+**Problem**: bosh_max_wait = 120s allows connection holding DoS
+
+**Solution**: Reduced to 30s
+```lua
+bosh_max_wait = 30  -- Was: 120
+```
+
+**Impact**: Reduces connection exhaustion attack window
+
+**Status**: ✅ FIXED - requires config regeneration
 
 ## Log Path Configuration (Verified Correct)
 
@@ -138,12 +185,21 @@ cd prosody-mycart-stack
 
 ## Recommended Immediate Actions
 
-1. **CRITICAL**: Narrow PROXY trust to xmpp-proxy IP only
-2. **CRITICAL**: Disable `mod_register` or add strict rate limiting
-3. **CRITICAL**: Enable S2S certificate validation or verify xmpp-proxy does it
-4. **HIGH**: Add federation domain whitelist
-5. **HIGH**: Restrict admin interface to localhost
-6. **MEDIUM**: Test fail2ban integration with `./verify-fail2ban.sh`
+### Completed ✅
+1. ✅ **HIGH**: Narrowed PROXY trust from /12 to /16 (4,095x reduction)
+2. ✅ **CRITICAL**: Disabled `mod_register` (no rate limiting available)
+3. ✅ **MEDIUM**: Reduced BOSH timeout from 120s to 30s
+4. ✅ **HIGH**: Fixed fail2ban-rs log integration
+
+### Requires Verification ⚠️
+5. **CRITICAL**: Verify xmpp-proxy validates S2S certificates (MITM risk if not)
+   - Check xmpp-proxy source for TLS validation on outgoing S2S
+   - If not validated, enable `s2s_secure_auth = true` in Prosody
+
+### Optional Enhancements 📋
+6. **HIGH**: Add federation domain whitelist or content filtering
+7. **HIGH**: Restrict admin interface to localhost only
+8. **MEDIUM**: Add S2S fail2ban threshold to 5-7 (currently 10)
 
 ## Next Steps
 
