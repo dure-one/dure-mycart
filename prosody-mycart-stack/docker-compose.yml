@@ -83,7 +83,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      PROSODY_ADMINS: ${XMPP_ADMIN:-admin@${XMPP_DOMAIN}}
+      PROSODY_ADMINS: ${PROSODY_ADMINS}
       PROSODY_VIRTUAL_HOSTS: ${XMPP_DOMAIN}
       PROSODY_LOGLEVEL: ${PROSODY_LOGLEVEL:-info}
       PROSODY_STORAGE: ${PROSODY_STORAGE:-internal}
