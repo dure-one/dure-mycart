@@ -232,6 +232,8 @@ limits = {
 -- mod_server_status: Monitoring endpoint
 -- Provides status page at http://localhost:5280/server-status
 -- (accessible only via localhost due to http_interfaces restriction)
+server_status_show_hosts = true   -- Show VirtualHost statistics
+server_status_show_comps = false  -- No components configured yet
 
 -- mod_stanza_counter: XMPP stanza metrics
 -- Counts messages, presence, iq stanzas for monitoring
