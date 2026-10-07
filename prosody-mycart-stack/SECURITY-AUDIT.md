@@ -36,16 +36,17 @@ Security audit of Prosody 13.0 XMPP server in prosody-mycart-stack identified **
   registration_blacklist = { "..." }
   ```
 
-### 3. S2S Certificate Validation Disabled
-- **Severity**: CRITICAL
+### 3. S2S Certificate Validation (VERIFIED SECURE) ✅
+- **Severity**: ~~CRITICAL~~ → **SECURE**
 - **Location**: `templates/prosody-proxy.cfg.lua.template:75`
-- **Issue**: `s2s_secure_auth = false` allows MITM on federation
-- **Risk**: Attacker can impersonate federated servers
-- **Fix**: Verify xmpp-proxy validates certs, or enable:
-  ```lua
-  s2s_secure_auth = true
-  s2s_require_encryption = true
-  ```
+- **Status**: ✅ VERIFIED - xmpp-proxy validates certificates
+- **Analysis**: 
+  - Prosody sends plaintext to xmpp-proxy (localhost only)
+  - xmpp-proxy validates certificates against CA roots before connecting to remote servers
+  - Uses `XmppServerCertVerifier` with webpki for standard PKI validation
+  - Supports optional POSH (XEP-0360) and public key pinning
+- **Conclusion**: `s2s_secure_auth = false` is SAFE in this architecture
+- **Details**: See XMPP-PROXY-S2S-CERT-VALIDATION.md
 
 ## High Severity Findings
 
@@ -191,10 +192,13 @@ bosh_max_wait = 30  -- Was: 120
 3. ✅ **MEDIUM**: Reduced BOSH timeout from 120s to 30s
 4. ✅ **HIGH**: Fixed fail2ban-rs log integration
 
-### Requires Verification ⚠️
-5. **CRITICAL**: Verify xmpp-proxy validates S2S certificates (MITM risk if not)
-   - Check xmpp-proxy source for TLS validation on outgoing S2S
-   - If not validated, enable `s2s_secure_auth = true` in Prosody
+### Verified Secure ✅
+5. ✅ **S2S Certificate Validation**: xmpp-proxy properly validates all outgoing S2S certificates
+   - Validates against CA roots using webpki
+   - Verifies hostname matches SRV targets
+   - Supports optional POSH (XEP-0360) and public key pinning
+   - See XMPP-PROXY-S2S-CERT-VALIDATION.md for full analysis
+   - **Conclusion**: Prosody's `s2s_secure_auth = false` is SAFE
 
 ### Optional Enhancements 📋
 6. **HIGH**: Add federation domain whitelist or content filtering
