@@ -24,31 +24,29 @@ log = {
     { to = "file", filename = "/var/log/prosody/prosody.log", levels = { min = "info" } };
 }
 
--- PROXY protocol support via mod_net_proxy from prosody-modules
--- Community modules mounted at: /usr/lib/prosody/community
-plugin_paths = { "/usr/lib/prosody/community" }
+-- PROXY protocol support via custom mod_net_proxy (supports proxy_out)
+-- Custom modules take priority over community modules
+plugin_paths = { "/usr/lib/prosody/custom", "/usr/lib/prosody/community" }
 
 ---------- PROXY PROTOCOL CONFIGURATION (MUST BE GLOBAL) ----------
 
--- Trust connections from prosody-mycart-stack (Docker bridge network)
--- The prosody-mycart-stack container connects via the bridge network gateway
+-- Trust connections from xmpp-proxy only
+-- xmpp-proxy handles ALL XMPP traffic (ALPN, QUIC, Direct TLS)
 -- This MUST be set before proxy_port_mappings
 proxy_trusted_proxies = {
     "127.0.0.1",      -- localhost
     "::1",            -- localhost IPv6
-    -- Docker bridge network (xmpp-internal). docker-compose.yaml doesn't
-    -- pin a subnet, so Docker auto-assigns one on network creation - it is
-    -- NOT reliably 172.30.0.0/16 (observed 172.25.0.0/16 in practice,
-    -- which silently dropped every c2s/s2s connection with
-    -- "Dropped connection from untrusted proxy"). Trust the whole range
-    -- Docker draws bridge subnets from instead of one guessed /16.
-    "172.16.0.0/12"
+    -- Docker bridge network (xmpp-internal) subnet is pinned in docker-compose.yml
+    -- to 172.19.0.0/16, so we trust only that subnet instead of the entire
+    -- 172.16.0.0/12 range (268M IPs). dure-mycart container (where xmpp-proxy
+    -- runs) gets dynamic IP within this /16 (typically .3 or .4).
+    "172.19.0.0/16"
 }
 
 -- Configure which ports expect PROXY protocol headers
 proxy_port_mappings = {
     [5222] = "c2s",  -- Client-to-server connections
-    [5270] = "s2s"   -- Server-to-server via ALPN (XEP-0368) with PROXY protocol
+    [5269] = "s2s"   -- Server-to-server with PROXY protocol (from xmpp-proxy)
 }
 
 -- Mark incoming connections from proxy as secure (xmpp-proxy guarantees this)
@@ -57,17 +55,24 @@ proxy_secure_in = true
 -- Disable regular c2s ports (mod_net_proxy will handle incoming c2s)
 c2s_ports = {}
 
--- S2S ports: standard incoming (5269) + outgoing (15268)
--- Port 5269: Standard S2S with Direct TLS (for legacy servers)
--- Port 15268: Outgoing S2S only (high port to avoid conflicts)
-s2s_ports = {5269, 15268}
+-- MUST have at least one s2s_port for outgoing S2S to work
+-- Empty s2s_ports causes Prosody to fall back to default 5269, conflicting with proxy_port_mappings
+s2s_ports = {15268}
+
+-- Outgoing S2S via xmpp-proxy outgoing listener (for federation)
+-- xmpp-proxy runs in dure-mycart container, accessible via Docker DNS
+proxy_out = { "dure-mycart", 15270 }
+proxy_secure = true
 
 -- Don't require encryption for INCOMING connections (xmpp-proxy handled TLS)
 c2s_require_encryption = false
 
--- For OUTGOING S2S: Keep encryption enabled (prosody makes direct TLS connections)
--- Remove s2s_require_encryption = false and s2s_secure_auth = false
--- Prosody needs to do TLS for outgoing server-to-server connections!
+-- For OUTGOING S2S: Disable encryption (xmpp-proxy handles TLS via proxy_out)
+-- Prosody sends plain-text to xmpp-proxy:15270, which then connects with TLS to remote servers
+s2s_require_encryption = false
+-- VERIFIED SECURE: xmpp-proxy validates remote S2S certificates (see XMPP-PROXY-S2S-CERT-VALIDATION.md)
+-- Certificate validation happens in xmpp-proxy using XmppServerCertVerifier against CA roots
+s2s_secure_auth = false
 
 -- Allow plaintext auth for incoming C2S (TLS already handled by xmpp-proxy)
 allow_unencrypted_plain_auth = true
@@ -103,16 +108,27 @@ modules_enabled = {
     -- xmpp-auth jail filter, which matches this exact wording.
     "log_auth";      -- Log authentication successes/failures (community module)
 
-    -- HTTP/Admin modules
+    -- Security & Anti-Spam modules
+    "ipcheck";       -- DNS blacklist (RBL/DNSBL) checking for connections
+    "anti_spam";     -- User-based spam blocking (complements fail2ban-rs IP blocking)
+
+    -- Monitoring & Performance modules
+    "log_slow_events"; -- Log slow event handlers (performance debugging)
+    "server_status";   -- Server status monitoring page
+    "stanza_counter";  -- Count XMPP stanzas for metrics
+
+    -- Message handling
+    "pastebin";      -- Convert large messages to pastebin (NOT encrypted)
+
+    -- Rate limiting (core module)
+    "limits";        -- Connection and bandwidth limits
+
+    -- HTTP/Admin modules (always enabled)
     "http";          -- HTTP server for web admin
     "admin_web2";    -- Web admin interface (Prosody 13.0 compatible)
-    "admin_shell";   -- Enable prosodyctl shell access
-    "admin_adhoc";   -- Admin ad-hoc commands
-    "bosh";          -- BOSH (Bidirectional-streams Over Synchronous HTTP)
-    "websocket";     -- Native XMPP over WebSocket (XEP-0468), at /xmpp-websocket
 
-    -- User management
-    "register";      -- User registration
+    -- User management (mod_register DISABLED for security - no rate limiting)
+    -- "register";      -- User registration (DISABLED: no rate limiting = spam vector)
     "ping";          -- XMPP ping
     "time";          -- Time queries
     "version";       -- Version queries
@@ -123,11 +139,37 @@ modules_enabled = {
     "private";       -- Private XML storage
 }
 
+-- Conditional admin modules (ENV-configurable, default: enabled)
+if os.getenv("PROSODY_ENABLE_ADMIN_ADHOC") ~= "false" then
+    table.insert(modules_enabled, "admin_adhoc")
+end
+
+if os.getenv("PROSODY_ENABLE_ADMIN_SHELL") ~= "false" then
+    table.insert(modules_enabled, "admin_shell")
+end
+
+-- Conditional HTTP modules (ENV-configurable, default: enabled)
+-- NOTE: BOSH required for web admin interface XMPP connection
+if os.getenv("PROSODY_ENABLE_BOSH") ~= "false" then
+    table.insert(modules_enabled, "bosh")
+end
+
+if os.getenv("PROSODY_ENABLE_WEBSOCKET") ~= "false" then
+    table.insert(modules_enabled, "websocket")
+end
+
+-- Registration watcher (only if watchers configured)
+if os.getenv("PROSODY_REGISTRATION_WATCHERS") then
+    table.insert(modules_enabled, "watchregistrations")
+end
+
 ---------- HTTP/BOSH CONFIGURATION ----------
 
 -- HTTP configuration for web admin
 http_ports = { 5280 }
-http_interfaces = { "*", "::" }
+-- SECURITY: Bind to localhost only (access via mycart reverse proxy with auth)
+-- Prevents direct access from bridge network
+http_interfaces = { "127.0.0.1", "::1" }
 
 -- Trust reverse proxy (mycart) for X-Forwarded-For headers
 -- This preserves real client IPs in HTTP/BOSH connections (admin interface)
@@ -136,7 +178,7 @@ trusted_proxies = { "172.19.0.3" }  -- mycart container IP on xmpp-internal netw
 -- BOSH configuration
 consider_bosh_secure = true  -- Trust BOSH connections as secure (TLS handled by xmpp-proxy)
 bosh_max_inactivity = 60     -- Keep BOSH sessions alive for 60 seconds of inactivity
-bosh_max_wait = 120          -- Maximum time (in seconds) a client can wait for a response
+bosh_max_wait = 30           -- Maximum time (in seconds) a client can wait for a response (reduced from 120s for DoS mitigation)
 
 -- Force SASL mechanisms on insecure connections (BOSH over HTTP)
 sasl_mech_override = {
@@ -170,3 +212,228 @@ admin_socket = "/var/run/prosody/prosody.sock"
 -- Force SASL mechanisms to be offered (for BOSH over HTTP from localhost)
 c2s_direct_tls_ports = {}
 authentication = "internal_hashed"
+
+---------- DANE/DNSSEC CONFIGURATION ----------
+
+-- DANE (DNS-Based Authentication of Named Entities)
+-- Provides additional security for S2S connections via DNSSEC
+-- Requires: lua-unbound, dns-root-data packages
+use_dane = os.getenv("PROSODY_USE_DANE") == "true"
+
+if use_dane then
+    unbound = {
+        -- Root trust anchors for DNSSEC validation
+        -- Debian/Ubuntu: install 'dns-root-data' package
+        trustfile = "/usr/share/dns/root.ds";
+        -- DNS resolvers for queries (populated from ENV)
+        forward = {};
+    }
+
+    -- Parse comma-separated DNS resolvers from ENV
+    local dns_resolvers = os.getenv("PROSODY_DNS_RESOLVERS") or "8.8.8.8,1.1.1.1"
+    for resolver in dns_resolvers:gmatch("[^,]+") do
+        table.insert(unbound.forward, resolver:match("^%s*(.-)%s*$"))  -- trim whitespace
+    end
+end
+
+---------- REGISTRATION CONFIGURATION ----------
+
+-- User self-registration (disabled by default for security)
+-- Set PROSODY_ALLOW_REGISTRATION=true to enable
+allow_registration = os.getenv("PROSODY_ALLOW_REGISTRATION") == "true"
+
+-- Welcome message for new users (variables: $username, $host)
+welcome_message = os.getenv("PROSODY_WELCOME_MESSAGE") or "Welcome $username to $host XMPP server!"
+
+-- Registration watchers (notify admins of new registrations)
+-- Requires mod_watchregistrations to be enabled
+local reg_watchers = os.getenv("PROSODY_REGISTRATION_WATCHERS")  -- comma-separated JIDs
+if reg_watchers then
+    registration_watchers = {}
+    for jid in reg_watchers:gmatch("[^,]+") do
+        table.insert(registration_watchers, jid:match("^%s*(.-)%s*$"))  -- trim whitespace
+    end
+    registration_notification = os.getenv("PROSODY_REGISTRATION_NOTIFICATION")
+                              or "User $username just registered on $host"
+end
+
+---------- S2S SECURITY CONFIGURATION ----------
+
+-- IMPORTANT: s2s_secure_auth = false is CORRECT for this architecture
+-- Certificate validation happens in xmpp-proxy (see XMPP-PROXY-S2S-CERT-VALIDATION.md)
+-- Prosody → plaintext → xmpp-proxy → TLS (with cert validation) → remote server
+-- Setting this to true would BREAK federation!
+
+-- S2S stanza size limit (default: 512KB)
+s2s_stanza_size_limit = tonumber(os.getenv("PROSODY_S2S_STANZA_LIMIT")) or 512000
+
+-- Insecure domains (allow dialback for specific servers)
+local s2s_insecure = os.getenv("PROSODY_S2S_INSECURE_DOMAINS")  -- comma-separated
+if s2s_insecure then
+    s2s_insecure_domains = {}
+    for domain in s2s_insecure:gmatch("[^,]+") do
+        table.insert(s2s_insecure_domains, domain:match("^%s*(.-)%s*$"))
+    end
+end
+
+-- Secure domains (require valid certs even with s2s_secure_auth=false)
+-- Note: xmpp-proxy already validates all S2S certs, this is belt-and-suspenders
+local s2s_secure = os.getenv("PROSODY_S2S_SECURE_DOMAINS")
+if s2s_secure then
+    s2s_secure_domains = {}
+    for domain in s2s_secure:gmatch("[^,]+") do
+        table.insert(s2s_secure_domains, domain:match("^%s*(.-)%s*$"))
+    end
+end
+
+---------- STORAGE CONFIGURATION ----------
+
+-- Storage backend selection
+-- internal: Flat files in /var/lib/prosody (default)
+-- sql: Database backend (requires sql config below)
+storage = os.getenv("PROSODY_SQL_DRIVER") and "sql" or os.getenv("PROSODY_STORAGE") or "internal"
+
+-- SQL backend configuration
+local sql_driver = os.getenv("PROSODY_SQL_DRIVER")
+if sql_driver then
+    sql = {
+        driver = sql_driver;  -- SQLite3, MySQL, PostgreSQL
+        database = os.getenv("PROSODY_SQL_DB") or "prosody";
+        username = os.getenv("PROSODY_SQL_USERNAME") or "prosody";
+        password = os.getenv("PROSODY_SQL_PASSWORD");
+        host = os.getenv("PROSODY_SQL_HOST") or "localhost";
+    }
+end
+
+---------- ARCHIVING CONFIGURATION (MAM - XEP-0313) ----------
+
+-- Default archive policy (true = archive all messages by default)
+local mam_policy = os.getenv("PROSODY_MAM_DEFAULT_POLICY")
+if mam_policy == nil or mam_policy == "true" then
+    default_archive_policy = true
+else
+    default_archive_policy = false
+end
+
+-- Archive cleanup interval (default: 4 hours)
+archive_cleanup_interval = tonumber(os.getenv("PROSODY_MAM_CLEANUP_INTERVAL")) or 4*60*60
+
+-- Archive expiry period (default: 14 days / 2 weeks)
+local archive_days = os.getenv("PROSODY_ARCHIVE_EXPIRY_DAYS")
+                  or os.getenv("PROSODY_RETENTION_DAYS")
+                  or "14"
+archive_expires_after = archive_days .. "d"
+
+-- Maximum archive query results
+max_archive_query_results = tonumber(os.getenv("PROSODY_MAM_MAX_RESULTS")) or 20
+
+---------- STATISTICS CONFIGURATION ----------
+
+-- Enable statistics collection for monitoring
+-- Set PROSODY_STATISTICS to enable (e.g., "internal")
+statistics = os.getenv("PROSODY_STATISTICS")
+
+-- Statistics collection interval in seconds (default: 60)
+local stats_interval = os.getenv("PROSODY_STATISTICS_INTERVAL")
+if stats_interval then
+    statistics_interval = tonumber(stats_interval) or stats_interval
+end
+
+---------- MUC (Multi-User Chat) CONFIGURATION ----------
+
+-- MUC message archiving (muc_mam)
+muc_log_by_default = os.getenv("PROSODY_MUC_LOG_DEFAULT") == "true"
+muc_log_presences = os.getenv("PROSODY_MUC_LOG_PRESENCES") == "true"
+log_all_rooms = os.getenv("PROSODY_MUC_LOG_ALL_ROOMS") == "true"
+
+-- MUC archive expiry
+local muc_expiry = os.getenv("PROSODY_MUC_LOG_EXPIRES") or "14"  -- days
+muc_log_expires_after = muc_expiry .. "d"
+
+-- MUC cleanup interval (default: 4 hours)
+muc_log_cleanup_interval = tonumber(os.getenv("PROSODY_MUC_CLEANUP_INTERVAL")) or 4*60*60
+
+---------- SECURITY MODULE CONFIGURATION ----------
+
+-- mod_ipcheck: DNS blacklist checking
+-- Checks connecting IPs against RBL/DNSBL services
+ipcheck_mode = "block"  -- "block" | "warn" | "log"
+ipcheck_lists = {
+    "xbl.spamhaus.org";
+    "dnsbl.sorbs.net";
+    "bl.spamcop.net";
+}
+
+-- mod_anti_spam: User-based spam blocking
+-- Complements fail2ban-rs (IP blocking) with user-level spam detection
+anti_spam_check_messages = true
+anti_spam_check_presence = false
+anti_spam_check_subscriptions = true
+anti_spam_check_muc = false  -- Disable for MUC (group chat) - not used yet
+
+---------- MONITORING MODULE CONFIGURATION ----------
+
+-- mod_log_slow_events: Performance monitoring
+-- Logs events that take longer than threshold (default: 0.5s)
+log_slow_events_threshold = 0.5  -- seconds
+
+-- mod_limits: Connection and bandwidth rate limiting (core module)
+limits = {
+    c2s = {
+        rate = os.getenv("PROSODY_C2S_RATE_LIMIT") or "3kb/s";
+        burst = "2s";             -- Allow bursts for 2 seconds
+    };
+    s2s = {
+        rate = os.getenv("PROSODY_S2S_RATE_LIMIT") or "10kb/s";
+        burst = "3s";
+    };
+}
+
+-- mod_server_status: Monitoring endpoint
+-- Provides status page at http://localhost:5280/server-status
+-- (accessible only via localhost due to http_interfaces restriction)
+server_status_show_hosts = true   -- Show VirtualHost statistics
+server_status_show_comps = false  -- No components configured yet
+
+-- mod_stanza_counter: XMPP stanza metrics
+-- Counts messages, presence, iq stanzas for monitoring
+-- Access stats via admin_telnet or mod_admin_web2
+
+---------- PASTEBIN CONFIGURATION ----------
+
+-- mod_pastebin: Convert large messages to pastebin links
+-- NOTE: Pastebin is NOT encrypted - stored in plain text
+-- Consider disabling if privacy is critical, or use external encrypted pastebin
+pastebin_threshold = 500         -- Messages > 500 chars converted to paste
+pastebin_line_threshold = 4      -- Or messages with > 4 lines
+pastebin_expire_after = 86400    -- Pastes expire after 24 hours (seconds)
+pastebin_trigger = "!paste"      -- Trigger word to force paste creation
+
+---------- MUC COMPONENT CONFIGURATION ----------
+
+-- Multi-User Chat (Group Chat) Component
+-- Enable with PROSODY_MUC_ENABLED=true
+if os.getenv("PROSODY_MUC_ENABLED") == "true" then
+    local muc_domain = os.getenv("PROSODY_MUC_DOMAIN") or "conference.${XMPP_DOMAIN}"
+    
+    Component (muc_domain) "muc"
+        name = os.getenv("PROSODY_MUC_NAME") or "Group Chat Rooms"
+        modules_enabled = { "muc_mam", "vcard_muc", "pastebin" }
+        
+        -- Room creation restrictions
+        restrict_room_creation = os.getenv("PROSODY_MUC_RESTRICT_CREATION") or "local"
+        
+        -- Default room settings
+        muc_room_default_public = os.getenv("PROSODY_MUC_DEFAULT_PUBLIC") == "true"
+        muc_room_default_persistent = os.getenv("PROSODY_MUC_DEFAULT_PERSISTENT") == "true"
+        muc_room_default_members_only = os.getenv("PROSODY_MUC_DEFAULT_MEMBERS_ONLY") ~= "false"  -- default true
+        muc_room_default_moderated = os.getenv("PROSODY_MUC_DEFAULT_MODERATED") ~= "false"  -- default true
+        muc_room_default_public_jids = os.getenv("PROSODY_MUC_DEFAULT_PUBLIC_JIDS") == "true"
+        muc_room_default_change_subject = os.getenv("PROSODY_MUC_DEFAULT_CHANGE_SUBJECT") == "true"
+        muc_room_default_history_length = tonumber(os.getenv("PROSODY_MUC_DEFAULT_HISTORY")) or 20
+        muc_room_default_language = os.getenv("PROSODY_MUC_DEFAULT_LANG") or "en"
+        
+        -- Pastebin settings for MUC
+        pastebin_line_threshold = tonumber(os.getenv("PROSODY_MUC_PASTEBIN_LINES")) or 60
+        pastebin_threshold = tonumber(os.getenv("PROSODY_MUC_PASTEBIN_CHARS")) or 5000
+end

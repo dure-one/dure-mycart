@@ -4,6 +4,7 @@
 	import { PageHeader, FormButton, FormInput, FormSelect, FormToggle, Section } from '$lib/components'
 	import { loadResponderSettings, saveResponderSettings, testXMPPConnection } from '$lib/utils/responder'
 	import { translate } from '$lib/i18n'
+	import { showMessage } from '$lib/utils/message'
 
 	let t = $derived($translate)
 
@@ -66,7 +67,7 @@
 			}
 
 			await saveResponderSettings(payload)
-			alert(t('responder.settingsSaved'))
+			showMessage(t('responder.settingsSaved'), 'connextSuccess')
 
 			// Reset password change tracking
 			passwordChanged = false
@@ -74,7 +75,7 @@
 			hasExistingPassword = true
 		} catch (err) {
 			console.error('Failed to save settings:', err)
-			alert(t('responder.failedToSave'))
+			showMessage(t('responder.failedToSave'), 'connextError')
 		} finally {
 			saving = false
 		}

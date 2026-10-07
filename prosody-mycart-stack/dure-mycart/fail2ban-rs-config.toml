@@ -38,11 +38,42 @@ enabled = true
 log_path = "/logs/mycart-stderr.log"
 date_format = "iso8601"
 filter = [
-    # Match mycart auth failures - adjust regex based on actual log format
-    '"level":"warn".*"status":401.*"ip":"<HOST>"',
-    '"level":"error".*authentication.*"ip":"<HOST>"',
+    # Match auth failures logged by handlers/private/auth.go
+    '"level":"warn".*"ip":"<HOST>".*"message":"authentication failed',
 ]
 max_retry = 5
+find_time = "10m"
+ban_time = "1h"
+backend = "nftables"
+ignoreip = ["127.0.0.1/8", "::1/128"]
+ignoreself = true
+
+# Monitor xmpp-proxy C2S connection failures
+[jail.xmpp-proxy-c2s]
+enabled = true
+log_path = "/logs/xmpp-proxy-stdout.log"
+date_format = "iso8601"
+filter = [
+    # Match TLS/connection errors with IPv4-mapped IPv6 format [::ffff:IP]:port
+    '\[ERROR[^\]]*\] [^:]+: \(\[::(ffff:)?<HOST>\]:[0-9]+.*\) (peer is incompatible|not enough bytes|stream ended)',
+]
+max_retry = 5
+find_time = "10m"
+ban_time = "1h"
+backend = "nftables"
+ignoreip = ["127.0.0.1/8", "::1/128"]
+ignoreself = true
+
+# Monitor xmpp-proxy S2S connection failures
+[jail.xmpp-proxy-s2s]
+enabled = true
+log_path = "/logs/xmpp-proxy-stdout.log"
+date_format = "iso8601"
+filter = [
+    # Match S2S TLS/connection errors with IPv4-mapped IPv6 format
+    '\[ERROR[^\]]*\] [^:]+: \(\[::(ffff:)?<HOST>\]:[0-9]+.*(s2s|->).*\) (peer is incompatible|not enough bytes|stream ended)',
+]
+max_retry = 7  # Reduced from 10 for faster S2S abuse blocking
 find_time = "10m"
 ban_time = "1h"
 backend = "nftables"

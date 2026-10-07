@@ -7,6 +7,12 @@ on:
     branches:
       - test
   workflow_dispatch:
+    inputs:
+      no-cache:
+        description: 'Disable Docker build cache (fixes stale service files)'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -20,7 +26,7 @@ jobs:
       matrix:
         include:
           - image: prosody-mycart
-            dockerfile: prosody-mycart-stack/Dockerfile
+            dockerfile: prosody-mycart-stack/dure-mycart/Dockerfile
             context: .
     steps:
       - name: Check out the repo
@@ -81,5 +87,6 @@ jobs:
             io.artifacthub.package.readme-url=https://raw.githubusercontent.com/dure-one/dure-mycart/main/xmpp-proxy-stack/README.md
             io.artifacthub.package.license=MIT
             org.opencontainers.image.description=dure-mycart XMPP Proxy Stack with xmpp-proxy and fail2ban-rs
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          cache-from: ${{ github.event.inputs.no-cache != 'true' && format('type=gha,scope={0}', matrix.image) || '' }}
+          cache-to: ${{ github.event.inputs.no-cache != 'true' && format('type=gha,mode=max,scope={0}', matrix.image) || '' }}
+          no-cache: ${{ github.event.inputs.no-cache == 'true' }}

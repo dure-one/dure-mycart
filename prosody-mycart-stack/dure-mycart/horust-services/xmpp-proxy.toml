@@ -1,0 +1,18 @@
+command = "/usr/local/bin/xmpp-proxy /etc/xmpp-proxy/xmpp-proxy.toml"
+start-delay = "2s"
+start-after = []
+working-directory = "/app"
+stdout = "/logs/xmpp-proxy-stdout.log"
+stderr = "/logs/xmpp-proxy-stderr.log"
+
+[restart]
+strategy = "always"
+backoff = "10s"
+attempts = 0
+
+[environment]
+RUST_LOG = "info"
+
+[termination]
+signal = "TERM"
+wait = "5s"

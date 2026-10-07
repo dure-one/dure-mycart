@@ -43,6 +43,17 @@ services:
       - ../:/workspace
     command: sh prosody-mycart-stack/render-prosody-config.sh
 
+  # Renders xmpp-proxy config template with XMPP_DOMAIN substitution
+  xmpp-proxy-config-init:
+    image: alpine:latest
+    container_name: xmpp-proxy-config-init
+    restart: "no"
+    working_dir: /workspace
+    env_file: .env
+    volumes:
+      - ../:/workspace
+    command: sh prosody-mycart-stack/render-xmpp-proxy-config.sh
+
   # Fix permissions for Prosody data directories
   prosody-permissions-init:
     image: alpine:latest
@@ -73,22 +84,79 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      PROSODY_ADMINS: ${XMPP_ADMIN:-admin@${XMPP_DOMAIN}}
+      PROSODY_ADMINS: ${PROSODY_ADMINS}
       PROSODY_VIRTUAL_HOSTS: ${XMPP_DOMAIN}
       PROSODY_LOGLEVEL: ${PROSODY_LOGLEVEL:-info}
-      PROSODY_STORAGE: internal
-      PROSODY_ENABLE_MODULES: mam,carbons,csi_simple,ping,admin_adhoc,admin_shell,http,admin_web2,bosh,websocket
+      PROSODY_STORAGE: ${PROSODY_STORAGE:-internal}
+      PROSODY_ENABLE_MODULES: mam,carbons,csi_simple,ping,admin_adhoc,admin_shell,http,admin_web2,bosh,websocket,ipcheck,anti_spam,log_slow_events,server_status,stanza_counter,pastebin,limits
       PROSODY_CERTIFICATES: /certs
       PROSODY_RETENTION_DAYS: ${PROSODY_RETENTION_DAYS:-90}
+      # DANE/DNSSEC
+      PROSODY_USE_DANE: ${PROSODY_USE_DANE:-false}
+      PROSODY_DNS_RESOLVERS: ${PROSODY_DNS_RESOLVERS:-8.8.8.8,1.1.1.1}
+      # SQL Storage
+      PROSODY_SQL_DRIVER: ${PROSODY_SQL_DRIVER:-}
+      PROSODY_SQL_DB: ${PROSODY_SQL_DB:-prosody}
+      PROSODY_SQL_USERNAME: ${PROSODY_SQL_USERNAME:-prosody}
+      PROSODY_SQL_PASSWORD: ${PROSODY_SQL_PASSWORD:-}
+      PROSODY_SQL_HOST: ${PROSODY_SQL_HOST:-localhost}
+      # Archiving
+      PROSODY_ARCHIVE_EXPIRY_DAYS: ${PROSODY_ARCHIVE_EXPIRY_DAYS:-7}
+      # Rate Limiting
+      PROSODY_C2S_RATE_LIMIT: ${PROSODY_C2S_RATE_LIMIT:-3kb/s}
+      PROSODY_S2S_RATE_LIMIT: ${PROSODY_S2S_RATE_LIMIT:-10kb/s}
+      # Statistics
+      PROSODY_STATISTICS: ${PROSODY_STATISTICS:-}
+      PROSODY_STATISTICS_INTERVAL: ${PROSODY_STATISTICS_INTERVAL:-60}
+      # Registration
+      PROSODY_ALLOW_REGISTRATION: ${PROSODY_ALLOW_REGISTRATION:-false}
+      PROSODY_WELCOME_MESSAGE: ${PROSODY_WELCOME_MESSAGE:-Welcome $username to $host!}
+      PROSODY_REGISTRATION_WATCHERS: ${PROSODY_REGISTRATION_WATCHERS:-}
+      PROSODY_REGISTRATION_NOTIFICATION: ${PROSODY_REGISTRATION_NOTIFICATION:-User $username registered on $host}
+      # S2S Security
+      PROSODY_S2S_STANZA_LIMIT: ${PROSODY_S2S_STANZA_LIMIT:-512000}
+      PROSODY_S2S_INSECURE_DOMAINS: ${PROSODY_S2S_INSECURE_DOMAINS:-}
+      PROSODY_S2S_SECURE_DOMAINS: ${PROSODY_S2S_SECURE_DOMAINS:-}
+      # MAM
+      PROSODY_MAM_DEFAULT_POLICY: ${PROSODY_MAM_DEFAULT_POLICY:-true}
+      PROSODY_MAM_CLEANUP_INTERVAL: ${PROSODY_MAM_CLEANUP_INTERVAL:-14400}
+      PROSODY_MAM_MAX_RESULTS: ${PROSODY_MAM_MAX_RESULTS:-20}
+      # MUC Logging
+      PROSODY_MUC_LOG_DEFAULT: ${PROSODY_MUC_LOG_DEFAULT:-false}
+      PROSODY_MUC_LOG_PRESENCES: ${PROSODY_MUC_LOG_PRESENCES:-false}
+      PROSODY_MUC_LOG_ALL_ROOMS: ${PROSODY_MUC_LOG_ALL_ROOMS:-false}
+      PROSODY_MUC_LOG_EXPIRES: ${PROSODY_MUC_LOG_EXPIRES:-14}
+      PROSODY_MUC_CLEANUP_INTERVAL: ${PROSODY_MUC_CLEANUP_INTERVAL:-14400}
+      # MUC Component
+      PROSODY_MUC_ENABLED: ${PROSODY_MUC_ENABLED:-false}
+      PROSODY_MUC_DOMAIN: ${PROSODY_MUC_DOMAIN:-conference.${XMPP_DOMAIN}}
+      PROSODY_MUC_NAME: ${PROSODY_MUC_NAME:-Group Chat Rooms}
+      PROSODY_MUC_RESTRICT_CREATION: ${PROSODY_MUC_RESTRICT_CREATION:-local}
+      PROSODY_MUC_DEFAULT_PUBLIC: ${PROSODY_MUC_DEFAULT_PUBLIC:-false}
+      PROSODY_MUC_DEFAULT_PERSISTENT: ${PROSODY_MUC_DEFAULT_PERSISTENT:-false}
+      PROSODY_MUC_DEFAULT_MEMBERS_ONLY: ${PROSODY_MUC_DEFAULT_MEMBERS_ONLY:-true}
+      PROSODY_MUC_DEFAULT_MODERATED: ${PROSODY_MUC_DEFAULT_MODERATED:-true}
+      PROSODY_MUC_DEFAULT_PUBLIC_JIDS: ${PROSODY_MUC_DEFAULT_PUBLIC_JIDS:-false}
+      PROSODY_MUC_DEFAULT_CHANGE_SUBJECT: ${PROSODY_MUC_DEFAULT_CHANGE_SUBJECT:-false}
+      PROSODY_MUC_DEFAULT_HISTORY: ${PROSODY_MUC_DEFAULT_HISTORY:-20}
+      PROSODY_MUC_DEFAULT_LANG: ${PROSODY_MUC_DEFAULT_LANG:-en}
+      PROSODY_MUC_PASTEBIN_LINES: ${PROSODY_MUC_PASTEBIN_LINES:-60}
+      PROSODY_MUC_PASTEBIN_CHARS: ${PROSODY_MUC_PASTEBIN_CHARS:-5000}
+      # Module Toggles
+      PROSODY_ENABLE_ADMIN_ADHOC: ${PROSODY_ENABLE_ADMIN_ADHOC:-true}
+      PROSODY_ENABLE_ADMIN_SHELL: ${PROSODY_ENABLE_ADMIN_SHELL:-true}
+      PROSODY_ENABLE_BOSH: ${PROSODY_ENABLE_BOSH:-true}
+      PROSODY_ENABLE_WEBSOCKET: ${PROSODY_ENABLE_WEBSOCKET:-true}
     volumes:
       - ${DATA_DIR:-/srv/data}/prosody:/var/lib/prosody
       - ${DATA_DIR:-/srv/data}/certs:/certs:ro
       - ${DATA_DIR:-/srv/data}/logs/prosody:/var/log/prosody
       - ../generated/proxy.cfg.lua:/etc/prosody/conf.d/proxy.cfg.lua:ro
       - ../prosody-modules:/usr/lib/prosody/community:ro
+      - ../prosody-mycart-stack/custom-modules:/usr/lib/prosody/custom:ro
     networks:
       xmpp-internal:
-        ipv4_address: 172.19.0.2  # Static IP required for xmpp-proxy config
+        ipv4_address: 172.19.0.2  # Static IP for backend routing
     healthcheck:
       test: ["CMD", "prosodyctl", "status"]
       interval: 30s
@@ -103,34 +171,43 @@ services:
       prosody-permissions-init:
         condition: service_completed_successfully
 
-  # Merged stack: dure-mycart + Prosody + fail2ban-rs
+  # dure-mycart: Merged stack (HTTP + XMPP + fail2ban)
   # Development: builds image locally from source
-  prosody-mycart-stack:
+  dure-mycart:
     build:
       context: ..
-      dockerfile: prosody-mycart-stack/Dockerfile
-    container_name: prosody-mycart-stack
+      dockerfile: prosody-mycart-stack/dure-mycart/Dockerfile
+    container_name: dure-mycart
     restart: unless-stopped
-    # Bridge network allows direct container communication, preserving PROXY headers
     ports:
-      - "80:80"       # HTTP (ACME challenge)
-      - "443:443"     # HTTPS + XMPP ALPN (C2S/S2S multiplexed)
-      - "5269:5269"   # XMPP S2S (Server-to-Server)
+      - "80:80/tcp"        # HTTP (ACME challenge + web traffic)
+      - "443:443/tcp"      # HTTPS (mycart web + ACME TLS-ALPN)
+      - "443:443/udp"      # XMPP QUIC (XEP-0467)
+      - "5222:5222/tcp"    # XMPP C2S Direct TLS
+      - "5223:5223/tcp"    # XMPP C2S Legacy SSL
+      - "5269:5269/tcp"    # XMPP S2S Direct TLS
     cap_add:
       - NET_ADMIN
     env_file: .env
+    environment:
+      MYCART_DOMAIN: ${MYCART_DOMAIN}
     volumes:
       - ${DATA_DIR:-/srv/data}/certs:/certs
       - ${DATA_DIR:-/srv/data}/logs:/logs
+      - ${DATA_DIR:-/srv/data}/logs/xmpp-proxy:/var/log/xmpp-proxy
       - ${DATA_DIR:-/srv/data}/fail2ban:/var/lib/fail2ban-rs
       - ${DATA_DIR:-/srv/data}/mycart/lc_base:/app/lc_base
       - ${DATA_DIR:-/srv/data}/mycart/lc_uploads:/app/lc_uploads
       - ${DATA_DIR:-/srv/data}/mycart/lc_digitals:/app/lc_digitals
+      - ../generated/xmpp-proxy.toml:/etc/xmpp-proxy/xmpp-proxy.toml:ro
+      - ./dure-mycart/fail2ban-rs-config.toml:/etc/fail2ban-rs/config.toml:ro
     networks:
       - xmpp-internal
     depends_on:
       prosody:
         condition: service_healthy
+      xmpp-proxy-config-init:
+        condition: service_completed_successfully
 
 networks:
   xmpp-internal:

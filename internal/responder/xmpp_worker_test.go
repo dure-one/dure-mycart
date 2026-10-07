@@ -50,11 +50,12 @@ func TestXMPPWorker_Start(t *testing.T) {
 }
 
 func TestXMPPConnection_DureCo_DirectTLS_ALPN(t *testing.T) {
+	t.Skip("Integration test - requires live dure.co server and valid credentials")
+
 	settings := &models.ResponderSettings{
-		XMPPJID:      "admin@dure.co",
-		XMPPPassword: "dkwkddkwkd!23",
-		XMPPServer:   "dure.co",
-		XMPPPort:     443,
+		XMPPJID:    "admin@dure.co",
+		XMPPServer: "dure.co",
+		XMPPPort:   443,
 	}
 
 	worker := NewXMPPWorker(settings, nil)
