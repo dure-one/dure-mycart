@@ -108,6 +108,21 @@ modules_enabled = {
     -- xmpp-auth jail filter, which matches this exact wording.
     "log_auth";      -- Log authentication successes/failures (community module)
 
+    -- Security & Anti-Spam modules
+    "ipcheck";       -- DNS blacklist (RBL/DNSBL) checking for connections
+    "anti_spam";     -- User-based spam blocking (complements fail2ban-rs IP blocking)
+
+    -- Monitoring & Performance modules
+    "log_slow_events"; -- Log slow event handlers (performance debugging)
+    "server_status";   -- Server status monitoring page
+    "stanza_counter";  -- Count XMPP stanzas for metrics
+
+    -- Message handling
+    "pastebin";      -- Convert large messages to pastebin (NOT encrypted)
+
+    -- Rate limiting (core module)
+    "limits";        -- Connection and bandwidth limits
+
     -- HTTP/Admin modules
     "http";          -- HTTP server for web admin
     "admin_web2";    -- Web admin interface (Prosody 13.0 compatible)
@@ -132,9 +147,9 @@ modules_enabled = {
 
 -- HTTP configuration for web admin
 http_ports = { 5280 }
--- Bind to all interfaces (reverse-proxied via mycart with auth)
--- TODO: Consider restricting to localhost if direct access not needed
-http_interfaces = { "*", "::" }
+-- SECURITY: Bind to localhost only (access via mycart reverse proxy with auth)
+-- Prevents direct access from bridge network
+http_interfaces = { "127.0.0.1", "::1" }
 
 -- Trust reverse proxy (mycart) for X-Forwarded-For headers
 -- This preserves real client IPs in HTTP/BOSH connections (admin interface)
@@ -177,3 +192,57 @@ admin_socket = "/var/run/prosody/prosody.sock"
 -- Force SASL mechanisms to be offered (for BOSH over HTTP from localhost)
 c2s_direct_tls_ports = {}
 authentication = "internal_hashed"
+
+---------- SECURITY MODULE CONFIGURATION ----------
+
+-- mod_ipcheck: DNS blacklist checking
+-- Checks connecting IPs against RBL/DNSBL services
+ipcheck_mode = "block"  -- "block" | "warn" | "log"
+ipcheck_lists = {
+    "xbl.spamhaus.org";
+    "dnsbl.sorbs.net";
+    "bl.spamcop.net";
+}
+
+-- mod_anti_spam: User-based spam blocking
+-- Complements fail2ban-rs (IP blocking) with user-level spam detection
+anti_spam_check_messages = true
+anti_spam_check_presence = false
+anti_spam_check_subscriptions = true
+anti_spam_check_muc = false  -- Disable for MUC (group chat) - not used yet
+
+---------- MONITORING MODULE CONFIGURATION ----------
+
+-- mod_log_slow_events: Performance monitoring
+-- Logs events that take longer than threshold (default: 0.5s)
+log_slow_events_threshold = 0.5  -- seconds
+
+-- mod_limits: Connection and bandwidth rate limiting (core module)
+limits = {
+    c2s = {
+        rate = "3kb/s";           -- Bandwidth limit per C2S connection
+        burst = "2s";             -- Allow bursts for 2 seconds
+    };
+    s2s = {
+        rate = "10kb/s";          -- Bandwidth limit per S2S connection
+        burst = "3s";
+    };
+}
+
+-- mod_server_status: Monitoring endpoint
+-- Provides status page at http://localhost:5280/server-status
+-- (accessible only via localhost due to http_interfaces restriction)
+
+-- mod_stanza_counter: XMPP stanza metrics
+-- Counts messages, presence, iq stanzas for monitoring
+-- Access stats via admin_telnet or mod_admin_web2
+
+---------- PASTEBIN CONFIGURATION ----------
+
+-- mod_pastebin: Convert large messages to pastebin links
+-- NOTE: Pastebin is NOT encrypted - stored in plain text
+-- Consider disabling if privacy is critical, or use external encrypted pastebin
+pastebin_threshold = 500         -- Messages > 500 chars converted to paste
+pastebin_line_threshold = 4      -- Or messages with > 4 lines
+pastebin_expire_after = 86400    -- Pastes expire after 24 hours (seconds)
+pastebin_trigger = "!paste"      -- Trigger word to force paste creation

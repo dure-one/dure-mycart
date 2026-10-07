@@ -73,7 +73,7 @@ filter = [
     # Match S2S TLS/connection errors with IPv4-mapped IPv6 format
     '\[ERROR[^\]]*\] [^:]+: \(\[::(ffff:)?<HOST>\]:[0-9]+.*(s2s|->).*\) (peer is incompatible|not enough bytes|stream ended)',
 ]
-max_retry = 10
+max_retry = 7  # Reduced from 10 for faster S2S abuse blocking
 find_time = "10m"
 ban_time = "1h"
 backend = "nftables"
