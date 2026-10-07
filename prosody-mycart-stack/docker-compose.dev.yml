@@ -87,10 +87,29 @@ services:
       PROSODY_ADMINS: ${XMPP_ADMIN:-admin@${XMPP_DOMAIN}}
       PROSODY_VIRTUAL_HOSTS: ${XMPP_DOMAIN}
       PROSODY_LOGLEVEL: ${PROSODY_LOGLEVEL:-info}
-      PROSODY_STORAGE: internal
+      PROSODY_STORAGE: ${PROSODY_STORAGE:-internal}
       PROSODY_ENABLE_MODULES: mam,carbons,csi_simple,ping,admin_adhoc,admin_shell,http,admin_web2,bosh,websocket,ipcheck,anti_spam,log_slow_events,server_status,stanza_counter,pastebin,limits
       PROSODY_CERTIFICATES: /certs
       PROSODY_RETENTION_DAYS: ${PROSODY_RETENTION_DAYS:-90}
+      # DANE/DNSSEC
+      PROSODY_USE_DANE: ${PROSODY_USE_DANE:-false}
+      PROSODY_DNS_RESOLVERS: ${PROSODY_DNS_RESOLVERS:-8.8.8.8,1.1.1.1}
+      # SQL Storage
+      PROSODY_SQL_DRIVER: ${PROSODY_SQL_DRIVER:-}
+      PROSODY_SQL_DB: ${PROSODY_SQL_DB:-prosody}
+      PROSODY_SQL_USERNAME: ${PROSODY_SQL_USERNAME:-prosody}
+      PROSODY_SQL_PASSWORD: ${PROSODY_SQL_PASSWORD:-}
+      PROSODY_SQL_HOST: ${PROSODY_SQL_HOST:-localhost}
+      # Archiving
+      PROSODY_ARCHIVE_EXPIRY_DAYS: ${PROSODY_ARCHIVE_EXPIRY_DAYS:-7}
+      # Rate Limiting
+      PROSODY_C2S_RATE_LIMIT: ${PROSODY_C2S_RATE_LIMIT:-3kb/s}
+      PROSODY_S2S_RATE_LIMIT: ${PROSODY_S2S_RATE_LIMIT:-10kb/s}
+      # Statistics
+      PROSODY_STATISTICS: ${PROSODY_STATISTICS:-}
+      PROSODY_STATISTICS_INTERVAL: ${PROSODY_STATISTICS_INTERVAL:-60}
+      # Registration
+      PROSODY_ALLOW_REGISTRATION: ${PROSODY_ALLOW_REGISTRATION:-false}
     volumes:
       - ${DATA_DIR:-/srv/data}/prosody:/var/lib/prosody
       - ${DATA_DIR:-/srv/data}/certs:/certs:ro

@@ -193,6 +193,76 @@ admin_socket = "/var/run/prosody/prosody.sock"
 c2s_direct_tls_ports = {}
 authentication = "internal_hashed"
 
+---------- DANE/DNSSEC CONFIGURATION ----------
+
+-- DANE (DNS-Based Authentication of Named Entities)
+-- Provides additional security for S2S connections via DNSSEC
+-- Requires: lua-unbound, dns-root-data packages
+use_dane = os.getenv("PROSODY_USE_DANE") == "true"
+
+if use_dane then
+    unbound = {
+        -- Root trust anchors for DNSSEC validation
+        -- Debian/Ubuntu: install 'dns-root-data' package
+        trustfile = "/usr/share/dns/root.ds";
+        -- DNS resolvers for queries (populated from ENV)
+        forward = {};
+    }
+
+    -- Parse comma-separated DNS resolvers from ENV
+    local dns_resolvers = os.getenv("PROSODY_DNS_RESOLVERS") or "8.8.8.8,1.1.1.1"
+    for resolver in dns_resolvers:gmatch("[^,]+") do
+        table.insert(unbound.forward, resolver:match("^%s*(.-)%s*$"))  -- trim whitespace
+    end
+end
+
+---------- REGISTRATION CONFIGURATION ----------
+
+-- User self-registration (disabled by default for security)
+-- Set PROSODY_ALLOW_REGISTRATION=true to enable
+allow_registration = os.getenv("PROSODY_ALLOW_REGISTRATION") == "true"
+
+---------- STORAGE CONFIGURATION ----------
+
+-- Storage backend selection
+-- internal: Flat files in /var/lib/prosody (default)
+-- sql: Database backend (requires sql config below)
+storage = os.getenv("PROSODY_SQL_DRIVER") and "sql" or os.getenv("PROSODY_STORAGE") or "internal"
+
+-- SQL backend configuration
+local sql_driver = os.getenv("PROSODY_SQL_DRIVER")
+if sql_driver then
+    sql = {
+        driver = sql_driver;  -- SQLite3, MySQL, PostgreSQL
+        database = os.getenv("PROSODY_SQL_DB") or "prosody";
+        username = os.getenv("PROSODY_SQL_USERNAME") or "prosody";
+        password = os.getenv("PROSODY_SQL_PASSWORD");
+        host = os.getenv("PROSODY_SQL_HOST") or "localhost";
+    }
+end
+
+---------- ARCHIVING CONFIGURATION ----------
+
+-- Message Archive Management (MAM) retention period
+-- Archives expire after N days (default: 7)
+-- Falls back to PROSODY_RETENTION_DAYS if PROSODY_ARCHIVE_EXPIRY_DAYS not set
+local archive_days = os.getenv("PROSODY_ARCHIVE_EXPIRY_DAYS")
+                  or os.getenv("PROSODY_RETENTION_DAYS")
+                  or "7"
+archive_expires_after = archive_days .. "d"
+
+---------- STATISTICS CONFIGURATION ----------
+
+-- Enable statistics collection for monitoring
+-- Set PROSODY_STATISTICS to enable (e.g., "internal")
+statistics = os.getenv("PROSODY_STATISTICS")
+
+-- Statistics collection interval in seconds (default: 60)
+local stats_interval = os.getenv("PROSODY_STATISTICS_INTERVAL")
+if stats_interval then
+    statistics_interval = tonumber(stats_interval) or stats_interval
+end
+
 ---------- SECURITY MODULE CONFIGURATION ----------
 
 -- mod_ipcheck: DNS blacklist checking
@@ -220,11 +290,11 @@ log_slow_events_threshold = 0.5  -- seconds
 -- mod_limits: Connection and bandwidth rate limiting (core module)
 limits = {
     c2s = {
-        rate = "3kb/s";           -- Bandwidth limit per C2S connection
+        rate = os.getenv("PROSODY_C2S_RATE_LIMIT") or "3kb/s";
         burst = "2s";             -- Allow bursts for 2 seconds
     };
     s2s = {
-        rate = "10kb/s";          -- Bandwidth limit per S2S connection
+        rate = os.getenv("PROSODY_S2S_RATE_LIMIT") or "10kb/s";
         burst = "3s";
     };
 }
