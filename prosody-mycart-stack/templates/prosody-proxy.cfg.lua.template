@@ -36,13 +36,11 @@ plugin_paths = { "/usr/lib/prosody/custom", "/usr/lib/prosody/community" }
 proxy_trusted_proxies = {
     "127.0.0.1",      -- localhost
     "::1",            -- localhost IPv6
-    -- Docker bridge network (xmpp-internal). docker-compose.yaml doesn't
-    -- pin a subnet, so Docker auto-assigns one on network creation - it is
-    -- NOT reliably 172.30.0.0/16 (observed 172.25.0.0/16 in practice,
-    -- which silently dropped every c2s/s2s connection with
-    -- "Dropped connection from untrusted proxy"). Trust the whole range
-    -- Docker draws bridge subnets from instead of one guessed /16.
-    "172.16.0.0/12"
+    -- Docker bridge network (xmpp-internal) subnet is pinned in docker-compose.yml
+    -- to 172.19.0.0/16, so we trust only that subnet instead of the entire
+    -- 172.16.0.0/12 range (268M IPs). dure-mycart container (where xmpp-proxy
+    -- runs) gets dynamic IP within this /16 (typically .3 or .4).
+    "172.19.0.0/16"
 }
 
 -- Configure which ports expect PROXY protocol headers
@@ -62,7 +60,8 @@ c2s_ports = {}
 s2s_ports = {15268}
 
 -- Outgoing S2S via xmpp-proxy outgoing listener (for federation)
-proxy_out = { "xmpp-proxy", 15270 }
+-- xmpp-proxy runs in dure-mycart container, accessible via Docker DNS
+proxy_out = { "dure-mycart", 15270 }
 proxy_secure = true
 
 -- Don't require encryption for INCOMING connections (xmpp-proxy handled TLS)
@@ -71,6 +70,8 @@ c2s_require_encryption = false
 -- For OUTGOING S2S: Disable encryption (xmpp-proxy handles TLS via proxy_out)
 -- Prosody sends plain-text to xmpp-proxy:15270, which then connects with TLS to remote servers
 s2s_require_encryption = false
+-- VERIFIED SECURE: xmpp-proxy validates remote S2S certificates (see XMPP-PROXY-S2S-CERT-VALIDATION.md)
+-- Certificate validation happens in xmpp-proxy using XmppServerCertVerifier against CA roots
 s2s_secure_auth = false
 
 -- Allow plaintext auth for incoming C2S (TLS already handled by xmpp-proxy)
@@ -115,8 +116,8 @@ modules_enabled = {
     "bosh";          -- BOSH (Bidirectional-streams Over Synchronous HTTP)
     "websocket";     -- Native XMPP over WebSocket (XEP-0468), at /xmpp-websocket
 
-    -- User management
-    "register";      -- User registration
+    -- User management (mod_register DISABLED for security - no rate limiting)
+    -- "register";      -- User registration (DISABLED: no rate limiting = spam vector)
     "ping";          -- XMPP ping
     "time";          -- Time queries
     "version";       -- Version queries
@@ -131,6 +132,8 @@ modules_enabled = {
 
 -- HTTP configuration for web admin
 http_ports = { 5280 }
+-- Bind to all interfaces (reverse-proxied via mycart with auth)
+-- TODO: Consider restricting to localhost if direct access not needed
 http_interfaces = { "*", "::" }
 
 -- Trust reverse proxy (mycart) for X-Forwarded-For headers
@@ -140,7 +143,7 @@ trusted_proxies = { "172.19.0.3" }  -- mycart container IP on xmpp-internal netw
 -- BOSH configuration
 consider_bosh_secure = true  -- Trust BOSH connections as secure (TLS handled by xmpp-proxy)
 bosh_max_inactivity = 60     -- Keep BOSH sessions alive for 60 seconds of inactivity
-bosh_max_wait = 120          -- Maximum time (in seconds) a client can wait for a response
+bosh_max_wait = 30           -- Maximum time (in seconds) a client can wait for a response (reduced from 120s for DoS mitigation)
 
 -- Force SASL mechanisms on insecure connections (BOSH over HTTP)
 sasl_mech_override = {

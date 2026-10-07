@@ -26,5 +26,8 @@ max_stanza_size_bytes = 262_144
 tls_key = "/certs/privkey.pem"
 tls_cert = "/certs/fullchain.pem"
 
+# CA certificates for verifying remote servers (outgoing S2S)
+ca_file = "/etc/ssl/certs/ca-certificates.crt"
+
 # Logging configuration
 log_level = "info"

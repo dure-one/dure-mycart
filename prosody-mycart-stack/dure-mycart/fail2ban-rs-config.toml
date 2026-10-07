@@ -52,7 +52,7 @@ ignoreself = true
 # Monitor xmpp-proxy C2S connection failures
 [jail.xmpp-proxy-c2s]
 enabled = true
-log_path = "/var/log/xmpp-proxy/xmpp-proxy.log"
+log_path = "/logs/xmpp-proxy-stderr.log"
 date_format = "iso8601"
 filter = [
     # Match C2S authentication failures - adjust based on xmpp-proxy log format
@@ -69,7 +69,7 @@ ignoreself = true
 # Monitor xmpp-proxy S2S connection failures
 [jail.xmpp-proxy-s2s]
 enabled = true
-log_path = "/var/log/xmpp-proxy/xmpp-proxy.log"
+log_path = "/logs/xmpp-proxy-stderr.log"
 date_format = "iso8601"
 filter = [
     # Match S2S connection failures - adjust based on xmpp-proxy log format
