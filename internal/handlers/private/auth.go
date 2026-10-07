@@ -47,11 +47,13 @@ func SignIn(c fiber.Ctx) error {
 		// and return the same generic error as a wrong password.
 		security.ComparePasswords(security.DummyPasswordHash, request.Password)
 		log.ErrorStack(err)
+		log.Warn().Str("ip", c.IP()).Str("email", request.Email).Msg("authentication failed: unknown email")
 		return webutil.StatusBadRequest(c, "wrong user email address or password")
 	}
 
 	compareUserPassword := security.ComparePasswords(passwordHash, request.Password)
 	if !compareUserPassword {
+		log.Warn().Str("ip", c.IP()).Str("email", request.Email).Msg("authentication failed: wrong password")
 		return webutil.StatusBadRequest(c, "wrong user email address or password")
 	}
 
