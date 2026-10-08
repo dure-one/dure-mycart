@@ -98,7 +98,15 @@ jobs:
             --parseDependency \
             --parseInternal
 
-          echo "Swagger docs generated:"
+          # Override host for production documentation
+          sed -i 's/"host": "localhost:8080"/"host": "dure.co"/g' docs/swagger/swagger.json
+          sed -i 's/host: localhost:8080/host: dure.co/g' docs/swagger/swagger.yaml
+
+          # Add HTTPS scheme if not present
+          sed -i '/"host": "dure.co"/a\    "schemes": ["https"],' docs/swagger/swagger.json
+
+          echo "Swagger docs generated with production host:"
+          grep -A 2 '"host"' docs/swagger/swagger.json
           ls -la docs/swagger/
 
       # 5. Build application for e2e tests
