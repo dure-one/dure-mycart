@@ -116,7 +116,7 @@ func (q *SettingQueries) GroupFieldMap(settings any) map[string]any {
 			"account_enabled":          &s.Enabled,
 			"account_jwt_expire_hours": &s.ExpireHours,
 		}
-	case *models.Dureone:
+	case *models.Sellerinfo:
 		return map[string]any{
 			"dureone_enabled":             &s.Enabled,
 			"dureone_business_name":       &s.BusinessName,

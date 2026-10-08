@@ -220,27 +220,27 @@ func GetSellerInfo(c fiber.Ctx) error {
 		return webutil.Response(c, fiber.StatusUnauthorized, "Access token expired", nil)
 	}
 
-	// Load Dureone settings
-	dureone, err := queries.GetSettingByGroup[models.Dureone](c.Context(), db)
+	// Load Sellerinfo settings
+	sellerinfo, err := queries.GetSettingByGroup[models.Sellerinfo](c.Context(), db)
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
 
 	// Check if enabled
-	if !dureone.Enabled {
+	if !sellerinfo.Enabled {
 		return webutil.StatusNotFound(c)
 	}
 
 	// Return seller info (excluding the enabled flag)
 	return webutil.Response(c, fiber.StatusOK, "Seller info", map[string]string{
-		"business_name":       dureone.BusinessName,
-		"representative":      dureone.Representative,
-		"customer_service":    dureone.CustomerService,
-		"business_reg_number": dureone.BusinessRegNumber,
-		"business_address":    dureone.BusinessAddress,
-		"ecommerce_license":   dureone.EcommerceLicense,
-		"email":               dureone.Email,
+		"business_name":       sellerinfo.BusinessName,
+		"representative":      sellerinfo.Representative,
+		"customer_service":    sellerinfo.CustomerService,
+		"business_reg_number": sellerinfo.BusinessRegNumber,
+		"business_address":    sellerinfo.BusinessAddress,
+		"ecommerce_license":   sellerinfo.EcommerceLicense,
+		"email":               sellerinfo.Email,
 	})
 }
 

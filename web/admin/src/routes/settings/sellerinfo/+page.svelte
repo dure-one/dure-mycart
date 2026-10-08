@@ -1,8 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import Main from '$lib/layouts/Main.svelte'
-  import FormButton from '$lib/components/form/Button.svelte'
-  import FormInput from '$lib/components/form/Input.svelte'
+  import { FormButton, FormInput, FormToggle } from '$lib/components'
   import { loadSettings, saveSettings } from '$lib/utils/settingsHelpers'
   import { validators, validateFields } from '$lib/utils/validation'
   import { translate } from '$lib/i18n'
@@ -10,7 +9,7 @@
   // Reactive translation function
   let t = $derived($translate)
 
-  interface DureoneSettings {
+  interface SellerInfoSettings {
     enabled: boolean
     business_name: string
     representative: string
@@ -21,7 +20,7 @@
     email: string
   }
 
-  let formData = $state<DureoneSettings>({
+  let formData = $state<SellerInfoSettings>({
     enabled: false,
     business_name: '',
     representative: '',
@@ -35,7 +34,7 @@
   let loading = $state(true)
 
   onMount(async () => {
-    const loaded = await loadSettings<DureoneSettings>('dureone', formData)
+    const loaded = await loadSettings<SellerInfoSettings>('sellerinfo', formData)
     if (loaded) {
       formData = loaded
     }
@@ -58,27 +57,22 @@
       return
     }
 
-    await saveSettings('dureone', formData)
+    await saveSettings('sellerinfo', formData)
   }
 </script>
 
 <Main>
-  <h1 class="mb-5">{t('settings.dureoneSettings')}</h1>
+  <h1 class="mb-5">{t('settings.sellerInfoSettings')}</h1>
 
   {#if loading}
     <div class="py-8 text-center">{t('common.loading')}</div>
   {:else}
     <form onsubmit={handleSubmit} class="max-w-2xl space-y-4">
-      <div class="mb-4">
-        <label class="flex items-center gap-2">
-          <input
-            type="checkbox"
-            bind:checked={formData.enabled}
-            class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          <span class="text-sm font-medium text-gray-700">{t('settings.enableSellerInfo')}</span>
-        </label>
-      </div>
+      <FormToggle
+        id="sellerinfo-enabled"
+        label={t('settings.enableSellerInfo')}
+        bind:value={formData.enabled}
+      />
 
       <FormInput
         id="business_name"

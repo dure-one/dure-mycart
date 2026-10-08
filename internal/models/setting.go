@@ -467,8 +467,8 @@ func validateStoredFileName(value any) error {
 	return nil
 }
 
-// Dureone is Korean seller information settings
-type Dureone struct {
+// Sellerinfo is seller information settings
+type Sellerinfo struct {
 	Enabled           bool   `json:"enabled"`
 	BusinessName      string `json:"business_name"`
 	Representative    string `json:"representative"`
@@ -480,7 +480,7 @@ type Dureone struct {
 }
 
 // Validate is ...
-func (v Dureone) Validate() error {
+func (v Sellerinfo) Validate() error {
 	return validation.ValidateStruct(&v,
 		validation.Field(&v.Email, is.Email),
 		validation.Field(&v.BusinessName, validation.Length(0, 100)),
