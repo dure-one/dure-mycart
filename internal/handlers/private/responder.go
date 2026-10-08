@@ -608,6 +608,15 @@ func CheckCrontabStatus(c fiber.Ctx) error {
 	log := logging.New()
 
 	binaryPath := getBinaryPath()
+	if binaryPath == "" {
+		// Dev mode (go run) - cron not supported
+		return webutil.Response(c, fiber.StatusOK, "Crontab status", map[string]any{
+			"installed": false,
+			"dev_mode":  true,
+			"message":   "Crontab not available in dev mode (use built binary)",
+		})
+	}
+
 	manager := responder.NewCrontabManager(binaryPath)
 
 	installed, err := manager.IsInstalled(c.Context())
@@ -642,6 +651,11 @@ func InstallCrontab(c fiber.Ctx) error {
 	}
 
 	binaryPath := getBinaryPath()
+	if binaryPath == "" {
+		// Dev mode (go run) - cron not supported
+		return webutil.StatusBadRequest(c, "Crontab installation not available in dev mode. Build and install the binary first: go build -o dure-mycart ./cmd")
+	}
+
 	manager := responder.NewCrontabManager(binaryPath)
 
 	if err := manager.Install(c.Context(), jobs); err != nil {
@@ -670,6 +684,11 @@ func UninstallCrontab(c fiber.Ctx) error {
 	log := logging.New()
 
 	binaryPath := getBinaryPath()
+	if binaryPath == "" {
+		// Dev mode - try to uninstall anyway (cleanup old entries)
+		binaryPath = "dure-mycart"
+	}
+
 	manager := responder.NewCrontabManager(binaryPath)
 
 	if err := manager.Uninstall(c.Context()); err != nil {
@@ -685,23 +704,24 @@ func UninstallCrontab(c fiber.Ctx) error {
 }
 
 // getBinaryPath returns the path to the current executable
+// Returns empty string in dev mode (go run) to prevent cron installation
 func getBinaryPath() string {
 	executable, err := os.Executable()
 	if err != nil {
-		return "mycart" // fallback
+		return "dure-mycart" // fallback
 	}
 
-	// Reject temp build paths (from go run) - these are ephemeral
-	// and disappear when build cache is cleaned
+	// Detect dev mode (go run) - reject temp build paths
+	// These paths are ephemeral and disappear when build cache is cleaned
 	if strings.Contains(executable, "/tmp/go-build") ||
 		strings.Contains(executable, "\\Temp\\go-build") {
-		// Try to find installed binary
-		if path, err := exec.LookPath("mycart"); err == nil {
+		// In dev mode: try to find installed binary
+		if path, err := exec.LookPath("dure-mycart"); err == nil {
 			return path
 		}
-		// Fallback: use relative path to current directory
-		// This assumes cron runs from the project directory
-		return "./mycart"
+		// No installed binary found - return empty to skip cron installation
+		// Cron jobs don't work in dev mode anyway
+		return ""
 	}
 
 	return executable
