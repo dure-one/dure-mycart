@@ -96,14 +96,23 @@
 					{#each threads as thread (thread.customer_id)}
 						<tr>
 							<td>
-								<div class="font-medium">{thread.customer_name || thread.contact_address}</div>
+								<div class="font-medium">{thread.customer_name || thread.customer_email}</div>
+								{#if thread.contacts && thread.contacts.length > 0}
+									<div class="text-xs text-gray-500">
+										{#if thread.contacts[0].type === 'xmpp'}(jid) {/if}{thread.contacts[0].address}
+									</div>
+								{/if}
 							</td>
 							<td>
-								<span class="badge">{thread.channel}</span>
+								{#if thread.contacts && thread.contacts.length > 0}
+									<span class="badge">{thread.contacts[0].type}</span>
+								{:else}
+									-
+								{/if}
 							</td>
 							<td>
 								<div class="text-sm text-gray-600 truncate max-w-md">
-									{thread.last_message || '-'}
+									{thread.last_message_preview || '-'}
 								</div>
 							</td>
 							<td>
@@ -128,12 +137,19 @@
 
 {#if drawerOpen && selectedThread}
 	<Drawer isOpen={drawerOpen} onclose={closeDrawer} maxWidth="710px">
-		<DrawerHeader title={selectedThread.customer_name || selectedThread.contact_address} />
+		<DrawerHeader title={selectedThread.customer_name || selectedThread.customer_email} />
 
 		<div class="p-4">
 			<div class="mb-4 text-sm text-gray-600">
-				<div><strong>{t('responder.allChannels')}:</strong> {selectedThread.channel}</div>
-				<div><strong>Contact:</strong> {selectedThread.contact_address}</div>
+				<div><strong>Customer:</strong> {selectedThread.customer_email}</div>
+				{#if selectedThread.contacts && selectedThread.contacts.length > 0}
+					<div><strong>Contacts:</strong></div>
+					<ul class="ml-4 mt-1">
+						{#each selectedThread.contacts as contact}
+							<li>{contact.type.toUpperCase()}: {#if contact.type === 'xmpp'}(jid) {/if}{contact.address}</li>
+						{/each}
+					</ul>
+				{/if}
 			</div>
 
 			<div class="message-list-container">

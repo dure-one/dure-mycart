@@ -506,6 +506,7 @@
     "selectThread": "메시지를 보려면 대화를 선택하세요",
     "searchConversations": "대화 검색...",
     "allChannels": "모든 채널",
+    "lastRun": "마지막 메시지",
     "xmppConfiguration": "XMPP 설정",
     "xmppConfigDesc": "MAM을 통한 메시지 동기화를 위한 XMPP 연결 설정",
     "useXmppService": "XMPP 서비스 사용",

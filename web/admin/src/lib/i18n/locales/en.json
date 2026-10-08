@@ -519,6 +519,7 @@
     "selectThread": "Select a conversation to view messages",
     "searchConversations": "Search conversations...",
     "allChannels": "All Channels",
+    "lastRun": "Last Message",
     "xmppConfiguration": "XMPP Configuration",
     "xmppConfigDesc": "Configure XMPP connection for message synchronization via MAM",
     "useXmppService": "Use XMPP Service",
