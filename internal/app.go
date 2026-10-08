@@ -128,6 +128,7 @@ func setupFiberApp(noSite bool) (*fiber.App, error) {
 
 	app := fiber.New(config)
 	middleware.Fiber(app, logger().Logger)
+	app.Use(middleware.CacheControl())
 
 	return app, nil
 }

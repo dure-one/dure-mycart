@@ -7,6 +7,8 @@ import (
 	"testing/fstest"
 
 	"github.com/gofiber/fiber/v3"
+
+	"github.com/dure-one/dure-mycart/internal/middleware"
 )
 
 func TestNormalizePath(t *testing.T) {
@@ -133,11 +135,11 @@ func TestSetupSPAHandler_StripPrefix(t *testing.T) {
 	}
 }
 
-// TestSetupSPAHandler_CacheHeaders pins the two caching answers the handler
-// gives. The hashed assets may be kept forever; the shell may not, because a
-// browser holding the old shell keeps running the old application — a fix the
-// operator has been told about would not reach them until they cleared their
-// cache by hand.
+// TestSetupSPAHandler_CacheHeaders pins the two caching answers given by the
+// CacheControl middleware for SPA routes. The hashed assets may be kept forever;
+// the shell may not, because a browser holding the old shell keeps running the
+// old application — a fix the operator has been told about would not reach them
+// until they cleared their cache by hand.
 func TestSetupSPAHandler_CacheHeaders(t *testing.T) {
 	t.Parallel()
 
@@ -146,6 +148,7 @@ func TestSetupSPAHandler_CacheHeaders(t *testing.T) {
 		"_app/immutable/chunks/a.js": {Data: []byte("js")},
 	}
 	app := fiber.New()
+	app.Use(middleware.CacheControl())
 	app.Use("/_", setupSPAHandler(fsys, func(string) bool { return false }, "/_"))
 
 	cases := []struct {
@@ -154,7 +157,7 @@ func TestSetupSPAHandler_CacheHeaders(t *testing.T) {
 	}{
 		{"/_/", "no-cache"},
 		{"/_/settings/account", "no-cache"},
-		{"/_/_app/immutable/chunks/a.js", "public, max-age=31536000, immutable"},
+		{"/_/_app/immutable/chunks/a.js", "public, max-age=31536000, s-maxage=31536000, immutable"},
 	}
 
 	for _, tc := range cases {

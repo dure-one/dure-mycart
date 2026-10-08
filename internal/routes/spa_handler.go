@@ -21,16 +21,9 @@ func setupSPAHandler(embedFS fs.FS, skipPaths func(string) bool, stripPrefix str
 			return c.Next()
 		}
 
-		// SvelteKit names everything under _app/immutable/ after a hash of its
-		// contents, so those files may be cached forever. Everything else is the
-		// shell, whose name says nothing about what is in it: it has to be
-		// revalidated, or a browser that has the panel open keeps running the
-		// build from before the fix while the server serves the one after it.
-		if strings.Contains(path, "/_app/immutable/") {
-			c.Set(fiber.HeaderCacheControl, "public, max-age=31536000, immutable")
-		} else {
-			c.Set(fiber.HeaderCacheControl, "no-cache")
-		}
+		// Cache-Control now handled by middleware.CacheControl()
+		// SvelteKit hashed assets under /_app/immutable/ get long-term caching
+		// HTML shells get no-cache to ensure fresh content after deploys
 
 		if stripPrefix != "" {
 			path = strings.TrimPrefix(path, stripPrefix)

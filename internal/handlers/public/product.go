@@ -92,7 +92,7 @@ func servePlaceholderImage(c fiber.Ctx, log *logging.Log) error {
 	}
 
 	c.Set("Content-Type", "image/png")
-	c.Set("Cache-Control", "public, max-age=86400") // Cache for 1 day
+	// Cache-Control handled by middleware
 	return c.Send(placeholderData)
 }
 
@@ -145,6 +145,23 @@ func ProductRepresentativeImage(c fiber.Ctx) error {
 	uploadsDir := "./lc_uploads"
 	imagePath := filepath.Join(uploadsDir, fmt.Sprintf("%s.%s", repImage.Name, repImage.Ext))
 
+	// Get file info for ETag
+	fileInfo, err := os.Stat(imagePath)
+	if err != nil {
+		log.ErrorStack(fmt.Errorf("failed to stat image file %s: %w", imagePath, err))
+		return servePlaceholderImage(c, log)
+	}
+
+	// Generate ETag from filename and mtime
+	etag := fmt.Sprintf(`W/"%s-%s-%d"`, repImage.Name, repImage.Ext, fileInfo.ModTime().Unix())
+
+	// Check If-None-Match for 304 response
+	if c.Get("If-None-Match") == etag {
+		return c.SendStatus(fiber.StatusNotModified)
+	}
+
+	c.Set("ETag", etag)
+
 	// Read the image file
 	imageData, err := os.ReadFile(imagePath)
 	if err != nil {
@@ -155,7 +172,7 @@ func ProductRepresentativeImage(c fiber.Ctx) error {
 	// If already PNG, serve directly
 	if strings.ToLower(repImage.Ext) == "png" {
 		c.Set("Content-Type", "image/png")
-		c.Set("Cache-Control", "public, max-age=31536000") // Cache for 1 year
+		// Cache-Control handled by middleware
 		return c.Send(imageData)
 	}
 
@@ -174,7 +191,7 @@ func ProductRepresentativeImage(c fiber.Ctx) error {
 		}
 
 		c.Set("Content-Type", "image/png")
-		c.Set("Cache-Control", "public, max-age=31536000")
+		// Cache-Control handled by middleware
 		return c.Send(buf.Bytes())
 	}
 
@@ -192,6 +209,6 @@ func ProductRepresentativeImage(c fiber.Ctx) error {
 	}
 
 	c.Set("Content-Type", "image/png")
-	c.Set("Cache-Control", "public, max-age=31536000")
+	// Cache-Control handled by middleware
 	return c.Send(buf.Bytes())
 }
