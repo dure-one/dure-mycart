@@ -1,7 +1,7 @@
 # NOTE: This Makefile requires GNU Make
 # On OpenBSD: use 'gmake' instead of 'make'
 
-.PHONY: help setup reinstall deps-check dev
+.PHONY: help setup reinstall deps-check swagger-generate dev
 .PHONY: build build-sqlc build-both build-admin build-site build-all
 .PHONY: test test-unit test-sqlite test-postgres test-all
 .PHONY: test-queries-raw-sqlite test-queries-raw-postgres
@@ -120,8 +120,33 @@ deps-check:
 	@echo -n "sqlc generated: "
 	@[ -d "internal/queries_sqlc/sqlc" ] && echo "✓ generated" || echo "❌ NOT FOUND (run 'make sqlc-generate')"
 
+# Swagger documentation generation
+swagger-generate:
+	@echo "📝 Generating Swagger documentation..."
+	@if ! command -v swag >/dev/null 2>&1; then \
+		echo "Installing swag..."; \
+		go install github.com/swaggo/swag/cmd/swag@latest; \
+	fi
+	@$(shell go env GOPATH)/bin/swag init \
+		-g cmd/main.go \
+		--output docs/swagger \
+		--parseDependency \
+		--parseInternal
+	@echo "📦 Setting up Swagger UI..."
+	@if [ ! -f docs/swagger/index.html ]; then \
+		SWAGGER_UI_VERSION=5.11.0; \
+		curl -sL https://github.com/swagger-api/swagger-ui/archive/refs/tags/v$$SWAGGER_UI_VERSION.tar.gz -o /tmp/swagger-ui.tar.gz; \
+		cd /tmp && tar -xzf swagger-ui.tar.gz; \
+		cp -r /tmp/swagger-ui-$$SWAGGER_UI_VERSION/dist/* $(CURDIR)/docs/swagger/; \
+		sed -i 's|https://petstore.swagger.io/v2/swagger.json|./swagger.json|g' $(CURDIR)/docs/swagger/swagger-initializer.js 2>/dev/null || \
+		sed -i '' 's|https://petstore.swagger.io/v2/swagger.json|./swagger.json|g' $(CURDIR)/docs/swagger/swagger-initializer.js 2>/dev/null || true; \
+		rm -rf /tmp/swagger-ui-$$SWAGGER_UI_VERSION /tmp/swagger-ui.tar.gz; \
+		echo "✓ Swagger UI installed"; \
+	fi
+	@echo "✓ Swagger docs ready at docs/swagger/"
+
 # Development target
-dev: setup
+dev: swagger-generate setup
 	@echo "Starting development server..."
 	go run ./cmd serve --dev
 
