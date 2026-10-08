@@ -87,8 +87,8 @@
 					<tr>
 						<th>{t('customers.name')}</th>
 						<th class="w-32">{t('responder.allChannels')}</th>
-						<th>{t('responder.noMessages')}</th>
-						<th class="w-48">{t('responder.lastRun')}</th>
+						<th>{t('responder.lastRun')}</th>
+						<th class="w-48">{t('common.created')}</th>
 						<th class="w-24"></th>
 					</tr>
 				</thead>
@@ -99,7 +99,7 @@
 								<div class="font-medium">{thread.customer_name || thread.customer_email}</div>
 								{#if thread.contacts && thread.contacts.length > 0}
 									<div class="text-xs text-gray-500">
-										{#if thread.contacts[0].type === 'xmpp'}(jid) {/if}{thread.contacts[0].address}
+										{#if thread.contacts[0].type === 'xmpp'}JID: {/if}{thread.contacts[0].address}
 									</div>
 								{/if}
 							</td>
@@ -143,12 +143,9 @@
 			<div class="mb-4 text-sm text-gray-600">
 				<div><strong>Customer:</strong> {selectedThread.customer_email}</div>
 				{#if selectedThread.contacts && selectedThread.contacts.length > 0}
-					<div><strong>Contacts:</strong></div>
-					<ul class="ml-4 mt-1">
-						{#each selectedThread.contacts as contact}
-							<li>{contact.type.toUpperCase()}: {#if contact.type === 'xmpp'}(jid) {/if}{contact.address}</li>
-						{/each}
-					</ul>
+					<div>
+						<strong>Contacts:</strong> {selectedThread.contacts.map(c => c.address).join(', ')}
+					</div>
 				{/if}
 			</div>
 
