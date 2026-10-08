@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/gofiber/fiber/v3"
 
@@ -688,5 +690,19 @@ func getBinaryPath() string {
 	if err != nil {
 		return "mycart" // fallback
 	}
+
+	// Reject temp build paths (from go run) - these are ephemeral
+	// and disappear when build cache is cleaned
+	if strings.Contains(executable, "/tmp/go-build") ||
+		strings.Contains(executable, "\\Temp\\go-build") {
+		// Try to find installed binary
+		if path, err := exec.LookPath("mycart"); err == nil {
+			return path
+		}
+		// Fallback: use relative path to current directory
+		// This assumes cron runs from the project directory
+		return "./mycart"
+	}
+
 	return executable
 }
