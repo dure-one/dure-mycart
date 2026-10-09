@@ -31,13 +31,13 @@ jobs:
       - name: Update web/admin lockfile
         run: |
           cd web/admin
-          bun install --frozen-lockfile=false
+          bun install
           cd ../..
 
       - name: Update web/site lockfile
         run: |
           cd web/site
-          bun install --frozen-lockfile=false
+          bun install
           cd ../..
 
       - name: Check for changes
