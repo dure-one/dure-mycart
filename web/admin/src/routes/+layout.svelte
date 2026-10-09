@@ -11,7 +11,7 @@
   let { children } = $props()
 
   onMount(async () => {
-    const settings = await loadData<MainSettings>('/api/settings/main', '')
+    const settings = await loadData<MainSettings>('/api/_/settings/main', '')
     if (settings) {
       mainSettingsStore.set(settings)
     }
