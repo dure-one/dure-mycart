@@ -288,8 +288,12 @@ func (w *XMPPWorker) Disconnect() {
 // fetchMessages queries MAM and syncs messages to database
 // ponytail: MAM stub returns immediately until real server available for testing
 func (w *XMPPWorker) fetchMessages(ctx context.Context) error {
+	// Auto-connect if not connected (for cron-run mode)
 	if w.client == nil {
-		return fmt.Errorf("not connected")
+		if err := w.connect(); err != nil {
+			return fmt.Errorf("connect: %w", err)
+		}
+		defer w.disconnect()
 	}
 
 	// ponytail: meszmate/xmpp-go uses plugin+handler pattern for message processing

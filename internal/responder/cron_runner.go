@@ -113,12 +113,24 @@ func (r *CronRunner) ExecuteJob(ctx context.Context, jobType string) error {
 		if r.xmppWorker == nil {
 			return nil // Worker not configured
 		}
-		return r.xmppWorker.fetchMessages(ctx)
+		if err := r.xmppWorker.fetchMessages(ctx); err != nil {
+			return err
+		}
+		fmt.Println("xmpp check completed successfully")
+		return nil
 
 	case "cleanup_inactive":
 		cutoff := time.Now().Add(-30 * 24 * time.Hour) // 30 days
-		_, err := r.db.ArchiveInactiveCustomers(ctx, cutoff)
-		return err
+		count, err := r.db.ArchiveInactiveCustomers(ctx, cutoff)
+		if err != nil {
+			return err
+		}
+		if count > 0 {
+			fmt.Printf("archived %d inactive customers\n", count)
+		} else {
+			fmt.Println("no inactive customers to archive")
+		}
+		return nil
 
 	default:
 		return fmt.Errorf("unknown job type: %s", jobType)
