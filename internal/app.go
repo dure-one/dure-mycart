@@ -183,16 +183,23 @@ func setupRoutes(app *fiber.App, noSite bool) {
 // read back without swapping os.Stdout process-wide, which is a global the
 // server goroutines also write to.
 func printStartupInfo(w io.Writer, schema, mainAddr string, noSite bool, dbCfg database.Config) {
-	fmt.Fprint(w, "🛒 myCart - open source shopping-cart in 1 file\n")
+	fmt.Fprint(w, "🛒 dure-mycart - open source shopping-cart in 1 file\n")
 
-	// Show version info if available
-	if ver := update.VersionInfo(); ver != nil && ver.GitCommit != "" {
-		gitShort := ver.GitCommit
-		if len(gitShort) > 8 {
-			gitShort = gitShort[:8]
-		}
-		fmt.Fprintf(w, "├─ Version: %s (%s)\n", ver.CurrentVersion, gitShort)
+	// Show version info (always)
+	ver := update.VersionInfo()
+	version := "v0.0.0"
+	commit := "00000000"
+	if ver != nil && ver.CurrentVersion != "" {
+		version = ver.CurrentVersion
 	}
+	if ver != nil && ver.GitCommit != "" {
+		if len(ver.GitCommit) > 8 {
+			commit = ver.GitCommit[:8]
+		} else {
+			commit = ver.GitCommit
+		}
+	}
+	fmt.Fprintf(w, "├─ Version: %s (%s)\n", version, commit)
 
 	if !noSite {
 		fmt.Fprintf(w, "├─ Cart UI: %s://%s/\n", schema, mainAddr)

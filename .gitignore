@@ -46,7 +46,7 @@ fixtures/migration/*_private.sql
 
 # Database files
 *.db
-mycart.db
+dure-mycart.db
 
 .cursor/
 .playwright-mcp/
@@ -70,9 +70,9 @@ docs/swagger/swagger.yaml
 docs/e2e/
 
 # Compiled binary
-mycart
-mycart-linux
-mycart-test
+dure-mycart
+dure-mycart-linux
+dure-mycart-test
 main
 
 # Temporary files
@@ -99,8 +99,8 @@ docs/readme.md
 e2e/.auth/
 Makefile
 .env
-mycart
-mycart-sqlc
+dure-mycart
+dure-mycart-sqlc
 *.core
 
 # Build artifacts and dependencies

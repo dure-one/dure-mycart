@@ -1,10 +1,10 @@
-// Package dbtransfer moves the contents of a myCart database between engines
+// Package dbtransfer moves the contents of a dure-mycart database between engines
 // and to and from a file.
 //
 // The interchange format is PostgreSQL's COPY text format, wrapped in a file
 // that psql can replay:
 //
-//	-- myCart dump format 1
+//	-- dure-mycart dump format 1
 //	-- {"magic":"mycart-dump", ...}
 //	COPY "setting" ("id", "key", "value") FROM stdin;
 //	<one line per row>

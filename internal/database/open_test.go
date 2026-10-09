@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// The session timezone must be pinned to UTC. myCart stores plain TIMESTAMP
+// The session timezone must be pinned to UTC. dure-mycart stores plain TIMESTAMP
 // columns and PostgreSQL reads those as UTC when converting to epoch, while
 // CURRENT_TIMESTAMP writes them in the session timezone — so any other session
 // timezone silently shifts every stored date by the server's offset. The DSN

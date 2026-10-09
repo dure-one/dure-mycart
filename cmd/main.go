@@ -64,7 +64,7 @@ var rootCmd = &cobra.Command{
 	Use:                "dure-mycart",
 	Short:              "dure-mycart CLI",
 	Long:               "🛒 dure-mycart - shopping-cart in 1 file",
-	Version:            fmt.Sprintf("dure-mycart %s (%s) from %s", version, gitCommit, buildDate),
+	Version:            fmt.Sprintf("%s (%s)", version, gitCommit),
 	FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 	CompletionOptions:  cobra.CompletionOptions{DisableDefaultCmd: true},
 }
@@ -251,7 +251,7 @@ func cmdDBRestore() *cobra.Command {
 		Use:   "restore [flags]",
 		Short: "Replace the PostgreSQL database with a dump",
 		Long: "Migrate the configured PostgreSQL database and replace its contents with a\n" +
-			"dump written by `mycart db backup`.\n\n" +
+			"dump written by `dure-mycart db backup`.\n\n" +
 			"The whole load runs in one transaction: a dump that is truncated or does not\n" +
 			"fit the schema leaves the database as it was. A database that already holds\n" +
 			"an installation is refused unless --force is given, because restoring into it\n" +

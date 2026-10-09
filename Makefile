@@ -23,6 +23,12 @@ endif
 -include .env
 export $(shell [ -f .env ] && sed 's/=.*//' .env)
 
+# Version metadata for ldflags injection
+VERSION    ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo v0.0.0)
+GIT_COMMIT ?= $(shell git rev-parse --short=8 HEAD 2>/dev/null || echo 00000000)
+BUILD_DATE ?= $(shell date -u +%Y-%m-%d)
+LDFLAGS    := -X main.version=$(VERSION) -X main.gitCommit=$(GIT_COMMIT) -X main.buildDate=$(BUILD_DATE)
+
 # Default target
 help:
 	@echo "Available targets:"
@@ -153,17 +159,17 @@ dev: swagger-generate setup
 # Backend build targets
 build:
 	@echo "Building with raw SQL backend..."
-	@go build -o mycart ./cmd
-	@echo "✓ Built mycart (raw SQL)"
+	@go build -ldflags "$(LDFLAGS)" -o dure-mycart ./cmd
+	@echo "✓ Built dure-mycart (raw SQL)"
 
 build-sqlc: sqlc-generate
 	@echo "Building with sqlc backend..."
-	@go build -tags sqlc -o mycart-sqlc ./cmd
+	@go build -ldflags "$(LDFLAGS)" -tags sqlc -o mycart-sqlc ./cmd
 	@echo "✓ Built mycart-sqlc"
 
 build-both: build build-sqlc
 	@echo "✓ Built both backends"
-	@ls -lh mycart mycart-sqlc
+	@ls -lh dure-mycart mycart-sqlc
 
 # Frontend build targets
 build-admin:

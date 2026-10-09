@@ -15,7 +15,7 @@ const (
 	// ConfigPath is where the installer records the chosen database.
 	ConfigPath = "./lc_base/config.json"
 	// DefaultSQLiteDSN is the embedded database used when nothing is
-	// configured — the behaviour myCart has always had.
+	// configured — the behaviour dure-mycart has always had.
 	DefaultSQLiteDSN = "./lc_base/data.db"
 )
 

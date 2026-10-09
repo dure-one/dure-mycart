@@ -168,7 +168,7 @@ func TestParseTrailer(t *testing.T) {
 	}
 
 	// The banner, the header and any other comment are not the trailer.
-	for _, other := range []string{"-- myCart database dump", "-- {}", "COPY \"t\" (\"c\") FROM stdin;"} {
+	for _, other := range []string{"-- dure-mycart database dump", "-- {}", "COPY \"t\" (\"c\") FROM stdin;"} {
 		if _, ok := parseTrailer(other); ok {
 			t.Errorf("parseTrailer(%q) claimed a line that is not the trailer", other)
 		}
@@ -182,7 +182,7 @@ func TestReadHeader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("commentJSON: %v", err)
 	}
-	dump := "-- myCart database dump\n" + line
+	dump := "-- dure-mycart database dump\n" + line
 
 	header, err := readHeader(bufio.NewReader(strings.NewReader(dump)))
 	if err != nil {
