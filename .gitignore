@@ -70,7 +70,7 @@ docs/swagger/swagger.yaml
 docs/e2e/
 
 # Compiled binary
-dure-mycart
+/build/
 dure-mycart-linux
 dure-mycart-test
 main

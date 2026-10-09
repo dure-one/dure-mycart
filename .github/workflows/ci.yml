@@ -209,7 +209,9 @@ jobs:
         run: go test -tags sqlc ./internal/... ./pkg/... -count=1
 
       - name: Build (sqlc backend)
-        run: go build -tags sqlc -o mycart-sqlc ./cmd
+        run: |
+          mkdir -p build/sqlc
+          go build -tags sqlc -o build/sqlc/dure-mycart ./cmd
 
   frontend:
     name: Frontend build (${{ matrix.app }})
