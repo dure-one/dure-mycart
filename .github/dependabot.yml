@@ -4,7 +4,11 @@ updates:
   directory: "/"
   schedule:
     interval: weekly
-  open-pull-requests-limit: 2
+  open-pull-requests-limit: 1
+  groups:
+    go-dependencies:
+      patterns:
+        - "*"
   commit-message:
     prefix: "🔧 build"
     include: "scope"
@@ -13,6 +17,11 @@ updates:
   directory: "/"
   schedule:
     interval: weekly
+  open-pull-requests-limit: 1
+  groups:
+    github-actions:
+      patterns:
+        - "*"
   commit-message:
     prefix: "🔧 build"
     include: "scope"
@@ -21,7 +30,11 @@ updates:
   directory: "/web/admin"
   schedule:
     interval: weekly
-  open-pull-requests-limit: 2
+  open-pull-requests-limit: 1
+  groups:
+    npm-admin:
+      patterns:
+        - "*"
   commit-message:
     prefix: "🔧 build"
     include: "scope"
@@ -30,7 +43,11 @@ updates:
   directory: "/web/site"
   schedule:
     interval: weekly
-  open-pull-requests-limit: 2
+  open-pull-requests-limit: 1
+  groups:
+    npm-site:
+      patterns:
+        - "*"
   commit-message:
     prefix: "🔧 build"
     include: "scope"
@@ -39,6 +56,11 @@ updates:
   directory: "/"
   schedule:
     interval: weekly
+  open-pull-requests-limit: 1
+  groups:
+    npm-root:
+      patterns:
+        - "*"
   commit-message:
     prefix: "🔧 build"
     include: "scope"
