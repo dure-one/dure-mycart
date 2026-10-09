@@ -183,6 +183,13 @@ export interface TruncationSettings {
   storefront: Record<string, CurrencyTruncationSettings>
 }
 
+export interface MainSettings {
+  site_name: string
+  domain: string
+  email: string
+  date_time_format?: string
+}
+
 export interface PaymentSettings {
   currency: string
   truncation?: TruncationSettings

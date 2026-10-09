@@ -1,6 +1,7 @@
 package models
 
 import (
+	"strconv"
 	"strings"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -9,18 +10,47 @@ import (
 
 // Main is ...
 type Main struct {
-	SiteName string `json:"site_name"`
-	Domain   string `json:"domain"`
-	Email    string `json:"email"`
+	SiteName       string `json:"site_name"`
+	Domain         string `json:"domain"`
+	Email          string `json:"email"`
+	DateTimeFormat string `json:"date_time_format,omitempty"`
 }
 
 // Validate is ...
 func (v Main) Validate() error {
+	validFormats := []interface{}{"", "iso", "us", "uk", "eu", "jp", "kr", "cn", "full-us", "full-eu"}
 	return validation.ValidateStruct(&v,
-		validation.Field(&v.SiteName, validation.Required, validation.Length(1, 100)),
-		validation.Field(&v.Domain, is.Domain),
+		validation.Field(&v.SiteName, validation.Length(0, 100)),
+		validation.Field(&v.Domain, validation.By(validateDomain)),
 		validation.Field(&v.Email, is.Email),
+		validation.Field(&v.DateTimeFormat, validation.In(validFormats...)),
 	)
+}
+
+// validateDomain accepts standard domains and localhost:port patterns
+func validateDomain(value interface{}) error {
+	domain, ok := value.(string)
+	if !ok || domain == "" {
+		return validation.NewError("domain_required", "domain is required")
+	}
+
+	// Accept localhost with optional port
+	if strings.HasPrefix(domain, "localhost") {
+		parts := strings.Split(domain, ":")
+		if len(parts) == 1 {
+			return nil // localhost without port
+		}
+		if len(parts) == 2 && parts[0] == "localhost" {
+			// Validate port number
+			if _, err := strconv.Atoi(parts[1]); err == nil {
+				return nil
+			}
+		}
+		return validation.NewError("domain_invalid_port", "localhost port must be numeric")
+	}
+
+	// For non-localhost, use standard domain validation
+	return is.Domain.Validate(domain)
 }
 
 // Auth is ...

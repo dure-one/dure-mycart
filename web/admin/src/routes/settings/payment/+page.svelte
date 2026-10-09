@@ -224,8 +224,23 @@
   }
 
   function openDrawer(mode: DrawerMode) {
-    drawerMode = mode
-    drawerOpen = true
+    // If clicking same mode while drawer is open, ignore (prevent blank state)
+    if (drawerOpen && drawerMode === mode) {
+      return
+    }
+
+    // Force re-render if switching modes while drawer is already open
+    if (drawerOpen && drawerMode !== mode) {
+      drawerOpen = false
+      // Use requestAnimationFrame to ensure state updates before reopening
+      requestAnimationFrame(() => {
+        drawerMode = mode
+        drawerOpen = true
+      })
+    } else {
+      drawerMode = mode
+      drawerOpen = true
+    }
   }
 
   const resetDrawer = createDelayedReset(DRAWER_CLOSE_DELAY_MS)
@@ -282,7 +297,7 @@
   {/if}
 </Main>
 
-{#if drawerOpen}
+{#if drawerOpen && drawerMode}
   <Drawer isOpen={drawerOpen} onclose={closeDrawer} maxWidth={drawerWidth}>
     {#if drawerMode === 'number-format'}
       <DrawerHeader title={t('settings.numberFormatting')} />
@@ -307,9 +322,22 @@
             <FormToggle id="trailing-zeros" bind:value={showTrailingZeros} />
           </div>
 
-          <div class="mt-3 text-sm text-gray-600">
-            <div>{t('settings.preview')}: 1.00 → {formatPreview(1.0)}</div>
-            <div>{t('settings.preview')}: 1.23 → {formatPreview(1.23)}</div>
+          <div class="mt-4 space-y-2">
+            <h4 class="text-sm font-medium text-gray-700">Preview Examples:</h4>
+            <div class="space-y-1 text-sm text-gray-600">
+              <div class="flex justify-between">
+                <span>Integer amount:</span>
+                <span class="font-medium">{formatPreview(42.0)}</span>
+              </div>
+              <div class="flex justify-between">
+                <span>With cents:</span>
+                <span class="font-medium">{formatPreview(42.50)}</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Precise value:</span>
+                <span class="font-medium">{formatPreview(1234.56)}</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -321,7 +349,8 @@
       <form onsubmit={(e) => { e.preventDefault(); handleSymbolDisplaySubmit() }}>
         <div class="flow-root">
           <div class="mb-5">
-            <h3>{t('settings.adminPanelDisplay')}</h3>
+            <h3 class="mb-1">{t('settings.adminPanelDisplay')}</h3>
+            <p class="text-sm text-gray-500 mb-3">How prices appear in the admin panel</p>
             <ChipGroup class="mt-3">
               <Chip
                 class="flex-1 py-3 text-center"
@@ -329,7 +358,9 @@
                 onclick={() => symbolDisplay.admin = 'currency'}
               >
                 {t('settings.currencySymbol')}
-                <span class="mt-1 block text-xs text-gray-500">$130</span>
+                <span class="mt-1 block text-xs text-gray-500">
+                  {formatCurrency(129.99, payment.currency || 'USD', payment.number_format, 'currency')}
+                </span>
               </Chip>
               <Chip
                 class="flex-1 py-3 text-center"
@@ -337,13 +368,16 @@
                 onclick={() => symbolDisplay.admin = 'language'}
               >
                 {t('settings.languageSymbol')}
-                <span class="mt-1 block text-xs text-gray-500">130 Dollar</span>
+                <span class="mt-1 block text-xs text-gray-500">
+                  {formatCurrency(129.99, payment.currency || 'USD', payment.number_format, 'language')}
+                </span>
               </Chip>
             </ChipGroup>
           </div>
 
           <div class="mb-5">
-            <h3>{t('settings.storefrontDisplay')}</h3>
+            <h3 class="mb-1">{t('settings.storefrontDisplay')}</h3>
+            <p class="text-sm text-gray-500 mb-3">How prices appear to customers</p>
             <ChipGroup class="mt-3">
               <Chip
                 class="flex-1 py-3 text-center"
@@ -351,7 +385,9 @@
                 onclick={() => symbolDisplay.storefront = 'currency'}
               >
                 {t('settings.currencySymbol')}
-                <span class="mt-1 block text-xs text-gray-500">$130</span>
+                <span class="mt-1 block text-xs text-gray-500">
+                  {formatCurrency(129.99, payment.currency || 'USD', payment.number_format, 'currency')}
+                </span>
               </Chip>
               <Chip
                 class="flex-1 py-3 text-center"
@@ -359,7 +395,9 @@
                 onclick={() => symbolDisplay.storefront = 'language'}
               >
                 {t('settings.languageSymbol')}
-                <span class="mt-1 block text-xs text-gray-500">130 Dollar</span>
+                <span class="mt-1 block text-xs text-gray-500">
+                  {formatCurrency(129.99, payment.currency || 'USD', payment.number_format, 'language')}
+                </span>
               </Chip>
             </ChipGroup>
           </div>

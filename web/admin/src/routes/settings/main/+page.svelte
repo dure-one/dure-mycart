@@ -5,6 +5,8 @@
   import { loadSettings, saveSettings } from '$lib/utils/settingsHelpers'
   import { validators, validateFields } from '$lib/utils/validation'
   import { translate, locale, availableLocales, type Locale } from '$lib/i18n'
+  import { DATE_FORMATS } from '$lib/config/dateFormats'
+  import { formatDate } from '$lib/utils/formatDate'
 
   // Reactive translation function
   let t = $derived($translate)
@@ -15,12 +17,14 @@
     site_name: string
     domain: string
     email: string
+    date_time_format?: string
   }
 
   let formData = $state<MainSettings>({
     site_name: '',
     domain: '',
-    email: ''
+    email: '',
+    date_time_format: 'eu'
   })
   let formErrors = $state<Record<string, string>>({})
   let loading = $state(true)
@@ -50,6 +54,14 @@
   function switchLocale(newLocale: Locale) {
     locale.set(newLocale)
   }
+
+  async function switchDateFormat(formatCode: string) {
+    formData = { ...formData, date_time_format: formatCode }
+    await saveSettings('main', formData)
+  }
+
+  // Preview current date/time in selected format
+  let datePreview = $derived(formatDate(Date.now() / 1000, formData.date_time_format))
 </script>
 
 <Main>
@@ -92,6 +104,23 @@
           <Chip active={currentLocale === loc.code} onclick={() => switchLocale(loc.code)}>{loc.name}</Chip>
         {/each}
       </ChipGroup>
+    </Section>
+
+    <Section title="Date & Time Format">
+      <ChipGroup>
+        {#each DATE_FORMATS as format}
+          <Chip
+            active={formData.date_time_format === format.code}
+            onclick={() => switchDateFormat(format.code)}
+          >
+            {format.name}
+            <span class="mt-1 block text-xs text-gray-500">{format.example}</span>
+          </Chip>
+        {/each}
+      </ChipGroup>
+      <div class="mt-3 text-sm text-gray-600">
+        Preview: <span class="font-medium">{datePreview}</span>
+      </div>
     </Section>
   {/if}
 </Main>
