@@ -1,7 +1,7 @@
 package database
 
 // sqliteDialect targets the embedded database. Every method here renders the
-// SQL myCart has always sent to SQLite, so the SQLite code path is unchanged by
+// SQL dure-mycart has always sent to SQLite, so the SQLite code path is unchanged by
 // the introduction of a second dialect.
 type sqliteDialect struct{}
 

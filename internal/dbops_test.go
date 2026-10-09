@@ -145,7 +145,7 @@ func TestBackupAndRestoreUncompressed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read the backup: %v", err)
 	}
-	if !bytes.HasPrefix(raw, []byte("-- myCart database dump\n")) {
+	if !bytes.HasPrefix(raw, []byte("-- dure-mycart database dump\n")) {
 		t.Fatalf("the backup starts with %q, want the dump banner", firstLine(raw))
 	}
 
@@ -300,7 +300,7 @@ func TestRestoreRejectsWhatIsNotADump(t *testing.T) {
 		}
 
 		_, err := RestoreDatabase(t.Context(), dst, path, false)
-		if err == nil || !strings.Contains(err.Error(), "not a myCart dump") {
+		if err == nil || !strings.Contains(err.Error(), "not a dure-mycart dump") {
 			t.Errorf("error = %v, want the file to be refused", err)
 		}
 	})
@@ -375,12 +375,12 @@ func TestCopyDatabaseReportsWhatItCannotDo(t *testing.T) {
 }
 
 // decompress has to pass a plain file through and gunzip a compressed one,
-// which is how a dump written years ago by another myCart still restores.
+// which is how a dump written years ago by another dure-mycart still restores.
 func TestDecompress(t *testing.T) {
 	t.Parallel()
 
 	var plain bytes.Buffer
-	plain.WriteString("-- myCart database dump\n")
+	plain.WriteString("-- dure-mycart database dump\n")
 	reader, closer, err := decompress(bufio.NewReader(&plain))
 	if err != nil {
 		t.Fatalf("decompress plain: %v", err)
@@ -392,13 +392,13 @@ func TestDecompress(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read plain: %v", err)
 	}
-	if string(got) != "-- myCart database dump\n" {
+	if string(got) != "-- dure-mycart database dump\n" {
 		t.Errorf("plain dump read back as %q", got)
 	}
 
 	var compressed bytes.Buffer
 	gz := gzip.NewWriter(&compressed)
-	if _, err := gz.Write([]byte("-- myCart database dump\n")); err != nil {
+	if _, err := gz.Write([]byte("-- dure-mycart database dump\n")); err != nil {
 		t.Fatalf("compress: %v", err)
 	}
 	if err := gz.Close(); err != nil {
@@ -414,7 +414,7 @@ func TestDecompress(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read gzip: %v", err)
 	}
-	if string(got) != "-- myCart database dump\n" {
+	if string(got) != "-- dure-mycart database dump\n" {
 		t.Errorf("compressed dump read back as %q", got)
 	}
 }

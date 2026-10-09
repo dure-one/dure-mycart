@@ -68,7 +68,7 @@ func SendTestLetter(letterName string) error {
 	letter := &models.MessageMail{
 		To: settingEmail["email"].Value.(string),
 		Letter: models.Letter{
-			Subject: "myCart test smtp settings",
+			Subject: "dure-mycart test smtp settings",
 			Text:    "test message",
 		},
 		Data: map[string]string{

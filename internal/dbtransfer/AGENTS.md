@@ -12,7 +12,7 @@ migrations — and `cmd/main.go` is only flags and printing.
 One file, valid SQL, readable by a person and by `psql`:
 
 ```
--- myCart database dump
+-- dure-mycart database dump
 -- {"magic":"mycart-dump","format":1,…}
 --   psql -1 "$DSN" -c 'TRUNCATE TABLE … CASCADE;' -f <this file>
 COPY "product" ("id", "name", "desc", …) FROM stdin;

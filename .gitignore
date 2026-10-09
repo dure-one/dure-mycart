@@ -47,7 +47,6 @@ fixtures/migration/*_private.sql
 
 # Database files
 *.db
-mycart.db
 
 .cursor/
 .playwright-mcp/
@@ -72,7 +71,7 @@ docs/e2e/
 mycart
 mycart-linux
 mycart-test
-dure-mycart
+/build/
 main
 
 # Temporary files
@@ -99,8 +98,6 @@ docs/readme.md
 e2e/.auth/
 Makefile
 .env
-mycart
-mycart-sqlc
 *.core
 
 # Build artifacts and dependencies

@@ -189,7 +189,18 @@ func (m *CrontabManager) generateEntries(jobs []models.CrontabJob) []string {
 
 		cronExpr := m.intervalToCron(job.Interval)
 		comment := fmt.Sprintf("# mycart job: %s", job.JobType)
-		command := fmt.Sprintf("%s cron-run %s", m.binaryPath, job.JobType)
+
+		// Handle DEV: sentinel for dev mode (go run)
+		var command string
+		if strings.HasPrefix(m.binaryPath, "DEV:") {
+			projectRoot := strings.TrimPrefix(m.binaryPath, "DEV:")
+			// Dev mode: cd to project root and run with go run
+			command = fmt.Sprintf("cd %s && /usr/bin/env go run ./cmd cron-run %s >> %s/lc_base/cron.log 2>&1",
+				projectRoot, job.JobType, projectRoot)
+		} else {
+			// Production mode: direct binary execution
+			command = fmt.Sprintf("%s cron-run %s", m.binaryPath, job.JobType)
+		}
 
 		entries = append(entries, comment)
 		entries = append(entries, fmt.Sprintf("%s %s", cronExpr, command))

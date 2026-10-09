@@ -15,7 +15,7 @@ import (
 	"github.com/dure-one/dure-mycart/pkg/fsutil"
 )
 
-// SQLite DSN pragmas. These are the values myCart has always used and they are
+// SQLite DSN pragmas. These are the values dure-mycart has always used and they are
 // reproduced verbatim; changing any of them changes on-disk behaviour.
 //
 // Note: _txlock must NOT be present on connections used by goose (it breaks its
@@ -132,7 +132,7 @@ func connectPostgres(dsn string) (*Conn, error) {
 		return nil, fmt.Errorf("connect to postgres: %w", err)
 	}
 
-	// The session timezone must be UTC. myCart stores TIMESTAMP (without time
+	// The session timezone must be UTC. dure-mycart stores TIMESTAMP (without time
 	// zone), and PostgreSQL reads such a value as UTC when converting to epoch,
 	// while CURRENT_TIMESTAMP writes it in the session timezone. Any non-UTC
 	// session therefore shifts every stored date by the server's offset. The
@@ -174,7 +174,7 @@ func NormalizePostgresDSN(dsn string) (string, error) {
 			return "", err
 		}
 		// Set timezone=UTC to prevent timestamp corruption.
-		// myCart uses TIMESTAMP (without time zone), which PostgreSQL stores in the
+		// dure-mycart uses TIMESTAMP (without time zone), which PostgreSQL stores in the
 		// session timezone. A non-UTC session silently shifts all timestamps.
 		// For PgBouncer transaction pooling, configure timezone on the PostgreSQL
 		// server itself: ALTER DATABASE yourdb SET timezone TO 'UTC';

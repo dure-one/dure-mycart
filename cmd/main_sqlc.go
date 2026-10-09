@@ -1,6 +1,6 @@
 // +build sqlc
 
-// @title           myCart API
+// @title           dure-mycart API
 // @version         1.0
 // @description     Open source shopping-cart backend API - a single-binary e-commerce solution
 // @termsOfService  https://github.com/dure-one/dure-mycart
@@ -45,6 +45,8 @@ var (
 	buildDate = "0000-00-00"
 )
 
+const backend = "sqlc"
+
 // dbOverrides carries the persistent --db-* flags. Values left empty fall
 // through to the environment, lc_base/config.json and finally the built-in
 // SQLite default.
@@ -61,10 +63,10 @@ func resolveDB() database.Config {
 }
 
 var rootCmd = &cobra.Command{
-	Use:                "mycart",
-	Short:              "myCart CLI",
-	Long:               "🛒 myCart - shopping-cart in 1 file",
-	Version:            fmt.Sprintf("myCart %s (%s) from %s", version, gitCommit, buildDate),
+	Use:                "dure-mycart",
+	Short:              "dure-mycart CLI",
+	Long:               "🛒 dure-mycart - shopping-cart in 1 file",
+	Version:            fmt.Sprintf("%s (%s) [%s]", version, gitCommit, backend),
 	FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 	CompletionOptions:  cobra.CompletionOptions{DisableDefaultCmd: true},
 }
@@ -115,7 +117,7 @@ func cmdServe() *cobra.Command {
 		Use:   "serve [flags]",
 		Short: "Starts the web server (default to 0.0.0.0:8080)",
 		Run: func(_ *cobra.Command, _ []string) {
-			handleCommandError(app.NewApp(resolveDB(), httpAddr, httpsAddr, noSite, devMode))
+			handleCommandError(app.NewApp(resolveDB(), httpAddr, httpsAddr, noSite, devMode, backend))
 		},
 	}
 
@@ -175,10 +177,10 @@ func cmdUpdate() *cobra.Command {
 		Short: "Updating the application to the latest version",
 		Run: func(_ *cobra.Command, _ []string) {
 			cfg := &update.Config{
-				Owner:             "shurco",
-				Repo:              "mycart",
+				Owner:             "dure-one",
+				Repo:              "dure-mycart",
 				CurrentVersion:    version,
-				ArchiveExecutable: "mycart",
+				ArchiveExecutable: "dure-mycart",
 			}
 
 			if err := update.Init(cfg); err != nil {
@@ -219,12 +221,12 @@ func cmdDBBackup() *cobra.Command {
 		Short: "Write a dump of the PostgreSQL database to a file",
 		Long: "Write the contents of the configured PostgreSQL database to a file.\n\n" +
 			"The result is a SQL script: `psql -f FILE` replays it into a migrated, empty\n" +
-			"database, and `mycart db restore --from FILE` reads it back without psql.\n" +
+			"database, and `dure-mycart db restore --from FILE` reads it back without psql.\n" +
 			"A path ending in .gz is compressed.",
 		Run: func(_ *cobra.Command, _ []string) {
 			path := out
 			if path == "" {
-				path = fmt.Sprintf("mycart-%s.sql.gz", time.Now().Format("20060102-150405"))
+				path = fmt.Sprintf("dure-mycart-%s.sql.gz", time.Now().Format("20060102-150405"))
 			}
 
 			manifest, err := app.BackupDatabase(context.Background(), resolveDB(), path)
@@ -236,7 +238,7 @@ func cmdDBBackup() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&out, "out", "", "file to write (default mycart-<timestamp>.sql.gz)")
+	cmd.Flags().StringVar(&out, "out", "", "file to write (default dure-mycart-<timestamp>.sql.gz)")
 
 	return cmd
 }
@@ -250,7 +252,7 @@ func cmdDBRestore() *cobra.Command {
 		Use:   "restore [flags]",
 		Short: "Replace the PostgreSQL database with a dump",
 		Long: "Migrate the configured PostgreSQL database and replace its contents with a\n" +
-			"dump written by `mycart db backup`.\n\n" +
+			"dump written by `dure-mycart db backup`.\n\n" +
 			"The whole load runs in one transaction: a dump that is truncated or does not\n" +
 			"fit the schema leaves the database as it was. A database that already holds\n" +
 			"an installation is refused unless --force is given, because restoring into it\n" +

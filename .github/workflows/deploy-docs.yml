@@ -110,15 +110,16 @@ jobs:
           ls -la docs/swagger/
 
       # 5. Build application for e2e tests
-      - name: Build myCart Binary
+      - name: Build dure-mycart Binary
         run: |
           # Build frontend SPAs first
           cd web/admin && bun run build && cd ../..
           cd web/site && bun run build && cd ../..
 
           # Build Go binary (now docs/swagger package exists)
-          go build -o mycart ./cmd
-          chmod +x mycart
+          mkdir -p build/raw
+          go build -o build/raw/dure-mycart ./cmd
+          chmod +x build/raw/dure-mycart
 
       # 6. Run E2E tests and generate reports
       - name: Run E2E Tests

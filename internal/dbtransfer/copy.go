@@ -15,7 +15,7 @@ type CopyOptions struct {
 	Replace bool
 	// DryRun reports what a copy would do without writing anything.
 	DryRun bool
-	// App is the running myCart version, recorded in the manifest.
+	// App is the running dure-mycart version, recorded in the manifest.
 	App string
 }
 

@@ -67,7 +67,7 @@ func logger() *logging.Log { return appLog.Load() }
 func setLogger(l *logging.Log) { appLog.Store(l) }
 
 // NewApp initializes and starts the web application
-func NewApp(dbCfg database.Config, httpAddr, httpsAddr string, noSite, appDev bool) error {
+func NewApp(dbCfg database.Config, httpAddr, httpsAddr string, noSite, appDev bool, backend string) error {
 	lg := logging.New()
 	setDevMode(appDev)
 	setLogger(lg)
@@ -87,7 +87,7 @@ func NewApp(dbCfg database.Config, httpAddr, httpsAddr string, noSite, appDev bo
 	}
 
 	setupRoutes(app, noSite)
-	printStartupInfo(os.Stdout, schema, mainAddr, noSite, dbCfg)
+	printStartupInfo(os.Stdout, schema, mainAddr, noSite, dbCfg, backend)
 
 	// Start both HTTP and HTTPS servers when both are provided
 	if httpsAddr != "" && httpAddr != "" {
@@ -182,17 +182,25 @@ func setupRoutes(app *fiber.App, noSite bool) {
 // The writer is a parameter rather than stdout directly so the banner can be
 // read back without swapping os.Stdout process-wide, which is a global the
 // server goroutines also write to.
-func printStartupInfo(w io.Writer, schema, mainAddr string, noSite bool, dbCfg database.Config) {
-	fmt.Fprint(w, "🛒 myCart - open source shopping-cart in 1 file\n")
+func printStartupInfo(w io.Writer, schema, mainAddr string, noSite bool, dbCfg database.Config, backend string) {
+	fmt.Fprint(w, "🛒 dure-mycart - open source shopping-cart in 1 file\n")
 
-	// Show version info if available
-	if ver := update.VersionInfo(); ver != nil && ver.GitCommit != "" {
-		gitShort := ver.GitCommit
-		if len(gitShort) > 8 {
-			gitShort = gitShort[:8]
-		}
-		fmt.Fprintf(w, "├─ Version: %s (%s)\n", ver.CurrentVersion, gitShort)
+	// Show version info (always)
+	ver := update.VersionInfo()
+	version := "v0.0.0"
+	commit := "00000000"
+	if ver != nil && ver.CurrentVersion != "" {
+		version = ver.CurrentVersion
 	}
+	if ver != nil && ver.GitCommit != "" {
+		if len(ver.GitCommit) > 8 {
+			commit = ver.GitCommit[:8]
+		} else {
+			commit = ver.GitCommit
+		}
+	}
+	fmt.Fprintf(w, "├─ Version: %s (%s)\n", version, commit)
+	fmt.Fprintf(w, "├─ Backend: %s\n", backendDisplay(backend))
 
 	if !noSite {
 		fmt.Fprintf(w, "├─ Cart UI: %s://%s/\n", schema, mainAddr)
@@ -203,6 +211,15 @@ func printStartupInfo(w io.Writer, schema, mainAddr string, noSite bool, dbCfg d
 		fmt.Fprintf(w, "└─ API Docs: %s://%s/swagger/index.html\n", schema, mainAddr)
 	} else {
 		fmt.Fprint(w, "└─ Swagger UI: disabled (use --dev flag to enable)\n")
+	}
+}
+
+func backendDisplay(b string) string {
+	switch b {
+	case "sqlc":
+		return "sqlc (generated queries)"
+	default:
+		return "raw-sql (hand-written queries)"
 	}
 }
 

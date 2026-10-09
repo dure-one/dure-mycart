@@ -15,7 +15,7 @@ import (
 
 // TestTimestampsAreStoredInUTC is the guard for the session-timezone rule.
 //
-// myCart stores TIMESTAMP (without time zone) and reads it back as unix
+// dure-mycart stores TIMESTAMP (without time zone) and reads it back as unix
 // seconds. PostgreSQL converts a bare timestamp to epoch by assuming UTC, while
 // CURRENT_TIMESTAMP writes it in the *session* timezone — so a session that is
 // not UTC shifts every stored date by the server's offset, silently, with no

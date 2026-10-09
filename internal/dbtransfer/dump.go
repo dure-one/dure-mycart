@@ -34,7 +34,7 @@ type Header struct {
 	// told apart from another installation's.
 	Driver string `json:"driver"`
 	Server string `json:"server"`
-	// App is the myCart version that wrote the dump.
+	// App is the dure-mycart version that wrote the dump.
 	App string `json:"app,omitempty"`
 	// Migrations is the schema version of the source, as goose recorded it.
 	Migrations int64 `json:"migrations"`
@@ -70,7 +70,7 @@ type Manifest struct {
 
 // DumpOptions are the extras the caller knows and this package does not.
 type DumpOptions struct {
-	// App is the running myCart version, recorded in the header.
+	// App is the running dure-mycart version, recorded in the header.
 	App string
 }
 
@@ -110,7 +110,7 @@ func Dump(ctx context.Context, cfg database.Config, w io.Writer, opts DumpOption
 	}
 
 	out := bufio.NewWriter(w)
-	if _, err := out.WriteString("-- myCart database dump\n"); err != nil {
+	if _, err := out.WriteString("-- dure-mycart database dump\n"); err != nil {
 		return nil, err
 	}
 	if _, err := out.WriteString(head); err != nil {

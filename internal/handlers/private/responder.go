@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"os"
+	"strings"
 
 	"github.com/gofiber/fiber/v3"
 
@@ -606,6 +607,11 @@ func CheckCrontabStatus(c fiber.Ctx) error {
 	log := logging.New()
 
 	binaryPath := getBinaryPath()
+	if binaryPath == "" {
+		// Can't determine binary path
+		return webutil.StatusInternalServerError(c)
+	}
+
 	manager := responder.NewCrontabManager(binaryPath)
 
 	installed, err := manager.IsInstalled(c.Context())
@@ -640,6 +646,11 @@ func InstallCrontab(c fiber.Ctx) error {
 	}
 
 	binaryPath := getBinaryPath()
+	if binaryPath == "" {
+		// Can't determine binary path
+		return webutil.StatusInternalServerError(c)
+	}
+
 	manager := responder.NewCrontabManager(binaryPath)
 
 	if err := manager.Install(c.Context(), jobs); err != nil {
@@ -668,6 +679,11 @@ func UninstallCrontab(c fiber.Ctx) error {
 	log := logging.New()
 
 	binaryPath := getBinaryPath()
+	if binaryPath == "" {
+		// Can't determine binary path - try to uninstall anyway (cleanup)
+		binaryPath = "dure-mycart"
+	}
+
 	manager := responder.NewCrontabManager(binaryPath)
 
 	if err := manager.Uninstall(c.Context()); err != nil {
@@ -683,10 +699,24 @@ func UninstallCrontab(c fiber.Ctx) error {
 }
 
 // getBinaryPath returns the path to the current executable
+// Returns DEV: sentinel in dev mode for go run cron support
 func getBinaryPath() string {
 	executable, err := os.Executable()
 	if err != nil {
-		return "mycart" // fallback
+		return "dure-mycart" // fallback
 	}
+
+	// Detect dev mode (go run) - return DEV: sentinel
+	if strings.Contains(executable, "/tmp/go-build") ||
+		strings.Contains(executable, "\\Temp\\go-build") {
+		// Get project root (current working directory in dev mode)
+		cwd, err := os.Getwd()
+		if err != nil {
+			return "" // Can't determine project root
+		}
+		// Return DEV: sentinel with project root
+		return "DEV:" + cwd
+	}
+
 	return executable
 }

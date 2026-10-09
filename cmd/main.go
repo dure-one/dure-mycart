@@ -45,6 +45,8 @@ var (
 	buildDate = "0000-00-00"
 )
 
+const backend = "raw-sql"
+
 // dbOverrides carries the persistent --db-* flags. Values left empty fall
 // through to the environment, lc_base/config.json and finally the built-in
 // SQLite default.
@@ -64,7 +66,7 @@ var rootCmd = &cobra.Command{
 	Use:                "dure-mycart",
 	Short:              "dure-mycart CLI",
 	Long:               "🛒 dure-mycart - shopping-cart in 1 file",
-	Version:            fmt.Sprintf("dure-mycart %s (%s) from %s", version, gitCommit, buildDate),
+	Version:            fmt.Sprintf("%s (%s) [%s]", version, gitCommit, backend),
 	FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 	CompletionOptions:  cobra.CompletionOptions{DisableDefaultCmd: true},
 }
@@ -116,7 +118,7 @@ func cmdServe() *cobra.Command {
 		Use:   "serve [flags]",
 		Short: "Starts the web server (default to 0.0.0.0:8080)",
 		Run: func(_ *cobra.Command, _ []string) {
-			handleCommandError(app.NewApp(resolveDB(), httpAddr, httpsAddr, noSite, devMode))
+			handleCommandError(app.NewApp(resolveDB(), httpAddr, httpsAddr, noSite, devMode, backend))
 		},
 	}
 
@@ -251,7 +253,7 @@ func cmdDBRestore() *cobra.Command {
 		Use:   "restore [flags]",
 		Short: "Replace the PostgreSQL database with a dump",
 		Long: "Migrate the configured PostgreSQL database and replace its contents with a\n" +
-			"dump written by `mycart db backup`.\n\n" +
+			"dump written by `dure-mycart db backup`.\n\n" +
 			"The whole load runs in one transaction: a dump that is truncated or does not\n" +
 			"fit the schema leaves the database as it was. A database that already holds\n" +
 			"an installation is refused unless --force is given, because restoring into it\n" +

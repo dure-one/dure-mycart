@@ -143,7 +143,7 @@ func readSectionLine(ctx context.Context, tx pgx.Tx, in *bufio.Reader, line stri
 		manifest.Tables = append(manifest.Tables, stat)
 		manifest.Rows += stat.Rows
 	default:
-		return nil, fmt.Errorf("this is not a myCart dump: unexpected line %s", quoteLine(text))
+		return nil, fmt.Errorf("this is not a dure-mycart dump: unexpected line %s", quoteLine(text))
 	}
 	return trailer, nil
 }
@@ -201,7 +201,7 @@ func checkTarget(ctx context.Context, tx pgx.Tx, header Header, replace, require
 		if !requireSchema {
 			return target, nil
 		}
-		return nil, errors.New("the target has no myCart schema: migrate it first")
+		return nil, errors.New("the target has no dure-mycart schema: migrate it first")
 	}
 
 	if err := checkSchemaVersion(ctx, tx.Conn(), header); err != nil {
@@ -235,7 +235,7 @@ func loadSection(ctx context.Context, tx pgx.Tx, in *bufio.Reader, header string
 
 	if !slices.Contains(target, t.Name) {
 		return TableStat{}, fmt.Errorf("the dump carries a table this schema does not have: %s "+
-			"(the dump is from a newer myCart)", t.Name)
+			"(the dump is from a newer dure-mycart)", t.Name)
 	}
 
 	section := &copySection{br: in}
@@ -274,7 +274,7 @@ func verifyRows(ctx context.Context, tx pgx.Tx, tables []TableStat) error {
 // checkSchemaVersion refuses a dump this build does not know how to read.
 func checkSchemaVersion(ctx context.Context, conn *pgx.Conn, header Header) error {
 	if header.Format > FormatVersion {
-		return fmt.Errorf("the dump is in format %d and this build reads up to %d: upgrade myCart first",
+		return fmt.Errorf("the dump is in format %d and this build reads up to %d: upgrade dure-mycart first",
 			header.Format, FormatVersion)
 	}
 
@@ -284,7 +284,7 @@ func checkSchemaVersion(ctx context.Context, conn *pgx.Conn, header Header) erro
 	}
 	if header.Migrations > target {
 		return fmt.Errorf("the dump is from schema version %d and this build migrates to %d: "+
-			"upgrade myCart before restoring this dump", header.Migrations, target)
+			"upgrade dure-mycart before restoring this dump", header.Migrations, target)
 	}
 	return nil
 }
@@ -327,7 +327,7 @@ func readHeader(in *bufio.Reader) (Header, error) {
 			continue
 		}
 		if !strings.HasPrefix(text, "--") {
-			return Header{}, fmt.Errorf("this is not a myCart dump: it starts with %s", quoteLine(text))
+			return Header{}, fmt.Errorf("this is not a dure-mycart dump: it starts with %s", quoteLine(text))
 		}
 
 		var header Header
@@ -341,7 +341,7 @@ func readHeader(in *bufio.Reader) (Header, error) {
 			return Header{}, fmt.Errorf("read the dump: %w", err)
 		}
 	}
-	return Header{}, errors.New("this is not a myCart dump: it has no header")
+	return Header{}, errors.New("this is not a dure-mycart dump: it has no header")
 }
 
 // listTargetTables returns the tables a target database has, except the

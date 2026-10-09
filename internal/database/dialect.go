@@ -1,4 +1,4 @@
-// Package database owns every difference between the SQL engines myCart can
+// Package database owns every difference between the SQL engines dure-mycart can
 // talk to. The rest of the application writes one dialect of SQL — the SQLite
 // one, with `?` placeholders and portable DDL — and the Conn wrapper translates
 // it on the way to the driver.

@@ -402,7 +402,7 @@ func TestNewApp(t *testing.T) {
 	if err2 == nil {
 		t.Fatal("expected NewApp to report that it could not listen")
 	}
-	if !strings.Contains(out, "myCart") || !strings.Contains(out, "Admin UI") {
+	if !strings.Contains(out, "dure-mycart") || !strings.Contains(out, "Admin UI") {
 		t.Errorf("NewApp did not print the startup banner:\n%s", out)
 	}
 

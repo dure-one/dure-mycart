@@ -12,6 +12,7 @@ import (
 
 	"github.com/dure-one/dure-mycart/internal/models"
 	"github.com/dure-one/dure-mycart/internal/queries"
+	"github.com/dure-one/dure-mycart/pkg/security"
 )
 
 // ConnectionAttempt tracks a single connection attempt
@@ -62,6 +63,22 @@ func (w *XMPPWorker) Start(ctx context.Context) error {
 			}
 		}
 	}
+}
+
+// getDecryptedPassword decrypts the stored password
+func (w *XMPPWorker) getDecryptedPassword() (string, error) {
+	if w.settings.XMPPPassword == "" {
+		return "", nil
+	}
+
+	// Try to decrypt - if it fails, assume it's already plaintext (for backward compatibility)
+	decrypted, err := security.DecryptPassword(w.settings.XMPPPassword, security.GetEncryptionKey())
+	if err != nil {
+		// If decryption fails, try using the password as-is (might be plaintext)
+		return w.settings.XMPPPassword, nil
+	}
+
+	return decrypted, nil
 }
 
 // extractLocal extracts the local part from a full JID (user@domain → user)
@@ -155,7 +172,13 @@ func (w *XMPPWorker) tryConnectWithURL(mode, server, url string) (*xmpp.Client, 
 		return nil, "", fmt.Errorf("unsupported URL mode: %s", mode)
 	}
 
-	client, err := xmpp.NewClient(userJID, w.settings.XMPPPassword, options...)
+	// Decrypt password before using it
+	password, err := w.getDecryptedPassword()
+	if err != nil {
+		return nil, url, fmt.Errorf("decrypt password: %w", err)
+	}
+
+	client, err := xmpp.NewClient(userJID, password, options...)
 	if err != nil {
 		return nil, url, fmt.Errorf("create client: %w", err)
 	}
@@ -210,7 +233,13 @@ func (w *XMPPWorker) tryConnect(mode, server string) (*xmpp.Client, string, erro
 		return nil, "", fmt.Errorf("unsupported mode: %s", mode)
 	}
 
-	client, err := xmpp.NewClient(userJID, w.settings.XMPPPassword, options...)
+	// Decrypt password before using it
+	password, err := w.getDecryptedPassword()
+	if err != nil {
+		return nil, addr, fmt.Errorf("decrypt password: %w", err)
+	}
+
+	client, err := xmpp.NewClient(userJID, password, options...)
 	if err != nil {
 		return nil, addr, fmt.Errorf("create client: %w", err)
 	}
@@ -259,8 +288,12 @@ func (w *XMPPWorker) Disconnect() {
 // fetchMessages queries MAM and syncs messages to database
 // ponytail: MAM stub returns immediately until real server available for testing
 func (w *XMPPWorker) fetchMessages(ctx context.Context) error {
+	// Auto-connect if not connected (for cron-run mode)
 	if w.client == nil {
-		return fmt.Errorf("not connected")
+		if err := w.connect(); err != nil {
+			return fmt.Errorf("connect: %w", err)
+		}
+		defer w.disconnect()
 	}
 
 	// ponytail: meszmate/xmpp-go uses plugin+handler pattern for message processing

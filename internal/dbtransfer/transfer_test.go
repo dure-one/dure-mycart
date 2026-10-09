@@ -196,7 +196,7 @@ func TestDumpLoadRoundTrip(t *testing.T) {
 	dump, manifest := dumpText(t, src)
 	sectionsOfSource := sections(t, dump)
 
-	if !strings.HasPrefix(dump, "-- myCart database dump\n") {
+	if !strings.HasPrefix(dump, "-- dure-mycart database dump\n") {
 		t.Errorf("dump starts with %q, want the banner", strings.SplitN(dump, "\n", 2)[0])
 	}
 	if !strings.Contains(dump, "\n"+copyTerminal+"\n") {
@@ -397,7 +397,7 @@ func TestLoadRejectsADumpFromANewerBuild(t *testing.T) {
 			t.Fatalf("commentJSON: %v", err)
 		}
 		_, err = Load(t.Context(), dst.DSN, strings.NewReader(header+dump), LoadOptions{})
-		if err == nil || !strings.Contains(err.Error(), "upgrade myCart") {
+		if err == nil || !strings.Contains(err.Error(), "upgrade dure-mycart") {
 			t.Errorf("error = %v, want the schema version to be refused", err)
 		}
 	})
@@ -472,17 +472,17 @@ func TestLoadRejectsSomethingElseEntirely(t *testing.T) {
 		body string
 		want string
 	}{
-		{name: "sqlite", body: "SQLite format 3\x00", want: "not a myCart dump"},
-		{name: "a pg_dump", body: "--\n-- PostgreSQL database dump\n--\nSET statement_timeout = 0;\n", want: "not a myCart dump"},
-		{name: "empty", body: "", want: "not a myCart dump"},
+		{name: "sqlite", body: "SQLite format 3\x00", want: "not a dure-mycart dump"},
+		{name: "a pg_dump", body: "--\n-- PostgreSQL database dump\n--\nSET statement_timeout = 0;\n", want: "not a dure-mycart dump"},
+		{name: "empty", body: "", want: "not a dure-mycart dump"},
 		{
 			name: "sql among the sections",
-			body: "-- myCart database dump\n" + header + "INSERT INTO \"setting\" VALUES ('a');\n" + trailer,
+			body: "-- dure-mycart database dump\n" + header + "INSERT INTO \"setting\" VALUES ('a');\n" + trailer,
 			want: "unexpected line",
 		},
 		{
 			name: "a dump with no data at all",
-			body: "-- myCart database dump\n" + header + trailer,
+			body: "-- dure-mycart database dump\n" + header + trailer,
 			want: "carries no tables",
 		},
 	}
