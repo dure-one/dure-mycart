@@ -24,8 +24,10 @@ func (q *SettingQueries) GroupFieldMap(settings any) map[string]any {
 	switch s := settings.(type) {
 	case *models.Main:
 		return map[string]any{
-			"site_name": &s.SiteName,
-			"domain":    &s.Domain,
+			"site_name":        &s.SiteName,
+			"domain":           &s.Domain,
+			"email":            &s.Email,
+			"date_time_format": &s.DateTimeFormat,
 		}
 	case *models.Auth:
 		return map[string]any{
