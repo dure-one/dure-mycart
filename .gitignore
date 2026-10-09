@@ -32,6 +32,7 @@ dist
 dist-ssr
 coverage
 *.local
+build/
 
 # Go workspace file
 go.work
@@ -62,9 +63,7 @@ lc_*/
 tmp/
 
 # Swagger documentation (auto-generated)
-docs/swagger/docs.go
-docs/swagger/swagger.json
-docs/swagger/swagger.yaml
+docs/swagger/
 
 # E2E test reports
 docs/e2e/
@@ -73,6 +72,7 @@ docs/e2e/
 mycart
 mycart-linux
 mycart-test
+dure-mycart
 main
 
 # Temporary files
