@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { formatDate } from '$lib/utils/formatDate'
+
 	export let message: {
 		content: string
 		direction: 'inbound' | 'outbound'
@@ -14,7 +16,7 @@
 <div class="message-bubble {isInbound ? 'inbound' : 'outbound'}">
 	<div class="message-header">
 		<span class="channel-icon">{channelIcon}</span>
-		<span class="timestamp">{new Date(message.created * 1000).toLocaleString()}</span>
+		<span class="timestamp">{formatDate(message.created)}</span>
 	</div>
 	<div class="message-content">{message.content}</div>
 	{#if message.delivery_status}
