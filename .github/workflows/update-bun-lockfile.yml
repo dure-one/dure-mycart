@@ -1,10 +1,13 @@
 name: Update Bun Lockfile
 
 on:
-  schedule:
-    # Run every Monday at 9:00 AM UTC
-    - cron: '0 9 * * 1'
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to update lockfiles on'
+        required: true
+        default: 'main'
+        type: string
 
 permissions:
   contents: write
@@ -17,6 +20,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.branch }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Bun
