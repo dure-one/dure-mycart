@@ -140,27 +140,27 @@ modules_enabled = {
 }
 
 -- Conditional admin modules (ENV-configurable, default: enabled)
-if os.getenv("PROSODY_ENABLE_ADMIN_ADHOC") ~= "false" then
-    table.insert(modules_enabled, "admin_adhoc")
+if Lua.os.getenv("PROSODY_ENABLE_ADMIN_ADHOC") ~= "false" then
+    Lua.table.insert(modules_enabled, "admin_adhoc")
 end
 
-if os.getenv("PROSODY_ENABLE_ADMIN_SHELL") ~= "false" then
-    table.insert(modules_enabled, "admin_shell")
+if Lua.os.getenv("PROSODY_ENABLE_ADMIN_SHELL") ~= "false" then
+    Lua.table.insert(modules_enabled, "admin_shell")
 end
 
 -- Conditional HTTP modules (ENV-configurable, default: enabled)
 -- NOTE: BOSH required for web admin interface XMPP connection
-if os.getenv("PROSODY_ENABLE_BOSH") ~= "false" then
-    table.insert(modules_enabled, "bosh")
+if Lua.os.getenv("PROSODY_ENABLE_BOSH") ~= "false" then
+    Lua.table.insert(modules_enabled, "bosh")
 end
 
-if os.getenv("PROSODY_ENABLE_WEBSOCKET") ~= "false" then
-    table.insert(modules_enabled, "websocket")
+if Lua.os.getenv("PROSODY_ENABLE_WEBSOCKET") ~= "false" then
+    Lua.table.insert(modules_enabled, "websocket")
 end
 
 -- Registration watcher (only if watchers configured)
-if os.getenv("PROSODY_REGISTRATION_WATCHERS") then
-    table.insert(modules_enabled, "watchregistrations")
+if Lua.os.getenv("PROSODY_REGISTRATION_WATCHERS") then
+    Lua.table.insert(modules_enabled, "watchregistrations")
 end
 
 ---------- HTTP/BOSH CONFIGURATION ----------
@@ -218,7 +218,7 @@ authentication = "internal_hashed"
 -- DANE (DNS-Based Authentication of Named Entities)
 -- Provides additional security for S2S connections via DNSSEC
 -- Requires: lua-unbound, dns-root-data packages
-use_dane = os.getenv("PROSODY_USE_DANE") == "true"
+use_dane = Lua.os.getenv("PROSODY_USE_DANE") == "true"
 
 if use_dane then
     unbound = {
@@ -230,9 +230,9 @@ if use_dane then
     }
 
     -- Parse comma-separated DNS resolvers from ENV
-    local dns_resolvers = os.getenv("PROSODY_DNS_RESOLVERS") or "8.8.8.8,1.1.1.1"
+    local dns_resolvers = Lua.os.getenv("PROSODY_DNS_RESOLVERS") or "8.8.8.8,1.1.1.1"
     for resolver in dns_resolvers:gmatch("[^,]+") do
-        table.insert(unbound.forward, resolver:match("^%s*(.-)%s*$"))  -- trim whitespace
+        Lua.table.insert(unbound.forward, resolver:match("^%s*(.-)%s*$"))  -- trim whitespace
     end
 end
 
@@ -240,20 +240,20 @@ end
 
 -- User self-registration (disabled by default for security)
 -- Set PROSODY_ALLOW_REGISTRATION=true to enable
-allow_registration = os.getenv("PROSODY_ALLOW_REGISTRATION") == "true"
+allow_registration = Lua.os.getenv("PROSODY_ALLOW_REGISTRATION") == "true"
 
 -- Welcome message for new users (variables: $username, $host)
-welcome_message = os.getenv("PROSODY_WELCOME_MESSAGE") or "Welcome $username to $host XMPP server!"
+welcome_message = Lua.os.getenv("PROSODY_WELCOME_MESSAGE") or "Welcome $username to $host XMPP server!"
 
 -- Registration watchers (notify admins of new registrations)
 -- Requires mod_watchregistrations to be enabled
-local reg_watchers = os.getenv("PROSODY_REGISTRATION_WATCHERS")  -- comma-separated JIDs
+local reg_watchers = Lua.os.getenv("PROSODY_REGISTRATION_WATCHERS")  -- comma-separated JIDs
 if reg_watchers then
     registration_watchers = {}
     for jid in reg_watchers:gmatch("[^,]+") do
-        table.insert(registration_watchers, jid:match("^%s*(.-)%s*$"))  -- trim whitespace
+        Lua.table.insert(registration_watchers, jid:match("^%s*(.-)%s*$"))  -- trim whitespace
     end
-    registration_notification = os.getenv("PROSODY_REGISTRATION_NOTIFICATION")
+    registration_notification = Lua.os.getenv("PROSODY_REGISTRATION_NOTIFICATION")
                               or "User $username just registered on $host"
 end
 
@@ -265,24 +265,24 @@ end
 -- Setting this to true would BREAK federation!
 
 -- S2S stanza size limit (default: 512KB)
-s2s_stanza_size_limit = tonumber(os.getenv("PROSODY_S2S_STANZA_LIMIT")) or 512000
+s2s_stanza_size_limit = Lua.tonumber(Lua.os.getenv("PROSODY_S2S_STANZA_LIMIT")) or 512000
 
 -- Insecure domains (allow dialback for specific servers)
-local s2s_insecure = os.getenv("PROSODY_S2S_INSECURE_DOMAINS")  -- comma-separated
+local s2s_insecure = Lua.os.getenv("PROSODY_S2S_INSECURE_DOMAINS")  -- comma-separated
 if s2s_insecure then
     s2s_insecure_domains = {}
     for domain in s2s_insecure:gmatch("[^,]+") do
-        table.insert(s2s_insecure_domains, domain:match("^%s*(.-)%s*$"))
+        Lua.table.insert(s2s_insecure_domains, domain:match("^%s*(.-)%s*$"))
     end
 end
 
 -- Secure domains (require valid certs even with s2s_secure_auth=false)
 -- Note: xmpp-proxy already validates all S2S certs, this is belt-and-suspenders
-local s2s_secure = os.getenv("PROSODY_S2S_SECURE_DOMAINS")
+local s2s_secure = Lua.os.getenv("PROSODY_S2S_SECURE_DOMAINS")
 if s2s_secure then
     s2s_secure_domains = {}
     for domain in s2s_secure:gmatch("[^,]+") do
-        table.insert(s2s_secure_domains, domain:match("^%s*(.-)%s*$"))
+        Lua.table.insert(s2s_secure_domains, domain:match("^%s*(.-)%s*$"))
     end
 end
 
@@ -292,7 +292,7 @@ end
 -- internal: Flat files in /var/lib/prosody (default)
 -- sql: Database backend (requires sql config below)
 -- NOTE: Empty string for PROSODY_SQL_DRIVER is treated as "not set" (uses file storage)
-local sql_driver = os.getenv("PROSODY_SQL_DRIVER") or ""
+local sql_driver = Lua.os.getenv("PROSODY_SQL_DRIVER") or ""
 sql_driver = sql_driver:match("^%s*(.-)%s*$")  -- trim whitespace
 
 if sql_driver ~= "" then
@@ -300,20 +300,20 @@ if sql_driver ~= "" then
     storage = "sql"
     sql = {
         driver = sql_driver;  -- SQLite3, MySQL, PostgreSQL
-        database = os.getenv("PROSODY_SQL_DB") or "prosody";
-        username = os.getenv("PROSODY_SQL_USERNAME") or "prosody";
-        password = os.getenv("PROSODY_SQL_PASSWORD");
-        host = os.getenv("PROSODY_SQL_HOST") or "localhost";
+        database = Lua.os.getenv("PROSODY_SQL_DB") or "prosody";
+        username = Lua.os.getenv("PROSODY_SQL_USERNAME") or "prosody";
+        password = Lua.os.getenv("PROSODY_SQL_PASSWORD");
+        host = Lua.os.getenv("PROSODY_SQL_HOST") or "localhost";
     }
 else
     -- File-based storage (default)
-    storage = os.getenv("PROSODY_STORAGE") or "internal"
+    storage = Lua.os.getenv("PROSODY_STORAGE") or "internal"
 end
 
 ---------- ARCHIVING CONFIGURATION (MAM - XEP-0313) ----------
 
 -- Default archive policy (true = archive all messages by default)
-local mam_policy = os.getenv("PROSODY_MAM_DEFAULT_POLICY")
+local mam_policy = Lua.os.getenv("PROSODY_MAM_DEFAULT_POLICY")
 if mam_policy == nil or mam_policy == "true" then
     default_archive_policy = true
 else
@@ -321,42 +321,42 @@ else
 end
 
 -- Archive cleanup interval (default: 4 hours)
-archive_cleanup_interval = tonumber(os.getenv("PROSODY_MAM_CLEANUP_INTERVAL")) or 4*60*60
+archive_cleanup_interval = Lua.tonumber(Lua.os.getenv("PROSODY_MAM_CLEANUP_INTERVAL")) or 4*60*60
 
 -- Archive expiry period (default: 14 days / 2 weeks)
-local archive_days = os.getenv("PROSODY_ARCHIVE_EXPIRY_DAYS")
-                  or os.getenv("PROSODY_RETENTION_DAYS")
+local archive_days = Lua.os.getenv("PROSODY_ARCHIVE_EXPIRY_DAYS")
+                  or Lua.os.getenv("PROSODY_RETENTION_DAYS")
                   or "14"
 archive_expires_after = archive_days .. "d"
 
 -- Maximum archive query results
-max_archive_query_results = tonumber(os.getenv("PROSODY_MAM_MAX_RESULTS")) or 20
+max_archive_query_results = Lua.tonumber(Lua.os.getenv("PROSODY_MAM_MAX_RESULTS")) or 20
 
 ---------- STATISTICS CONFIGURATION ----------
 
 -- Enable statistics collection for monitoring
 -- Set PROSODY_STATISTICS to enable (e.g., "internal")
-statistics = os.getenv("PROSODY_STATISTICS")
+statistics = Lua.os.getenv("PROSODY_STATISTICS")
 
 -- Statistics collection interval in seconds (default: 60)
-local stats_interval = os.getenv("PROSODY_STATISTICS_INTERVAL")
+local stats_interval = Lua.os.getenv("PROSODY_STATISTICS_INTERVAL")
 if stats_interval then
-    statistics_interval = tonumber(stats_interval) or stats_interval
+    statistics_interval = Lua.tonumber(stats_interval) or stats_interval
 end
 
 ---------- MUC (Multi-User Chat) CONFIGURATION ----------
 
 -- MUC message archiving (muc_mam)
-muc_log_by_default = os.getenv("PROSODY_MUC_LOG_DEFAULT") == "true"
-muc_log_presences = os.getenv("PROSODY_MUC_LOG_PRESENCES") == "true"
-log_all_rooms = os.getenv("PROSODY_MUC_LOG_ALL_ROOMS") == "true"
+muc_log_by_default = Lua.os.getenv("PROSODY_MUC_LOG_DEFAULT") == "true"
+muc_log_presences = Lua.os.getenv("PROSODY_MUC_LOG_PRESENCES") == "true"
+log_all_rooms = Lua.os.getenv("PROSODY_MUC_LOG_ALL_ROOMS") == "true"
 
 -- MUC archive expiry
-local muc_expiry = os.getenv("PROSODY_MUC_LOG_EXPIRES") or "14"  -- days
+local muc_expiry = Lua.os.getenv("PROSODY_MUC_LOG_EXPIRES") or "14"  -- days
 muc_log_expires_after = muc_expiry .. "d"
 
 -- MUC cleanup interval (default: 4 hours)
-muc_log_cleanup_interval = tonumber(os.getenv("PROSODY_MUC_CLEANUP_INTERVAL")) or 4*60*60
+muc_log_cleanup_interval = Lua.tonumber(Lua.os.getenv("PROSODY_MUC_CLEANUP_INTERVAL")) or 4*60*60
 
 ---------- SECURITY MODULE CONFIGURATION ----------
 
@@ -385,11 +385,11 @@ log_slow_events_threshold = 0.5  -- seconds
 -- mod_limits: Connection and bandwidth rate limiting (core module)
 limits = {
     c2s = {
-        rate = os.getenv("PROSODY_C2S_RATE_LIMIT") or "3kb/s";
+        rate = Lua.os.getenv("PROSODY_C2S_RATE_LIMIT") or "3kb/s";
         burst = "2s";             -- Allow bursts for 2 seconds
     };
     s2s = {
-        rate = os.getenv("PROSODY_S2S_RATE_LIMIT") or "10kb/s";
+        rate = Lua.os.getenv("PROSODY_S2S_RATE_LIMIT") or "10kb/s";
         burst = "3s";
     };
 }
@@ -418,27 +418,27 @@ pastebin_trigger = "!paste"      -- Trigger word to force paste creation
 
 -- Multi-User Chat (Group Chat) Component
 -- Enable with PROSODY_MUC_ENABLED=true
-if os.getenv("PROSODY_MUC_ENABLED") == "true" then
-    local muc_domain = os.getenv("PROSODY_MUC_DOMAIN") or "conference.${XMPP_DOMAIN}"
+if Lua.os.getenv("PROSODY_MUC_ENABLED") == "true" then
+    local muc_domain = Lua.os.getenv("PROSODY_MUC_DOMAIN") or "conference.${XMPP_DOMAIN}"
     
     Component (muc_domain) "muc"
-        name = os.getenv("PROSODY_MUC_NAME") or "Group Chat Rooms"
+        name = Lua.os.getenv("PROSODY_MUC_NAME") or "Group Chat Rooms"
         modules_enabled = { "muc_mam", "vcard_muc", "pastebin" }
         
         -- Room creation restrictions
-        restrict_room_creation = os.getenv("PROSODY_MUC_RESTRICT_CREATION") or "local"
+        restrict_room_creation = Lua.os.getenv("PROSODY_MUC_RESTRICT_CREATION") or "local"
         
         -- Default room settings
-        muc_room_default_public = os.getenv("PROSODY_MUC_DEFAULT_PUBLIC") == "true"
-        muc_room_default_persistent = os.getenv("PROSODY_MUC_DEFAULT_PERSISTENT") == "true"
-        muc_room_default_members_only = os.getenv("PROSODY_MUC_DEFAULT_MEMBERS_ONLY") ~= "false"  -- default true
-        muc_room_default_moderated = os.getenv("PROSODY_MUC_DEFAULT_MODERATED") ~= "false"  -- default true
-        muc_room_default_public_jids = os.getenv("PROSODY_MUC_DEFAULT_PUBLIC_JIDS") == "true"
-        muc_room_default_change_subject = os.getenv("PROSODY_MUC_DEFAULT_CHANGE_SUBJECT") == "true"
-        muc_room_default_history_length = tonumber(os.getenv("PROSODY_MUC_DEFAULT_HISTORY")) or 20
-        muc_room_default_language = os.getenv("PROSODY_MUC_DEFAULT_LANG") or "en"
+        muc_room_default_public = Lua.os.getenv("PROSODY_MUC_DEFAULT_PUBLIC") == "true"
+        muc_room_default_persistent = Lua.os.getenv("PROSODY_MUC_DEFAULT_PERSISTENT") == "true"
+        muc_room_default_members_only = Lua.os.getenv("PROSODY_MUC_DEFAULT_MEMBERS_ONLY") ~= "false"  -- default true
+        muc_room_default_moderated = Lua.os.getenv("PROSODY_MUC_DEFAULT_MODERATED") ~= "false"  -- default true
+        muc_room_default_public_jids = Lua.os.getenv("PROSODY_MUC_DEFAULT_PUBLIC_JIDS") == "true"
+        muc_room_default_change_subject = Lua.os.getenv("PROSODY_MUC_DEFAULT_CHANGE_SUBJECT") == "true"
+        muc_room_default_history_length = Lua.tonumber(Lua.os.getenv("PROSODY_MUC_DEFAULT_HISTORY")) or 20
+        muc_room_default_language = Lua.os.getenv("PROSODY_MUC_DEFAULT_LANG") or "en"
         
         -- Pastebin settings for MUC
-        pastebin_line_threshold = tonumber(os.getenv("PROSODY_MUC_PASTEBIN_LINES")) or 60
-        pastebin_threshold = tonumber(os.getenv("PROSODY_MUC_PASTEBIN_CHARS")) or 5000
+        pastebin_line_threshold = Lua.tonumber(Lua.os.getenv("PROSODY_MUC_PASTEBIN_LINES")) or 60
+        pastebin_threshold = Lua.tonumber(Lua.os.getenv("PROSODY_MUC_PASTEBIN_CHARS")) or 5000
 end
