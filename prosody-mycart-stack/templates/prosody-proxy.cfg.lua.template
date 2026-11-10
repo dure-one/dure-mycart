@@ -291,11 +291,13 @@ end
 -- Storage backend selection
 -- internal: Flat files in /var/lib/prosody (default)
 -- sql: Database backend (requires sql config below)
-storage = os.getenv("PROSODY_SQL_DRIVER") and "sql" or os.getenv("PROSODY_STORAGE") or "internal"
+-- NOTE: Empty string for PROSODY_SQL_DRIVER is treated as "not set" (uses file storage)
+local sql_driver = os.getenv("PROSODY_SQL_DRIVER") or ""
+sql_driver = sql_driver:match("^%s*(.-)%s*$")  -- trim whitespace
 
--- SQL backend configuration
-local sql_driver = os.getenv("PROSODY_SQL_DRIVER")
-if sql_driver then
+if sql_driver ~= "" then
+    -- SQL backend explicitly configured
+    storage = "sql"
     sql = {
         driver = sql_driver;  -- SQLite3, MySQL, PostgreSQL
         database = os.getenv("PROSODY_SQL_DB") or "prosody";
@@ -303,6 +305,9 @@ if sql_driver then
         password = os.getenv("PROSODY_SQL_PASSWORD");
         host = os.getenv("PROSODY_SQL_HOST") or "localhost";
     }
+else
+    -- File-based storage (default)
+    storage = os.getenv("PROSODY_STORAGE") or "internal"
 end
 
 ---------- ARCHIVING CONFIGURATION (MAM - XEP-0313) ----------
