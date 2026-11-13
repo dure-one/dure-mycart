@@ -336,7 +336,14 @@ max_archive_query_results = Lua.tonumber(Lua.os.getenv("PROSODY_MAM_MAX_RESULTS"
 
 -- Enable statistics collection for monitoring
 -- Set PROSODY_STATISTICS to enable (e.g., "internal")
-statistics = Lua.os.getenv("PROSODY_STATISTICS")
+-- NOTE: Empty string is treated as "not set" (statistics disabled)
+local stats_provider = Lua.os.getenv("PROSODY_STATISTICS") or ""
+stats_provider = stats_provider:match("^%s*(.-)%s*$")  -- trim whitespace
+
+if stats_provider ~= "" then
+    statistics = stats_provider  -- "internal" or other provider
+end
+-- If empty, statistics remains unset (disabled by default)
 
 -- Statistics collection interval in seconds (default: 60)
 local stats_interval = Lua.os.getenv("PROSODY_STATISTICS_INTERVAL")

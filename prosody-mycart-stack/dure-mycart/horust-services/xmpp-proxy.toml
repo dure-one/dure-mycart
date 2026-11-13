@@ -1,6 +1,6 @@
-command = "/usr/local/bin/xmpp-proxy /etc/xmpp-proxy/xmpp-proxy.toml"
-start-delay = "2s"
-start-after = []
+command = "/usr/local/bin/xmpp-proxy-wrapper.sh"
+start-delay = "5s"
+start-after = ["mycart"]
 working-directory = "/app"
 stdout = "/logs/xmpp-proxy-stdout.log"
 stderr = "/logs/xmpp-proxy-stderr.log"
