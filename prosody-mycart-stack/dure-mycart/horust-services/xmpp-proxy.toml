@@ -1,6 +1,6 @@
 command = "/usr/local/bin/xmpp-proxy-wrapper.sh"
 start-delay = "5s"
-start-after = ["mycart"]
+start-after = []
 working-directory = "/app"
 stdout = "/logs/xmpp-proxy-stdout.log"
 stderr = "/logs/xmpp-proxy-stderr.log"
