@@ -223,22 +223,42 @@ func backendDisplay(b string) string {
 	}
 }
 
+// getAllowedDomains returns all domains that should be allowed in autocert.
+// Includes MYCART_DOMAIN and optionally xmpp.MYCART_DOMAIN for XMPP SRV compatibility.
+func getAllowedDomains() []string {
+	domains := []string{}
+
+	mycartDomain := os.Getenv("MYCART_DOMAIN")
+	if mycartDomain == "" {
+		return domains
+	}
+
+	domains = append(domains, mycartDomain)
+
+	// Add xmpp subdomain for XMPP SRV record compatibility
+	// This ensures the certificate works when clients connect via xmpp.domain.com
+	xmppDomain := "xmpp." + mycartDomain
+	domains = append(domains, xmppDomain)
+
+	return domains
+}
+
 // startHTTPS starts the server with HTTPS support and automatic TLS.
 func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {
-	// Get domain from environment variable for autocert
-	domain := os.Getenv("MYCART_DOMAIN")
-	if domain == "" {
-		domain = extractHostOnly(mainAddr)
+	// Get allowed domains for autocert
+	domains := getAllowedDomains()
+	if len(domains) == 0 {
+		domains = []string{extractHostOnly(mainAddr)}
 	}
 
 	manager := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(domain),
+		HostPolicy: autocert.HostWhitelist(domains...),
 		Cache:      autocert.DirCache("./lc_certs"),
 	}
 
 	// Export certificates to PEM format for xmpp-proxy
-	exportCertificatesToPEM(manager, domain)
+	exportCertificatesToPEM(manager, domains)
 
 	cfgTLS := &tls.Config{
 		GetCertificate: manager.GetCertificate,
@@ -270,20 +290,20 @@ func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {
 // startBothServers starts both HTTP and HTTPS servers concurrently.
 // HTTP server handles autocert HTTP-01 challenges, HTTPS serves the application.
 func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
-	// Get domain from environment variable for autocert
-	domain := os.Getenv("MYCART_DOMAIN")
-	if domain == "" {
-		domain = extractHostOnly(httpsAddr)
+	// Get allowed domains for autocert
+	domains := getAllowedDomains()
+	if len(domains) == 0 {
+		domains = []string{extractHostOnly(httpsAddr)}
 	}
 
 	manager := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(domain),
+		HostPolicy: autocert.HostWhitelist(domains...),
 		Cache:      autocert.DirCache("./lc_certs"),
 	}
 
 	// Export certificates to PEM format for xmpp-proxy
-	exportCertificatesToPEM(manager, domain)
+	exportCertificatesToPEM(manager, domains)
 
 	errCh := make(chan error, 2)
 

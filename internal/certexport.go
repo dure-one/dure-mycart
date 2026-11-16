@@ -22,23 +22,29 @@ import (
 // In dev mode (MYCART_DEV_MODE=true), generates self-signed certificates immediately.
 // In production, monitors the autocert cache and writes fullchain.pem and privkey.pem
 // when certificates are obtained.
-func exportCertificatesToPEM(manager *autocert.Manager, domain string) {
+func exportCertificatesToPEM(manager *autocert.Manager, domains []string) {
+	if len(domains) == 0 {
+		logger().Warn().Msg("No domains provided for certificate export")
+		return
+	}
+
 	certDir := "./lc_certs"
+	domain := domains[0] // Primary domain for cache lookup
 
 	// Check if dev mode is enabled
 	devMode := strings.ToLower(os.Getenv("MYCART_DEV_MODE")) == "true"
 
 	// Debug: Write to file to verify this code runs
-	os.WriteFile("/logs/certexport-debug.log", []byte(fmt.Sprintf("exportCertificatesToPEM called. devMode=%v, MYCART_DEV_MODE=%s\n", devMode, os.Getenv("MYCART_DEV_MODE"))), 0644)
+	os.WriteFile("/logs/certexport-debug.log", []byte(fmt.Sprintf("exportCertificatesToPEM called. devMode=%v, MYCART_DEV_MODE=%s, domains=%v\n", devMode, os.Getenv("MYCART_DEV_MODE"), domains)), 0644)
 
 	if devMode {
-		// Dev mode: Generate self-signed certificate immediately
-		logger().Info().Msg("Dev mode enabled - generating self-signed certificate")
-		if err := generateSelfSignedCert(domain, certDir); err != nil {
+		// Dev mode: Generate self-signed certificate with all domains as SANs
+		logger().Info().Msgf("Dev mode enabled - generating self-signed certificate for %v", domains)
+		if err := generateSelfSignedCert(domains, certDir); err != nil {
 			logger().Err(err).Msg("Failed to generate self-signed certificate")
 			return
 		}
-		logger().Info().Msgf("✓ Self-signed certificate generated for %s (dev mode)", domain)
+		logger().Info().Msgf("✓ Self-signed certificate generated for %v (dev mode)", domains)
 		return
 	}
 
@@ -79,7 +85,11 @@ func exportCertificatesToPEM(manager *autocert.Manager, domain string) {
 }
 
 // generateSelfSignedCert creates a self-signed certificate for local development.
-func generateSelfSignedCert(domain, certDir string) error {
+func generateSelfSignedCert(domains []string, certDir string) error {
+	if len(domains) == 0 {
+		return fmt.Errorf("no domains provided")
+	}
+
 	// Ensure cert directory exists
 	if err := os.MkdirAll(certDir, 0700); err != nil {
 		return fmt.Errorf("failed to create cert directory: %w", err)
@@ -104,14 +114,14 @@ func generateSelfSignedCert(domain, certDir string) error {
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			Organization: []string{"mycart (self-signed)"},
-			CommonName:   domain,
+			CommonName:   domains[0], // Primary domain as CN
 		},
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
-		DNSNames:              []string{domain},
+		DNSNames:              domains, // All domains as SANs
 	}
 
 	// Create self-signed certificate
