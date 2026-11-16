@@ -50,6 +50,13 @@ func exportCertificatesToPEM(manager *autocert.Manager, domains []string) {
 
 	// Production mode: Proactively request certificate, then monitor and export
 
+	// Log provider info
+	provider := os.Getenv("ACME_PROVIDER")
+	if provider == "" {
+		provider = "letsencrypt"
+	}
+	logger().Info().Msgf("Certificate provider: %s, domains: %v", provider, domains)
+
 	// Proactively request certificate at startup (non-blocking)
 	// This triggers ACME challenge immediately instead of waiting for first HTTPS request
 	// GetCertificate for primary domain → autocert issues ONE cert with all HostWhitelist domains as SANs
