@@ -48,7 +48,25 @@ func exportCertificatesToPEM(manager *autocert.Manager, domains []string) {
 		return
 	}
 
-	// Production mode: Monitor autocert and export when ready
+	// Production mode: Proactively request certificate, then monitor and export
+
+	// Proactively request certificate at startup (non-blocking)
+	// This triggers ACME challenge immediately instead of waiting for first HTTPS request
+	// GetCertificate for primary domain → autocert issues ONE cert with all HostWhitelist domains as SANs
+	go func() {
+		logger().Info().Msgf("Requesting SSL certificate for %v", domains)
+		hello := &tls.ClientHelloInfo{
+			ServerName: domains[0], // Primary domain triggers cert request with all SANs
+		}
+		_, err := manager.GetCertificate(hello)
+		if err != nil {
+			logger().Warn().Err(err).Msgf("Initial certificate request failed for %s, will retry", domains[0])
+		} else {
+			logger().Info().Msgf("Certificate request initiated for %s", domains[0])
+		}
+	}()
+
+	// Monitor autocert cache and export PEM files when certificate is ready
 	go func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
@@ -63,7 +81,7 @@ func exportCertificatesToPEM(manager *autocert.Manager, domains []string) {
 
 			// Try to get the certificate from autocert
 			hello := &tls.ClientHelloInfo{
-				ServerName: domain,
+				ServerName: domain, // Check primary domain
 			}
 
 			cert, err := manager.GetCertificate(hello)
