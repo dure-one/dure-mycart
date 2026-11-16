@@ -266,6 +266,31 @@ func getACMEClient() (*acme.Client, error) {
 	return client, nil
 }
 
+// validateEABKey checks if key is valid base64url (RFC 4648 §5).
+// Valid lengths: n*4, n*4+2, n*4+3 (NOT n*4+1 - cannot encode to that length).
+func validateEABKey(key string) error {
+	if key == "" {
+		return fmt.Errorf("key is empty")
+	}
+
+	// Check length (must not be n*4+1)
+	if len(key)%4 == 1 {
+		return fmt.Errorf("invalid base64 length %d (got n*4+1, expected n*4, n*4+2, or n*4+3)", len(key))
+	}
+
+	// Check characters (base64url: A-Za-z0-9_-)
+	for i, c := range key {
+		if !((c >= 'A' && c <= 'Z') ||
+			(c >= 'a' && c <= 'z') ||
+			(c >= '0' && c <= '9') ||
+			c == '-' || c == '_') {
+			return fmt.Errorf("illegal character at byte %d: %q (base64url allows only A-Za-z0-9_-)", i, c)
+		}
+	}
+
+	return nil
+}
+
 // getEAB returns External Account Binding for providers that require it (GTS, ZeroSSL with EAB).
 // Returns nil if not configured or not required.
 func getEAB() (*acme.ExternalAccountBinding, error) {
@@ -281,6 +306,11 @@ func getEAB() (*acme.ExternalAccountBinding, error) {
 
 	if kid == "" || b64HmacKey == "" {
 		return nil, fmt.Errorf("GTS_EAB_KID and GTS_EAB_HMAC_KEY required for Google Trust Services")
+	}
+
+	// Validate HMAC key before attempting to decode
+	if err := validateEABKey(b64HmacKey); err != nil {
+		return nil, fmt.Errorf("invalid GTS_EAB_HMAC_KEY: %w (check gcloud output - key may be truncated or malformed)", err)
 	}
 
 	// Decode HMAC key (GTS uses base64 URL encoding without padding)

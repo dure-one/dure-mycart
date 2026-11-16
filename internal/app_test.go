@@ -201,3 +201,115 @@ func TestInit_CreatesDirsAndDB(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateEABKey(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		key     string
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name:    "valid 84-char key (21*4)",
+			key:     "v759H_lkZfpWpch1xFp8pEmLmpEV8hKxY0UWvIeSic7rvtmlTaCl_pq34ag9HbPUFF6fuCRWLYA03SRN03Qc",
+			wantErr: false,
+		},
+		{
+			name:    "valid 88-char key (22*4)",
+			key:     "v759H_lkZfpWpch1xFp8pEmLmpEV8hKxY0UWvIeSic7rvtmlTaCl_pq34ag9HbPUFF6fuCRWLYA03SRN03QcABCD",
+			wantErr: false,
+		},
+		{
+			name:    "valid 86-char key (21*4+2)",
+			key:     "v759H_lkZfpWpch1xFp8pEmLmpEV8hKxY0UWvIeSic7rvtmlTaCl_pq34ag9HbPUFF6fuCRWLYA03SRN03QcAB",
+			wantErr: false,
+		},
+		{
+			name:    "valid 87-char key (21*4+3)",
+			key:     "v759H_lkZfpWpch1xFp8pEmLmpEV8hKxY0UWvIeSic7rvtmlTaCl_pq34ag9HbPUFF6fuCRWLYA03SRN03QcABC",
+			wantErr: false,
+		},
+		{
+			name:    "invalid 85-char key (21*4+1) - actual GTS output",
+			key:     "v759H_lkZfpWpch1xFp8pEmLmpEV8hKxY0UWvIeSic7rvtmlTaCl_pq34ag9HbPUFF6fuCRWLYA03SRN03Qc_",
+			wantErr: true,
+			errMsg:  "invalid base64 length 85",
+		},
+		{
+			name:    "invalid 81-char key (20*4+1)",
+			key:     "v759H_lkZfpWpch1xFp8pEmLmpEV8hKxY0UWvIeSic7rvtmlTaCl_pq34ag9HbPUFF6fuCRWLYA03SR",
+			wantErr: true,
+			errMsg:  "invalid base64 length 81",
+		},
+		{
+			name:    "invalid chars - dollar sign",
+			key:     "abc$def",
+			wantErr: true,
+			errMsg:  "illegal character",
+		},
+		{
+			name:    "invalid chars - plus (std base64, not base64url)",
+			key:     "abc+def",
+			wantErr: true,
+			errMsg:  "illegal character",
+		},
+		{
+			name:    "invalid chars - slash (std base64, not base64url)",
+			key:     "abc/def",
+			wantErr: true,
+			errMsg:  "illegal character",
+		},
+		{
+			name:    "invalid chars - equals (padding not allowed in RawURLEncoding)",
+			key:     "abcd====",
+			wantErr: true,
+			errMsg:  "illegal character",
+		},
+		{
+			name:    "empty key",
+			key:     "",
+			wantErr: true,
+			errMsg:  "key is empty",
+		},
+		{
+			name:    "valid base64url chars - hyphen",
+			key:     "abcd-efg",
+			wantErr: false,
+		},
+		{
+			name:    "valid base64url chars - underscore",
+			key:     "abcd_efg",
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := validateEABKey(tt.key)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateEABKey() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if tt.wantErr && tt.errMsg != "" {
+				if err == nil {
+					t.Errorf("validateEABKey() expected error containing %q, got nil", tt.errMsg)
+				} else if !contains(err.Error(), tt.errMsg) {
+					t.Errorf("validateEABKey() error = %q, want error containing %q", err.Error(), tt.errMsg)
+				}
+			}
+		})
+	}
+}
+
+func contains(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
