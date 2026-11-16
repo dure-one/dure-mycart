@@ -1,11 +1,17 @@
 package app
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
+	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/dure-one/dure-mycart/pkg/logging"
 )
@@ -144,5 +150,147 @@ func TestGenerateSelfSignedCert_InvalidDirectory(t *testing.T) {
 	// Assert - should return an error
 	if err == nil {
 		t.Error("expected error for invalid directory, got nil")
+	}
+}
+
+// generateTestCertWithExpiry generates a PEM certificate that expires in the given duration
+func generateTestCertWithExpiry(t *testing.T, expiresIn time.Duration) []byte {
+	t.Helper()
+
+	// Generate ECDSA private key
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("failed to generate private key: %v", err)
+	}
+
+	// Create certificate template
+	now := time.Now()
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			CommonName: "test.example.com",
+		},
+		NotBefore:             now,
+		NotAfter:              now.Add(expiresIn),
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		DNSNames:              []string{"test.example.com"},
+	}
+
+	// Create self-signed certificate
+	certDER, err := x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
+	if err != nil {
+		t.Fatalf("failed to create certificate: %v", err)
+	}
+
+	// Encode to PEM
+	certPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certDER,
+	})
+
+	return certPEM
+}
+
+// TestCheckCertificateExpiry tests certificate expiry validation
+func TestCheckCertificateExpiry(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		expiresIn      time.Duration
+		renewThreshold time.Duration
+		wantRenew      bool
+	}{
+		{
+			name:           "cert with 90 days left",
+			expiresIn:      90 * 24 * time.Hour,
+			renewThreshold: 7 * 24 * time.Hour,
+			wantRenew:      false,
+		},
+		{
+			name:           "cert with 8 days left",
+			expiresIn:      8 * 24 * time.Hour,
+			renewThreshold: 7 * 24 * time.Hour,
+			wantRenew:      false,
+		},
+		{
+			name:           "cert with 7 days left - boundary",
+			expiresIn:      7 * 24 * time.Hour,
+			renewThreshold: 7 * 24 * time.Hour,
+			wantRenew:      false, // Equal to threshold, still safe
+		},
+		{
+			name:           "cert with 6 days left - RENEW",
+			expiresIn:      6 * 24 * time.Hour,
+			renewThreshold: 7 * 24 * time.Hour,
+			wantRenew:      true,
+		},
+		{
+			name:           "cert with 1 day left - RENEW",
+			expiresIn:      24 * time.Hour,
+			renewThreshold: 7 * 24 * time.Hour,
+			wantRenew:      true,
+		},
+		{
+			name:           "expired cert - RENEW",
+			expiresIn:      -24 * time.Hour,
+			renewThreshold: 7 * 24 * time.Hour,
+			wantRenew:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			certPEM := generateTestCertWithExpiry(t, tt.expiresIn)
+
+			daysLeft, shouldRenew, err := checkCertificateExpiry(certPEM, tt.renewThreshold)
+			if err != nil {
+				t.Fatalf("checkCertificateExpiry failed: %v", err)
+			}
+
+			if shouldRenew != tt.wantRenew {
+				t.Errorf("shouldRenew = %v, want %v (daysLeft=%d)", shouldRenew, tt.wantRenew, daysLeft)
+			}
+		})
+	}
+}
+
+// TestCheckCertificateExpiry_InvalidPEM tests error handling for invalid PEM
+func TestCheckCertificateExpiry_InvalidPEM(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		pemData []byte
+	}{
+		{
+			name:    "empty data",
+			pemData: []byte{},
+		},
+		{
+			name:    "not PEM",
+			pemData: []byte("not a PEM certificate"),
+		},
+		{
+			name:    "PEM but not certificate",
+			pemData: []byte("-----BEGIN RSA PRIVATE KEY-----\nMIIBOgIBAAJBAK\n-----END RSA PRIVATE KEY-----\n"),
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, _, err := checkCertificateExpiry(tt.pemData, 7*24*time.Hour)
+			if err == nil {
+				t.Error("expected error for invalid PEM, got nil")
+			}
+		})
 	}
 }

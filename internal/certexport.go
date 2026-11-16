@@ -260,6 +260,32 @@ func writePEMFiles(cert *tls.Certificate, certDir string) error {
 	return nil
 }
 
+// checkCertificateExpiry parses PEM certificate and checks expiry.
+// Returns: daysLeft, shouldRenew, error
+// shouldRenew=true when certificate expires within renewThreshold.
+func checkCertificateExpiry(certPEM []byte, renewThreshold time.Duration) (int, bool, error) {
+	// Decode PEM
+	block, _ := pem.Decode(certPEM)
+	if block == nil || block.Type != "CERTIFICATE" {
+		return 0, false, fmt.Errorf("failed to decode PEM certificate")
+	}
+
+	// Parse X.509 certificate
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return 0, false, fmt.Errorf("failed to parse certificate: %w", err)
+	}
+
+	// Calculate time until expiry
+	timeUntilExpiry := time.Until(cert.NotAfter)
+	daysLeft := int(timeUntilExpiry.Hours() / 24)
+
+	// Should renew if within threshold
+	shouldRenew := timeUntilExpiry < renewThreshold
+
+	return daysLeft, shouldRenew, nil
+}
+
 // importPEMToCache imports PEM files back into autocert cache format.
 // Combines privkey.pem + fullchain.pem → certDir/domain (autocert cache format).
 // This allows pre-populating cache from existing certs or recovering from corruption.
@@ -280,22 +306,37 @@ func importPEMToCache(domains []string, certDir string) error {
 		return nil
 	}
 
-	// Read PEM files
-	privkey, err := os.ReadFile(privkeyPath)
-	if err != nil {
-		return fmt.Errorf("failed to read privkey.pem: %w", err)
-	}
-
+	// Read fullchain to check expiry
 	fullchain, err := os.ReadFile(fullchainPath)
 	if err != nil {
 		return fmt.Errorf("failed to read fullchain.pem: %w", err)
 	}
 
+	// Check certificate expiry (7-day safety threshold)
+	renewThreshold := 7 * 24 * time.Hour
+	daysLeft, shouldRenew, err := checkCertificateExpiry(fullchain, renewThreshold)
+	if err != nil {
+		logger().Warn().Err(err).Msg("Failed to check certificate expiry, skipping import")
+		return nil // Don't import invalid cert
+	}
+
+	if shouldRenew {
+		logger().Warn().Msgf("Certificate expires in %d days (<7 day threshold) - forcing renewal", daysLeft)
+		return nil // Skip import, autocert will request new cert
+	}
+
+	logger().Info().Msgf("Certificate valid for %d more days - importing to cache", daysLeft)
+
+	// Read privkey
+	privkey, err := os.ReadFile(privkeyPath)
+	if err != nil {
+		return fmt.Errorf("failed to read privkey.pem: %w", err)
+	}
+
 	// Combine: privkey first, then fullchain (autocert DirCache format)
-	// This matches autocert's internal storage: private key + certificate chain
 	combined := append(privkey, fullchain...)
 
-	// Write to autocert cache file (named after primary domain)
+	// Write to autocert cache file
 	cachePath := filepath.Join(certDir, primaryDomain)
 	if err := os.WriteFile(cachePath, combined, 0600); err != nil {
 		return fmt.Errorf("failed to write cache file: %w", err)
