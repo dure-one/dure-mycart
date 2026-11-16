@@ -57,6 +57,13 @@ func exportCertificatesToPEM(manager *autocert.Manager, domains []string) {
 	}
 	logger().Info().Msgf("Certificate provider: %s, domains: %v", provider, domains)
 
+	// Import existing PEM files to autocert cache (if present)
+	// This allows reusing manually placed certs, pre-populating cache, or recovering from corruption
+	// Autocert will check expiry and only renew if <30 days remaining
+	if err := importPEMToCache(domains, certDir); err != nil {
+		logger().Warn().Err(err).Msg("Failed to import PEM files to autocert cache")
+	}
+
 	// Proactively request certificate at startup (non-blocking)
 	// This triggers ACME challenge immediately instead of waiting for first HTTPS request
 	// GetCertificate for primary domain → autocert issues ONE cert with all HostWhitelist domains as SANs
@@ -250,5 +257,50 @@ func writePEMFiles(cert *tls.Certificate, certDir string) error {
 		return fmt.Errorf("failed to encode private key: %w", err)
 	}
 
+	return nil
+}
+
+// importPEMToCache imports PEM files back into autocert cache format.
+// Combines privkey.pem + fullchain.pem → certDir/domain (autocert cache format).
+// This allows pre-populating cache from existing certs or recovering from corruption.
+func importPEMToCache(domains []string, certDir string) error {
+	if len(domains) == 0 {
+		return fmt.Errorf("no domains provided")
+	}
+
+	primaryDomain := domains[0]
+	privkeyPath := filepath.Join(certDir, "privkey.pem")
+	fullchainPath := filepath.Join(certDir, "fullchain.pem")
+
+	// Check if PEM files exist
+	if _, err := os.Stat(privkeyPath); os.IsNotExist(err) {
+		return nil // No PEM files to import, skip silently
+	}
+	if _, err := os.Stat(fullchainPath); os.IsNotExist(err) {
+		return nil
+	}
+
+	// Read PEM files
+	privkey, err := os.ReadFile(privkeyPath)
+	if err != nil {
+		return fmt.Errorf("failed to read privkey.pem: %w", err)
+	}
+
+	fullchain, err := os.ReadFile(fullchainPath)
+	if err != nil {
+		return fmt.Errorf("failed to read fullchain.pem: %w", err)
+	}
+
+	// Combine: privkey first, then fullchain (autocert DirCache format)
+	// This matches autocert's internal storage: private key + certificate chain
+	combined := append(privkey, fullchain...)
+
+	// Write to autocert cache file (named after primary domain)
+	cachePath := filepath.Join(certDir, primaryDomain)
+	if err := os.WriteFile(cachePath, combined, 0600); err != nil {
+		return fmt.Errorf("failed to write cache file: %w", err)
+	}
+
+	logger().Info().Msgf("✓ Imported PEM files to autocert cache: %s", primaryDomain)
 	return nil
 }
