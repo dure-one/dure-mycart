@@ -149,6 +149,7 @@ if Lua.os.getenv("PROSODY_ENABLE_ADMIN_SHELL") ~= "false" then
 end
 
 -- Conditional HTTP modules (ENV-configurable, default: enabled)
+-- Set PROSODY_ENABLE_BOSH=false or PROSODY_ENABLE_WEBSOCKET=false to disable
 -- NOTE: BOSH required for web admin interface XMPP connection
 if Lua.os.getenv("PROSODY_ENABLE_BOSH") ~= "false" then
     Lua.table.insert(modules_enabled, "bosh")
