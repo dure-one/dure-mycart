@@ -258,19 +258,48 @@ func getACMEClient() (*acme.Client, error) {
 		}
 	}
 
-	// Note: Google Trust Services requires EAB (External Account Binding)
-	// which is not natively supported by golang.org/x/crypto/acme/autocert
-	// Use ACME_PROVIDER=letsencrypt or zerossl instead
-	if provider == "google" || provider == "gts" {
-		return nil, fmt.Errorf("Google Trust Services requires EAB which is not supported by autocert (use letsencrypt or zerossl)")
-	}
-
 	client := &acme.Client{
 		DirectoryURL: directoryURL,
 	}
 
 	logger().Info().Msgf("ACME provider: %s, directory: %s", provider, directoryURL)
 	return client, nil
+}
+
+// getEAB returns External Account Binding for providers that require it (GTS, ZeroSSL with EAB).
+// Returns nil if not configured or not required.
+func getEAB() (*acme.ExternalAccountBinding, error) {
+	provider := strings.ToLower(os.Getenv("ACME_PROVIDER"))
+
+	// Only Google Trust Services requires EAB
+	if provider != "google" && provider != "gts" {
+		return nil, nil
+	}
+
+	kid := os.Getenv("GTS_EAB_KID")
+	b64HmacKey := os.Getenv("GTS_EAB_HMAC_KEY")
+
+	if kid == "" || b64HmacKey == "" {
+		return nil, fmt.Errorf("GTS_EAB_KID and GTS_EAB_HMAC_KEY required for Google Trust Services")
+	}
+
+	// Decode HMAC key (GTS uses base64 URL encoding without padding)
+	hmacKey, err := base64.RawURLEncoding.DecodeString(b64HmacKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode GTS_EAB_HMAC_KEY: %w", err)
+	}
+
+	// Log KID prefix for debugging (don't log full key)
+	kidPrefix := kid
+	if len(kid) > 8 {
+		kidPrefix = kid[:8] + "..."
+	}
+	logger().Info().Msgf("Using External Account Binding (KID: %s)", kidPrefix)
+
+	return &acme.ExternalAccountBinding{
+		KID: kid,
+		Key: hmacKey,
+	}, nil
 }
 
 // getAllowedDomains returns all domains that should be allowed in autocert.
@@ -307,6 +336,12 @@ func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {
 		return fmt.Errorf("failed to configure ACME client: %w", err)
 	}
 
+	// Get External Account Binding if required
+	eab, err := getEAB()
+	if err != nil {
+		return fmt.Errorf("failed to configure EAB: %w", err)
+	}
+
 	// Get email for registration
 	email := os.Getenv("ACME_EMAIL")
 	if email == "" && len(domains) > 0 {
@@ -314,11 +349,12 @@ func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {
 	}
 
 	manager := &autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(domains...),
-		Cache:      autocert.DirCache("./lc_certs"),
-		Email:      email,
-		Client:     acmeClient,
+		Prompt:                 autocert.AcceptTOS,
+		HostPolicy:             autocert.HostWhitelist(domains...),
+		Cache:                  autocert.DirCache("./lc_certs"),
+		Email:                  email,
+		Client:                 acmeClient,
+		ExternalAccountBinding: eab,
 	}
 
 	// Export certificates to PEM format for xmpp-proxy
@@ -366,6 +402,12 @@ func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
 		return fmt.Errorf("failed to configure ACME client: %w", err)
 	}
 
+	// Get External Account Binding if required
+	eab, err := getEAB()
+	if err != nil {
+		return fmt.Errorf("failed to configure EAB: %w", err)
+	}
+
 	// Get email for registration
 	email := os.Getenv("ACME_EMAIL")
 	if email == "" && len(domains) > 0 {
@@ -373,11 +415,12 @@ func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
 	}
 
 	manager := &autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(domains...),
-		Cache:      autocert.DirCache("./lc_certs"),
-		Email:      email,
-		Client:     acmeClient,
+		Prompt:                 autocert.AcceptTOS,
+		HostPolicy:             autocert.HostWhitelist(domains...),
+		Cache:                  autocert.DirCache("./lc_certs"),
+		Email:                  email,
+		Client:                 acmeClient,
+		ExternalAccountBinding: eab,
 	}
 
 	// Export certificates to PEM format for xmpp-proxy
