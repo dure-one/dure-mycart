@@ -209,9 +209,10 @@ end
 
 -- HTTP configuration for web admin
 http_ports = { 5280 }
--- SECURITY: Bind to localhost only (access via mycart reverse proxy with auth)
--- Prevents direct access from bridge network
-http_interfaces = { "127.0.0.1", "::1" }
+-- SECURITY: Bind to localhost + bridge network IP for mycart proxy access
+-- Port 5280 not exposed to host (network isolation = security boundary)
+-- Bridge network 172.19.0.0/16 is isolated (only mycart + prosody containers)
+http_interfaces = { "127.0.0.1", "::1", "172.19.0.2" }
 
 -- Trust reverse proxy (mycart) for X-Forwarded-For headers
 -- This preserves real client IPs in HTTP/BOSH connections (admin interface)
