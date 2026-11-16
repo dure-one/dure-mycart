@@ -258,36 +258,15 @@ func getACMEClient() (*acme.Client, error) {
 		}
 	}
 
-	client := &acme.Client{
-		DirectoryURL: directoryURL,
+	// Note: Google Trust Services requires EAB (External Account Binding)
+	// which is not natively supported by golang.org/x/crypto/acme/autocert
+	// Use ACME_PROVIDER=letsencrypt or zerossl instead
+	if provider == "google" || provider == "gts" {
+		return nil, fmt.Errorf("Google Trust Services requires EAB which is not supported by autocert (use letsencrypt or zerossl)")
 	}
 
-	// Google Trust Services requires EAB (External Account Binding)
-	if provider == "google" || provider == "gts" {
-		kid := os.Getenv("GTS_EAB_KID")
-		b64HmacKey := os.Getenv("GTS_EAB_HMAC_KEY")
-
-		if kid == "" || b64HmacKey == "" {
-			return nil, fmt.Errorf("GTS_EAB_KID and GTS_EAB_HMAC_KEY required for Google Trust Services provider")
-		}
-
-		// Decode HMAC key (GTS uses base64 URL encoding without padding)
-		hmacKey, err := base64.RawURLEncoding.DecodeString(b64HmacKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode GTS_EAB_HMAC_KEY: %w", err)
-		}
-
-		client.ExternalAccountBinding = &acme.ExternalAccountBinding{
-			KID: kid,
-			Key: hmacKey,
-		}
-
-		// Log KID prefix for debugging (don't log full key)
-		kidPrefix := kid
-		if len(kid) > 8 {
-			kidPrefix = kid[:8] + "..."
-		}
-		logger().Info().Msgf("Using Google Trust Services with EAB (KID: %s)", kidPrefix)
+	client := &acme.Client{
+		DirectoryURL: directoryURL,
 	}
 
 	logger().Info().Msgf("ACME provider: %s, directory: %s", provider, directoryURL)
