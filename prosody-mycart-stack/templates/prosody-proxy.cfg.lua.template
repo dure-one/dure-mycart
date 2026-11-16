@@ -43,6 +43,47 @@ proxy_trusted_proxies = {
     "172.19.0.0/16"
 }
 
+---------- EXTERNAL IP CONFIGURATION ----------
+
+-- External IP address for DNS checks and federation (required for prosodyctl check)
+-- Auto-detects via icanhazip.com unless PROSODY_EXTERNAL_IP is set manually
+-- Manual override recommended for production (faster startup, no network dependency)
+local function get_external_ip()
+    -- 1. Try manual ENV override first (production: set for reliability)
+    local env_ip = Lua.os.getenv("PROSODY_EXTERNAL_IP")
+    if env_ip and env_ip ~= "" then
+        env_ip = env_ip:match("^%s*(.-)%s*$")  -- trim
+        return env_ip
+    end
+
+    -- 2. Auto-detect via icanhazip.com (adds ~1-2s startup delay)
+    -- wget is available in prosodyim/prosody:13.0 image
+    local handle = Lua.io.popen("wget -qO- --timeout=5 icanhazip.com 2>/dev/null")
+    if handle then
+        local ip = handle:read("*a")
+        handle:close()
+        if ip then
+            ip = ip:match("^%s*(.-)%s*$")  -- trim whitespace/newline
+            -- Basic IPv4 validation
+            if ip:match("^%d+%.%d+%.%d+%.%d+$") then
+                return ip
+            end
+        end
+    end
+
+    -- 3. Fallback: leave unset (Prosody works, prosodyctl check warns)
+    return nil
+end
+
+local external_ip = get_external_ip()
+if external_ip then
+    external_addresses = { external_ip }
+    -- Log for debugging (visible in docker logs prosody)
+    Lua.print("[INFO] External IP configured: " .. external_ip)
+else
+    Lua.print("[WARN] External IP auto-detection failed, DNS checks will be inaccurate")
+end
+
 -- Configure which ports expect PROXY protocol headers
 proxy_port_mappings = {
     [5222] = "c2s",  -- Client-to-server connections
@@ -321,9 +362,6 @@ else
     default_archive_policy = false
 end
 
--- Archive cleanup interval (default: 4 hours)
-archive_cleanup_interval = Lua.tonumber(Lua.os.getenv("PROSODY_MAM_CLEANUP_INTERVAL")) or 4*60*60
-
 -- Archive expiry period (default: 14 days / 2 weeks)
 local archive_days = Lua.os.getenv("PROSODY_ARCHIVE_EXPIRY_DAYS")
                   or Lua.os.getenv("PROSODY_RETENTION_DAYS")
@@ -362,9 +400,6 @@ log_all_rooms = Lua.os.getenv("PROSODY_MUC_LOG_ALL_ROOMS") == "true"
 -- MUC archive expiry
 local muc_expiry = Lua.os.getenv("PROSODY_MUC_LOG_EXPIRES") or "14"  -- days
 muc_log_expires_after = muc_expiry .. "d"
-
--- MUC cleanup interval (default: 4 hours)
-muc_log_cleanup_interval = Lua.tonumber(Lua.os.getenv("PROSODY_MUC_CLEANUP_INTERVAL")) or 4*60*60
 
 ---------- SECURITY MODULE CONFIGURATION ----------
 
