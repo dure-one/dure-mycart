@@ -60,25 +60,27 @@ func exportCertificatesToPEM(manager *autocert.Manager, domains []string) {
 	// Import existing PEM files to autocert cache (if present)
 	// This allows reusing manually placed certs, pre-populating cache, or recovering from corruption
 	// Autocert will check expiry and only renew if <30 days remaining
-	if err := importPEMToCache(domains, certDir); err != nil {
-		logger().Warn().Err(err).Msg("Failed to import PEM files to autocert cache")
-	}
+	imported := importPEMToCache(domains, certDir) == nil
 
-	// Proactively request certificate at startup (non-blocking)
+	// Proactively request certificate at startup (non-blocking) only if no valid cert imported
 	// This triggers ACME challenge immediately instead of waiting for first HTTPS request
 	// GetCertificate for primary domain → autocert issues ONE cert with all HostWhitelist domains as SANs
-	go func() {
-		logger().Info().Msgf("Requesting SSL certificate for %v", domains)
-		hello := &tls.ClientHelloInfo{
-			ServerName: domains[0], // Primary domain triggers cert request with all SANs
-		}
-		_, err := manager.GetCertificate(hello)
-		if err != nil {
-			logger().Warn().Err(err).Msgf("Initial certificate request failed for %s, will retry", domains[0])
-		} else {
-			logger().Info().Msgf("Certificate request initiated for %s", domains[0])
-		}
-	}()
+	if !imported {
+		go func() {
+			logger().Info().Msgf("Requesting SSL certificate for %v", domains)
+			hello := &tls.ClientHelloInfo{
+				ServerName: domains[0], // Primary domain triggers cert request with all SANs
+			}
+			_, err := manager.GetCertificate(hello)
+			if err != nil {
+				logger().Warn().Err(err).Msgf("Initial certificate request failed for %s, will retry", domains[0])
+			} else {
+				logger().Info().Msgf("Certificate request initiated for %s", domains[0])
+			}
+		}()
+	} else {
+		logger().Info().Msg("Skipping proactive cert request - valid certificate already imported")
+	}
 
 	// Monitor autocert cache and export PEM files when certificate is ready
 	go func() {
