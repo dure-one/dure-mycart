@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@nolebase/vitepress-plugin-enhanced-readabilities": "^2.18.2",
+    "esbuild": "^0.28.2",
     "markdown-it-attrs": "^5.0.1",
     "markdown-it-container": "^4.0.0",
     "markdown-it-mark": "^4.0.0",
