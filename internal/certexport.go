@@ -60,7 +60,10 @@ func exportCertificatesToPEM(manager *autocert.Manager, domains []string) {
 	// Import existing PEM files to autocert cache (if present)
 	// This allows reusing manually placed certs, pre-populating cache, or recovering from corruption
 	// Autocert will check expiry and only renew if <30 days remaining
-	imported := importPEMToCache(domains, certDir) == nil
+	imported, err := importPEMToCache(domains, certDir)
+	if err != nil {
+		logger().Warn().Err(err).Msg("Failed to import existing certificates, will request new cert")
+	}
 
 	// Proactively request certificate at startup (non-blocking) only if no valid cert imported
 	// This triggers ACME challenge immediately instead of waiting for first HTTPS request
@@ -291,9 +294,14 @@ func checkCertificateExpiry(certPEM []byte, renewThreshold time.Duration) (int, 
 // importPEMToCache imports PEM files back into autocert cache format.
 // Combines privkey.pem + fullchain.pem → certDir/domain (autocert cache format).
 // This allows pre-populating cache from existing certs or recovering from corruption.
-func importPEMToCache(domains []string, certDir string) error {
+//
+// Returns (imported, error):
+//   - (true, nil): Successfully imported valid certificate
+//   - (false, nil): No files to import, or cert needs renewal
+//   - (false, err): Import failed with error
+func importPEMToCache(domains []string, certDir string) (bool, error) {
 	if len(domains) == 0 {
-		return fmt.Errorf("no domains provided")
+		return false, fmt.Errorf("no domains provided")
 	}
 
 	primaryDomain := domains[0]
@@ -302,16 +310,18 @@ func importPEMToCache(domains []string, certDir string) error {
 
 	// Check if PEM files exist
 	if _, err := os.Stat(privkeyPath); os.IsNotExist(err) {
-		return nil // No PEM files to import, skip silently
+		logger().Debug().Msg("No existing PEM certificate files found - will request new certificate")
+		return false, nil // No PEM files to import
 	}
 	if _, err := os.Stat(fullchainPath); os.IsNotExist(err) {
-		return nil
+		logger().Warn().Msg("Private key found but fullchain.pem missing - will request new certificate")
+		return false, nil
 	}
 
 	// Read fullchain to check expiry
 	fullchain, err := os.ReadFile(fullchainPath)
 	if err != nil {
-		return fmt.Errorf("failed to read fullchain.pem: %w", err)
+		return false, fmt.Errorf("failed to read fullchain.pem: %w", err)
 	}
 
 	// Check certificate expiry (7-day safety threshold)
@@ -319,12 +329,12 @@ func importPEMToCache(domains []string, certDir string) error {
 	daysLeft, shouldRenew, err := checkCertificateExpiry(fullchain, renewThreshold)
 	if err != nil {
 		logger().Warn().Err(err).Msg("Failed to check certificate expiry, skipping import")
-		return nil // Don't import invalid cert
+		return false, nil // Don't import invalid cert
 	}
 
 	if shouldRenew {
 		logger().Warn().Msgf("Certificate expires in %d days (<7 day threshold) - forcing renewal", daysLeft)
-		return nil // Skip import, autocert will request new cert
+		return false, nil // Skip import, autocert will request new cert
 	}
 
 	logger().Info().Msgf("Certificate valid for %d more days - importing to cache", daysLeft)
@@ -332,7 +342,7 @@ func importPEMToCache(domains []string, certDir string) error {
 	// Read privkey
 	privkey, err := os.ReadFile(privkeyPath)
 	if err != nil {
-		return fmt.Errorf("failed to read privkey.pem: %w", err)
+		return false, fmt.Errorf("failed to read privkey.pem: %w", err)
 	}
 
 	// Combine: privkey first, then fullchain (autocert DirCache format)
@@ -341,9 +351,9 @@ func importPEMToCache(domains []string, certDir string) error {
 	// Write to autocert cache file
 	cachePath := filepath.Join(certDir, primaryDomain)
 	if err := os.WriteFile(cachePath, combined, 0600); err != nil {
-		return fmt.Errorf("failed to write cache file: %w", err)
+		return false, fmt.Errorf("failed to write cache file: %w", err)
 	}
 
 	logger().Info().Msgf("✓ Imported PEM files to autocert cache: %s", primaryDomain)
-	return nil
+	return true, nil
 }
