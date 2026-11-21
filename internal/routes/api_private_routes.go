@@ -37,7 +37,7 @@ func ApiPrivateRoutes(c *fiber.App) {
 	settings.Patch("/responder", handlers.UpdateResponderSettings)
 	settings.Post("/responder/test-connection", handlers.XMPPConnectionTest)
 	settings.Get("/crontab", handlers.CrontabJobs)
-	settings.Patch("/crontab/:job_id<len(15)>", handlers.UpdateCrontabJobSettings)
+	settings.Patch("/crontab/:job_id", handlers.UpdateCrontabJobSettings)
 	settings.Get("/crontab/status", handlers.CheckCrontabStatus)
 	settings.Post("/crontab/install", handlers.InstallCrontab)
 	settings.Post("/crontab/uninstall", handlers.UninstallCrontab)

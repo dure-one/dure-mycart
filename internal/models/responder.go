@@ -66,6 +66,20 @@ type CrontabJob struct {
 	NextRun  *int64 `json:"next_run"`
 }
 
+// CrontabJobUpdate is the request payload for updating crontab job settings
+type CrontabJobUpdate struct {
+	Enabled  bool   `json:"enabled"`
+	Interval string `json:"interval"` // 5min, 15min, 1hr, 6hr, daily
+}
+
+// Validate crontab job update request
+func (c CrontabJobUpdate) Validate() error {
+	return validation.ValidateStruct(&c,
+		validation.Field(&c.Interval, validation.Required,
+			validation.In("5min", "15min", "1hr", "6hr", "daily")),
+	)
+}
+
 // MessageCreate is the request payload for creating a message
 type MessageCreate struct {
 	ContactAddress string `json:"contact_address"`

@@ -397,7 +397,7 @@ func CrontabJobs(c fiber.Ctx) error {
 // @Accept       json
 // @Produce      json
 // @Param        job_id path string true "Job ID"
-// @Param        request body map[string]any true "Job settings"
+// @Param        request body models.CrontabJobUpdate true "Job settings"
 // @Success      200 {object} webutil.HTTPResponse "Job updated"
 // @Failure      400 {object} webutil.HTTPResponse "Validation error"
 // @Failure      404 {object} webutil.HTTPResponse "Job not found"
@@ -408,12 +408,14 @@ func UpdateCrontabJobSettings(c fiber.Ctx) error {
 	db := queries.DB()
 	log := logging.New()
 
-	var request struct {
-		Enabled  bool   `json:"enabled"`
-		Interval string `json:"interval"`
+	request := new(models.CrontabJobUpdate)
+
+	if err := c.Bind().Body(request); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusBadRequest(c, err.Error())
 	}
 
-	if err := c.Bind().Body(&request); err != nil {
+	if err := request.Validate(); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusBadRequest(c, err.Error())
 	}
