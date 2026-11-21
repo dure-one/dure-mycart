@@ -17,7 +17,7 @@
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-// @description Type "Bearer" followed by a space and JWT token.
+// @description Enter your JWT token in the format: Bearer {token}
 
 package main
 
