@@ -1,38 +1,18 @@
 package app
 
 import (
-	"context"
-	"crypto/tls"
-	"encoding/base64"
-	"errors"
 	"fmt"
 	"io"
-	"net"
-	"net/http"
 	"os"
-	"os/signal"
-	"strconv"
-	"strings"
 	"sync/atomic"
-	"time"
-
-	"golang.org/x/crypto/acme"
-	"golang.org/x/crypto/acme/autocert"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/static"
 
 	"github.com/dure-one/dure-mycart/internal/database"
 	"github.com/dure-one/dure-mycart/internal/middleware"
-	"github.com/dure-one/dure-mycart/migrations"
-	"github.com/dure-one/dure-mycart/internal/models"
-	"github.com/dure-one/dure-mycart/internal/queries"
-	"github.com/dure-one/dure-mycart/internal/responder"
 	"github.com/dure-one/dure-mycart/internal/routes"
 	"github.com/dure-one/dure-mycart/pkg/logging"
-	"github.com/dure-one/dure-mycart/pkg/security"
-	"github.com/dure-one/dure-mycart/pkg/update"
-	"github.com/dure-one/dure-mycart/pkg/webutil"
 )
 
 const (
@@ -69,7 +49,7 @@ func logger() *logging.Log { return appLog.Load() }
 func setLogger(l *logging.Log) { appLog.Store(l) }
 
 // NewApp initializes and starts the web application
-func NewApp(dbCfg database.Config, httpAddr, httpsAddr string, noSite, appDev bool, backend string) error {
+func NewApp(dbCfg database.Config, httpAddr, httpsAddr string, noSite, appDev bool) error {
 	lg := logging.New()
 	setDevMode(appDev)
 	setLogger(lg)
@@ -80,21 +60,13 @@ func NewApp(dbCfg database.Config, httpAddr, httpsAddr string, noSite, appDev bo
 		return err
 	}
 
-	// Start responder workers in background
-	startResponderWorkers(context.Background())
-
 	app, err := setupFiberApp(noSite)
 	if err != nil {
 		return err
 	}
 
 	setupRoutes(app, noSite)
-	printStartupInfo(os.Stdout, schema, mainAddr, noSite, dbCfg, backend)
-
-	// Start both HTTP and HTTPS servers when both are provided
-	if httpsAddr != "" && httpAddr != "" {
-		return startBothServers(app, httpAddr, httpsAddr)
-	}
+	printStartupInfo(os.Stdout, schema, mainAddr, noSite, dbCfg)
 
 	if schema == "https" {
 		return startHTTPS(app, mainAddr, httpsAddr)
@@ -130,18 +102,12 @@ func setupFiberApp(noSite bool) (*fiber.App, error) {
 
 	app := fiber.New(config)
 	middleware.Fiber(app, logger().Logger)
-	app.Use(middleware.CacheControl())
 
 	return app, nil
 }
 
 // setupRoutes configures application routes.
 func setupRoutes(app *fiber.App, noSite bool) {
-	// Health check endpoint for liveness probes (Horust, k8s, load balancers)
-	app.Get("/health", func(c fiber.Ctx) error {
-		return c.JSON(fiber.Map{"status": "ok"})
-	})
-
 	// Public image uploads only. Digital products (lc_digitals) are
 	// intentionally NOT served statically: purchased files are delivered by
 	// email and admins download them via an authenticated endpoint
@@ -153,11 +119,6 @@ func setupRoutes(app *fiber.App, noSite bool) {
 		app.Use("/swagger", static.New("./docs/swagger", static.Config{
 			Browse: true,
 		}))
-	}
-
-	// Setup reverse proxy routes from environment configuration
-	if err := SetupProxyRoutes(app); err != nil {
-		logger().Err(err).Msg("Failed to setup reverse proxy routes")
 	}
 
 	// Register API routes before InstallCheck so /api/install is reachable on first boot.
@@ -184,26 +145,8 @@ func setupRoutes(app *fiber.App, noSite bool) {
 // The writer is a parameter rather than stdout directly so the banner can be
 // read back without swapping os.Stdout process-wide, which is a global the
 // server goroutines also write to.
-func printStartupInfo(w io.Writer, schema, mainAddr string, noSite bool, dbCfg database.Config, backend string) {
-	fmt.Fprint(w, "🛒 dure-mycart - open source shopping-cart in 1 file\n")
-
-	// Show version info (always)
-	ver := update.VersionInfo()
-	version := "v0.0.0"
-	commit := "00000000"
-	if ver != nil && ver.CurrentVersion != "" {
-		version = ver.CurrentVersion
-	}
-	if ver != nil && ver.GitCommit != "" {
-		if len(ver.GitCommit) > 8 {
-			commit = ver.GitCommit[:8]
-		} else {
-			commit = ver.GitCommit
-		}
-	}
-	fmt.Fprintf(w, "├─ Version: %s (%s)\n", version, commit)
-	fmt.Fprintf(w, "├─ Backend: %s\n", backendDisplay(backend))
-
+func printStartupInfo(w io.Writer, schema, mainAddr string, noSite bool, dbCfg database.Config) {
+	fmt.Fprint(w, "🛒 myCart - open source shopping-cart in 1 file\n")
 	if !noSite {
 		fmt.Fprintf(w, "├─ Cart UI: %s://%s/\n", schema, mainAddr)
 	}
@@ -214,516 +157,4 @@ func printStartupInfo(w io.Writer, schema, mainAddr string, noSite bool, dbCfg d
 	} else {
 		fmt.Fprint(w, "└─ Swagger UI: disabled (use --dev flag to enable)\n")
 	}
-}
-
-func backendDisplay(b string) string {
-	switch b {
-	case "sqlc":
-		return "sqlc (generated queries)"
-	default:
-		return "raw-sql (hand-written queries)"
-	}
-}
-
-// getACMEClient returns a configured ACME client based on environment variables.
-// Supports Let's Encrypt (default), Google Trust Services, and ZeroSSL.
-func getACMEClient() (*acme.Client, error) {
-	provider := strings.ToLower(os.Getenv("ACME_PROVIDER"))
-	if provider == "" {
-		provider = "letsencrypt"
-	}
-
-	staging := strings.ToLower(os.Getenv("ACME_STAGING")) == "true"
-	directoryURL := os.Getenv("ACME_DIRECTORY_URL")
-
-	// Set default directory URLs if not explicitly provided
-	if directoryURL == "" {
-		switch provider {
-		case "letsencrypt":
-			if staging {
-				directoryURL = "https://acme-staging-v02.api.letsencrypt.org/directory"
-			} else {
-				directoryURL = "https://acme-v02.api.letsencrypt.org/directory"
-			}
-		case "google", "gts":
-			if staging {
-				directoryURL = "https://dv.acme-v02.test-api.pki.goog/directory"
-			} else {
-				directoryURL = "https://dv.acme-v02.api.pki.goog/directory"
-			}
-		case "zerossl":
-			directoryURL = "https://acme.zerossl.com/v2/DV90"
-		default:
-			return nil, fmt.Errorf("unsupported ACME provider: %s (supported: letsencrypt, google, zerossl)", provider)
-		}
-	}
-
-	client := &acme.Client{
-		DirectoryURL: directoryURL,
-	}
-
-	logger().Info().Msgf("ACME provider: %s, directory: %s", provider, directoryURL)
-	return client, nil
-}
-
-// validateEABKey checks if key is valid base64url (RFC 4648 §5).
-// Valid lengths: n*4, n*4+2, n*4+3 (NOT n*4+1 - cannot encode to that length).
-func validateEABKey(key string) error {
-	if key == "" {
-		return fmt.Errorf("key is empty")
-	}
-
-	// Check length (must not be n*4+1)
-	if len(key)%4 == 1 {
-		return fmt.Errorf("invalid base64 length %d (got n*4+1, expected n*4, n*4+2, or n*4+3)", len(key))
-	}
-
-	// Check characters (base64url: A-Za-z0-9_-)
-	for i, c := range key {
-		if !((c >= 'A' && c <= 'Z') ||
-			(c >= 'a' && c <= 'z') ||
-			(c >= '0' && c <= '9') ||
-			c == '-' || c == '_') {
-			return fmt.Errorf("illegal character at byte %d: %q (base64url allows only A-Za-z0-9_-)", i, c)
-		}
-	}
-
-	return nil
-}
-
-// getEAB returns External Account Binding for providers that require it (GTS, ZeroSSL with EAB).
-// Returns nil if not configured or not required.
-func getEAB() (*acme.ExternalAccountBinding, error) {
-	provider := strings.ToLower(os.Getenv("ACME_PROVIDER"))
-
-	// Only Google Trust Services requires EAB
-	if provider != "google" && provider != "gts" {
-		return nil, nil
-	}
-
-	kid := os.Getenv("GTS_EAB_KID")
-	b64HmacKey := os.Getenv("GTS_EAB_HMAC_KEY")
-
-	if kid == "" || b64HmacKey == "" {
-		return nil, fmt.Errorf("GTS_EAB_KID and GTS_EAB_HMAC_KEY required for Google Trust Services")
-	}
-
-	// Validate HMAC key before attempting to decode
-	if err := validateEABKey(b64HmacKey); err != nil {
-		return nil, fmt.Errorf("invalid GTS_EAB_HMAC_KEY: %w (check gcloud output - key may be truncated or malformed)", err)
-	}
-
-	// Decode HMAC key (GTS uses base64 URL encoding without padding)
-	hmacKey, err := base64.RawURLEncoding.DecodeString(b64HmacKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode GTS_EAB_HMAC_KEY: %w", err)
-	}
-
-	// Log KID prefix for debugging (don't log full key)
-	kidPrefix := kid
-	if len(kid) > 8 {
-		kidPrefix = kid[:8] + "..."
-	}
-	logger().Info().Msgf("Using External Account Binding (KID: %s)", kidPrefix)
-
-	return &acme.ExternalAccountBinding{
-		KID: kid,
-		Key: hmacKey,
-	}, nil
-}
-
-// getAllowedDomains returns all domains that should be allowed in autocert.
-// Includes MYCART_DOMAIN and optionally xmpp.MYCART_DOMAIN for XMPP SRV compatibility.
-func getAllowedDomains() []string {
-	domains := []string{}
-
-	mycartDomain := os.Getenv("MYCART_DOMAIN")
-	if mycartDomain == "" {
-		return domains
-	}
-
-	domains = append(domains, mycartDomain)
-
-	// Add xmpp subdomain for XMPP SRV record compatibility
-	// This ensures the certificate works when clients connect via xmpp.domain.com
-	xmppDomain := "xmpp." + mycartDomain
-	domains = append(domains, xmppDomain)
-
-	return domains
-}
-
-// startHTTPS starts the server with HTTPS support and automatic TLS.
-func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {
-	// Get allowed domains for autocert
-	domains := getAllowedDomains()
-	if len(domains) == 0 {
-		domains = []string{extractHostOnly(mainAddr)}
-	}
-
-	// Configure ACME client
-	acmeClient, err := getACMEClient()
-	if err != nil {
-		return fmt.Errorf("failed to configure ACME client: %w", err)
-	}
-
-	// Get External Account Binding if required
-	eab, err := getEAB()
-	if err != nil {
-		return fmt.Errorf("failed to configure EAB: %w", err)
-	}
-
-	// Get email for registration
-	email := os.Getenv("ACME_EMAIL")
-	if email == "" && len(domains) > 0 {
-		email = "admin@" + domains[0]
-	}
-
-	manager := &autocert.Manager{
-		Prompt:                 autocert.AcceptTOS,
-		HostPolicy:             autocert.HostWhitelist(domains...),
-		Cache:                  autocert.DirCache("./lc_certs"),
-		Email:                  email,
-		Client:                 acmeClient,
-		ExternalAccountBinding: eab,
-	}
-
-	// Export certificates to PEM format for xmpp-proxy
-	exportCertificatesToPEM(manager, domains)
-
-	cfgTLS := &tls.Config{
-		GetCertificate: manager.GetCertificate,
-		NextProtos: []string{
-			"http/1.1",   // HTTP/1.1 (h2 removed: Fiber v3 via custom listener doesn't support HTTP/2)
-			"acme-tls/1", // ACME TLS-ALPN-01 challenge
-		},
-	}
-
-	listenAddr := DefaultHTTPSPort
-	if httpsAddr != "" {
-		listenAddr = httpsAddr
-	}
-
-	ln, err := tls.Listen("tcp", listenAddr, cfgTLS)
-	if err != nil {
-		logger().Err(err).Send()
-		os.Exit(1)
-	}
-
-	if err := app.Listener(ln, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
-		logger().Err(err).Send()
-		os.Exit(1)
-	}
-
-	return nil
-}
-
-// startBothServers starts both HTTP and HTTPS servers concurrently.
-// HTTP server handles autocert HTTP-01 challenges, HTTPS serves the application.
-func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
-	// Get allowed domains for autocert
-	domains := getAllowedDomains()
-	if len(domains) == 0 {
-		domains = []string{extractHostOnly(httpsAddr)}
-	}
-
-	// Configure ACME client
-	acmeClient, err := getACMEClient()
-	if err != nil {
-		return fmt.Errorf("failed to configure ACME client: %w", err)
-	}
-
-	// Get External Account Binding if required
-	eab, err := getEAB()
-	if err != nil {
-		return fmt.Errorf("failed to configure EAB: %w", err)
-	}
-
-	// Get email for registration
-	email := os.Getenv("ACME_EMAIL")
-	if email == "" && len(domains) > 0 {
-		email = "admin@" + domains[0]
-	}
-
-	manager := &autocert.Manager{
-		Prompt:                 autocert.AcceptTOS,
-		HostPolicy:             autocert.HostWhitelist(domains...),
-		Cache:                  autocert.DirCache("./lc_certs"),
-		Email:                  email,
-		Client:                 acmeClient,
-		ExternalAccountBinding: eab,
-	}
-
-	// Export certificates to PEM format for xmpp-proxy
-	exportCertificatesToPEM(manager, domains)
-
-	errCh := make(chan error, 2)
-
-	// Start HTTP server for autocert HTTP-01 challenge
-	go func() {
-		logger().Info().Msgf("Starting HTTP server on %s for ACME challenges", httpAddr)
-		// Use standard net/http for the HTTP server to handle ACME challenges
-		httpSrv := &http.Server{
-			Addr:    httpAddr,
-			Handler: manager.HTTPHandler(nil), // nil = redirect to HTTPS after challenge
-		}
-		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			errCh <- fmt.Errorf("HTTP server error: %w", err)
-		}
-	}()
-
-	// Start HTTPS server
-	go func() {
-		logger().Info().Msgf("Starting HTTPS server on %s", httpsAddr)
-		cfgTLS := &tls.Config{
-			GetCertificate: manager.GetCertificate,
-			NextProtos: []string{
-				"http/1.1",   // HTTP/1.1 (h2 removed: Fiber v3 via custom listener doesn't support HTTP/2)
-				"acme-tls/1", // ACME TLS-ALPN-01 challenge
-			},
-		}
-
-		ln, err := tls.Listen("tcp", httpsAddr, cfgTLS)
-		if err != nil {
-			errCh <- fmt.Errorf("failed to start HTTPS server: %w", err)
-			return
-		}
-
-		if err := app.Listener(ln, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
-			errCh <- fmt.Errorf("HTTPS server error: %w", err)
-		}
-	}()
-
-	// Wait for either server to error
-	return <-errCh
-}
-
-// extractHostOnly extracts only the host from the address, removing the port.
-func extractHostOnly(addr string) string {
-	if !strings.Contains(addr, ":") {
-		return addr
-	}
-
-	if host, _, err := net.SplitHostPort(addr); err == nil {
-		return host
-	}
-
-	return addr
-}
-
-// startHTTP starts the HTTP server with graceful shutdown support.
-func startHTTP(mainAddr string, app *fiber.App) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	if DevMode() {
-		return StartServer(ctx, mainAddr, app)
-	}
-
-	idleConnsClosed := make(chan struct{})
-
-	go handleShutdown(ctx, app, idleConnsClosed)
-	go func() {
-		if err := StartServer(ctx, mainAddr, app); err != nil {
-			logger().Err(err).Send()
-		}
-	}()
-
-	<-idleConnsClosed
-	return nil
-}
-
-// handleShutdown handles application shutdown signals.
-func handleShutdown(ctx context.Context, app *fiber.App, idleConnsClosed chan struct{}) {
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-	<-sigint
-
-	if err := app.Shutdown(); err != nil {
-		logger().Err(err).Send()
-	}
-
-	close(idleConnsClosed)
-}
-
-// InstallCheck checks the installation status and redirects to the installation page if necessary.
-func InstallCheck(c fiber.Ctx) error {
-	db := queries.DB()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	response, err := db.GetSettingByKey(ctx, "installed")
-	if err != nil {
-		return webutil.StatusInternalServerError(c)
-	}
-
-	install, _ := strconv.ParseBool(fmt.Sprint(response["installed"].Value))
-	path := c.Path()
-
-	if !install {
-		if !isInstallPath(path) {
-			if strings.HasPrefix(path, "/api/") {
-				return webutil.StatusBadRequest(c, "application not installed")
-			}
-			return c.Redirect().To("/_/install")
-		}
-	} else if strings.HasPrefix(path, "/_/install") {
-		return c.Redirect().To("/_")
-	}
-
-	return c.Next()
-}
-
-// isInstallPath reports paths that are reachable before the cart is installed.
-func isInstallPath(path string) bool {
-	if strings.HasPrefix(path, "/_/install") ||
-		strings.HasPrefix(path, "/_/assets") ||
-		strings.HasPrefix(path, "/_/_app") ||
-		strings.HasPrefix(path, "/_app") ||
-		strings.HasPrefix(path, "/uploads") {
-		return true
-	}
-	if strings.HasPrefix(path, "/api/install") {
-		return true
-	}
-	// Storefront public APIs stay available during first-time setup.
-	return path == "/ping" ||
-		strings.HasPrefix(path, "/api/settings") ||
-		strings.HasPrefix(path, "/api/pages/") ||
-		strings.HasPrefix(path, "/api/products") ||
-		strings.HasPrefix(path, "/api/cart") ||
-		strings.HasPrefix(path, "/cart/")
-}
-
-// StartServer starts the server and handles graceful shutdown.
-func StartServer(ctx context.Context, addr string, a *fiber.App) error {
-	// Buffered, so the listen goroutine can always report its error and exit.
-	// Unbuffered it blocks on the send forever when the shutdown path below has
-	// already returned — a goroutine leaked for the life of the process.
-	errCh := make(chan error, 1)
-
-	go func() {
-		if err := a.Listen(addr, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
-			logger().Err(err).Send()
-			errCh <- err
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		err := errors.New("shutdown signal received, closing server")
-		logger().Err(err).Send()
-		return a.Shutdown()
-	case err := <-errCh:
-		return err
-	}
-}
-
-// startResponderWorkers starts XMPP worker and cron runner in background
-func startResponderWorkers(ctx context.Context) {
-	db := queries.DB()
-
-	// Load responder settings
-	var settings models.ResponderSettings
-	settingsCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if _, err := db.GetSettingByGroup(settingsCtx, &settings); err != nil {
-		// Settings not configured yet, skip workers
-		return
-	}
-
-	// Only start XMPP worker if settings are configured
-	var xmppWorker *responder.XMPPWorker
-	if settings.XMPPJID != "" && settings.XMPPPassword != "" {
-		xmppWorker = responder.NewXMPPWorker(&settings, db)
-		go func() {
-			if err := xmppWorker.Start(ctx); err != nil && err != context.Canceled {
-				if lg := logger(); lg != nil {
-					lg.Err(err).Msg("XMPP worker error")
-				}
-			}
-		}()
-	}
-
-	// Start cron runner
-	cronRunner := responder.NewCronRunner(db, xmppWorker)
-	go func() {
-		if err := cronRunner.Start(ctx); err != nil && err != context.Canceled {
-			if lg := logger(); lg != nil {
-				lg.Err(err).Msg("Cron runner error")
-			}
-		}
-	}()
-}
-
-// RunCronJob executes a single cron job and exits (called by system crontab).
-func RunCronJob(dbcfg database.Config, jobType string) error {
-	ctx := context.Background()
-
-	if err := queries.New(dbcfg, migrations.Embed()); err != nil {
-		return fmt.Errorf("database init: %w", err)
-	}
-
-	db := queries.DB()
-
-	// Load responder settings
-	var settings models.ResponderSettings
-	if _, err := db.GetSettingByGroup(ctx, &settings); err != nil {
-		return fmt.Errorf("load settings: %w", err)
-	}
-
-	// Create XMPP worker ONLY if all conditions are met
-	var xmppWorker *responder.XMPPWorker
-	if shouldEnableXMPP(ctx, db, &settings, jobType) {
-		// Decrypt password before use
-		decryptedPwd, err := security.DecryptPassword(settings.XMPPPassword, security.GetEncryptionKey())
-		if err != nil {
-			return fmt.Errorf("decrypt password: %w", err)
-		}
-		settings.XMPPPassword = decryptedPwd
-		xmppWorker = responder.NewXMPPWorker(&settings, db)
-	}
-
-	// Create runner and execute the specific job
-	cronRunner := responder.NewCronRunner(db, xmppWorker)
-
-	// Execute job using the runner's method
-	if err := cronRunner.ExecuteJob(ctx, jobType); err != nil {
-		return fmt.Errorf("execute job %s: %w", jobType, err)
-	}
-
-	return nil
-}
-
-// shouldEnableXMPP checks all conditions before enabling XMPP connection
-func shouldEnableXMPP(ctx context.Context, db *queries.Base, settings *models.ResponderSettings, jobType string) bool {
-	// Condition 1: Only for xmpp_check job type
-	if jobType != "xmpp_check" {
-		return false
-	}
-
-	// Condition 2: XMPP toggle must be enabled
-	if !settings.Enabled {
-		return false
-	}
-
-	// Condition 3: Credentials must be configured
-	if settings.XMPPJID == "" || settings.XMPPPassword == "" {
-		return false
-	}
-
-	// Condition 4: xmpp_check job must be enabled in crontab
-	jobs, err := db.ListCrontabJobs(ctx)
-	if err != nil {
-		return false
-	}
-
-	for _, job := range jobs {
-		if job.JobType == "xmpp_check" && job.Enabled {
-			return true
-		}
-	}
-
-	return false
 }
