@@ -11,6 +11,10 @@ import (
 func ApiPublicRoutes(c *fiber.App) {
 	c.Get("/ping", handlers.Ping)
 
+	// XEP-0156: XMPP WebSocket discovery endpoints
+	c.Get("/.well-known/host-meta", handlers.HostMetaXML)
+	c.Get("/.well-known/host-meta.json", handlers.HostMetaJSON)
+
 	c.Get("/api/settings", handlers.Settings)
 	c.Get("/api/pages/:page_slug", handlers.Page)
 
