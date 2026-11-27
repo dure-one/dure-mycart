@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
-  import { base } from '$app/paths'
+  import { resolve } from '$app/paths'
   import { onDestroy, onMount } from 'svelte'
   import { browser } from '$app/environment'
   import Blank from '$lib/layouts/Blank.svelte'
@@ -76,7 +76,7 @@
         showMessage(t('install.installedSuccessfully'), 'connextSuccess')
         // Redirect to signin page after successful installation
         redirectTimer = setTimeout(() => {
-          goto(`${base}/signin`)
+          goto(resolve('/signin'))
         }, 1000)
       } else {
         const errorMsg = res?.message ? translateError(res.message, t) : t('install.installationFailed')

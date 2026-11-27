@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
-  import { base } from '$app/paths'
+  import { resolve } from '$app/paths'
   import { onMount } from 'svelte'
   import Blank from '$lib/layouts/Blank.svelte'
   import FormInput from '$lib/components/form/Input.svelte'
@@ -49,7 +49,7 @@
     try {
       const res = await apiPost(`/api/sign/in`, { email, password })
       if (res?.success) {
-        goto(`${base}/products`)
+        goto(resolve('/products'))
       } else {
         showMessage(res?.result || res?.message || t('auth.loginFailed'), 'connextError')
       }
@@ -63,7 +63,7 @@
     try {
       const checkRes = await apiGet('/api/_/version')
       if (checkRes?.success) {
-        goto(`${base}/products`)
+        goto(resolve('/products'))
       }
     } catch (error) {
       // Not authenticated, stay on signin page
