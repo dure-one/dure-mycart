@@ -183,7 +183,13 @@
     "testingConnection": "Праверка…",
     "testConnectionFirst": "Праверце злучэнне перад усталяваннем",
     "connectionOk": "Злучэнне паспяховае",
-    "connectionFailed": "Не ўдалося злучыцца"
+    "connectionFailed": "Не ўдалося злучыцца",
+    "errors": {
+      "databaseAlreadyInstalled": "Выбраная база даных ужо змяшчае ўсталяваны кошык",
+      "databaseConnectionFailed": "Не ўдалося падключыцца да выбранай базы даных",
+      "databaseInspectionFailed": "Не ўдалося праверыць выбраную базу даных",
+      "migrationsFailed": "Не ўдалося выканаць міграцыю схемы базы даных. Падрабязнасці глядзіце ў журналах сервера"
+    }
   },
   "products": {
     "title": "Тавары",
@@ -223,6 +229,8 @@
     "ifZeroPriceFree": "(калі 0, тавар будзе бясплатным)",
     "imageDeleted": "Выява выдалена",
     "failedToDeleteImage": "Не ўдалося выдаліць выяву",
+    "imageUploaded": "Выява паспяхова загружана",
+    "imageUploadFailed": "Не ўдалося загрузіць выяву",
     "productVariants": "Варыянты тавару",
     "variantsDescription": "Стварайце варыянты тавару з рознымі параметрамі, такімі як памер, колер або матэрыял",
     "enableVariants": "Уключыць варыянты",
@@ -246,6 +254,11 @@
     "tooManyVariants": "Увага: дазволена не больш за 100 варыянтаў",
     "created": "Тавар паспяхова створаны",
     "updated": "Тавар паспяхова абноўлены",
+    "imagesReordered": "Парадак выяваў паспяхова зменены",
+    "failedToReorderImages": "Не ўдалося змяніць парадак выяваў",
+    "representativeSet": "Рэпрэзентатыўная выява паспяхова ўстаноўлена",
+    "failedToSetRepresentative": "Не ўдалося ўстанавіць рэпрэзентатыўную выяву",
+    "firstImageDescription": "Першая выява паказваецца ў спісах тавараў і даступная па адрасе /products/{urlslug}.png",
     "csv": {
       "exportProducts": "Экспарт тавараў",
       "exportDescription": "Спампаваць усе тавары ў файл CSV",
@@ -406,6 +419,11 @@
     "merchantId": "ID прадаўца",
     "projectId": "ID праекта",
     "privateKey": "Прыватны ключ",
+    "callbackMerchantId": "ID мерчанта з callback",
+    "callbackApiId": "ID API з callback",
+    "callbackIdentityHint": "Абодва ёсць у кожным callback замовы SpectroCoin. SpectroCoin падпісвае callback адным ключом, агульным для ўсіх мерчантаў, таму плацяжы адхіляюцца, пакуль яны не супадуць з вашым акаўнтам.",
+    "callbackMerchantIdInvalid": "Увядзіце лікавы merchantId з callback SpectroCoin",
+    "callbackApiIdInvalid": "Увядзіце лікавы apiId з callback SpectroCoin",
     "failedToLoad": "Не ўдалося загрузіць налады",
     "failedToSave": "Не ўдалося захаваць налады",
     "priceDisplay": "Адлюстраванне цэн",

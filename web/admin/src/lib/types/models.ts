@@ -151,6 +151,10 @@ export interface CartItem {
   slug: string
   amount: number
   quantity: number
+  variant_id?: string
+  variant_sku?: string
+  variant_options?: Record<string, string>
+  variant_price_surcharge?: number
   image?: {
     id: string
     name: string
@@ -205,6 +209,11 @@ export interface SpectrocoinSettings {
   active: boolean
   merchant_id: string
   project_id: string
+  // The numeric merchantId and apiId SpectroCoin reports in every callback.
+  // They are the only callback identity fields SpectroCoin signs, so the server
+  // refuses a callback whose pair does not match them.
+  callback_merchant_id: number
+  callback_api_id: number
   private_key: string
 }
 

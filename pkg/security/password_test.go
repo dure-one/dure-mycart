@@ -41,9 +41,9 @@ func TestNewToken_IsHexAndStable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewToken: %v", err)
 	}
-	// SHA-256 hex = 64 chars.
-	if len(tok) != 64 {
-		t.Fatalf("token length = %d, want 64", len(tok))
+	// bcrypt hex-encoded = 120 chars.
+	if len(tok) != 120 {
+		t.Fatalf("token length = %d, want 120", len(tok))
 	}
 	for _, r := range tok {
 		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f')) {

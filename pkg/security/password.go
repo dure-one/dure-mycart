@@ -1,7 +1,6 @@
 package security
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 
@@ -45,16 +44,13 @@ func ComparePasswords(hashedPwd, inputPwd string) bool {
 // the input. It is used to materialize non-password secrets (e.g. JWT signing
 // keys bootstrapped during install).
 //
-// Construction: bcrypt(input, DefaultCost) -> SHA-256 hex.
-// bcrypt supplies a random salt (128 bits), SHA-256 then compacts the output to
-// a fixed-length hex string suitable for use as a secret. We intentionally
-// avoid MD5 here: MD5 is collision-broken and should never be used for any
-// new security-relevant derivation.
+// Construction: bcrypt(input, DefaultCost) -> hex encoding.
+// bcrypt supplies a random salt (128 bits) and produces a cryptographically
+// secure hash that is hex-encoded for use as a secret.
 func NewToken(text string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(text), bcryptCost)
 	if err != nil {
 		return "", fmt.Errorf("bcrypt hash: %w", err)
 	}
-	sum := sha256.Sum256(hash)
-	return hex.EncodeToString(sum[:]), nil
+	return hex.EncodeToString(hash), nil
 }

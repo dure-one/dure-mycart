@@ -183,7 +183,13 @@
     "testingConnection": "Verifica in corso…",
     "testConnectionFirst": "Prova la connessione prima di installare",
     "connectionOk": "Connessione riuscita",
-    "connectionFailed": "Connessione non riuscita"
+    "connectionFailed": "Connessione non riuscita",
+    "errors": {
+      "databaseAlreadyInstalled": "Il database selezionato contiene già un carrello installato",
+      "databaseConnectionFailed": "Impossibile connettersi al database selezionato",
+      "databaseInspectionFailed": "Impossibile ispezionare il database selezionato",
+      "migrationsFailed": "Migrazione dello schema del database non riuscita. Controlla i log del server per i dettagli"
+    }
   },
   "products": {
     "title": "Prodotti",
@@ -223,6 +229,8 @@
     "ifZeroPriceFree": "(se 0, il prodotto sarà gratuito)",
     "imageDeleted": "Immagine eliminata",
     "failedToDeleteImage": "Impossibile eliminare l'immagine",
+    "imageUploaded": "Immagine caricata correttamente",
+    "imageUploadFailed": "Impossibile caricare l'immagine",
     "productVariants": "Varianti del prodotto",
     "variantsDescription": "Crea varianti del prodotto con opzioni diverse come taglia, colore o materiale",
     "enableVariants": "Abilita varianti",
@@ -246,6 +254,11 @@
     "tooManyVariants": "Attenzione: sono consentite al massimo 100 varianti",
     "created": "Prodotto creato correttamente",
     "updated": "Prodotto aggiornato correttamente",
+    "imagesReordered": "Ordine delle immagini modificato correttamente",
+    "failedToReorderImages": "Impossibile modificare l'ordine delle immagini",
+    "representativeSet": "Immagine rappresentativa impostata correttamente",
+    "failedToSetRepresentative": "Impossibile impostare l'immagine rappresentativa",
+    "firstImageDescription": "La prima immagine viene mostrata negli elenchi di prodotti ed è accessibile all'indirizzo /products/{urlslug}.png",
     "csv": {
       "exportProducts": "Esporta prodotti",
       "exportDescription": "Scarica tutti i prodotti come file CSV",
@@ -406,6 +419,11 @@
     "merchantId": "ID esercente",
     "projectId": "ID progetto",
     "privateKey": "Chiave privata",
+    "callbackMerchantId": "ID esercente del callback",
+    "callbackApiId": "ID API del callback",
+    "callbackIdentityHint": "Entrambi compaiono in ogni callback dell'ordine SpectroCoin. SpectroCoin firma i callback con una chiave condivisa da tutti gli esercenti, quindi i pagamenti vengono rifiutati finché non corrispondono al tuo account.",
+    "callbackMerchantIdInvalid": "Inserisci il merchantId numerico da un callback SpectroCoin",
+    "callbackApiIdInvalid": "Inserisci l'apiId numerico da un callback SpectroCoin",
     "failedToLoad": "Impossibile caricare le impostazioni",
     "failedToSave": "Impossibile salvare le impostazioni",
     "priceDisplay": "Visualizzazione prezzi",
