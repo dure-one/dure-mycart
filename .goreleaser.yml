@@ -95,33 +95,6 @@ changelog:
     - title: Other work
       order: 9999
 
-dockers_v2:
-  - id: dure-mycart
-    images:
-      - 'ghcr.io/dure-one/dure-mycart'
-    tags:
-      - 'v{{ .Version }}'
-      - 'latest'
-    platforms:
-      - linux/amd64
-      - linux/arm64
-    dockerfile: Dockerfile.goreleaser
-    sbom: true
-    flags:
-      - '--pull'
-      # buildx treats --provenance as a string option; without '=', it
-      # consumes the context path and fails with "requires 1 argument".
-      - '--provenance=true'
-    labels:
-      'io.artifacthub.package.readme-url': 'https://raw.githubusercontent.com/dure-one/dure-mycart/main/README.md'
-      'io.artifacthub.package.license': 'MIT'
-      'org.opencontainers.image.description': '🛒 dure-mycart - shopping-cart in 1 file'
-      'org.opencontainers.image.created': '{{.Date}}'
-      'org.opencontainers.image.name': '{{.ProjectName}}'
-      'org.opencontainers.image.revision': '{{.FullCommit}}'
-      'org.opencontainers.image.version': '{{.Version}}'
-      'org.opencontainers.image.source': '{{.GitURL}}'
-
 release:
   name_template: "v{{ .Version }}"
   header: |
