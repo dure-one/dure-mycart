@@ -1,145 +1,128 @@
 # dure-mycart
 
-## How to Run
+E-commerce platform with integrated XMPP customer support — Go + SvelteKit single-binary application.
 
-### 1. Build from Source (Linux)
+## Overview
 
-```bash
-# Clone
-git clone https://github.com/dure-one/dure-mycart.git
-cd dure-mycart
+dure-mycart is a production-ready e-commerce system built as a downstream fork of [nikescar/mycart:main_dure](https://github.com/nikescar/mycart/tree/main_dure), which derives from [shurco/mycart:main](https://github.com/shurco/mycart). It runs from a single binary with embedded frontends, supports dual database backends (SQLite/PostgreSQL), and includes a complete XMPP-based customer support system powered by Prosody.
 
-# Build
-go build -o dure-mycart
+## Key Features
 
-# Initialize
-./dure-mycart init
+**Single Binary Deployment:**
+Embedded admin and store frontends via `go:embed`. No separate frontend build or Node.js runtime required in production.
 
-# Run
-./dure-mycart serve
-```
+**Dual Database Support:**
+SQLite (zero-config default) and PostgreSQL with identical feature parity. Switch at runtime via environment variables.
 
-Access at http://localhost:8080
+**XMPP Customer Support:**
+Complete responder system with message archive sync (MAM), workflow automation, and admin panel. Integrates Prosody 13.0 with QUIC and Direct TLS support.
 
-### 2. Download Binary
+**Optional Type Safety:**
+Choose between raw SQL (fast builds) or sqlc-generated type-safe queries at build time. Both backends pass identical test suites.
 
-```bash
-# Download latest release
-curl -L https://github.com/dure-one/dure-mycart/releases/latest/download/dure-mycart-linux-amd64 -o dure-mycart
-chmod +x dure-mycart
+**Product Variants:**
+Advanced product configuration inherited from upstream with extended workflow and responder integrations.
 
-# Initialize
-./dure-mycart init
+## Installation
 
-# Run
-./dure-mycart serve
-```
+**Docker (Recommended):**
 
-### 3. Docker
-
-#### Without Prosody
-
-```bash
-docker run -v ./lc_base:/lc_base -v ./lc_digitals:/lc_digitals -v ./lc_uploads:/lc_uploads --rm ghcr.io/dure-one/dure-mycart:latest init
-
-docker run --name dure-mycart --restart unless-stopped -p 8080:8080 -v ./lc_base:/lc_base -v ./lc_digitals:/lc_digitals -v ./lc_uploads:/lc_uploads ghcr.io/dure-one/dure-mycart:latest
-```
-
-**Image**: Built from `Dockerfile` → `ghcr.io/dure-one/dure-mycart:latest`
-
-#### With XMPP Stack (Prosody + xmpp-proxy)
-
-**3-Container Architecture:**
-- `dure-mycart`: Pure HTTP server (port 80/tcp)
-- `xmpp-proxy`: XMPP traffic - QUIC (443/udp), Direct TLS (5222, 5223, 5269/tcp)
-- `prosody`: XMPP server backend
+Most users deploy via the `prosody-mycart` stack, which includes dure-mycart, xmpp-proxy, and Prosody in a production-ready configuration.
 
 ```bash
 cd prosody-mycart-stack
 
-# Copy and configure environment
+# Configure environment
 cp .env.example .env
-# Edit .env with your domain and settings
+# Edit .env: set XMPP_DOMAIN, MYCART_DOMAIN, XMPP_ADMIN
 
-# Production (pull images)
+# Production deployment
 docker compose up -d
-
-# Development (build from source)
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-
-# Testing (use test images)
-docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
 ```
 
-**Environment Variables** (`.env`):
-- `MYCART_IMAGE_TAG` - Image tag (latest/test/custom)
-- `XMPP_PROXY_IMAGE_TAG` - xmpp-proxy image tag
-- `XMPP_DOMAIN` - Your domain (required)
-- `MYCART_DOMAIN` - Must match XMPP_DOMAIN for shared SSL
-- `XMPP_ADMIN` - Admin user (e.g., admin@example.com)
-
-**Images:**
-- `ghcr.io/dure-one/dure-mycart:latest` - Main application
-- `ghcr.io/nikescar/xmpp-proxy:latest` - XMPP reverse proxy
+**Images used:**
+- `ghcr.io/dure-one/prosody-mycart:latest` - Combined stack (dure-mycart + xmpp-proxy + fail2ban-rs)
 - `prosodyim/prosody:13.0` - XMPP server
 
----
-
-## Database
-
-### SQLite (Default)
-
-No configuration needed. Database stored in `./lc_base/data.db`.
-
-### PostgreSQL
-
-#### Installation
+**Build from Source (Linux):**
 
 ```bash
-./dure-mycart install \
-  --email admin@example.com \
-  --password yourpass \
-  --domain localhost \
-  --db postgres \
-  --db-dsn 'postgres://user:password@host:5432/dure-mycart?sslmode=disable'
-```
-
-#### Runtime
-
-```bash
-# Via command line
-./dure-mycart serve --db postgres --db-dsn 'postgres://...'
-
-# Via environment variables
-export MYCART_DB_DRIVER=postgres
-export MYCART_DB_DSN='postgres://user:password@host:5432/dure-mycart?sslmode=disable'
+git clone https://github.com/dure-one/dure-mycart.git
+cd dure-mycart
+go build -o dure-mycart
+./dure-mycart init
 ./dure-mycart serve
 ```
 
-#### Docker
+**Download Binary:**
 
 ```bash
-docker run --name dure-mycart --restart unless-stopped -p 8080:8080 \
-  -e MYCART_DB_DRIVER=postgres \
-  -e MYCART_DB_DSN='postgres://user:password@host:5432/dure-mycart?sslmode=disable' \
-  -v ./lc_base:/lc_base \
-  -v ./lc_digitals:/lc_digitals \
-  -v ./lc_uploads:/lc_uploads \
-  ghcr.io/dure-one/dure-mycart:latest
+curl -L https://github.com/dure-one/dure-mycart/releases/latest/download/dure-mycart-linux-amd64 -o dure-mycart
+chmod +x dure-mycart
+./dure-mycart init
+./dure-mycart serve
 ```
 
----
+## Fork Hierarchy
+
+This repository is downstream of `nikescar/mycart:main_dure`, which is derived from `shurco/mycart:main`.
+
+| Repository | Branch | Added Features |
+|------------|--------|----------------|
+| `shurco/mycart` | `main` | • Product variants<br>• Product image ordering |
+| `nikescar/mycart` | `main_dure` | • Optional sqlc support with build tags<br>• sqlc-generated type-safe query layer |
+| `dure-one/dure-mycart` | `main` | • Seller info admin/site pages and API<br>• Responder (workflows, messages) admin/site pages and API<br>• Prosody docker-compose integrations<br>• XMPP customer support system |
+
+**Technical Note (sqlc imports):**
+
+The sqlc-generated packages exist only in `dure-one/dure-mycart` and do not exist upstream. Import paths in generated code reference `github.com/dure-one/dure-mycart/internal/queries/sqlcgen/*` while the upstream `github.com/shurco/mycart` is imported as a dependency for base types. See commit `199b29c0` for the import path resolution.
+
+## Quick Start
+
+| Command | Purpose |
+|---------|---------|
+| `./dure-mycart init` | Initialize database and config |
+| `./dure-mycart serve` | Start HTTP server (port 8080) |
+| `./dure-mycart install --email <email> --password <pass> --domain <domain>` | CLI-based installation |
+| `go test ./... -count=1 -race` | Run SQLite test suite |
+| `make test-queries-all` | Test all query backends (raw+sqlc × SQLite+PostgreSQL) |
+
+**First-time setup:**
+Visit `http://localhost:8080/_/install` or use the CLI install command above.
+
+## Database Configuration
+
+**SQLite (Default):**
+
+Zero configuration. Database stored at `./lc_base/data.db`.
+
+**PostgreSQL:**
+
+```bash
+# Via environment variables (recommended)
+export MYCART_DB_DRIVER=postgres
+export MYCART_DB_DSN='postgres://user:password@host:5432/dure-mycart?sslmode=disable'
+./dure-mycart serve
+
+# Via command line
+./dure-mycart serve --db postgres --db-dsn 'postgres://...'
+
+# Docker deployment
+cd prosody-mycart-stack
+# Add to .env:
+# MYCART_DB_DRIVER=postgres
+# MYCART_DB_DSN=postgres://...
+docker compose up -d
+```
 
 ## Optional sqlc Support
 
-dure-mycart supports two SQL backends (choose at build time):
+Choose SQL backend at build time:
 
 1. **Raw SQL (default)** - Hand-written queries, fast builds
-2. **sqlc (optional)** - Compile-time type-safe queries
+2. **sqlc (optional)** - Compile-time type-safe generated queries
 
-Both support SQLite + PostgreSQL and pass identical tests.
-
-### Quick Start
+Both support SQLite + PostgreSQL with identical test coverage.
 
 ```bash
 # Install sqlc
@@ -151,33 +134,54 @@ make sqlc-generate
 # Build with sqlc backend
 make build-sqlc
 
-# Test all combinations (raw+sqlc × SQLite+PostgreSQL)
+# Test all combinations
 make test-queries-all
 ```
 
-**See [./optional_sqlc_support.md](./optional_sqlc_support.md) for:**
-- When to use sqlc vs raw SQL
-- Adding new queries
-- PostgreSQL test setup
+**Details:** See [./docs/optional_sqlc_support.md](./docs/optional_sqlc_support.md) for when to use sqlc vs raw SQL, adding new queries, and PostgreSQL test setup.
 
----
+## XMPP Stack Architecture
 
-## First-time Setup
+The `prosody-mycart-stack` Docker Compose deployment provides a production-ready 3-container architecture:
 
-Visit http://localhost:8080/_/install or run:
+**Services:**
+- **prosody-mycart** (merged container): dure-mycart HTTP server + xmpp-proxy + fail2ban-rs
+- **prosody**: XMPP server backend (172.19.0.2 on bridge network)
+
+**Protocol Support:**
+- XMPP QUIC (XEP-0467): 443/udp
+- XMPP Direct TLS: 5222, 5223, 5269/tcp
+- HTTP/HTTPS: 80, 443/tcp
+
+**Features:**
+- TLS certificates issued by dure-mycart (ACME), shared via `/certs` volume
+- PROXY protocol v1 for preserving real client IPs
+- S2S federation via Direct TLS (5269/tcp) and QUIC (443/udp)
+- Message Archive Management (MAM) sync for customer support responder
+
+**Configuration:**
+See `prosody-mycart-stack/.env.example` for required environment variables.
+
+## Development
+
+**Frontend development:**
 
 ```bash
-./dure-mycart install --email admin@example.com --password yourpass --domain localhost
+cd web/admin
+bun run dev
 ```
 
----
+**Testing:**
 
-## Fork Hierarchy
+```bash
+# SQLite tests
+go test ./... -count=1 -race
 
-This repository is a three-tier fork with the following feature additions:
+# PostgreSQL tests
+TEST_DB_DRIVER=postgres TEST_POSTGRES_DSN='postgres://...' go test ./... -count=1 -race
+```
 
-| Repository | Branch | Added Features |
-|------------|--------|----------------|
-| `shurco/mycart` | `main` | • Product variants<br>• Product image ordering |
-| `nikescar/mycart` | `main_dure` | • Optional sqlc support with build tag |
-| `dure-one/dure-mycart` | `main` | • Seller info admin/site pages and API<br>• Responder (workflows, messages) admin/site pages and API<br>• Prosody docker-compose integrations |
+**Documentation:**
+- `AGENTS.md` - Comprehensive development guide
+- `internal/database/AGENTS.md` - Database layer architecture
+- `migrations/AGENTS.md` - Portable SQL migration patterns
