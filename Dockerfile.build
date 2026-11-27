@@ -38,7 +38,10 @@ COPY --from=frontend-build /app/web/site/build ./web/site/build
 
 # Build the binary for the target platform requested by the builder
 ARG TARGETARCH
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags="-w -s" -o /go/bin/mycart ./cmd
+# The shipped image uses the sqlc query layer; fail the build if the binary
+# does not record the tag.
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -tags sqlc -ldflags="-w -s" -o /go/bin/mycart ./cmd \
+    && go version -m /go/bin/mycart | grep -Eq '^[[:space:]]+build[[:space:]]+-tags=([^[:space:]]*,)?sqlc(,|$)'
 
 # Stage 3: Final runtime image (non-root)
 # The binary and its workdir are owned by nonroot so the app can create its

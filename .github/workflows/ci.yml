@@ -133,10 +133,14 @@ jobs:
 
       - name: Install sqlc
         run: |
-          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.28.0
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 
-      - name: Generate sqlc code
-        run: $(go env GOPATH)/bin/sqlc generate
+      # Generated code is committed: fail if it or the SQLite schema dump is
+      # stale instead of regenerating it here.
+      - name: Check sqlc code is current
+        run: |
+          go test -tags sqlc ./internal/queries/sqlcgen -run TestSQLiteSchemaCurrent -count=1
+          $(go env GOPATH)/bin/sqlc diff
 
       - name: Generate Swagger docs
         run: |

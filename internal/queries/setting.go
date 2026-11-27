@@ -1,3 +1,5 @@
+//go:build !sqlc
+
 package queries
 
 import (

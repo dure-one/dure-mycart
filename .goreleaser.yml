@@ -25,6 +25,9 @@ builds:
     goarch:
       - amd64
       - arm64
+    # Releases ship the sqlc query layer (internal/queries/*_sqlc.go).
+    tags:
+      - sqlc
     ldflags:
       - -s -w
       - -X "main.version=v{{.Version}}"
@@ -32,6 +35,11 @@ builds:
       - -X "main.buildDate={{.Now.Format "2006-01-02"}}"
     main: ./cmd
     binary: mycart
+    hooks:
+      # Fail the release if a binary was built without the sqlc tag. Go records
+      # the tags in the binary ("build -tags=sqlc"), for every target platform.
+      post:
+        - sh -c 'go version -m "{{ .Path }}" | grep -Eq "^[[:space:]]+build[[:space:]]+-tags=([^[:space:]]*,)?sqlc(,|$)" || { echo "{{ .Path }} was not built with -tags sqlc" >&2; exit 1; }'
 
 archives:
   - name_template: '{{.ProjectName}}_{{.Version}}_{{.Os}}-{{.Arch}}'
