@@ -22,7 +22,7 @@ import (
 // @Accept       json
 // @Produce      json
 // @Param        request body models.SignIn true "Credentials"
-// @Success      200 {object} webutil.HTTPResponse{result=string} "JWT token"
+// @Success      200 {object} webutil.HTTPResponse{result=nil} "Signed in; JWT set in HttpOnly cookie"
 // @Failure      400 {object} webutil.HTTPResponse "Invalid credentials or validation error"
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/sign/in [post]
@@ -89,7 +89,8 @@ func SignIn(c fiber.Ctx) error {
 		SameSite: "Strict",
 	})
 
-	return webutil.StatusOK(c, "Token", token)
+	// The token travels only in the HttpOnly cookie, never in the body.
+	return webutil.StatusOK(c, "Signed in", nil)
 }
 
 // SignOut invalidates the user session and clears the authentication token.
