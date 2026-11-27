@@ -285,8 +285,10 @@ func checkCertificateExpiry(certPEM []byte, renewThreshold time.Duration) (int, 
 	timeUntilExpiry := time.Until(cert.NotAfter)
 	daysLeft := int(timeUntilExpiry.Hours() / 24)
 
-	// Should renew if within threshold
-	shouldRenew := timeUntilExpiry < renewThreshold
+	// X.509 stores certificate times to whole seconds. Round the remaining
+	// positive duration up to preserve an exact threshold boundary.
+	remainingSeconds := (timeUntilExpiry + time.Second - 1) / time.Second
+	shouldRenew := timeUntilExpiry <= 0 || remainingSeconds*time.Second < renewThreshold
 
 	return daysLeft, shouldRenew, nil
 }

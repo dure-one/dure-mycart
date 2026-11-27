@@ -37,6 +37,10 @@ func (q *SettingQueries) GroupFieldMap(settings any) map[string]any {
 		return brandingFields(s)
 	case *models.Account:
 		return accountFields(s)
+	case *models.Sellerinfo:
+		return sellerinfoFields(s)
+	case *models.ResponderSettings:
+		return responderSettingsFields(s)
 	default:
 		return nil
 	}
@@ -181,5 +185,28 @@ func accountFields(s *models.Account) map[string]any {
 	return map[string]any{
 		"account_enabled":          &s.Enabled,
 		"account_jwt_expire_hours": &s.ExpireHours,
+	}
+}
+
+func sellerinfoFields(s *models.Sellerinfo) map[string]any {
+	return map[string]any{
+		"dureone_enabled":             &s.Enabled,
+		"dureone_business_name":       &s.BusinessName,
+		"dureone_representative":      &s.Representative,
+		"dureone_customer_service":    &s.CustomerService,
+		"dureone_business_reg_number": &s.BusinessRegNumber,
+		"dureone_business_address":    &s.BusinessAddress,
+		"dureone_ecommerce_license":   &s.EcommerceLicense,
+		"dureone_email":               &s.Email,
+	}
+}
+
+func responderSettingsFields(s *models.ResponderSettings) map[string]any {
+	return map[string]any{
+		"responder_xmpp_enabled":  &s.Enabled,
+		"responder_xmpp_jid":      &s.XMPPJID,
+		"responder_xmpp_password": &s.XMPPPassword,
+		"responder_xmpp_server":   &s.XMPPServer,
+		"responder_xmpp_port":     &s.XMPPPort,
 	}
 }

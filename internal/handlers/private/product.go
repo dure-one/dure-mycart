@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/gofiber/fiber/v3"
 
+	"github.com/dure-one/dure-mycart/internal/cdn"
 	"github.com/dure-one/dure-mycart/internal/models"
 	"github.com/dure-one/dure-mycart/internal/queries"
 	"github.com/dure-one/dure-mycart/pkg/errors"
@@ -126,6 +127,8 @@ func AddProduct(c fiber.Ctx) error {
 		return webutil.StatusBadRequest(c, err.Error())
 	}
 
+	cdn.SetSurrogateKeys(c, cdn.ProductKeys(product.Slug)...)
+
 	return webutil.Response(c, fiber.StatusOK, "Product added", product)
 }
 
@@ -192,6 +195,9 @@ func UpdateProduct(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
+	// Set CDN surrogate keys for cache invalidation
+	cdn.SetSurrogateKeys(c, cdn.ProductKeys(product.Slug)...)
+
 	return webutil.Response(c, fiber.StatusOK, "Product updated", product)
 }
 
@@ -211,6 +217,12 @@ func DeleteProduct(c fiber.Ctx) error {
 	db := queries.DB()
 	log := logging.New()
 
+	product, err := db.Product(c.Context(), true, productID)
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
 	if err := db.DeleteProduct(c.Context(), productID); err != nil {
 		if errors.Is(err, errors.ErrProductSold) {
 			return webutil.StatusBadRequest(c, errors.MsgProductSold)
@@ -218,6 +230,8 @@ func DeleteProduct(c fiber.Ctx) error {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
+
+	cdn.SetSurrogateKeys(c, cdn.ProductKeys(product.Slug)...)
 
 	return webutil.Response(c, fiber.StatusOK, "Product deleted", nil)
 }
@@ -242,6 +256,16 @@ func UpdateProductActive(c fiber.Ctx) error {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
+
+	// Fetch product to get slug for CDN keys
+	product, err := db.Product(c.Context(), true, productID)
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	// Set CDN surrogate keys for cache invalidation
+	cdn.SetSurrogateKeys(c, cdn.ProductKeys(product.Slug)...)
 
 	return webutil.Response(c, fiber.StatusOK, "Product active updated", nil)
 }

@@ -239,7 +239,7 @@ func TestValidateEABKey(t *testing.T) {
 		},
 		{
 			name:    "invalid 81-char key (20*4+1)",
-			key:     "v759H_lkZfpWpch1xFp8pEmLmpEV8hKxY0UWvIeSic7rvtmlTaCl_pq34ag9HbPUFF6fuCRWLYA03SR",
+			key:     "v759H_lkZfpWpch1xFp8pEmLmpEV8hKxY0UWvIeSic7rvtmlTaCl_pq34ag9HbPUFF6fuCRWLYA03SRAB",
 			wantErr: true,
 			errMsg:  "invalid base64 length 81",
 		},

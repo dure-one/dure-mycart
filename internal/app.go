@@ -146,7 +146,7 @@ func setupRoutes(app *fiber.App, noSite bool) {
 // read back without swapping os.Stdout process-wide, which is a global the
 // server goroutines also write to.
 func printStartupInfo(w io.Writer, schema, mainAddr string, noSite bool, dbCfg database.Config) {
-	fmt.Fprint(w, "🛒 myCart - open source shopping-cart in 1 file\n")
+	fmt.Fprint(w, "🛒 dure-mycart - open source shopping-cart in 1 file\n")
 	if !noSite {
 		fmt.Fprintf(w, "├─ Cart UI: %s://%s/\n", schema, mainAddr)
 	}
@@ -157,4 +157,29 @@ func printStartupInfo(w io.Writer, schema, mainAddr string, noSite bool, dbCfg d
 	} else {
 		fmt.Fprint(w, "└─ Swagger UI: disabled (use --dev flag to enable)\n")
 	}
+}
+
+// validateEABKey validates an ACME External Account Binding key.
+// The key must be valid base64url (RFC 4648 §5) with length n*4, n*4+2, or n*4+3.
+func validateEABKey(key string) error {
+	if key == "" {
+		return fmt.Errorf("key is empty")
+	}
+
+	// Check length (must not be n*4+1)
+	if len(key)%4 == 1 {
+		return fmt.Errorf("invalid base64 length %d (got n*4+1, expected n*4, n*4+2, or n*4+3)", len(key))
+	}
+
+	// Check characters (base64url: A-Za-z0-9_-)
+	for i, c := range key {
+		if !((c >= 'A' && c <= 'Z') ||
+			(c >= 'a' && c <= 'z') ||
+			(c >= '0' && c <= '9') ||
+			c == '-' || c == '_') {
+			return fmt.Errorf("illegal character at byte %d: %q (base64url allows only A-Za-z0-9_-)", i, c)
+		}
+	}
+
+	return nil
 }

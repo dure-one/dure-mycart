@@ -19,14 +19,13 @@ func TestAddProduct_SurrogateKeys(t *testing.T) {
 		"name":"Test Product",
 		"slug":"test-product",
 		"active":true,
-		"price":9.99,
-		"digital":{"type":"none"}
+		"amount":999,
+		"digital":{"type":"file"}
 	}`
 	resp := testutil.DoRequest(t, app, http.MethodPost, "/api/_/products", body, "")
 
-	// If creation fails, skip header check (validation may vary)
 	if resp.StatusCode != http.StatusOK {
-		t.Skipf("Product creation failed with status %d, skipping surrogate key test", resp.StatusCode)
+		t.Fatalf("Product creation status = %d, want %d", resp.StatusCode, http.StatusOK)
 	}
 
 	// Verify surrogate keys are set

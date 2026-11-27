@@ -26,7 +26,7 @@ func TestGenerateSelfSignedCert_DevMode(t *testing.T) {
 	certDir := t.TempDir()
 
 	// Act
-	err := generateSelfSignedCert(domain, certDir)
+	err := generateSelfSignedCert([]string{domain}, certDir)
 
 	// Assert
 	if err != nil {
@@ -107,7 +107,7 @@ func TestGenerateSelfSignedCert_FilePermissions(t *testing.T) {
 	certDir := t.TempDir()
 
 	// Act
-	err := generateSelfSignedCert(domain, certDir)
+	err := generateSelfSignedCert([]string{domain}, certDir)
 	if err != nil {
 		t.Fatalf("generateSelfSignedCert failed: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestGenerateSelfSignedCert_InvalidDirectory(t *testing.T) {
 	certDir := "/dev/null/invalid/path"
 
 	// Act
-	err := generateSelfSignedCert(domain, certDir)
+	err := generateSelfSignedCert([]string{domain}, certDir)
 
 	// Assert - should return an error
 	if err == nil {
