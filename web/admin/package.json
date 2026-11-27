@@ -24,7 +24,6 @@
     "@tiptap/starter-kit": "^3.35.0",
     "isomorphic-dompurify": "^3.23.0",
     "nprogress": "^0.2.0",
-    "svelte": "^5.56.4",
     "svelte-french-toast": "^1.2.0"
   },
   "devDependencies": {

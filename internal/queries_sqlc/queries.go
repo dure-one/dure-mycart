@@ -1,3 +1,4 @@
+//go:build sqlc
 // +build sqlc
 
 package queries_sqlc
