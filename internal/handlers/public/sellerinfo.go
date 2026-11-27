@@ -188,37 +188,19 @@ func VerifyCaptcha(c fiber.Ctx) error {
 	})
 }
 
-// GetSellerInfo returns seller information after captcha verification.
+// GetSellerInfo returns seller information.
 //
 // @Summary      Get seller info
-// @Description  Get Korean seller information (requires captcha verification)
+// @Description  Get Korean seller information
 // @Tags         Public
 // @Produce      json
-// @Param        X-Access-Token header string true "Access token from captcha verification"
 // @Success      200 {object} webutil.HTTPResponse "Seller information"
-// @Failure      401 {object} webutil.HTTPResponse "Unauthorized"
 // @Failure      404 {object} webutil.HTTPResponse "Seller info not enabled"
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/sellerinfo [get]
 func GetSellerInfo(c fiber.Ctx) error {
 	db := queries.DB()
 	log := logging.New()
-
-	// Verify access token
-	accessToken := c.Get("X-Access-Token")
-	if accessToken == "" {
-		return webutil.StatusBadRequest(c, "Access token required")
-	}
-
-	verified, exists := verifiedStore[accessToken]
-	if !exists || !verified.verified {
-		return webutil.Response(c, fiber.StatusUnauthorized, "Invalid or expired access token", nil)
-	}
-
-	if time.Now().After(verified.expiresAt) {
-		delete(verifiedStore, accessToken)
-		return webutil.Response(c, fiber.StatusUnauthorized, "Access token expired", nil)
-	}
 
 	// Load Sellerinfo settings
 	sellerinfo, err := queries.GetSettingByGroup[models.Sellerinfo](c.Context(), db)
