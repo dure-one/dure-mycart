@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import { page } from '$app/state'
   import { goto } from '$app/navigation'
-  import { base } from '$app/paths'
+  import { resolve } from '$app/paths'
   import { systemStore } from '$lib/stores/system'
   import { paymentSettingsStore } from '$lib/stores/payment'
   import { apiGet, apiPost } from '$lib/utils/api'
@@ -59,43 +59,43 @@
     event.preventDefault()
     const res = await apiPost('/api/sign/out')
     if (res?.success) {
-      goto(`${base}/signin`)
+      goto(resolve('/signin'))
     }
   }
 
   let mainMenu = $derived([
-    { name: 'products', path: `${base}/products`, meta: { ico: 'cube', label: () => t('menu.products') } },
-    { name: 'carts', path: `${base}/carts`, meta: { ico: 'cart', label: () => t('menu.carts') } },
-    { name: 'customers', path: `${base}/customers`, meta: { ico: 'user-group', label: () => t('menu.customers') } },
-    { name: 'pages', path: `${base}/pages`, meta: { ico: 'docs', label: () => t('menu.pages') } },
-    { name: 'responder', path: `${base}/responder/messages`, meta: { ico: 'chat', label: () => t('menu.responder') } },
-    { name: 'settings', path: `${base}/settings`, meta: { ico: 'booth', divider: true, label: () => t('menu.settings') } }
+    { name: 'products', path: resolve('/products'), meta: { ico: 'cube', label: () => t('menu.products') } },
+    { name: 'carts', path: resolve('/carts'), meta: { ico: 'cart', label: () => t('menu.carts') } },
+    { name: 'customers', path: resolve('/customers'), meta: { ico: 'user-group', label: () => t('menu.customers') } },
+    { name: 'pages', path: resolve('/pages'), meta: { ico: 'docs', label: () => t('menu.pages') } },
+    { name: 'responder', path: resolve('/responder/messages'), meta: { ico: 'chat', label: () => t('menu.responder') } },
+    { name: 'settings', path: resolve('/settings'), meta: { ico: 'booth', divider: true, label: () => t('menu.settings') } }
   ])
 
   let mainMenuSections = $derived.by(() => {
     if (currentRoute?.includes('/settings')) {
       return [
-        { name: 'settingsMain', path: `${base}/settings/main`, meta: { ico: 'home', title: () => t('settings.main') } },
-        { name: 'settingsSellerInfo', path: `${base}/settings/sellerinfo`, meta: { ico: 'information-circle', title: () => t('settings.sellerinfo') } },
-        { name: 'settingsAuth', path: `${base}/settings/auth`, meta: { ico: 'finger-print', title: () => t('settings.auth') } },
-        { name: 'settingsPayment', path: `${base}/settings/payment`, meta: { ico: 'money', title: () => t('settings.payment') } },
+        { name: 'settingsMain', path: resolve('/settings/main'), meta: { ico: 'home', title: () => t('settings.main') } },
+        { name: 'settingsSellerInfo', path: resolve('/settings/sellerinfo'), meta: { ico: 'information-circle', title: () => t('settings.sellerinfo') } },
+        { name: 'settingsAuth', path: resolve('/settings/auth'), meta: { ico: 'finger-print', title: () => t('settings.auth') } },
+        { name: 'settingsPayment', path: resolve('/settings/payment'), meta: { ico: 'money', title: () => t('settings.payment') } },
         {
           name: 'settingsWebhook',
-          path: `${base}/settings/webhook`,
+          path: resolve('/settings/webhook'),
           meta: { ico: 'webhook', title: () => t('settings.webhook') }
         },
-        { name: 'settingsAccount', path: `${base}/settings/account`, meta: { ico: 'user', title: () => t('settings.customer') } },
-        { name: 'settingsBranding', path: `${base}/settings/branding`, meta: { ico: 'pencil', title: () => t('settings.branding') } },
-        { name: 'settingsSocials', path: `${base}/settings/socials`, meta: { ico: 'user-group', title: () => t('settings.social') } },
-        { name: 'settingsMail', path: `${base}/settings/mail`, meta: { ico: 'at-symbol', title: () => t('settings.mail') } },
-        { name: 'settingsResponder', path: `${base}/settings/responder`, meta: { ico: 'chat', title: () => t('menu.responder') } },
-        { name: 'settingsCrontab', path: `${base}/settings/crontab`, meta: { ico: 'clock', title: () => t('menu.crontab') } }
+        { name: 'settingsAccount', path: resolve('/settings/account'), meta: { ico: 'user', title: () => t('settings.customer') } },
+        { name: 'settingsBranding', path: resolve('/settings/branding'), meta: { ico: 'pencil', title: () => t('settings.branding') } },
+        { name: 'settingsSocials', path: resolve('/settings/socials'), meta: { ico: 'user-group', title: () => t('settings.social') } },
+        { name: 'settingsMail', path: resolve('/settings/mail'), meta: { ico: 'at-symbol', title: () => t('settings.mail') } },
+        { name: 'settingsResponder', path: resolve('/settings/responder'), meta: { ico: 'chat', title: () => t('menu.responder') } },
+        { name: 'settingsCrontab', path: resolve('/settings/crontab'), meta: { ico: 'clock', title: () => t('menu.crontab') } }
       ]
     }
     if (currentRoute?.includes('/responder')) {
       return [
-        { name: 'responderMessages', path: `${base}/responder/messages`, meta: { ico: 'chat', title: () => t('menu.responderMessages') } },
-        { name: 'responderWorkflows', path: `${base}/responder/workflows`, meta: { ico: 'docs', title: () => t('menu.responderWorkflows') } }
+        { name: 'responderMessages', path: resolve('/responder/messages'), meta: { ico: 'chat', title: () => t('menu.responderMessages') } },
+        { name: 'responderWorkflows', path: resolve('/responder/workflows'), meta: { ico: 'docs', title: () => t('menu.responderWorkflows') } }
       ]
     }
     return []
@@ -124,8 +124,8 @@
                 href={item.path}
                 data-sveltekit-preload-data="hover"
                 class="group relative flex justify-center rounded px-2 py-1.5 {currentRoute === item.path ||
-                (item.path === `${base}/settings` && currentRoute?.startsWith(`${base}/settings`)) ||
-                (item.path.includes('/responder/') && currentRoute?.startsWith(`${base}/responder`))
+                (item.path === resolve('/settings') && currentRoute?.startsWith(resolve('/settings'))) ||
+                (item.path.includes('/responder/') && currentRoute?.startsWith(resolve('/responder')))
                   ? 'bg-green-100 text-green-700'
                   : 'text-gray-500 hover:bg-gray-200 hover:text-gray-700'}"
               >
@@ -149,7 +149,7 @@
           </a>
         </li>
         <li class="pb-2">
-          <a href={`${base}/signin`} onclick={signOut} class="block" aria-label={t('common.signOut')}>
+          <a href={resolve('/signin')} onclick={signOut} class="block" aria-label={t('common.signOut')}>
             <div
               class="group relative flex justify-center rounded px-2 py-1.5 text-gray-500 hover:bg-red-100 hover:text-red-700"
             >

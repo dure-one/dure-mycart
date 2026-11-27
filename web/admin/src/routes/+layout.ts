@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit'
 import { browser } from '$app/environment'
-import { base } from '$app/paths'
+import { resolve } from '$app/paths'
 import type { LayoutLoad } from './$types'
 
 // Cache keys and TTLs
@@ -80,7 +80,7 @@ export const load: LayoutLoad = async ({ url, fetch }) => {
         setCache(INSTALL_STATUS_KEY, installed)
 
         if (!installed) {
-          throw redirect(302, `${base}/install`)
+          throw redirect(302, resolve('/install'))
         }
       }
     } catch (error) {
@@ -89,7 +89,7 @@ export const load: LayoutLoad = async ({ url, fetch }) => {
       }
     }
   } else if (!installed) {
-    throw redirect(302, `${base}/install`)
+    throw redirect(302, resolve('/install'))
   }
 
   // Check authentication via version endpoint (cached)
@@ -108,19 +108,19 @@ export const load: LayoutLoad = async ({ url, fetch }) => {
       } else if (versionResponse.status === 400 || versionResponse.status === 401 || versionResponse.status === 403) {
         isAuthenticated = false
         clearCache(VERSION_KEY)
-        throw redirect(302, `${base}/signin`)
+        throw redirect(302, resolve('/signin'))
       }
     } catch (error) {
       if (error && typeof error === 'object' && 'status' in error && error.status === 302) {
         throw error
       }
       clearCache(VERSION_KEY)
-      throw redirect(302, `${base}/signin`)
+      throw redirect(302, resolve('/signin'))
     }
   }
 
   if (!isAuthenticated) {
-    throw redirect(302, `${base}/signin`)
+    throw redirect(302, resolve('/signin'))
   }
 
   return {}

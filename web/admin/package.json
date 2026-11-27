@@ -19,7 +19,7 @@
     "test:browser:ui": "vitest --config vitest.browser.config.ts --ui"
   },
   "overrides": {
-    "cookie": "^0.7.0",
+    "cookie": "^2.0.1",
     "dompurify": "^3.4.16",
     "extract-zip": "github:AIEpisteme/extract-zip"
   },
