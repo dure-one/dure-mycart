@@ -8,8 +8,8 @@ import (
 	"fmt"
 
 	"github.com/shurco/mycart/internal/models"
-	pggen "github.com/shurco/mycart/internal/queries/sqlcgen/postgres"
-	sqlitegen "github.com/shurco/mycart/internal/queries/sqlcgen/sqlite"
+	pggen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/postgres"
+	sqlitegen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/sqlite"
 )
 
 // GetProductWithVariants retrieves a product with all its options and variants

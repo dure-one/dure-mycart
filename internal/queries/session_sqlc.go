@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	pggen "github.com/shurco/mycart/internal/queries/sqlcgen/postgres"
-	sqlitegen "github.com/shurco/mycart/internal/queries/sqlcgen/sqlite"
+	pggen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/postgres"
+	sqlitegen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/sqlite"
 )
 
 // GetSession retrieves the session value for a given key if it hasn't expired.

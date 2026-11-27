@@ -9,8 +9,8 @@ import (
 
 	"github.com/shurco/mycart/internal/database"
 	"github.com/shurco/mycart/internal/models"
-	pggen "github.com/shurco/mycart/internal/queries/sqlcgen/postgres"
-	sqlitegen "github.com/shurco/mycart/internal/queries/sqlcgen/sqlite"
+	pggen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/postgres"
+	sqlitegen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/sqlite"
 )
 
 // AddProductWithVariants adds a product with its options and variants in a transaction

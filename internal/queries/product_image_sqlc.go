@@ -8,8 +8,8 @@ import (
 	stderrors "errors"
 	"fmt"
 
-	pggen "github.com/shurco/mycart/internal/queries/sqlcgen/postgres"
-	sqlitegen "github.com/shurco/mycart/internal/queries/sqlcgen/sqlite"
+	pggen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/postgres"
+	sqlitegen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/sqlite"
 )
 
 // ImagePositionUpdate contains data for updating a product image position.

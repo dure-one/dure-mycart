@@ -16,8 +16,8 @@ import (
 	"database/sql"
 
 	"github.com/shurco/mycart/internal/database"
-	pggen "github.com/shurco/mycart/internal/queries/sqlcgen/postgres"
-	sqlitegen "github.com/shurco/mycart/internal/queries/sqlcgen/sqlite"
+	pggen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/postgres"
+	sqlitegen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/sqlite"
 )
 
 // dbtx is what the generated code executes on: a *database.Conn or a
