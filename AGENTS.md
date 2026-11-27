@@ -129,7 +129,9 @@ Both backends:
 - Export identical public APIs
 - Pass the same test suite
 
-See `internal/queries_sqlc/AGENTS.md` for sqlc-specific guidance.
+The switch is per file inside `internal/queries` (`foo.go` is `!sqlc`, its twin
+`foo_sqlc.go` is `sqlc`). See `docs/optional_sqlc_support.md` before touching a
+query or merging upstream.
 
 Default admin credentials after `./scripts/migration dev up`:
 `user@mail.com` / `Pass123`.

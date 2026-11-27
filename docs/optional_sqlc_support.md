@@ -1,513 +1,122 @@
 # Optional sqlc Support
 
-myCart has two SQL backend implementations:
+myCart builds with one of two query implementations, chosen at build time:
 
-1. **Raw SQL (default)**: Hand-written SQL queries with runtime parameter binding
-2. **sqlc (optional)**: Compile-time type-safe queries generated from annotated SQL
-
-Both backends support SQLite and PostgreSQL, pass the same test suite, and export identical public APIs. **You choose at build time** via Go build tags — the application binary uses one backend or the other, not both.
-
-## Which one?
-
-| | Raw SQL (default) | sqlc (optional) |
+| Build | Command | Queries |
 |---|---|---|
-| Setup | none | install sqlc, run code generator |
-| Type safety | runtime (via `database.Conn` wrapper) | compile-time (generated Go types) |
-| Query changes | edit `.go` files | edit `.sql` files, regenerate code |
-| Build speed | fast (no generation step) | slower (generate → compile) |
-| Compilation errors | if query syntax wrong at runtime | if query syntax wrong at generation time |
-| Fits | quick iteration, prototype mode | strict type safety, production mode |
+| Plain (default) | `go build ./cmd` | Hand-written SQL in `internal/queries/*.go`, one portable set for both engines. This is the upstream code, unchanged. |
+| sqlc | `go build -tags sqlc ./cmd` | sqlc-generated queries, checked against the schema at generation time. |
 
-Both run the same migrations and use the same `database.Conn` abstraction. There is no reduced-feature mode.
+Both builds support SQLite and PostgreSQL, keep the same `queries.DB()` API and
+pass the same test suite. Nothing outside `internal/queries` knows which one is
+compiled in.
 
-## Why use sqlc?
+## How the switch works
 
-**Compile-time type safety.** sqlc parses your SQL queries and generates Go code with correct types:
+The switch lives in `internal/queries`, one file at a time:
 
-```sql
--- db/queries/postgres/customer.sql
--- name: GetCustomerByEmail :one
-SELECT id, email, name, created
-FROM customer
-WHERE email = $1;
+```
+internal/queries/pages.go          //go:build !sqlc   plain implementation (upstream file)
+internal/queries/pages_sqlc.go     //go:build sqlc    same types and methods, on sqlc
+internal/queries/queries.go        no tag             shared: Base, New, SetConn, DB
+internal/queries/cart_validate.go  no tag             shared: pure Go, no SQL
 ```
 
-sqlc generates:
+- Every plain file that runs SQL carries `//go:build !sqlc` and has a
+  `<name>_sqlc.go` twin. Files without SQL (validation, cart items, purchase
+  assembly, JSON helpers, pagination) stay shared and compile in both builds.
+- A twin keeps the plain file's exported API and any helpers other shared files
+  call. Pure-logic helpers that live in a tagged plain file are copied into the
+  twin.
+- Logic outside the package that runs its own SQL is re-implemented in the
+  twin over a generated query, so the sqlc build sends no hand-written SQL:
+  `GenerateUniqueSlug` uses `SlugTaken` instead of `pkg/slugify`.
+- `sqlc_engine.go` picks the generated querier for the connection's engine
+  (`pick` / `run`), and both engines run on `database.Conn` / `database.Tx`, so
+  the UTC pin, `Config.Redacted()` and pgtestdb apply to the sqlc build as well.
 
-```go
-// internal/queries_sqlc/sqlc/postgres/customer.sql.go
-type GetCustomerByEmailRow struct {
-    ID      string
-    Email   string
-    Name    string
-    Created int64
-}
+## Releases
 
-func (q *Queries) GetCustomerByEmail(ctx context.Context, email string) (GetCustomerByEmailRow, error) {
-    // ... generated implementation
-}
-```
+Shipped binaries are sqlc builds:
 
-**Benefits:**
-- Wrong column names fail at compile time, not runtime
-- Typos in table names caught during generation
-- Type mismatches (e.g., treating `int64` as `string`) rejected by compiler
-- IDE autocomplete for query result fields
-- No reflection, no `interface{}` casting
+- `.goreleaser.yml` builds with `tags: [sqlc]`, and a post-build hook fails the
+  release when `go version -m` does not show `build -tags=sqlc` for a binary.
+- `Dockerfile.build` (the onsite image) builds with `-tags sqlc` and runs the
+  same check.
 
-**Cost:**
-- Must run `make sqlc-generate` after every query change
-- Slower build (generation + compilation vs just compilation)
-- Two sets of query files to maintain (`.sql` files + generated `.go` files)
+`go build ./cmd` and the CI plain jobs keep building the plain layer, so the
+upstream code stays tested.
 
-## Installing sqlc
+## Layout
 
-One command:
+| Path | What |
+|---|---|
+| `sqlc.yaml` | Generator config. |
+| `internal/queries/sqlcgen/queries/{sqlite,postgres}/*.sql` | The queries, one file per group and engine. |
+| `internal/queries/sqlcgen/{sqlite,postgres}/` | Generated code (committed). Packages `sqlitegen` and `pggen`. |
+| `internal/queries/sqlcgen/schema/sqlite.sql` | SQLite schema dump the generator reads, produced from `migrations/`. PostgreSQL reads `migrations/` directly. |
+| `internal/queries/sqlc_engine.go` | Engine dispatch and paging helpers. |
+| `internal/queries/sqlc_coverage_test.go` | Merge guards (see below). |
+
+## Writing a query
+
+Write the query in both engine files under the same name. Write it so both
+engines generate **identical Go structs**: the twin maps the PostgreSQL row type
+and converts the SQLite row into it (`pggen.XRow(sqliteRow)`), which only
+compiles while the two match.
+
+| Need | SQLite | PostgreSQL |
+|---|---|---|
+| Unix time | `CAST(COALESCE(strftime('%s', col), 0) AS INTEGER)` | `COALESCE(EXTRACT(EPOCH FROM col)::bigint, 0)::bigint` |
+| `NUMERIC` / `INTEGER` column or param as `int64` | `CAST(x AS INTEGER)` | `x::bigint` |
+| Boolean expression | `CAST(x AS BOOLEAN)` | `x::boolean` |
+| ID list, only parameter | `IN (sqlc.slice(ids))` | `IN (SELECT jsonb_array_elements_text(sqlc.arg(ids)::jsonb))` |
+| ID list among other parameters | `IN (SELECT value FROM json_each(CAST(sqlc.arg(ids) AS TEXT)))` | as above |
+| Optional filter | `(CAST(sqlc.arg(all) AS BOOLEAN) OR col = sqlc.arg(v))` | `(sqlc.arg(all)::boolean OR col = sqlc.arg(v))` |
+| No LIMIT | pass `-1` | pass `NULL` (`sqlc.narg(lim)`) — use `pageBounds` / `pgLimit` |
+| `LIKE … ESCAPE '\'` | wrap in parentheses, cast the parameter to `TEXT` | wrap in parentheses |
+
+Known sqlc limitations behind those rules:
+
+- `= ANY($1::text[])` makes sqlc generate a `github.com/lib/pq` dependency.
+- sqlc numbers repeated SQLite parameters (`?1`, `?2`), and a `sqlc.slice`
+  expanded among numbered parameters binds the wrong values.
+- sqlc's SQLite parser rejects `LIKE … ESCAPE` outside parentheses and cannot
+  infer parameter types from a column of a `UNION` subquery.
+- sqlc's SQLite parser cannot replay the migration history, hence the dump.
+
+Regenerate after changing a query or a migration:
 
 ```bash
-make install-sqlc
+make sqlc-generate   # dumps the SQLite schema, then runs sqlc generate
+make sqlc-verify     # fails on a stale dump or stale generated code, builds and vets -tags sqlc
 ```
 
-This installs the `sqlc` CLI tool via `go install`. Verify:
-
-```bash
-sqlc version
-# v1.27.0 (or similar)
-```
-
-## Generating code
-
-After modifying any `.sql` file in `db/queries/postgres/` or `db/queries/sqlite/`:
-
-```bash
-make sqlc-generate
-```
-
-This:
-1. Reads `sqlc.yaml` configuration
-2. Parses schema from `db/schema/` (migrations)
-3. Parses queries from `db/queries/postgres/*.sql` and `db/queries/sqlite/*.sql`
-4. Generates type-safe Go code:
-   - `internal/queries_sqlc/sqlc/postgres/*.go` (PostgreSQL dialect)
-   - `internal/queries_sqlc/sqlc/sqlite/*.go` (SQLite dialect)
-
-**Verification mode** (recommended):
-
-```bash
-make sqlc-verify
-```
-
-This runs `sqlc generate` **and** verifies the generated code compiles.
-
-**Quick mode** (skip verification):
-
-```bash
-make sqlc
-```
-
-## Building with sqlc
-
-Build the sqlc-enabled backend:
-
-```bash
-make build-sqlc
-```
-
-This runs:
-1. `make sqlc-generate` (ensures code is up-to-date)
-2. `go build -tags sqlc -o mycart-sqlc ./cmd`
-
-The resulting `mycart-sqlc` binary uses the generated queries instead of raw SQL.
-
-**Build both backends** (useful for comparison):
-
-```bash
-make build-both
-```
-
-Produces:
-- `mycart` (raw SQL backend)
-- `mycart-sqlc` (sqlc backend)
-
-Both binaries are functionally identical — same CLI, same API, same behavior.
-
-## Testing with sqlc
-
-### Test sqlc backend with SQLite
+## Testing
 
 ```bash
 make test-queries-sqlc-sqlite
+make test-queries-sqlc-postgres   # needs TEST_POSTGRES_DSN, see AGENTS.md
+go test -tags sqlc ./... -count=1 -race
 ```
 
-Runs:
-```bash
-go test -tags sqlc ./internal/queries_sqlc/... -count=1 -race
-```
-
-### Test sqlc backend with PostgreSQL
-
-```bash
-make test-queries-sqlc-postgres
-```
-
-Requires `TEST_POSTGRES_DSN` environment variable (see [Running tests on PostgreSQL](#running-tests-on-postgresql)).
-
-Runs:
-```bash
-TEST_DB_DRIVER=postgres go test -tags sqlc ./internal/queries_sqlc/... -count=1 -race
-```
-
-### 4-mode test matrix
-
-Test **all combinations** (raw+sqlc × SQLite+PostgreSQL):
-
-```bash
-make test-queries-all
-```
-
-This runs:
-1. `test-queries-raw-sqlite` — raw SQL + SQLite
-2. `test-queries-raw-postgres` — raw SQL + PostgreSQL
-3. `test-queries-sqlc-sqlite` — sqlc + SQLite
-4. `test-queries-sqlc-postgres` — sqlc + PostgreSQL
-
-All four must pass before merging query changes.
-
-## Running tests on PostgreSQL
-
-The PostgreSQL tests need a **dedicated test server** with `CREATEDB`, `CREATEROLE` and `SUPERUSER` privileges. Each test gets its own database, which is dropped after the test passes.
-
-**Never point this at a server with data you care about.**
-
-### Local Docker test server
-
-```bash
-docker compose -f docker/docker-compose.yml -f docker/docker-compose_dev.yml up -d pgtestdb
-```
-
-This starts `postgres:17-alpine` on port 5433 with:
-- tmpfs data directory (nothing persisted)
-- durability off (fast tests)
-- Credentials: `postgres:password`
-
-Then set the environment variable:
-
-```bash
-export TEST_POSTGRES_DSN='postgres://postgres:password@localhost:5433/postgres?sslmode=disable'
-make test-queries-all
-```
-
-### Remote PostgreSQL (Supabase, RDS, etc.)
-
-**Only use a throwaway test database.** The tests will create and drop databases.
-
-```bash
-export TEST_POSTGRES_DSN='postgresql://postgres:your-password@your-host:5432/postgres?sslmode=require'
-make test-queries-all
-```
-
-**URL-encode special characters** in passwords:
-- Space: `%20`
-- `@`: `%40`
-- `#`: `%23`
-
-Example with space in password:
-```bash
-# Wrong (will fail to parse):
-postgresql://user:my password@host/db
-
-# Correct:
-postgresql://user:my%20password@host/db
-```
-
-See `.env.example` for more examples.
-
-## Adding new queries
-
-### Step 1: Write annotated SQL
-
-Create or modify a `.sql` file in `db/queries/postgres/` and `db/queries/sqlite/`.
-
-**PostgreSQL example** (`db/queries/postgres/customer.sql`):
-
-```sql
--- name: GetCustomerByEmail :one
-SELECT id, email, name, created
-FROM customer
-WHERE email = $1;
-
--- name: ListCustomers :many
-SELECT id, email, name, created
-FROM customer
-ORDER BY created DESC
-LIMIT $1 OFFSET $2;
-
--- name: CreateCustomer :one
-INSERT INTO customer (id, email, name, created)
-VALUES ($1, $2, $3, $4)
-RETURNING id, email, name, created;
-```
-
-**SQLite example** (`db/queries/sqlite/customer.sql`):
-
-```sql
--- name: GetCustomerByEmail :one
-SELECT id, email, name, created
-FROM customer
-WHERE email = ?;
-
--- name: ListCustomers :many
-SELECT id, email, name, created
-FROM customer
-ORDER BY created DESC
-LIMIT ? OFFSET ?;
-
--- name: CreateCustomer :one
-INSERT INTO customer (id, email, name, created)
-VALUES (?, ?, ?, ?)
-RETURNING id, email, name, created;
-```
-
-**Query annotations:**
-- `:one` — expects exactly one row (returns single struct)
-- `:many` — expects zero or more rows (returns slice)
-- `:exec` — no rows returned (returns `sql.Result`)
-- `:execrows` — returns rows affected count
-
-**Parameter placeholders:**
-- PostgreSQL: `$1`, `$2`, `$3`, ...
-- SQLite: `?`, `?`, `?`, ...
-
-### Step 2: Generate code
-
-```bash
-make sqlc-generate
-```
-
-sqlc produces:
-- `internal/queries_sqlc/sqlc/postgres/customer.sql.go`
-- `internal/queries_sqlc/sqlc/sqlite/customer.sql.go`
-
-### Step 3: Expose via backend interface
-
-Edit `internal/queries_sqlc/backend.go`:
-
-```go
-type backend interface {
-    // Customer methods
-    GetCustomerByEmail(ctx context.Context, email string) (*CustomerRow, error)
-    ListCustomers(ctx context.Context, limit, offset int) ([]*CustomerRow, error)
-    CreateCustomer(ctx context.Context, id, email, name string, created int64) (*CustomerRow, error)
-}
-```
-
-### Step 4: Implement wrapper methods
-
-The generated code uses sqlc-specific types. Wrap them to match the backend interface:
-
-**PostgreSQL** (`internal/queries_sqlc/backend_postgres.go`):
-
-```go
-func (b *postgresBackend) GetCustomerByEmail(ctx context.Context, email string) (*CustomerRow, error) {
-    row, err := b.queries.GetCustomerByEmail(ctx, email)
-    if err != nil {
-        return nil, err
-    }
-    return &CustomerRow{
-        ID:      row.ID,
-        Email:   row.Email,
-        Name:    row.Name,
-        Created: row.Created,
-    }, nil
-}
-```
-
-**SQLite** (`internal/queries_sqlc/backend_sqlite.go`):
-
-```go
-func (b *sqliteBackend) GetCustomerByEmail(ctx context.Context, email string) (*CustomerRow, error) {
-    row, err := b.queries.GetCustomerByEmail(ctx, email)
-    if err != nil {
-        return nil, err
-    }
-    return &CustomerRow{
-        ID:      row.ID,
-        Email:   row.Email,
-        Name:    row.Name,
-        Created: row.Created,
-    }, nil
-}
-```
-
-### Step 5: Test
-
-Write tests in `internal/queries_sqlc/*_test.go`:
-
-```go
-func TestGetCustomerByEmail(t *testing.T) {
-    t.Parallel()
-    ctx := context.Background()
-
-    // Arrange
-    customer := &CustomerRow{
-        ID:      "c1",
-        Email:   "test@example.com",
-        Name:    "Test User",
-        Created: time.Now().Unix(),
-    }
-
-    // Act
-    created, err := CreateCustomer(ctx, customer.ID, customer.Email, customer.Name, customer.Created)
-    require.NoError(t, err)
-
-    retrieved, err := GetCustomerByEmail(ctx, customer.Email)
-    require.NoError(t, err)
-
-    // Assert
-    assert.Equal(t, customer.ID, retrieved.ID)
-    assert.Equal(t, customer.Email, retrieved.Email)
-    assert.Equal(t, customer.Name, retrieved.Name)
-}
-```
-
-Run all 4 modes:
-
-```bash
-make test-queries-all
-```
-
-## Configuration
-
-sqlc reads `sqlc.yaml` in the repository root:
-
-```yaml
-version: "2"
-sql:
-  - engine: "postgresql"
-    schema: "db/schema"            # migrations (CREATE TABLE statements)
-    queries: "db/queries/postgres" # annotated SQL queries
-    gen:
-      go:
-        package: "pggen"
-        out: "internal/queries_sqlc/sqlc/postgres"
-        sql_package: "pgx/v5"     # PostgreSQL driver
-        emit_json_tags: true
-        emit_interface: true
-        emit_pointers_for_null_types: true
-
-  - engine: "sqlite"
-    schema: "db/schema"
-    queries: "db/queries/sqlite"
-    gen:
-      go:
-        package: "sqlitegen"
-        out: "internal/queries_sqlc/sqlc/sqlite"
-        emit_json_tags: true
-        emit_interface: true
-        emit_pointers_for_null_types: true
-```
-
-**Don't modify this** unless adding a new query group or changing generation options.
-
-## Directory structure
-
-```
-mycart/
-├── sqlc.yaml                          # sqlc configuration
-├── db/
-│   ├── schema/                        # migrations (CREATE TABLE, ...)
-│   └── queries/
-│       ├── postgres/*.sql             # PostgreSQL-specific queries
-│       └── sqlite/*.sql               # SQLite-specific queries
-└── internal/
-    ├── queries/                       # raw SQL backend (default)
-    │   ├── auth.go
-    │   ├── customer.go
-    │   └── ...
-    └── queries_sqlc/                  # sqlc backend (optional)
-        ├── backend.go                 # backend interface
-        ├── backend_postgres.go        # PostgreSQL implementation
-        ├── backend_sqlite.go          # SQLite implementation
-        ├── queries.go                 # public API
-        └── sqlc/                      # generated code (DO NOT EDIT)
-            ├── postgres/
-            │   ├── auth.sql.go
-            │   ├── customer.sql.go
-            │   └── ...
-            └── sqlite/
-                ├── auth.sql.go
-                ├── customer.sql.go
-                └── ...
-```
-
-**Never edit files in `internal/queries_sqlc/sqlc/`** — they are regenerated by `make sqlc-generate`.
-
-## Build tags
-
-The sqlc backend is gated behind the `sqlc` build tag:
-
-```go
-// +build sqlc
-
-package queries_sqlc
-```
-
-This means:
-- **Without `-tags sqlc`**: raw SQL backend is used (`internal/queries`)
-- **With `-tags sqlc`**: sqlc backend is used (`internal/queries_sqlc`)
-
-The application's `main.go` imports the appropriate backend based on build tags.
-
-## Workflow summary
-
-1. **First time setup:**
-   ```bash
-   make install-sqlc
-   make sqlc-generate
-   ```
-
-2. **Daily development (raw SQL backend):**
-   ```bash
-   go build ./cmd              # default: raw SQL
-   go test ./... -count=1 -race
-   ```
-
-3. **Using sqlc backend:**
-   ```bash
-   # After editing db/queries/**/*.sql:
-   make sqlc-generate
-
-   # Build and test:
-   make build-sqlc
-   make test-queries-sqlc-sqlite
-   make test-queries-sqlc-postgres
-
-   # Or test all 4 modes:
-   make test-queries-all
-   ```
-
-4. **Before merging:**
-   ```bash
-   make test-queries-all  # all 4 modes must pass
-   make build-both        # both backends must compile
-   ```
-
-## Troubleshooting
-
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| `sqlc: command not found` | sqlc not installed | `make install-sqlc` |
-| `ERROR: relation "table_name" does not exist` | Schema out of sync with queries | Ensure `db/schema/` migrations are up-to-date |
-| `query parameter $1 is missing` | PostgreSQL query uses `?` instead of `$1` | Use `$1, $2, ...` in `db/queries/postgres/*.sql` |
-| `query parameter ? is missing` | SQLite query uses `$1` instead of `?` | Use `?` in `db/queries/sqlite/*.sql` |
-| `internal/queries_sqlc/sqlc/: directory not found` | Generated code missing | `make sqlc-generate` |
-| Tests fail with `undefined: GetCustomerByEmail` | Generated code not compiled with `-tags sqlc` | `go test -tags sqlc ./internal/queries_sqlc/...` |
-| `cannot use row (type pggen.GetCustomerByEmailRow) as type CustomerRow` | Missing wrapper method | Implement wrapper in `backend_postgres.go` and `backend_sqlite.go` |
-| PostgreSQL test fails with `invalid userinfo` | Space or special character in password | URL-encode the password (space → `%20`, `@` → `%40`) |
-
-## Further reading
-
-- [sqlc documentation](https://docs.sqlc.dev/)
-- [sqlc query annotations](https://docs.sqlc.dev/en/latest/reference/query-annotations.html)
-- [Using PostgreSQL](./using-postgresql.md) — PostgreSQL setup and testing
-- `internal/queries_sqlc/AGENTS.md` — implementation details for contributors
+`internal/queries/*_test.go` run unchanged against both builds — that is the
+parity check. `sql_golden_test.go` freezes the plain build's SQL text and is
+tagged `!sqlc`; the `.sql` files plus `sqlc diff` cover the sqlc build.
+
+## Merging upstream
+
+Upstream (`main`) only ever changes the plain files. After a merge:
+
+1. `go build -tags sqlc ./...` — a duplicate-method error means an upstream file
+   now defines something a twin defines: tag it and update the twin.
+2. `go test -tags sqlc ./internal/queries -run TestSQLC` —
+   - `TestSQLCPortedFilesUnchanged` lists every tagged plain file whose content
+     changed (by git blob hash). Port the change into its `_sqlc.go` twin, then
+     update the hash in `ported` (`git hash-object <file>`). Files outside the
+     package that a twin mirrors (`pkg/slugify/slug.go`) are in `mirrored`.
+   - `TestSQLCCoverage` lists untagged files that run SQL: new upstream files,
+     which the sqlc build would otherwise compile and run as plain SQL. Port
+     them, or park them in `unported` for the time being.
+3. New migrations: `make sqlc-generate`.
+4. The full matrix: plain and sqlc, on SQLite and PostgreSQL.

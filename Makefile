@@ -19,6 +19,11 @@ else
 RACE_FLAG := -race
 endif
 
+# sqlc: pinned so generated code is identical locally and in CI. `go install`
+# puts it in $(go env GOPATH)/bin, which is often not on PATH.
+SQLC_VERSION := v1.31.1
+SQLC := $(shell command -v sqlc 2>/dev/null || echo $$(go env GOPATH)/bin/sqlc)
+
 # Load environment variables from .env if it exists
 -include .env
 export $(shell [ -f .env ] && sed 's/=.*//' .env)
@@ -124,7 +129,7 @@ deps-check:
 	@echo -n "Go modules: "
 	@go list -m >/dev/null 2>&1 && echo "✓ installed" || echo "❌ NOT FOUND (run 'make setup')"
 	@echo -n "sqlc generated: "
-	@[ -d "internal/queries_sqlc/sqlc" ] && echo "✓ generated" || echo "❌ NOT FOUND (run 'make sqlc-generate')"
+	@[ -d "internal/queries/sqlcgen/sqlite" ] && echo "✓ generated" || echo "❌ NOT FOUND (run 'make sqlc-generate')"
 
 # Swagger documentation generation
 swagger-generate:
@@ -186,27 +191,32 @@ build-all: build-admin build-site
 
 # sqlc code generation
 install-sqlc:
-	@command -v sqlc >/dev/null 2>&1 || { \
-		echo "Installing sqlc..."; \
-		go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest; \
+	@[ "$$($(SQLC) version 2>/dev/null)" = "$(SQLC_VERSION)" ] || { \
+		echo "Installing sqlc $(SQLC_VERSION)..."; \
+		go install github.com/sqlc-dev/sqlc/cmd/sqlc@$(SQLC_VERSION); \
 	}
-	@echo "sqlc installed: $$(sqlc version)"
+	@echo "sqlc installed: $$($(SQLC) version)"
 
+# Regenerates the SQLite schema dump from migrations/, then the Go code.
 sqlc-generate: install-sqlc
+	@echo "Dumping SQLite schema from migrations..."
+	@go test -tags sqlc ./internal/queries/sqlcgen -run TestSQLiteSchemaCurrent -update -count=1 >/dev/null
 	@echo "Generating sqlc code..."
-	@sqlc generate
-	@echo "✓ Generated internal/queries_sqlc/sqlc/postgres/*.go"
-	@echo "✓ Generated internal/queries_sqlc/sqlc/sqlite/*.go"
+	@$(SQLC) generate
+	@echo "✓ Generated internal/queries/sqlcgen/{postgres,sqlite}"
 
-sqlc-verify: sqlc-generate
-	@echo "Verifying generated code builds..."
-	@go build -tags sqlc ./internal/queries_sqlc/...
+# Fails if generated code or the schema dump is stale, or the sqlc build breaks.
+sqlc-verify: install-sqlc
+	@go test -tags sqlc ./internal/queries/sqlcgen -run TestSQLiteSchemaCurrent -count=1
+	@$(SQLC) diff
+	@go build -tags sqlc ./...
+	@go vet -tags sqlc ./...
 	@echo "✓ sqlc code verified"
 
-# Quick sqlc generation without verification
+# Quick sqlc generation without the schema dump or verification
 sqlc:
 	@echo "Generating sqlc code..."
-	sqlc generate
+	$(SQLC) generate
 
 # Backend test targets - General
 test:
@@ -300,7 +310,7 @@ test-queries-raw-postgres:
 
 test-queries-sqlc-sqlite:
 	@echo "Testing sqlc backend with SQLite..."
-	@TEST_DB_DRIVER=sqlite gotestsum --format short-verbose -- -tags sqlc -count=1 $(RACE_FLAG) ./internal/queries_sqlc/...
+	@TEST_DB_DRIVER=sqlite gotestsum --format short-verbose -- -tags sqlc -count=1 $(RACE_FLAG) ./internal/queries/...
 
 test-queries-sqlc-postgres:
 	@echo "Testing sqlc backend with PostgreSQL..."
@@ -309,7 +319,7 @@ test-queries-sqlc-postgres:
 		exit 1; \
 	fi
 	@TEST_DB_DRIVER=postgres \
-	gotestsum --format short-verbose -- -tags sqlc -count=1 $(RACE_FLAG) ./internal/queries_sqlc/...
+	gotestsum --format short-verbose -- -tags sqlc -count=1 $(RACE_FLAG) ./internal/queries/...
 
 # 4-mode query test matrix (raw+sqlc × SQLite+PostgreSQL)
 test-queries-all: test-queries-raw-sqlite test-queries-raw-postgres \

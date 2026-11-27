@@ -1,24 +1,29 @@
+# sqlc configuration for the `-tags sqlc` build of internal/queries.
+#
+# Both engines generate into sibling packages with the same query names. Write
+# each query so both engines infer the same Go types (CAST / COALESCE where
+# needed): the sqlc group files map one engine's row type and convert the
+# other's into it.
 version: "2"
 sql:
   - engine: "postgresql"
-    schema: "db/schema"
-    queries: "db/queries/postgres"
+    # sqlc replays the goose migrations directly (Down sections are ignored).
+    schema: "migrations"
+    queries: "internal/queries/sqlcgen/queries/postgres"
     gen:
       go:
         package: "pggen"
-        out: "internal/queries_sqlc/sqlc/postgres"
-        sql_package: "pgx/v5"
-        emit_json_tags: true
-        emit_interface: true
-        emit_pointers_for_null_types: true
+        out: "internal/queries/sqlcgen/postgres"
+        # database/sql, not pgx/v5: the generated code runs on database.Conn,
+        # which carries the UTC pin, the redacted config and pgtestdb.
+        sql_package: "database/sql"
 
   - engine: "sqlite"
-    schema: "db/schema"
-    queries: "db/queries/sqlite"
+    # sqlc's SQLite parser cannot replay the migrations, so it reads a dump
+    # kept current by TestSQLiteSchemaCurrent in internal/queries/sqlcgen.
+    schema: "internal/queries/sqlcgen/schema/sqlite.sql"
+    queries: "internal/queries/sqlcgen/queries/sqlite"
     gen:
       go:
         package: "sqlitegen"
-        out: "internal/queries_sqlc/sqlc/sqlite"
-        emit_json_tags: true
-        emit_interface: true
-        emit_pointers_for_null_types: true
+        out: "internal/queries/sqlcgen/sqlite"
