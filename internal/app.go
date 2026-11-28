@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -80,6 +81,29 @@ func NewApp(dbCfg database.Config, httpAddr, httpsAddr string, noSite, appDev bo
 	}
 
 	return startHTTP(mainAddr, app)
+}
+
+// validateEABKey validates an unpadded base64url external-account key.
+func validateEABKey(key string) error {
+	if key == "" {
+		return fmt.Errorf("key is empty")
+	}
+
+	for _, r := range key {
+		if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') ||
+			(r >= '0' && r <= '9') || r == '-' || r == '_' {
+			continue
+		}
+		return fmt.Errorf("illegal character %q", r)
+	}
+
+	if len(key)%4 == 1 {
+		return fmt.Errorf("invalid base64 length %d", len(key))
+	}
+	if _, err := base64.RawURLEncoding.DecodeString(key); err != nil {
+		return fmt.Errorf("invalid base64url key: %w", err)
+	}
+	return nil
 }
 
 // determineSchemaAndAddr determines the schema and main address based on the provided parameters.
@@ -168,7 +192,7 @@ func loadCDNRules() {
 // read back without swapping os.Stdout process-wide, which is a global the
 // server goroutines also write to.
 func printStartupInfo(w io.Writer, schema, mainAddr string, noSite bool, dbCfg database.Config) {
-	fmt.Fprint(w, "🛒 myCart - open source shopping-cart in 1 file\n")
+	fmt.Fprint(w, "🛒 dure-mycart (myCart) - open source shopping-cart in 1 file\n")
 	if !noSite {
 		fmt.Fprintf(w, "├─ Cart UI: %s://%s/\n", schema, mainAddr)
 	}
