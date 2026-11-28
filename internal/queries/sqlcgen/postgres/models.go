@@ -195,6 +195,14 @@ type ProductVariantOption struct {
 	OptionValueID string
 }
 
+type RefreshToken struct {
+	ID        string
+	UserID    string
+	Role      string
+	ExpiresAt int32
+	CreatedAt int32
+}
+
 type Session struct {
 	Key     string
 	Value   sql.NullString

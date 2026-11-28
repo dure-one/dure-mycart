@@ -190,6 +190,14 @@ CREATE TABLE product_variant_option (
     FOREIGN KEY (option_value_id) REFERENCES product_option_value(id) ON DELETE CASCADE
 );
 
+CREATE TABLE refresh_tokens (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    role TEXT NOT NULL CHECK(role IN ('admin', 'customer')),
+    expires_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+);
+
 CREATE TABLE session (
 	key      TEXT UNIQUE NOT NULL,
 	value    TEXT DEFAULT NULL,
@@ -274,6 +282,10 @@ CREATE INDEX idx_product_variant_image_variant_id ON product_variant_image (vari
 CREATE INDEX idx_product_variant_option_value ON product_variant_option (option_value_id);
 
 CREATE INDEX idx_product_variant_option_variant ON product_variant_option (variant_id);
+
+CREATE INDEX idx_refresh_tokens_expires ON refresh_tokens(expires_at);
+
+CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
 
 CREATE INDEX idx_subdomain_name ON subdomain (name);
 
