@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -13,6 +14,57 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 )
+
+// startBothServers starts both HTTP and HTTPS servers concurrently.
+// HTTP server handles autocert HTTP-01 challenges, HTTPS serves the application.
+func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
+	hostOnly := extractHostOnly(httpsAddr)
+	manager := &autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist(hostOnly),
+		Cache:      autocert.DirCache("./lc_certs"),
+	}
+
+	errCh := make(chan error, 2)
+
+	// Start HTTP server for autocert HTTP-01 challenge
+	go func() {
+		logger().Info().Msgf("Starting HTTP server on %s for ACME challenges", httpAddr)
+		// Use standard net/http for the HTTP server to handle ACME challenges
+		httpSrv := &http.Server{
+			Addr:    httpAddr,
+			Handler: manager.HTTPHandler(nil), // nil = redirect to HTTPS after challenge
+		}
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errCh <- err
+		}
+	}()
+
+	// Start HTTPS server
+	go func() {
+		logger().Info().Msgf("Starting HTTPS server on %s", httpsAddr)
+		cfgTLS := &tls.Config{
+			GetCertificate: manager.GetCertificate,
+			NextProtos: []string{
+				"http/1.1",   // HTTP/1.1 (h2 removed: Fiber v3 via custom listener doesn't support HTTP/2)
+				"acme-tls/1", // ACME TLS-ALPN-01 challenge
+			},
+		}
+
+		ln, err := tls.Listen("tcp", httpsAddr, cfgTLS)
+		if err != nil {
+			errCh <- err
+			return
+		}
+
+		if err := app.Listener(ln, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
+			errCh <- err
+		}
+	}()
+
+	// Wait for either server to error
+	return <-errCh
+}
 
 // startHTTPS starts the server with HTTPS support and automatic TLS.
 func startHTTPS(app *fiber.App, mainAddr, httpsAddr string) error {

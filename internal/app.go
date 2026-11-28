@@ -76,6 +76,11 @@ func NewApp(dbCfg database.Config, httpAddr, httpsAddr string, noSite, appDev bo
 	setupRoutes(app, noSite)
 	printStartupInfo(os.Stdout, schema, mainAddr, noSite, dbCfg)
 
+	// Start both HTTP and HTTPS servers when both are provided
+	if httpsAddr != "" && httpAddr != "" {
+		return startBothServers(app, httpAddr, httpsAddr)
+	}
+
 	if schema == "https" {
 		return startHTTPS(app, mainAddr, httpsAddr)
 	}
