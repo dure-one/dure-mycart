@@ -81,7 +81,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build \
       -X 'main.gitCommit=${GIT_COMMIT}' \
       -X 'main.buildDate=${BUILD_DATE}'" \
     -o /go/bin/dure-mycart \
-    ./cmd/main.go
+    ./cmd
 
 ##
 ## Stage 3: fail2ban-builder (Debian)
