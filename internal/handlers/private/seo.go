@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gofiber/fiber/v3"
 	"github.com/dure-one/dure-mycart/internal/models"
 	"github.com/dure-one/dure-mycart/internal/queries"
 	"github.com/dure-one/dure-mycart/internal/seo"
-	"github.com/shurco/mycart/pkg/webutil"
+	"github.com/dure-one/dure-mycart/pkg/webutil"
+	"github.com/gofiber/fiber/v3"
 )
 
 // SEOPreview renders a template with current settings for admin preview.
@@ -111,13 +111,13 @@ func SEODefaults(c fiber.Ctx) error {
 	}
 
 	defaults := fiber.Map{
-		"llms":             seo.Default("llms"),
-		"ai":               seo.Default("ai"),
-		"robots":           seo.Default("robots"),
-		"sitemap_include":  strings.Join(sitemapInclude, "\n"),
-		"sitemap_exclude":  strings.Join(sitemapExclude, "\n"),
-		"openapi_exclude":  "/api/_/*\n/api/install*\n/api/customer/*\n/cart/*",
-		"cdn_rules":        strings.Join(cdnRules, "\n"),
+		"llms":            seo.Default("llms"),
+		"ai":              seo.Default("ai"),
+		"robots":          seo.Default("robots"),
+		"sitemap_include": strings.Join(sitemapInclude, "\n"),
+		"sitemap_exclude": strings.Join(sitemapExclude, "\n"),
+		"openapi_exclude": "/api/_/*\n/api/install*\n/api/customer/*\n/cart/*",
+		"cdn_rules":       strings.Join(cdnRules, "\n"),
 	}
 
 	return webutil.Response(c, fiber.StatusOK, "defaults", defaults)

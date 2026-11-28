@@ -3,7 +3,7 @@ package queries
 import (
 	"testing"
 
-	"github.com/shurco/mycart/pkg/security"
+	"github.com/dure-one/dure-mycart/pkg/security"
 )
 
 func TestActiveProductsForSEO(t *testing.T) {

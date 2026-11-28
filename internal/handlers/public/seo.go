@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"github.com/gofiber/fiber/v3"
 	"github.com/dure-one/dure-mycart/internal/models"
 	"github.com/dure-one/dure-mycart/internal/queries"
 	"github.com/dure-one/dure-mycart/internal/seo"
-	"github.com/shurco/mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/pkg/logging"
+	"github.com/gofiber/fiber/v3"
 )
 
 // loadSEO fetches SEO settings and data for rendering.
