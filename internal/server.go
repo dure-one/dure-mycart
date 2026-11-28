@@ -17,6 +17,20 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+// getACMEStepMessage returns the message for each ACME acquisition step.
+func getACMEStepMessage(step int) string {
+	switch step {
+	case 2:
+		return "Waiting for HTTPS connection to trigger ACME challenge"
+	case 3:
+		return "ACME HTTP-01 challenge in progress"
+	case 4:
+		return "Waiting for Let's Encrypt validation"
+	default:
+		return "Acquiring certificate..."
+	}
+}
+
 // serveCertWaitPage serves a status page while waiting for TLS certificate.
 func serveCertWaitPage(w http.ResponseWriter, r *http.Request, startTime time.Time) {
 	elapsed := time.Since(startTime)
@@ -62,6 +76,15 @@ func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
 	startTime := time.Now()
 	certReady := make(chan struct{})
 
+	// Check for existing certificate
+	certPath := fmt.Sprintf("./lc_certs/%s", hostOnly)
+	if _, err := os.Stat(certPath); err == nil {
+		fmt.Fprintf(os.Stderr, "[ACME] Certificate found in cache for %s\n", hostOnly)
+		close(certReady)
+	} else {
+		fmt.Fprintf(os.Stderr, "[ACME 1/5] Starting certificate acquisition for %s\n", hostOnly)
+	}
+
 	manager := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
 		HostPolicy: autocert.HostWhitelist(hostOnly),
@@ -70,19 +93,30 @@ func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
 
 	// Monitor cert readiness in background
 	go func() {
+		if _, err := os.Stat(certPath); err == nil {
+			return // Already ready
+		}
+
 		ticker := time.NewTicker(2 * time.Second)
 		defer ticker.Stop()
+		step := 2
 		for {
 			select {
 			case <-certReady:
 				return
 			case <-ticker.C:
 				// Check if cert file exists
-				certPath := fmt.Sprintf("./lc_certs/%s", hostOnly)
 				if _, err := os.Stat(certPath); err == nil {
+					fmt.Fprintf(os.Stderr, "[ACME 5/5] ✓ Certificate acquired (elapsed: %s)\n", time.Since(startTime).Round(time.Second))
 					close(certReady)
 					logger().Info().Msg("✓ TLS certificate ready")
 					return
+				}
+				// Show progress
+				if step <= 4 {
+					msg := getACMEStepMessage(step)
+					fmt.Fprintf(os.Stderr, "[ACME %d/5] %s\n", step, msg)
+					step++
 				}
 			}
 		}
