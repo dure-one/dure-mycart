@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/gofiber/fiber/v3"
 	"github.com/dure-one/dure-mycart/internal/models"
 	"github.com/dure-one/dure-mycart/internal/queries"
 	"github.com/dure-one/dure-mycart/internal/seo"
+	"github.com/gofiber/fiber/v3"
 )
 
 var (
@@ -22,22 +22,22 @@ func OpenAPISpec(c fiber.Ctx) error {
 	if err != nil || !s.OpenAPIEnabled {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
-	
+
 	specOnce.Do(func() {
 		specPath := filepath.Join("docs", "swagger", "swagger.json")
 		specData, _ = os.ReadFile(specPath)
 	})
-	
+
 	if len(specData) == 0 {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
-	
+
 	m := seo.NewMatcher(s.OpenAPIInclude, s.OpenAPIExclude)
 	filtered, err := seo.FilterSpec(specData, m)
 	if err != nil {
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
-	
+
 	c.Set(fiber.HeaderContentType, "application/json")
 	return c.Send(filtered)
 }
