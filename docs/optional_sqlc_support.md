@@ -41,8 +41,8 @@ Shipped binaries are sqlc builds:
 
 - `.goreleaser.yml` builds with `tags: [sqlc]`, and a post-build hook fails the
   release when `go version -m` does not show `build -tags=sqlc` for a binary.
-- `Dockerfile.build` (the onsite image) builds with `-tags sqlc` and runs the
-  same check.
+- Onsite images are built with `-tags sqlc` and run the same check in the
+  prosody-mycart stack.
 
 `go build ./cmd` and the CI plain jobs keep building the plain layer, so the
 upstream code stays tested.

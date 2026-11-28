@@ -154,7 +154,6 @@ test:
   - Database: `postgres`
 
 ### Test Runner Container
-- **Image**: Built from `Dockerfile.test`
 - **Base**: `golang:1.23-alpine`
 - **Includes**: `gotestsum`, `make`, build tools
 - **Mounts**: Source code from host
