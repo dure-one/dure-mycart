@@ -4,36 +4,109 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/acme/autocert"
 
 	"github.com/gofiber/fiber/v3"
 )
 
+// serveCertWaitPage serves a status page while waiting for TLS certificate.
+func serveCertWaitPage(w http.ResponseWriter, r *http.Request, startTime time.Time) {
+	elapsed := time.Since(startTime)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Refresh", "5") // Auto-refresh every 5 seconds
+	w.WriteHeader(http.StatusServiceUnavailable)
+
+	fmt.Fprintf(w, `<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Certificate Acquisition in Progress</title>
+	<style>
+		body { font-family: system-ui, sans-serif; max-width: 600px; margin: 100px auto; padding: 20px; }
+		.status { background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0; }
+		.time { font-family: monospace; font-size: 1.2em; color: #333; }
+		.spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3;
+			border-top: 3px solid #ffc107; border-radius: 50%%; animation: spin 1s linear infinite; }
+		@keyframes spin { 0%% { transform: rotate(0deg); } 100%% { transform: rotate(360deg); } }
+	</style>
+</head>
+<body>
+	<h1>🔒 Certificate Acquisition in Progress</h1>
+	<div class="status">
+		<p><span class="spinner"></span> Acquiring TLS certificate from Let's Encrypt...</p>
+		<p>Elapsed time: <span class="time">%s</span></p>
+		<p><small>This page will automatically refresh and redirect once the certificate is ready.</small></p>
+	</div>
+	<p><small>Domain: %s | Server started: %s</small></p>
+</body>
+</html>`,
+		elapsed.Round(time.Second),
+		r.Host,
+		startTime.Format("2006-01-02 15:04:05 MST"),
+	)
+}
+
 // startBothServers starts both HTTP and HTTPS servers concurrently.
 // HTTP server handles autocert HTTP-01 challenges, HTTPS serves the application.
 func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
 	hostOnly := extractHostOnly(httpsAddr)
+	startTime := time.Now()
+	certReady := make(chan struct{})
+
 	manager := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
 		HostPolicy: autocert.HostWhitelist(hostOnly),
 		Cache:      autocert.DirCache("./lc_certs"),
 	}
 
+	// Monitor cert readiness in background
+	go func() {
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-certReady:
+				return
+			case <-ticker.C:
+				// Check if cert file exists
+				certPath := fmt.Sprintf("./lc_certs/%s", hostOnly)
+				if _, err := os.Stat(certPath); err == nil {
+					close(certReady)
+					logger().Info().Msg("✓ TLS certificate ready")
+					return
+				}
+			}
+		}
+	}()
+
 	errCh := make(chan error, 2)
 
 	// Start HTTP server for autocert HTTP-01 challenge
 	go func() {
 		logger().Info().Msgf("Starting HTTP server on %s for ACME challenges", httpAddr)
-		// Use standard net/http for the HTTP server to handle ACME challenges
+
+		// Serve status page until cert ready, then switch to ACME handler
 		httpSrv := &http.Server{
-			Addr:    httpAddr,
-			Handler: manager.HTTPHandler(nil), // nil = redirect to HTTPS after challenge
+			Addr: httpAddr,
+			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				select {
+				case <-certReady:
+					// Cert ready: delegate to autocert
+					manager.HTTPHandler(nil).ServeHTTP(w, r)
+				default:
+					// Cert not ready: show status page
+					serveCertWaitPage(w, r, startTime)
+				}
+			}),
 		}
 		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			errCh <- err
