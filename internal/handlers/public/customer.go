@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"context"
+	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -263,6 +265,50 @@ func issueCustomerSession(c fiber.Ctx, customerID string) error {
 	})
 }
 
+// validateCustomerRefreshToken parses and validates a customer refresh token.
+func validateCustomerRefreshToken(ctx context.Context, tokenString, secret string) (refreshID, sessionID, customerID string, err error) {
+	db := queries.DB()
+
+	claims := jwt.MapClaims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (any, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		if err := jwtutil.ValidateHeader(t); err != nil {
+			return nil, err
+		}
+		return []byte(secret), nil
+	}, jwtutil.ParserOptions()...)
+	if err != nil || !token.Valid {
+		return "", "", "", fmt.Errorf("invalid or expired refresh token")
+	}
+
+	if err := jwtutil.ValidateTokenType(claims, jwtutil.TokenTypeRefresh); err != nil {
+		return "", "", "", fmt.Errorf("not a refresh token")
+	}
+
+	refreshID, err = jwtutil.SessionID(claims)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	sessionID, role, err := db.GetRefreshToken(ctx, refreshID)
+	if err != nil {
+		return "", "", "", fmt.Errorf("refresh token not found or expired")
+	}
+	if role != "customer" {
+		return "", "", "", fmt.Errorf("invalid refresh token role")
+	}
+
+	sessionValue, err := db.GetSession(ctx, sessionID)
+	if err != nil {
+		return "", "", "", fmt.Errorf("session not found")
+	}
+	_, customerID = queries.ParseSessionValue(sessionValue)
+
+	return refreshID, sessionID, customerID, nil
+}
+
 // CustomerRefresh issues a new token pair from a valid customer refresh token.
 //
 // @Summary      Refresh customer access token
@@ -297,54 +343,16 @@ func CustomerRefresh(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
-	// Parse and validate refresh token
-	claims := jwt.MapClaims{}
-	token, err := jwt.ParseWithClaims(req.RefreshToken, claims, func(t *jwt.Token) (any, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, jwt.ErrSignatureInvalid
-		}
-		if err := jwtutil.ValidateHeader(t); err != nil {
-			return nil, err
-		}
-		return []byte(secret), nil
-	}, jwtutil.ParserOptions()...)
-	if err != nil || !token.Valid {
-		return webutil.StatusBadRequest(c, "invalid or expired refresh token")
-	}
-
-	// Validate token type is "refresh"
-	if err := jwtutil.ValidateTokenType(claims, jwtutil.TokenTypeRefresh); err != nil {
-		return webutil.StatusBadRequest(c, "not a refresh token")
-	}
-
-	refreshID, err := jwtutil.SessionID(claims)
+	refreshID, sessionID, customerID, err := validateCustomerRefreshToken(c.Context(), req.RefreshToken, secret)
 	if err != nil {
-		return webutil.StatusBadRequest(c, "invalid refresh token")
+		return webutil.StatusBadRequest(c, err.Error())
 	}
 
-	// Check refresh token exists in DB and is not expired
-	sessionID, role, err := db.GetRefreshToken(c.Context(), refreshID)
-	if err != nil {
-		return webutil.StatusBadRequest(c, "refresh token not found or expired")
-	}
-	if role != "customer" {
-		return webutil.StatusBadRequest(c, "invalid refresh token role")
-	}
-
-	// Get customer ID from session
-	sessionValue, err := db.GetSession(c.Context(), sessionID)
-	if err != nil {
-		return webutil.StatusBadRequest(c, "session not found")
-	}
-	_, customerID := queries.ParseSessionValue(sessionValue)
-
-	// Delete old refresh token (rotation)
 	if err := db.DeleteRefreshToken(c.Context(), refreshID); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
 
-	// Generate new token pair
 	newAccessToken, newRefreshToken, accessExp, refreshExp, err := jwtutil.GenerateTokenPair(
 		secret, sessionID, 15, 10080)
 	if err != nil {
@@ -352,13 +360,11 @@ func CustomerRefresh(c fiber.Ctx) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
-	// Update session expiry
 	if err := db.UpdateSession(c.Context(), sessionID, queries.SessionValue(queries.SessionRoleCustomer, customerID), accessExp); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
 
-	// Store new refresh token
 	newRefreshID := sessionID + ":r:" + time.Now().Format("20060102150405")
 	if err := db.AddRefreshToken(c.Context(), newRefreshID, sessionID, "customer", refreshExp); err != nil {
 		log.ErrorStack(err)
