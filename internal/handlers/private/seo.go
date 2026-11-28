@@ -10,7 +10,7 @@ import (
 	"github.com/dure-one/dure-mycart/internal/models"
 	"github.com/dure-one/dure-mycart/internal/queries"
 	"github.com/dure-one/dure-mycart/internal/seo"
-	"github.com/shurco/mycart/pkg/webutil"
+	"github.com/dure-one/dure-mycart/pkg/webutil"
 )
 
 // SEOPreview renders a template with current settings for admin preview.

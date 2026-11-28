@@ -5,7 +5,7 @@ import (
 	"github.com/dure-one/dure-mycart/internal/models"
 	"github.com/dure-one/dure-mycart/internal/queries"
 	"github.com/dure-one/dure-mycart/internal/seo"
-	"github.com/shurco/mycart/pkg/logging"
+	"github.com/dure-one/dure-mycart/pkg/logging"
 )
 
 // loadSEO fetches SEO settings and data for rendering.
