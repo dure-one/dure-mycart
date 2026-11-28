@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -11,7 +12,10 @@ import (
 
 	"github.com/dure-one/dure-mycart/internal/database"
 	"github.com/dure-one/dure-mycart/internal/middleware"
+	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/queries"
 	"github.com/dure-one/dure-mycart/internal/routes"
+	"github.com/dure-one/dure-mycart/internal/seo"
 	"github.com/dure-one/dure-mycart/pkg/logging"
 )
 
@@ -59,6 +63,9 @@ func NewApp(dbCfg database.Config, httpAddr, httpsAddr string, noSite, appDev bo
 	if err := Init(dbCfg); err != nil {
 		return err
 	}
+
+	// Load CDN rules on startup.
+	loadCDNRules()
 
 	app, err := setupFiberApp(noSite)
 	if err != nil {
@@ -114,11 +121,13 @@ func setupRoutes(app *fiber.App, noSite bool) {
 	// (/api/_/products/:id/digital/:file_id/download).
 	app.Use("/uploads", static.New("./lc_uploads"))
 
-	// Swagger documentation (development mode only)
-	if DevMode() {
-		app.Use("/swagger", static.New("./docs/swagger", static.Config{
-			Browse: true,
-		}))
+	// CDN middleware (runs on every request; must be before routes).
+	app.Use(seo.CDNMiddleware())
+
+	// Register gofiber-swagger for OpenAPI spec generation.
+	// Serves UI at /_/swagger (admin-only), generates spec at startup.
+	if err := routes.RegisterSwagger(app); err != nil {
+		logging.New().ErrorStack(fmt.Errorf("register swagger: %w", err))
 	}
 
 	// Register API routes before InstallCheck so /api/install is reachable on first boot.
@@ -140,46 +149,30 @@ func setupRoutes(app *fiber.App, noSite bool) {
 	routes.NotFoundRoute(app, noSite)
 }
 
+// loadCDNRules loads SEO CDN rules from the database on startup.
+func loadCDNRules() {
+	db := queries.DB()
+	if db == nil {
+		return // Database not yet initialized.
+	}
+	ctx := context.Background()
+	s, err := queries.GetSettingByGroup[models.SEO](ctx, db)
+	if err == nil {
+		seo.StoreCDN(s)
+	}
+}
+
 // printStartupInfo writes the application startup information to w.
 //
 // The writer is a parameter rather than stdout directly so the banner can be
 // read back without swapping os.Stdout process-wide, which is a global the
 // server goroutines also write to.
 func printStartupInfo(w io.Writer, schema, mainAddr string, noSite bool, dbCfg database.Config) {
-	fmt.Fprint(w, "🛒 dure-mycart - open source shopping-cart in 1 file\n")
+	fmt.Fprint(w, "🛒 myCart - open source shopping-cart in 1 file\n")
 	if !noSite {
 		fmt.Fprintf(w, "├─ Cart UI: %s://%s/\n", schema, mainAddr)
 	}
 	fmt.Fprintf(w, "├─ Admin UI: %s://%s/_/\n", schema, mainAddr)
 	fmt.Fprintf(w, "├─ Database: %s (%s)\n", dbCfg.Driver, dbCfg.Redacted())
-	if DevMode() {
-		fmt.Fprintf(w, "└─ API Docs: %s://%s/swagger/index.html\n", schema, mainAddr)
-	} else {
-		fmt.Fprint(w, "└─ Swagger UI: disabled (use --dev flag to enable)\n")
-	}
-}
-
-// validateEABKey validates an ACME External Account Binding key.
-// The key must be valid base64url (RFC 4648 §5) with length n*4, n*4+2, or n*4+3.
-func validateEABKey(key string) error {
-	if key == "" {
-		return fmt.Errorf("key is empty")
-	}
-
-	// Check length (must not be n*4+1)
-	if len(key)%4 == 1 {
-		return fmt.Errorf("invalid base64 length %d (got n*4+1, expected n*4, n*4+2, or n*4+3)", len(key))
-	}
-
-	// Check characters (base64url: A-Za-z0-9_-)
-	for i, c := range key {
-		if !((c >= 'A' && c <= 'Z') ||
-			(c >= 'a' && c <= 'z') ||
-			(c >= '0' && c <= '9') ||
-			c == '-' || c == '_') {
-			return fmt.Errorf("illegal character at byte %d: %q (base64url allows only A-Za-z0-9_-)", i, c)
-		}
-	}
-
-	return nil
+	fmt.Fprintf(w, "└─ API Docs: %s://%s/_/swagger\n", schema, mainAddr)
 }

@@ -70,7 +70,7 @@ This repository is downstream of `nikescar/mycart:main_dure`, which is derived f
 | Repository | Branch | Added Features |
 |------------|--------|----------------|
 | `shurco/mycart` | `main` | • Product variants<br>• Product image ordering |
-| `nikescar/mycart` | `main_dure` | • Optional sqlc support with build tags<br>• sqlc-generated type-safe query layer |
+| `nikescar/mycart` | `main_dure` | • Optional sqlc support with build tags<br>• sqlc-generated type-safe query layer<br>• SEO settings (sitemap, robots.txt, llms.txt, ai.txt)<br>• JWT compliance hardening<br>• Enhanced i18n translations |
 | `dure-one/dure-mycart` | `main` | • Seller info admin/site pages and API<br>• Responder (workflows, messages) admin/site pages and API<br>• Prosody docker-compose integrations<br>• XMPP customer support system |
 
 **Technical Note (sqlc imports):**

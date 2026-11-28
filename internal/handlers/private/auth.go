@@ -14,15 +14,15 @@ import (
 	"github.com/dure-one/dure-mycart/pkg/webutil"
 )
 
-// SignIn authenticates a user and returns a JWT token.
+// SignIn authenticates a user and sets an HttpOnly JWT session cookie.
 //
 // @Summary      Sign in
-// @Description  Authenticate admin user with email and password, returns JWT token
+// @Description  Authenticate an admin user with email and password and set the session cookie
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
 // @Param        request body models.SignIn true "Credentials"
-// @Success      200 {object} webutil.HTTPResponse{result=nil} "Signed in; JWT set in HttpOnly cookie"
+// @Success      200 {object} webutil.HTTPResponse "Signed in"
 // @Failure      400 {object} webutil.HTTPResponse "Invalid credentials or validation error"
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/sign/in [post]
@@ -47,17 +47,15 @@ func SignIn(c fiber.Ctx) error {
 		// and return the same generic error as a wrong password.
 		security.ComparePasswords(security.DummyPasswordHash, request.Password)
 		log.ErrorStack(err)
-		log.Warn().Str("ip", c.IP()).Str("email", request.Email).Msg("authentication failed: unknown email")
 		return webutil.StatusBadRequest(c, "wrong user email address or password")
 	}
 
 	compareUserPassword := security.ComparePasswords(passwordHash, request.Password)
 	if !compareUserPassword {
-		log.Warn().Str("ip", c.IP()).Str("email", request.Email).Msg("authentication failed: wrong password")
 		return webutil.StatusBadRequest(c, "wrong user email address or password")
 	}
 
-	// Generate a new pair of access and refresh tokens.
+	// Create a server-revocable first-party session token.
 	settingJWT, err := queries.GetSettingByGroup[models.JWT](c.Context(), db)
 	if err != nil {
 		log.ErrorStack(err)
@@ -89,7 +87,6 @@ func SignIn(c fiber.Ctx) error {
 		SameSite: "Strict",
 	})
 
-	// The token travels only in the HttpOnly cookie, never in the body.
 	return webutil.StatusOK(c, "Signed in", nil)
 }
 

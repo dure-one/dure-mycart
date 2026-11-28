@@ -1,13 +1,17 @@
 package handlers
 
 import (
+	"context"
+	"database/sql"
+	"encoding/json"
 	"slices"
-	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/dure-one/dure-mycart/internal/mailer"
 	"github.com/dure-one/dure-mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/seo"
 	"github.com/dure-one/dure-mycart/internal/queries"
 	"github.com/dure-one/dure-mycart/pkg/errors"
 	"github.com/dure-one/dure-mycart/pkg/logging"
@@ -15,10 +19,13 @@ import (
 	"github.com/dure-one/dure-mycart/pkg/webutil"
 )
 
+// versionCacheTTL is how long the fetched release info is cached in the session store.
+const versionCacheTTL = 24 * time.Hour
+
 // Version returns the current application version and update information.
 //
 // @Summary      Get version
-// @Description  Get current app version and available updates
+// @Description  Get current app version and available updates (cached 24h)
 // @Tags         Settings
 // @Security     BearerAuth
 // @Produce      json
@@ -26,19 +33,27 @@ import (
 // @Failure      500 {object} webutil.HTTPResponse "Internal server error"
 // @Router       /api/_/version [get]
 func Version(c fiber.Ctx) error {
+	db := queries.DB()
 	log := logging.New()
 
+	if cached, err := loadCachedVersion(c.Context(), db); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	} else if cached != nil {
+		return webutil.Response(c, fiber.StatusOK, "Version", cached)
+	}
+
 	version := currentVersion()
-	if release, fetchErr := update.FetchLatestRelease(c.Context(), "dure-one", "dure-mycart"); fetchErr != nil {
+	if release, fetchErr := update.FetchLatestRelease(c.Context(), "shurco", "mycart"); fetchErr != nil {
 		log.ErrorStack(fetchErr)
-	} else if release != nil {
-		// Only show update if current is a tagged release and older than latest
-		// Dev builds (with -g in version) are ahead of any release
-		currentIsDevBuild := strings.Contains(version.CurrentVersion, "-g")
-		if !currentIsDevBuild && version.CurrentVersion != release.Name {
-			version.NewVersion = release.Name
-			version.ReleaseURL = release.GetUrl()
-		}
+	} else if release != nil && version.CurrentVersion != release.Name {
+		version.NewVersion = release.Name
+		version.ReleaseURL = release.GetUrl()
+	}
+
+	if err := cacheVersion(c.Context(), db, version); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
 	}
 
 	return webutil.Response(c, fiber.StatusOK, "Version", version)
@@ -52,6 +67,34 @@ func currentVersion() *update.Version {
 		return &v
 	}
 	return &update.Version{}
+}
+
+// loadCachedVersion returns non-nil Version if the value is present in the session cache.
+func loadCachedVersion(ctx context.Context, db *queries.Base) (*update.Version, error) {
+	session, err := db.GetSession(ctx, "update")
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	if session == "" {
+		return nil, nil
+	}
+	v := &update.Version{}
+	if err := json.Unmarshal([]byte(session), v); err != nil {
+		return nil, err
+	}
+	return v, nil
+}
+
+// cacheVersion stores the version info in the session cache with a TTL.
+func cacheVersion(ctx context.Context, db *queries.Base, v *update.Version) error {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	// AddSession is idempotent for the same key (INSERT … ON CONFLICT … DO
+	// UPDATE), so we don't need an explicit DeleteSession here.
+	expires := time.Now().Add(versionCacheTTL).Unix()
+	return db.AddSession(ctx, "update", string(data), expires)
 }
 
 // secretSettingKeys are standalone keys whose stored value is never read back
@@ -225,6 +268,13 @@ func UpdateSetting(c fiber.Ctx) error {
 	if err := db.UpdateSettingByGroup(c.Context(), request); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
+	}
+
+	// Reload CDN rules when SEO settings change.
+	if settingKey == "seo" {
+		if s, ok := request.(*models.SEO); ok {
+			seo.StoreCDN(s)
+		}
 	}
 
 	return webutil.Response(c, fiber.StatusOK, "Setting group updated", nil)

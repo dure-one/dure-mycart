@@ -115,7 +115,7 @@ func TestCoinbase_Validate(t *testing.T) {
 	if err := (Coinbase{ApiKey: strings.Repeat("k", 25)}).Validate(); err != nil {
 		t.Errorf("valid coinbase rejected: %v", err)
 	}
-	if err := (Coinbase{ApiKey: "short"}).Validate(); err == nil {
+	if err := (Coinbase{ApiKey: "xxx"}).Validate(); err == nil {
 		t.Error("short key must fail")
 	}
 }

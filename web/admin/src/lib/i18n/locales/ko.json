@@ -21,7 +21,7 @@
     "failedToLoadData": "데이터 로드 실패",
     "failedToSaveData": "데이터 저장 실패",
     "preview": "미리보기",
-    "fileUploaded": "파일 업로드됨",
+    "fileUploaded": "파일이 업로드되었습니다",
     "pageNotFound": "페이지를 찾을 수 없습니다",
     "addRecord": "레코드 추가",
     "home": "홈",
@@ -116,7 +116,7 @@
     "testLetterSent": "테스트 레터가 전송되었습니다",
     "failedToSendTestLetter": "테스트 레터 전송 실패",
     "networkError": "네트워크 오류",
-    "failedToLoadSettings": "설정 로드 실패",
+    "failedToLoadSettings": "설정을 불러오지 못했습니다",
     "currency": "통화",
     "numberFormatting": "숫자 형식",
     "decimalPrecision": "소수점 자릿수",
@@ -140,7 +140,26 @@
     "youtube": "YouTube",
     "otherUrl": "기타 (URL)",
     "paymentProviders": "결제 제공업체",
-    "displaySettings": "표시 설정"
+    "displaySettings": "표시 설정",
+    "seo": "SEO",
+    "seoSettings": "SEO 설정",
+    "sitemap": "사이트맵",
+    "enableSitemap": "sitemap.xml 활성화",
+    "sitemapInclude": "포함 (한 줄에 하나씩)",
+    "sitemapExclude": "제외",
+    "viewFile": "보기",
+    "llmsTxt": "llms.txt",
+    "aiTxt": "ai.txt",
+    "robotsTxt": "robots.txt",
+    "enableFile": "활성화",
+    "template": "템플릿",
+    "templateVariables": "변수: site.name, site.url, products[], pages[]",
+    "cdnCache": "CDN 캐시",
+    "enableCdn": "CDN 캐싱 활성화",
+    "cdnRules": "규칙 (경로|지속시간)",
+    "cdnRulesFormat": "형식: /path|duration (예: 24h, 10d)",
+    "cdnRulesDesc": "아래 규칙과 일치하는 모든 요청에 Cache-Control 헤더 적용",
+    "resetToDefault": "기본값으로 재설정"
   },
   "branding": {
     "title": "브랜딩",
@@ -175,17 +194,17 @@
     "password": "비밀번호",
     "domain": "도메인",
     "installButton": "설치",
-    "configureCart": "쇼핑 카트를 설정하세요",
-    "emailRequired": "이메일은 필수입니다",
+    "configureCart": "쇼핑 카트를 구성하세요",
+    "emailRequired": "이메일이 필요합니다",
     "emailInvalid": "이메일이 올바르지 않습니다",
-    "passwordRequired": "비밀번호는 필수입니다",
-    "passwordMinLength": "비밀번호는 6자 이상이어야 합니다",
+    "passwordRequired": "비밀번호가 필요합니다",
+    "passwordMinLength": "비밀번호는 최소 6자 이상이어야 합니다",
     "passwordMaxLength": "비밀번호는 최대 72자까지 가능합니다",
-    "domainRequired": "도메인은 필수입니다",
+    "domainRequired": "도메인이 필요합니다",
     "domainInvalid": "도메인이 올바르지 않습니다",
     "installedSuccessfully": "카트가 성공적으로 설치되었습니다!",
     "installationFailed": "설치 실패",
-    "networkError": "네트워크 오류입니다. 다시 시도해 주세요.",
+    "networkError": "네트워크 오류. 다시 시도해주세요.",
     "database": "데이터베이스",
     "databaseDriver": "데이터베이스 엔진",
     "databaseSQLite": "SQLite (내장, 기본값)",
@@ -203,7 +222,13 @@
     "testingConnection": "테스트 중…",
     "testConnectionFirst": "설치 전에 연결을 테스트하세요",
     "connectionOk": "연결 성공",
-    "connectionFailed": "연결 실패"
+    "connectionFailed": "연결 실패",
+    "errors": {
+      "databaseAlreadyInstalled": "선택한 데이터베이스에 이미 설치된 카트가 있습니다",
+      "databaseConnectionFailed": "선택한 데이터베이스에 연결하지 못했습니다",
+      "databaseInspectionFailed": "선택한 데이터베이스를 검사하지 못했습니다",
+      "migrationsFailed": "데이터베이스 스키마 마이그레이션이 실패했습니다. 서버 로그를 확인하세요"
+    }
   },
   "products": {
     "title": "상품",
@@ -243,6 +268,8 @@
     "ifZeroPriceFree": "(0이면 가격이 무료가 됩니다)",
     "imageDeleted": "이미지 삭제됨",
     "failedToDeleteImage": "이미지 삭제 실패",
+    "imageUploaded": "이미지 업로드 성공",
+    "imageUploadFailed": "이미지 업로드 실패",
     "productVariants": "상품 옵션",
     "variantsDescription": "크기, 색상, 재질 등 다양한 옵션으로 상품 변형을 만드세요",
     "enableVariants": "옵션 활성화",
@@ -266,6 +293,11 @@
     "tooManyVariants": "경고: 최대 100개의 변형까지만 허용됩니다",
     "created": "상품이 성공적으로 생성되었습니다",
     "updated": "상품이 성공적으로 업데이트되었습니다",
+    "imagesReordered": "이미지 순서가 성공적으로 변경되었습니다",
+    "failedToReorderImages": "이미지 순서 변경 실패",
+    "representativeSet": "대표 이미지가 성공적으로 설정되었습니다",
+    "failedToSetRepresentative": "대표 이미지 설정 실패",
+    "firstImageDescription": "첫 번째 이미지는 상품 목록에 표시되며 /products/{urlslug}.png에서 접근할 수 있습니다",
     "csv": {
       "exportProducts": "상품 내보내기",
       "exportDescription": "모든 상품을 CSV 파일로 다운로드",
@@ -298,8 +330,8 @@
     "optionNameNumbered": "옵션 {{index}} 이름",
     "optionValueNumbered": "옵션 {{index}} 값 {{value}}",
     "selectDigitalType": "디지털 유형 선택",
-    "toggleActive": "활성 상태 전환",
-    "optionNameExists": "옵션 이름 \"{{name}}\"이(가) 이미 존재합니다. 고유한 이름을 사용하세요."
+    "toggleActive": "활성 전환",
+    "optionNameExists": "옵션 이름 \"{{name}}\"이(가) 이미 있습니다. 고유한 이름을 사용하세요."
   },
   "carts": {
     "title": "장바구니",
@@ -335,7 +367,7 @@
     "subtotalColumn": "소계",
     "mailSentSuccessfully": "메일 전송 성공",
     "failedToSendMailMessage": "메일 전송 실패",
-    "sendMail": "메일 발송"
+    "sendMail": "메일 보내기"
   },
   "customers": {
     "title": "고객",
@@ -404,7 +436,7 @@
     "seoTitle": "제목",
     "seoKeywords": "키워드",
     "seoDescription": "설명",
-    "toggleActive": "활성 상태 전환"
+    "toggleActive": "활성 전환"
   },
   "payment": {
     "stripe": "Stripe",
@@ -460,7 +492,7 @@
     "digitalType": "디지털 {{type}}",
     "fileDescription": "사용자가 구매하는 상품입니다. 결제 후 구매자에게 전송될 파일을 업로드하세요. 파일은 결제 시 제공된 이메일 주소로 전송됩니다.",
     "dataDescription": "판매하려는 디지털 상품을 입력하세요. 라이선스 키와 같은 고유한 항목일 수 있습니다.",
-    "failedToLoadContent": "디지털 콘텐츠 로드 실패"
+    "failedToLoadContent": "디지털 콘텐츠를 불러오지 못했습니다"
   },
   "letter": {
     "updateLetter": "레터 업데이트",
@@ -468,8 +500,8 @@
     "message": "메시지",
     "testLetter": "테스트 레터",
     "letterUpdated": "레터가 업데이트되었습니다",
-    "failedToUpdateLetter": "레터 업데이트 실패",
-    "failedToLoadLetter": "레터 로드 실패",
+    "failedToUpdateLetter": "레터를 업데이트하지 못했습니다",
+    "failedToLoadLetter": "레터를 불러오지 못했습니다",
     "siteName": "사이트 이름",
     "amountOfPayment": "결제 금액",
     "paymentLink": "결제 링크",

@@ -1,10 +1,10 @@
 // @title           myCart API
 // @version         1.0
 // @description     Open source shopping-cart backend API - a single-binary e-commerce solution
-// @termsOfService  https://github.com/dure-one/dure-mycart
+// @termsOfService  https://github.com/shurco/mycart
 
 // @contact.name   API Support
-// @contact.url    https://github.com/dure-one/dure-mycart/issues
+// @contact.url    https://github.com/shurco/mycart/issues
 // @contact.email  support@mycart.com
 
 // @license.name  MIT
