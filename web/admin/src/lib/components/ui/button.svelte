@@ -2,6 +2,7 @@
   import { Button as ButtonPrimitive } from 'bits-ui'
   import { type VariantProps, tv } from 'tailwind-variants'
   import { cn } from '$lib/utils/cn.js'
+  import type { Snippet } from 'svelte'
 
   const buttonVariants = tv({
     base: 'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
@@ -34,10 +35,12 @@
     class: className,
     variant = 'default',
     size = 'default',
+    children,
     ...restProps
   }: ButtonPrimitive.Props & {
     variant?: Variant
     size?: Size
+    children?: Snippet
   } = $props()
 </script>
 

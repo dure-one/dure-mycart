@@ -31,10 +31,14 @@
     "@tiptap/markdown": "^3.34.0",
     "@tiptap/pm": "^3.34.0",
     "@tiptap/starter-kit": "^3.34.0",
+    "bits-ui": "^2.22.0",
+    "clsx": "^2.1.1",
     "isomorphic-dompurify": "^3.22.0",
     "lowlight": "^3.3.0",
     "nprogress": "^0.2.0",
-    "svelte-sonner": "^0.3.28"
+    "svelte-sonner": "^0.3.28",
+    "tailwind-merge": "^3.7.1",
+    "tailwind-variants": "^4.1.0"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "3.0.11",
