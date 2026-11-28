@@ -24,6 +24,7 @@ func ApiPrivateRoutes(c *fiber.App) {
 	sign := c.Group("/api/sign")
 	sign.Post("/in", middleware.AuthLimiter(), handlers.SignIn)
 	sign.Post("/out", middleware.JWTProtected(), handlers.SignOut)
+	sign.Post("/refresh", handlers.Refresh)
 
 	settings := c.Group("/api/_/settings", middleware.JWTProtected())
 	// Registered before the group's own two-segment-free routes: the marks are

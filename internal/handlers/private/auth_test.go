@@ -57,7 +57,7 @@ func TestSignIn(t *testing.T) {
 	}
 }
 
-func TestSignIn_SetsCookie(t *testing.T) {
+func TestSignIn_ReturnsTokenPair(t *testing.T) {
 	app, _, cleanup := testutil.SetupTestApp(t)
 	defer cleanup()
 
@@ -70,15 +70,30 @@ func TestSignIn_SetsCookie(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
+
+	// Cookie still set for browser clients
 	if cookie := resp.Header.Get("Set-Cookie"); cookie == "" {
 		t.Fatal("expected token cookie to be set")
 	}
+
+	// Token pair in response body for API clients
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatalf("read response: %v", err)
 	}
-	if strings.Contains(string(body), "eyJ") || strings.Contains(string(body), `"result"`) {
-		t.Fatalf("sign-in response exposes the JWT: %s", body)
+
+	bodyStr := string(body)
+	if !strings.Contains(bodyStr, `"access_token"`) {
+		t.Errorf("response missing access_token: %s", bodyStr)
+	}
+	if !strings.Contains(bodyStr, `"refresh_token"`) {
+		t.Errorf("response missing refresh_token: %s", bodyStr)
+	}
+	if !strings.Contains(bodyStr, `"expires_at"`) {
+		t.Errorf("response missing expires_at: %s", bodyStr)
+	}
+	if !strings.Contains(bodyStr, `"refresh_expires_at"`) {
+		t.Errorf("response missing refresh_expires_at: %s", bodyStr)
 	}
 }
 

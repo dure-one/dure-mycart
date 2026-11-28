@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 
 	"github.com/dure-one/dure-mycart/internal/middleware"
@@ -140,7 +141,16 @@ func CustomerSignOut(c fiber.Ctx) error {
 	db := queries.DB()
 	log := logging.New()
 
-	if err := db.DeleteSession(c.Context(), middleware.CustomerSessionID(c)); err != nil {
+	sessionID := middleware.CustomerSessionID(c)
+
+	// Delete session (revokes access token)
+	if err := db.DeleteSession(c.Context(), sessionID); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	// Delete all refresh tokens for this session
+	if err := db.DeleteRefreshTokensByUser(c.Context(), sessionID, "customer"); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
@@ -198,16 +208,87 @@ func CustomerMe(c fiber.Ctx) error {
 	})
 }
 
-// issueCustomerSession mints a cabinet session for customerID and sets its
-// cookie.
+// issueCustomerSession mints a cabinet session for customerID with token pair.
 func issueCustomerSession(c fiber.Ctx, customerID string) error {
 	db := queries.DB()
 	log := logging.New()
 
-	account, err := db.Account(c.Context())
+	secret, err := db.AccountSecret(c.Context())
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
+	}
+
+	sessionID := uuid.NewString()
+
+	// Generate access (15 min) and refresh (7 days) tokens
+	accessToken, refreshToken, accessExp, refreshExp, err := jwtutil.GenerateTokenPair(
+		secret, sessionID, 15, 10080)
+	if err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	// Add session record (for access token revocation)
+	if err := db.AddSession(c.Context(),
+		sessionID, queries.SessionValue(queries.SessionRoleCustomer, customerID), accessExp); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	// Store refresh token
+	refreshID := sessionID + ":r:" + time.Now().Format("20060102150405")
+	if err := db.AddRefreshToken(c.Context(), refreshID, sessionID, "customer", refreshExp); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	// Set cookie for browser clients
+	c.Cookie(&fiber.Cookie{
+		Name:     middleware.CookieCustomerToken,
+		Value:    accessToken,
+		Expires:  time.Unix(accessExp, 0),
+		HTTPOnly: true,
+		Secure:   c.Protocol() == "https",
+		SameSite: "Lax",
+	})
+
+	// Return tokens in body for API clients
+	return webutil.StatusOK(c, "Signed in", map[string]any{
+		"id":                  customerID,
+		"access_token":        accessToken,
+		"refresh_token":       refreshToken,
+		"expires_at":          accessExp,
+		"refresh_expires_at":  refreshExp,
+	})
+}
+
+// CustomerRefresh issues a new token pair from a valid customer refresh token.
+//
+// @Summary      Refresh customer access token
+// @Description  Exchange a refresh token for a new access + refresh token pair
+// @Tags         Account
+// @Accept       json
+// @Produce      json
+// @Param        request body object{refresh_token=string} true "Refresh token"
+// @Success      200 {object} webutil.HTTPResponse "New token pair"
+// @Failure      400 {object} webutil.HTTPResponse "Invalid or expired refresh token"
+// @Failure      404 {object} webutil.HTTPResponse "The cabinet is disabled"
+// @Failure      500 {object} webutil.HTTPResponse "Internal server error"
+// @Router       /api/customer/refresh [post]
+func CustomerRefresh(c fiber.Ctx) error {
+	db := queries.DB()
+	log := logging.New()
+
+	var req struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	if err := c.Bind().Body(&req); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusBadRequest(c, "invalid request")
+	}
+	if req.RefreshToken == "" {
+		return webutil.StatusBadRequest(c, "refresh_token required")
 	}
 
 	secret, err := db.AccountSecret(c.Context())
@@ -216,36 +297,78 @@ func issueCustomerSession(c fiber.Ctx, customerID string) error {
 		return webutil.StatusInternalServerError(c)
 	}
 
-	expireHours := account.ExpireHours
-	if expireHours <= 0 {
-		expireHours = queries.DefaultAccountExpireHours
+	// Parse and validate refresh token
+	claims := jwt.MapClaims{}
+	token, err := jwt.ParseWithClaims(req.RefreshToken, claims, func(t *jwt.Token) (any, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		if err := jwtutil.ValidateHeader(t); err != nil {
+			return nil, err
+		}
+		return []byte(secret), nil
+	}, jwtutil.ParserOptions()...)
+	if err != nil || !token.Valid {
+		return webutil.StatusBadRequest(c, "invalid or expired refresh token")
 	}
 
-	sessionID := uuid.NewString()
-	expires := time.Now().Add(time.Hour * time.Duration(expireHours)).Unix()
+	// Validate token type is "refresh"
+	if err := jwtutil.ValidateTokenType(claims, jwtutil.TokenTypeRefresh); err != nil {
+		return webutil.StatusBadRequest(c, "not a refresh token")
+	}
 
-	token, err := jwtutil.GenerateNewToken(secret, sessionID, expires, nil)
+	refreshID, err := jwtutil.SessionID(claims)
+	if err != nil {
+		return webutil.StatusBadRequest(c, "invalid refresh token")
+	}
+
+	// Check refresh token exists in DB and is not expired
+	sessionID, role, err := db.GetRefreshToken(c.Context(), refreshID)
+	if err != nil {
+		return webutil.StatusBadRequest(c, "refresh token not found or expired")
+	}
+	if role != "customer" {
+		return webutil.StatusBadRequest(c, "invalid refresh token role")
+	}
+
+	// Get customer ID from session
+	sessionValue, err := db.GetSession(c.Context(), sessionID)
+	if err != nil {
+		return webutil.StatusBadRequest(c, "session not found")
+	}
+	_, customerID := queries.ParseSessionValue(sessionValue)
+
+	// Delete old refresh token (rotation)
+	if err := db.DeleteRefreshToken(c.Context(), refreshID); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
+
+	// Generate new token pair
+	newAccessToken, newRefreshToken, accessExp, refreshExp, err := jwtutil.GenerateTokenPair(
+		secret, sessionID, 15, 10080)
 	if err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
 
-	// The session row records the role and the customer, which is what tells
-	// this session apart from an admin one in the shared table.
-	if err := db.AddSession(c.Context(),
-		sessionID, queries.SessionValue(queries.SessionRoleCustomer, customerID), expires); err != nil {
+	// Update session expiry
+	if err := db.UpdateSession(c.Context(), sessionID, queries.SessionValue(queries.SessionRoleCustomer, customerID), accessExp); err != nil {
 		log.ErrorStack(err)
 		return webutil.StatusInternalServerError(c)
 	}
 
-	c.Cookie(&fiber.Cookie{
-		Name:     middleware.CookieCustomerToken,
-		Value:    token,
-		Expires:  time.Unix(expires, 0),
-		HTTPOnly: true,
-		Secure:   c.Protocol() == "https",
-		SameSite: "Lax",
-	})
+	// Store new refresh token
+	newRefreshID := sessionID + ":r:" + time.Now().Format("20060102150405")
+	if err := db.AddRefreshToken(c.Context(), newRefreshID, sessionID, "customer", refreshExp); err != nil {
+		log.ErrorStack(err)
+		return webutil.StatusInternalServerError(c)
+	}
 
-	return webutil.StatusOK(c, "Signed in", map[string]any{"id": customerID})
+	return webutil.StatusOK(c, "Token refreshed", map[string]any{
+		"access_token":       newAccessToken,
+		"refresh_token":      newRefreshToken,
+		"expires_at":         accessExp,
+		"refresh_expires_at": refreshExp,
+	})
 }

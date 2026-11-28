@@ -136,6 +136,11 @@ func CustomerJWTProtected() fiber.Handler {
 			return customerUnauthorized(c)
 		}
 
+		// Only access tokens allowed on protected endpoints
+		if err := jwtutil.ValidateTokenType(claims, jwtutil.TokenTypeAccess); err != nil {
+			return customerUnauthorized(c)
+		}
+
 		sessionID, err := jwtutil.SessionID(claims)
 		if err != nil {
 			return customerUnauthorized(c)

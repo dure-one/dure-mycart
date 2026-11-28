@@ -45,6 +45,7 @@ func ApiPublicRoutes(c *fiber.App) {
 	customer.Post("/signup", middleware.AuthLimiter(), handlers.CustomerSignUp)
 	customer.Post("/signin", middleware.AuthLimiter(), handlers.CustomerSignIn)
 	customer.Post("/signout", middleware.CustomerJWTProtected(), handlers.CustomerSignOut)
+	customer.Post("/refresh", handlers.CustomerRefresh)
 	customer.Get("/me", middleware.CustomerJWTProtected(), handlers.CustomerMe)
 	customer.Get("/purchases", middleware.CustomerJWTProtected(), handlers.CustomerPurchases)
 	// The file id is addressed on its own rather than under its product: the

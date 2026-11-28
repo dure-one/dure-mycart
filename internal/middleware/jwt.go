@@ -76,6 +76,12 @@ func customKeyFunc() jwt.Keyfunc {
 		if !ok {
 			return nil, fmt.Errorf("invalid token claims")
 		}
+
+		// Only access tokens allowed on protected endpoints
+		if err := jwtutil.ValidateTokenType(claims, jwtutil.TokenTypeAccess); err != nil {
+			return nil, err
+		}
+
 		sessionID, err := jwtutil.SessionID(claims)
 		if err != nil {
 			return nil, err

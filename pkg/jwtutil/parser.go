@@ -65,6 +65,17 @@ func SessionID(claims jwt.MapClaims) (string, error) {
 	return ValidateSessionClaims(claims)
 }
 
+// ValidateTokenType checks that the token has the expected type claim.
+// Use to ensure only access tokens are accepted on protected endpoints, and
+// only refresh tokens are accepted on the refresh endpoint.
+func ValidateTokenType(claims jwt.MapClaims, expected string) error {
+	tokenType, _ := claims["type"].(string)
+	if tokenType != expected {
+		return fmt.Errorf("%w: expected type %q, got %q", ErrInvalidToken, expected, tokenType)
+	}
+	return nil
+}
+
 // ExtractTokenMetadata parses and validates the JWT from the request cookie
 // and returns its claims.
 func ExtractTokenMetadata(c fiber.Ctx, secret string) (*TokenMetadata, error) {
