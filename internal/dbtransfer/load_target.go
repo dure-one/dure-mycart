@@ -29,7 +29,7 @@ func checkTarget(ctx context.Context, tx pgx.Tx, header Header, replace, require
 		if !requireSchema {
 			return target, nil
 		}
-		return nil, errors.New("the target has no myCart schema: migrate it first")
+		return nil, errors.New("the target has no dure-mycart schema: migrate it first")
 	}
 
 	if err := checkSchemaVersion(ctx, tx.Conn(), header); err != nil {
@@ -50,7 +50,7 @@ func checkTarget(ctx context.Context, tx pgx.Tx, header Header, replace, require
 // checkSchemaVersion refuses a dump this build does not know how to read.
 func checkSchemaVersion(ctx context.Context, conn *pgx.Conn, header Header) error {
 	if header.Format > FormatVersion {
-		return fmt.Errorf("the dump is in format %d and this build reads up to %d: upgrade myCart first",
+		return fmt.Errorf("the dump is in format %d and this build reads up to %d: upgrade dure-mycart first",
 			header.Format, FormatVersion)
 	}
 
@@ -60,7 +60,7 @@ func checkSchemaVersion(ctx context.Context, conn *pgx.Conn, header Header) erro
 	}
 	if header.Migrations > target {
 		return fmt.Errorf("the dump is from schema version %d and this build migrates to %d: "+
-			"upgrade myCart before restoring this dump", header.Migrations, target)
+			"upgrade dure-mycart before restoring this dump", header.Migrations, target)
 	}
 	return nil
 }

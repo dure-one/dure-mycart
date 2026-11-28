@@ -24,7 +24,7 @@ func readHeader(in *bufio.Reader) (Header, error) {
 			continue
 		}
 		if !strings.HasPrefix(text, "--") {
-			return Header{}, fmt.Errorf("this is not a myCart dump: it starts with %s", quoteLine(text))
+			return Header{}, fmt.Errorf("this is not a dure-mycart dump: it starts with %s", quoteLine(text))
 		}
 
 		var header Header
@@ -38,7 +38,7 @@ func readHeader(in *bufio.Reader) (Header, error) {
 			return Header{}, fmt.Errorf("read the dump: %w", err)
 		}
 	}
-	return Header{}, errors.New("this is not a myCart dump: it has no header")
+	return Header{}, errors.New("this is not a dure-mycart dump: it has no header")
 }
 
 // parseTrailer reads a dump's closing summary, if the comment is one.

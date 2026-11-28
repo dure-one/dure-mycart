@@ -152,7 +152,7 @@ func readSectionLine(ctx context.Context, tx pgx.Tx, in *bufio.Reader, line stri
 		manifest.Tables = append(manifest.Tables, stat)
 		manifest.Rows += stat.Rows
 	default:
-		return nil, fmt.Errorf("this is not a myCart dump: unexpected line %s", quoteLine(text))
+		return nil, fmt.Errorf("this is not a dure-mycart dump: unexpected line %s", quoteLine(text))
 	}
 	return trailer, nil
 }
@@ -207,7 +207,7 @@ func loadSection(ctx context.Context, tx pgx.Tx, in *bufio.Reader, header string
 
 	if !slices.Contains(target, t.Name) {
 		return TableStat{}, fmt.Errorf("the dump carries a table this schema does not have: %s "+
-			"(the dump is from a newer myCart)", t.Name)
+			"(the dump is from a newer dure-mycart)", t.Name)
 	}
 
 	section := &copySection{br: in}
