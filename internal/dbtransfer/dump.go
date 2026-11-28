@@ -146,7 +146,7 @@ func describeSource(ctx context.Context, src source, opts DumpOptions) ([]table,
 // writeDumpHead writes the title, the header comment and the replay hint a dump
 // starts with.
 func writeDumpHead(out *bufio.Writer, head string, tables []table) error {
-	if _, err := out.WriteString("-- myCart database dump\n"); err != nil {
+	if _, err := out.WriteString("-- dure-mycart database dump\n"); err != nil {
 		return err
 	}
 	if _, err := out.WriteString(head); err != nil {
@@ -164,7 +164,7 @@ func writeDumpHead(out *bufio.Writer, head string, tables []table) error {
 	}
 	for _, line := range []string{
 		"-- Replayed with psql, this file needs the target's tables emptied first, in the",
-		"-- same transaction: `mycart db restore` does that itself, and verifies the result.",
+		"-- same transaction: `dure-mycart db restore` does that itself, and verifies the result.",
 		"--   psql -1 \"$DSN\" -c 'TRUNCATE TABLE " + quoteIdents(names) + " CASCADE;' -f <this file>",
 	} {
 		if _, err := out.WriteString(line + "\n"); err != nil {
