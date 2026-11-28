@@ -7,10 +7,10 @@ import (
 	"database/sql"
 	"strings"
 
-	"github.com/shurco/mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/models"
 	pggen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/postgres"
 	sqlitegen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/sqlite"
-	"github.com/shurco/mycart/pkg/litepay"
+	"github.com/dure-one/dure-mycart/pkg/litepay"
 )
 
 // CustomerFilter narrows the admin customer list.

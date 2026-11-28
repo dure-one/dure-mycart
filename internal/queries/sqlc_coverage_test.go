@@ -20,30 +20,30 @@ import (
 // After merging upstream, a mismatch here means the plain file changed: port
 // the change into the twin, then update the hash.
 var ported = map[string]string{
-	"auth.go":    "3b0ae770fddc89612a1224a4e42f829b04f3df5f",
+	"auth.go":    "c60a32c917cd7caf4680304af0f9c1005ec3272a",
 	"session.go": "7de97a1e11771895b80ecff5802df637a2d4e2ff",
-	"install.go": "0d67659ac8b91ecc2a2fefb946980f1665673270",
-	"pages.go":   "f8f1dda6a92c3fc899be28d3ea1e464c6eb609fe",
-	"setting.go": "0886e9ff9cf6f6ac95b51392e880334c714a0bac",
+	"install.go": "a1e70ff1e2f72dc6140553045d3f75d6624f3e4a",
+	"pages.go":   "55dfe91a96c1171b6c91591e5b5d00f6cd408c6a",
+	"setting.go": "e06923a703aba61851ed1abf15f240e072fd2256",
 
-	"customer.go":               "374d2d3632f235463b6374c08a95bff6c1b91cb2",
-	"customer_account.go":       "456f89539e790efa14e51f02757fbfe14bf216c4",
-	"customer_list.go":          "5fe3088faf49af242fb6c6629b28dc5b717f9213",
-	"customer_purchase_read.go": "0b0771747e503b4b2043ccced5c555fa05c77a1f",
+	"customer.go":               "cf55dcc154c2143991da89286ad4f4d13bf74aae",
+	"customer_account.go":       "b5b73ea228187092fd096bccfdadd6519db0d780",
+	"customer_list.go":          "bb3a5f2cba218ba812eaca58e47cecf63114c0d3",
+	"customer_purchase_read.go": "8e873a4052feb3aa838b4e47fbeffe89a0adc4ea",
 
-	"cart.go":        "bccddcf69a254de4d1a00fedb95c001e66639e57",
-	"cart_list.go":   "f2787194f1ebf79c672f884861c1e1a234d3f134",
-	"cart_letter.go": "b95174820f84634b39ddc08f4db7141509b62ca1",
+	"cart.go":        "a40afc930c8f0c06b7e4165623b43da977d26438",
+	"cart_list.go":   "4a735b447f0a77884cf537eae9d63dcdb8b571a4",
+	"cart_letter.go": "b944c7c0823f8265a0502a7a28d2b776ea34edba",
 
-	"products.go":                "f1e4eb6555da2dadb5acb529d5f33e7fbc6e889f",
-	"products_digital.go":        "d0313bef18685d9558f1d332adb8e28e06ce3555",
-	"products_get.go":            "8e2643b71070bdb4e6a08594dc98cf11db79f900",
-	"products_get_variants.go":   "3e257fd1f95b5edf6348426f661e241be53f1ecb",
-	"products_images.go":         "4547f2db8a263075dce5541ae0228a8539eed501",
-	"products_list.go":           "64e400b4472db9b387f7c62c7ff6036e516cbc53",
-	"products_variants_read.go":  "28ab0752b6aa385eef53985d00cd22b1f00c45ae",
-	"products_variants_write.go": "cc98081eeb44f22ceceb12bcb3d619e3a49f0b97",
-	"products_write.go":          "3d77a0a4229442771f9d6452a4e11ee1404b4d78",
+	"products.go":                "e6fd6b759aa534e82a7c609012309e678ec0325e",
+	"products_digital.go":        "85d0f20d04eb7c8822077c597c7934ee601b4d01",
+	"products_get.go":            "2da20186b9128f4fb34870443f63983b5a55c3ec",
+	"products_get_variants.go":   "b008b86a60fffa595474c2503ddac8b747a5a6bc",
+	"products_images.go":         "79a3ab2b1c56a9a5c5f54f5da2529ab26d33de21",
+	"products_list.go":           "68af101af3a846cbc45dcb0ec77c0c9447d5e397",
+	"products_variants_read.go":  "ff33eb4f0d54ed2a030bb5e8c5a96227fa2b88e0",
+	"products_variants_write.go": "9ae068ee0cbdd387832e6ae7887cdaa3a58a0ad5",
+	"products_write.go":          "68e474dcbf2765c4ac8424695f27cfb36e6a07ba",
 	"product_image.go":           "a230ae02935eee307f672a24fe3cf54ebff9fbdf",
 }
 
@@ -101,7 +101,13 @@ func TestSQLCPortedFilesUnchanged(t *testing.T) {
 // Port a file: write its queries under sqlcgen/queries/, add the sqlc file,
 // put `//go:build !sqlc` on the plain file, record it in ported and delete its
 // name here.
-var unported = map[string]bool{}
+var unported = map[string]bool{
+	"responder_archive.go":   true,
+	"responder_contacts.go":  true,
+	"responder_crontab.go":   true,
+	"responder_messages.go":  true,
+	"responder_workflows.go": true,
+}
 
 var runsSQL = regexp.MustCompile(`\.(QueryContext|ExecContext|QueryRowContext|PrepareContext|BeginTx)\(`)
 

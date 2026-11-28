@@ -8,10 +8,10 @@ import (
 
 	"github.com/gosimple/slug"
 
-	"github.com/shurco/mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/database"
 	pggen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/postgres"
 	sqlitegen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/sqlite"
-	"github.com/shurco/mycart/pkg/errors"
+	"github.com/dure-one/dure-mycart/pkg/errors"
 )
 
 // ProductQueries is a struct that holds a dialect-aware database handle.

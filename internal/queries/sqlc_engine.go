@@ -15,7 +15,7 @@ package queries
 import (
 	"database/sql"
 
-	"github.com/shurco/mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/database"
 	pggen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/postgres"
 	sqlitegen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/sqlite"
 )

@@ -8,11 +8,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/models"
 	pggen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/postgres"
 	sqlitegen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/sqlite"
-	"github.com/shurco/mycart/pkg/security"
+	"github.com/dure-one/dure-mycart/pkg/security"
 )
 
 // AddProduct inserts a new product into the database and returns the product with the created timestamp.

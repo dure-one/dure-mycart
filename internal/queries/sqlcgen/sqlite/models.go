@@ -6,7 +6,32 @@ package sqlitegen
 
 import (
 	"database/sql"
+	"time"
 )
+
+type ArchivedCustomer struct {
+	ID             string
+	Email          string
+	Password       string
+	Name           sql.NullString
+	Active         bool
+	Created        sql.NullTime
+	Updated        sql.NullTime
+	ArchivedAt     sql.NullTime
+	ArchivedReason sql.NullString
+}
+
+type ArchivedMessage struct {
+	ID             string
+	ContactID      string
+	Content        string
+	Direction      string
+	Channel        string
+	DeliveryStatus sql.NullString
+	ReadStatus     bool
+	Created        sql.NullTime
+	ArchivedAt     sql.NullTime
+}
 
 type Cart struct {
 	ID            string
@@ -21,6 +46,17 @@ type Cart struct {
 	PaymentSystem string
 }
 
+type CrontabJob struct {
+	ID       string
+	JobType  string
+	Interval string
+	Enabled  bool
+	LastRun  sql.NullTime
+	NextRun  sql.NullTime
+	Created  sql.NullTime
+	Updated  sql.NullTime
+}
+
 type Customer struct {
 	ID       string
 	Email    string
@@ -29,6 +65,16 @@ type Customer struct {
 	Active   bool
 	Created  sql.NullTime
 	Updated  sql.NullTime
+}
+
+type CustomerContact struct {
+	ID         string
+	CustomerID string
+	Type       string
+	Address    string
+	Active     bool
+	Created    sql.NullTime
+	Updated    sql.NullTime
 }
 
 type DigitalDatum struct {
@@ -44,6 +90,25 @@ type DigitalFile struct {
 	Name      string
 	Ext       string
 	OrigName  string
+}
+
+type Message struct {
+	ID             string
+	ContactID      string
+	Content        string
+	Direction      string
+	Channel        string
+	DeliveryStatus sql.NullString
+	ReadStatus     bool
+	Created        sql.NullTime
+}
+
+type MessageThread struct {
+	ID                 string
+	CustomerID         string
+	LastMessageAt      time.Time
+	LastMessagePreview sql.NullString
+	UnreadCount        sql.NullInt64
 }
 
 type Page struct {
@@ -146,4 +211,17 @@ type Subdomain struct {
 	ID   string
 	Name string
 	Desc sql.NullString
+}
+
+type Workflow struct {
+	ID          string
+	Name        string
+	Description sql.NullString
+	Content     string
+	Enabled     bool
+	Tags        string
+	Version     sql.NullString
+	Author      sql.NullString
+	Created     sql.NullTime
+	Updated     sql.NullTime
 }

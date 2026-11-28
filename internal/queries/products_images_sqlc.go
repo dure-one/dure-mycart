@@ -8,10 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/shurco/mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/models"
 	pggen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/postgres"
 	sqlitegen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/sqlite"
-	"github.com/shurco/mycart/pkg/security"
+	"github.com/dure-one/dure-mycart/pkg/security"
 )
 
 // ProductImages returns the images of a product.

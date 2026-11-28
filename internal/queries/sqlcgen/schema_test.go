@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shurco/mycart/internal/database"
-	"github.com/shurco/mycart/migrations"
+	"github.com/dure-one/dure-mycart/internal/database"
+	"github.com/dure-one/dure-mycart/migrations"
 )
 
 var update = flag.Bool("update", false, "rewrite schema/sqlite.sql from the migrations")

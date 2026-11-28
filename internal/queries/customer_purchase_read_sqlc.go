@@ -7,10 +7,10 @@ import (
 	"database/sql"
 	"encoding/json"
 
-	"github.com/shurco/mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/models"
 	pggen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/postgres"
 	sqlitegen "github.com/dure-one/dure-mycart/internal/queries/sqlcgen/sqlite"
-	"github.com/shurco/mycart/pkg/errors"
+	"github.com/dure-one/dure-mycart/pkg/errors"
 )
 
 // purchaseProducts reads the fields of the products a list of orders shows.
