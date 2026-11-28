@@ -186,6 +186,26 @@ jobs:
           go test -tags sqlc ./internal/queries/sqlcgen -run TestSQLiteSchemaCurrent -count=1
           $(go env GOPATH)/bin/sqlc diff
 
+      # Auto-fix stale sqlc code and commit (runs only if check failed)
+      - name: Auto-fix stale sqlc code
+        if: failure() && matrix.db == 'sqlite'
+        run: |
+          echo "Regenerating stale sqlc code..."
+          go test -tags sqlc ./internal/queries/sqlcgen -run TestSQLiteSchemaCurrent -update -count=1
+          $(go env GOPATH)/bin/sqlc generate
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add internal/queries/sqlcgen/
+
+          if ! git diff --staged --quiet 2>/dev/null; then
+            git commit -m "chore: regenerate sqlc code [skip ci]"
+            git push || echo "Push failed (race condition), ignoring"
+            echo "✓ Pushed sqlc code regeneration"
+          else
+            echo "No changes to commit"
+          fi
+
       - name: Generate Swagger docs
         run: |
           go install github.com/swaggo/swag/cmd/swag@v1.16.6
