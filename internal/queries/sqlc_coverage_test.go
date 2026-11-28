@@ -22,7 +22,8 @@ import (
 var ported = map[string]string{
 	"auth.go":    "c60a32c917cd7caf4680304af0f9c1005ec3272a",
 	"session.go": "7de97a1e11771895b80ecff5802df637a2d4e2ff",
-	"install.go": "a1e70ff1e2f72dc6140553045d3f75d6624f3e4a",
+	"install.go": "afb71a908e6c7ebea57a364ebd50e850c1475890",
+	"seo.go":     "0a1a20fe444d613fd17a29c190c1e5d4bfc18a9f",
 	"pages.go":   "55dfe91a96c1171b6c91591e5b5d00f6cd408c6a",
 	"setting.go": "e06923a703aba61851ed1abf15f240e072fd2256",
 
