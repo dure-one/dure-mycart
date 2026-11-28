@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/shurco/mycart/internal/database"
+	"github.com/dure-one/dure-mycart/internal/database"
 )
 
 // SEOQueries holds a dialect-aware database handle for SEO-related queries.

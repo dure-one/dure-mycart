@@ -6,7 +6,7 @@ import (
 
 	"github.com/TDiblik/gofiber-swagger/gofiberswagger"
 	"github.com/gofiber/fiber/v3"
-	handlers "github.com/shurco/mycart/internal/handlers/public"
+	handlers "github.com/dure-one/dure-mycart/internal/handlers/public"
 )
 
 func RegisterSwagger(app *fiber.App) error {

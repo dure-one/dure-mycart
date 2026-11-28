@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/shurco/mycart/internal/models"
+	"github.com/dure-one/dure-mycart/internal/models"
 )
 
 // neverCache: per-user or admin responses that must not leak across visitors.
