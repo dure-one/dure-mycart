@@ -340,8 +340,9 @@ migrate-down:
 docker-build-test:
 	@echo "Building and pushing Docker image to ghcr.io test registry..."
 	@echo "Note: Requires 'docker login ghcr.io' with GitHub PAT (write:packages scope)"
+	@echo "Note: Building amd64 only (CI builds multi-arch)"
 	docker buildx build \
-		--platform linux/amd64,linux/arm64 \
+		--platform linux/amd64 \
 		--build-arg VERSION=$(VERSION) \
 		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
 		--build-arg BUILD_DATE=$(BUILD_DATE) \
