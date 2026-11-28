@@ -17,6 +17,20 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+// getProviderDisplayName returns human-readable ACME provider name.
+func getProviderDisplayName(provider string) string {
+	switch provider {
+	case "letsencrypt":
+		return "Let's Encrypt"
+	case "gts":
+		return "Google Trust Services"
+	case "zerossl":
+		return "ZeroSSL"
+	default:
+		return provider
+	}
+}
+
 // getACMEStepMessage returns the message for each ACME acquisition step.
 func getACMEStepMessage(step int) string {
 	switch step {
@@ -25,7 +39,7 @@ func getACMEStepMessage(step int) string {
 	case 3:
 		return "ACME HTTP-01 challenge in progress"
 	case 4:
-		return "Waiting for Let's Encrypt validation"
+		return "Waiting for CA validation"
 	default:
 		return "Acquiring certificate..."
 	}
@@ -76,13 +90,20 @@ func startBothServers(app *fiber.App, httpAddr, httpsAddr string) error {
 	startTime := time.Now()
 	certReady := make(chan struct{})
 
+	// Get ACME provider name for logs
+	provider := os.Getenv("ACME_PROVIDER")
+	if provider == "" {
+		provider = "letsencrypt"
+	}
+	providerName := getProviderDisplayName(provider)
+
 	// Check for existing certificate
 	certPath := fmt.Sprintf("./lc_certs/%s", hostOnly)
 	if _, err := os.Stat(certPath); err == nil {
 		fmt.Fprintf(os.Stderr, "[ACME] Certificate found in cache for %s\n", hostOnly)
 		close(certReady)
 	} else {
-		fmt.Fprintf(os.Stderr, "[ACME 1/5] Starting certificate acquisition for %s\n", hostOnly)
+		fmt.Fprintf(os.Stderr, "[ACME 1/5] Starting certificate acquisition for %s via %s\n", hostOnly, providerName)
 	}
 
 	manager := &autocert.Manager{
