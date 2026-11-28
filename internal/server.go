@@ -22,7 +22,7 @@ func getProviderDisplayName(provider string) string {
 	switch provider {
 	case "letsencrypt":
 		return "Let's Encrypt"
-	case "gts":
+	case "google", "gts":
 		return "Google Trust Services"
 	case "zerossl":
 		return "ZeroSSL"
