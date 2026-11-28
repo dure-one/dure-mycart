@@ -9,7 +9,7 @@
 .PHONY: install-sqlc sqlc-generate sqlc-verify sqlc
 .PHONY: e2e-all
 .PHONY: migrate-up migrate-down
-.PHONY: docker-build docker-up docker-down docker-logs docker-test-all
+.PHONY: docker-build-test
 
 # Detect OS and conditionally enable race detector (not supported on OpenBSD)
 UNAME_S := $(shell uname -s)
@@ -84,11 +84,7 @@ help:
 	@echo "  migrate-down             - Run migrations (down)"
 	@echo ""
 	@echo "Docker:"
-	@echo "  docker-build             - Build Docker image"
-	@echo "  docker-up                - Start services"
-	@echo "  docker-down              - Stop services"
-	@echo "  docker-logs              - Show container logs"
-	@echo "  docker-test-all          - Run tests in Docker against both databases"
+	@echo "  docker-build-test        - Build and push Docker image to ghcr.io test registry"
 
 # Setup targets
 setup:
@@ -341,22 +337,15 @@ migrate-down:
 	go run ./cmd migrate down
 
 # Docker targets
-docker-build:
-	@echo "Building Docker image..."
-	docker compose build
-
-docker-up:
-	@echo "Starting mycart..."
-	docker compose up -d
-
-docker-down:
-	@echo "Stopping mycart..."
-	docker compose down
-
-docker-logs:
-	@echo "Showing logs..."
-	docker compose logs -f
-
-docker-test-all:
-	@echo "Running tests with both databases in Docker..."
-	docker compose -f docker-compose.test.yml --profile test run --rm test-all
+docker-build-test:
+	@echo "Building and pushing Docker image to ghcr.io test registry..."
+	@echo "Note: Requires 'docker login ghcr.io' with GitHub PAT (write:packages scope)"
+	docker buildx build \
+		--platform linux/amd64,linux/arm64 \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg BUILD_DATE=$(BUILD_DATE) \
+		--tag ghcr.io/dure-one/prosody-mycart:test \
+		--push \
+		-f prosody-mycart-stack/dure-mycart/Dockerfile \
+		.
